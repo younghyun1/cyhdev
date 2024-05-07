@@ -17,7 +17,8 @@ mod utils {
 pub const APP_NAME_VERSION: &'static str = "cyhdev-0.0.1";
 pub const DB_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 pub const DB_PORT: u16 = 5432;
-pub const DB_USERNAME: &'static str = "postgres";
+pub const DB_USERNAME: &'static str = "cyh_dba";
+pub const DB_NAME: &'static str = "postgres";
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
