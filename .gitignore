@@ -33,6 +33,7 @@ Cargo.lock
 # Our scripts
 /scripts
 /src/scripts
+/src/server_init/keys
 /keys
 
 /.idea
