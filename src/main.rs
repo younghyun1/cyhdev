@@ -27,8 +27,9 @@ mod server_init {
 }
 
 pub const APP_NAME_VERSION: &'static str = "cyhdev-0.0.1";
-pub const HOST_PORT: u16 = 443;
-pub const HOST_ADDR: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, HOST_PORT));
+pub const HOST_PORT_HTTPS: u16 = 443;
+pub const HOST_ADDR: SocketAddr =
+    SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, HOST_PORT_HTTPS));
 pub const DB_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 pub const DB_PORT: u16 = 5432;
 pub const DB_USERNAME: &'static str = "cyh_dba";
