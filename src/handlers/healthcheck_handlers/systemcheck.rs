@@ -104,7 +104,7 @@ pub async fn systemcheck_handler(
             bte(database_connection.is_ok())
         ));
         message.push(format!(
-            "Quotes delievered: {}",
+            "Quotes delivered: {}",
             state.quote_shuffle_bag.read().await.count,
         ));
         message.push(format!(
