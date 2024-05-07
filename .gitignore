@@ -28,6 +28,7 @@ Cargo.lock
 *.ps1
 *.bat
 .env
+*.pem
 
 # Our scripts
 /scripts
