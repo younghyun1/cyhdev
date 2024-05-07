@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Ctarget-cpu=skylake"] # "--emit=asm" for assembly
+rustflags = ["-Ctarget-cpu=native"] # "--emit=asm" for assembly
