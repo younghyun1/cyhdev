@@ -6,9 +6,8 @@ use deadpool_postgres::{Config, ManagerConfig, RecyclingMethod, Runtime};
 use tokio_postgres::NoTls;
 use tracing::info;
 
-use crate::{DB_ADDR, DB_NAME, DB_PORT, DB_USERNAME};
-
 use super::server_state_model::ServerState;
+use crate::{DB_ADDR, DB_NAME, DB_PORT, DB_USERNAME};
 
 pub async fn init_state(server_start_time: DateTime<Utc>, pw: String) -> Result<ServerState> {
     let start = tokio::time::Instant::now();
@@ -38,5 +37,8 @@ pub async fn init_state(server_start_time: DateTime<Utc>, pw: String) -> Result<
     });
     info!("Connection pool established in {:?}", start.elapsed());
 
-    todo!()
+    Ok(ServerState {
+        pool: pool,
+        server_start_time,
+    })
 }

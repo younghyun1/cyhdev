@@ -18,5 +18,9 @@ pub async fn server_initializer(
         Err(e) => return Err(anyhow!("Could not create ServerState: {:?}", e)),
     };
 
+    let healthcheck_router: axum::Router = axum::Router::new()
+        .route("/healthcheck/healthcheck", get(healthcheck_handler)) // simple healthcheck
+        .with_state(Arc::clone(&state));
+
     Ok(())
 }
