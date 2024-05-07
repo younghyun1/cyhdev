@@ -1,20 +1,34 @@
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use server_init::server_init::server_initializer;
 use tracing::info;
 
+mod handlers {
+    pub mod healthcheck_handlers {
+        pub mod fallback;
+        pub mod healthcheck;
+        pub mod systemcheck;
+    }
+}
+mod utils {
+    pub mod misc_utils {
+        pub mod bool_to_emoji;
+    }
+    pub mod time_utils {
+        pub mod format_datetime_difference;
+    }
+}
 mod server_init {
     pub mod server_init;
     pub mod server_state_model;
     pub mod state_init;
 }
-mod utils {
-    pub mod bool_to_emoji;
-}
 
 pub const APP_NAME_VERSION: &'static str = "cyhdev-0.0.1";
+pub const HOST_PORT: u16 = 443;
+pub const HOST_ADDR: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, HOST_PORT));
 pub const DB_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 pub const DB_PORT: u16 = 5432;
 pub const DB_USERNAME: &'static str = "cyh_dba";
