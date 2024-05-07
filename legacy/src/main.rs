@@ -27,7 +27,7 @@ pub async fn main() -> Result<()> {
             println!("Env. variables at {:?} loaded!", path_buf.to_str());
         }
         Err(e) => {
-            return Err(anyhow!(e).context("dotenvy could not load .env file! please check if an environment variable file exists."));
+            return Err(anyhoww!(e).context("dotenvy could not load .env file! please check if an environment variable file exists."));
         }
     }
 
