@@ -17,3 +17,7 @@ debug = true
 panic = "abort"
 
 [dependencies]
+tokio = { version = "1.37.0", default-features = false, features = [
+    "macros",
+    "rt-multi-thread",
+] } #is the async framework that is the runtime for axum

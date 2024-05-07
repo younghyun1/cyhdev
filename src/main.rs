@@ -1,3 +1,2 @@
-fn main() {
-    println!("Hello, world!");
-}
+#[tokio::main(flavor = "multi_thread")]
+async fn main() {}
