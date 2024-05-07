@@ -1,3 +1,3 @@
 cargo build --release
-del ./cyhdev
+rm ./cyhdev
 upx --ultra-brute ./target/release/cyhdev -o ./cyhdev

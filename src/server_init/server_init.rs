@@ -41,7 +41,7 @@ pub async fn server_initializer(
         .fallback(get(fallback_handler).with_state(Arc::clone(&state)));
 
     let config =
-        match RustlsConfig::from_pem_file(PathBuf::from("./cert.pem"), PathBuf::from("./priv.pem"))
+        match RustlsConfig::from_pem_file(PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/cert.pem"), PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/priv.pem"))
             .await
         {
             Ok(cfg) => cfg,
