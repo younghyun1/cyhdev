@@ -36,6 +36,15 @@ pub const DB_NAME: &'static str = "postgres";
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
+    // No terminal echo when inputting confidential information at runtime.
+    // 런타임에서 민감한 정보를 stdin을 통해서 입력할때 에코 제거.
+    let pw: String = match rpassword::prompt_password("DB_PASSWORD: ") {
+        Ok(pw) => pw,
+        Err(_) => {
+            return Err(anyhow!("I/O error in reading DB password."));
+        }
+    };
+
     let server_start_time: DateTime<Utc> = Utc::now();
     let server_start: tokio::time::Instant = tokio::time::Instant::now();
 
@@ -46,15 +55,6 @@ async fn main() -> Result<()> {
         .with_max_level(tracing::Level::INFO) // for release
         .with_ansi(false) // disables colored output
         .init();
-
-    // No terminal echo when inputting confidential information at runtime.
-    // 런타임에서 민감한 정보를 stdin을 통해서 입력할때 에코 제거.
-    let pw: String = match rpassword::prompt_password("DB_PASSWORD: ") {
-        Ok(pw) => pw,
-        Err(_) => {
-            return Err(anyhow!("I/O error in reading DB password."));
-        }
-    };
 
     // 유닛 테스트를 위하여 서버 시작 부분 논리는 분리해놓음
     // Server initialization logic separated for potential future unit testing.
