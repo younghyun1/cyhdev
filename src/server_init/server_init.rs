@@ -64,9 +64,9 @@ pub async fn server_initializer(
 
     // Final app.
     let app: axum::Router = axum::Router::new()
+        .fallback(get(fallback_handler).with_state(Arc::clone(&state)))
         .merge(front_router)
-        .merge(healthcheck_router)
-        .fallback(get(fallback_handler).with_state(Arc::clone(&state)));
+        .merge(healthcheck_router);
 
     // TLS config.
     let config = match RustlsConfig::from_pem_file(
