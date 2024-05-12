@@ -1,10 +1,13 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
-use axum::routing::get;
+use axum::{
+    routing::{get, get_service},
+    Router,
+};
 use axum_server::tls_rustls::RustlsConfig;
 use chrono::{DateTime, Utc};
-use tower_http::services::ServeFile;
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
 use crate::{
@@ -30,7 +33,15 @@ pub async fn server_initializer(
         Err(e) => return Err(anyhow!("Could not create ServerState: {:?}", e)),
     };
 
-    let front_router = axum::Router::new().route_service("/", ServeFile::new("assets/index.html"));
+    // Serves front.
+    let front_router = Router::new().fallback(
+        get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Could not serve directory: {}", e),
+            )
+        }),
+    );
 
     // 서버 관리용.
     // For server maintenance handlers.
