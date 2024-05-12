@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{Html, IntoResponse},
+};
 
 use crate::server_init::server_state_model::ServerState;
 
@@ -15,10 +19,47 @@ pub async fn fallback_handler(State(state): State<Arc<ServerState>>) -> impl Int
     let idx_to_query_by =
         quote_counter_mutex.shuffle_bag[(quote_counter_mutex.count % QUOTE_NUMBER) as usize];
 
-    return (
-        StatusCode::NOT_FOUND,
-        QUOTATION_LIST[idx_to_query_by as usize],
+    let quote = QUOTATION_LIST[idx_to_query_by as usize];
+
+    let html_page = format!(
+        "<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Page Not Found</title>
+            <style>
+                body {{
+                    background-color: black;
+                    color: white;
+                    font-family: 'Arial', sans-serif;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                }}
+                .container {{
+                    text-align: center;
+                }}
+                .quote {{
+                    font-size: 1.5em;
+                }}
+                .footer {{
+                    font-size: 0.8em;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='quote'>{}</div>
+                <div class='footer'>404 - Not Found</div>
+            </div>
+        </body>
+        </html>",
+        quote
     );
+
+    return (StatusCode::NOT_FOUND, Html(html_page));
 }
 
 const QUOTATION_LIST: [&'static str; QUOTE_NUMBER] = [

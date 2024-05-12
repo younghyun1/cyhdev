@@ -1,9 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
-use axum::routing::get;
+use axum::{routing::get, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use chrono::{DateTime, Utc};
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
 use crate::{
@@ -29,9 +30,6 @@ pub async fn server_initializer(
         Err(e) => return Err(anyhow!("Could not create ServerState: {:?}", e)),
     };
 
-    let front_rotuer: axum::Router = axum::Router::new()
-        .route("/", get());
-
     // 서버 관리용.
     // For server maintenance handlers.
     let healthcheck_router: axum::Router = axum::Router::new()
@@ -39,28 +37,26 @@ pub async fn server_initializer(
         .route("api/healthcheck", get(systemcheck_handler))
         .with_state(Arc::clone(&state)); // system diagnosis
 
+    let front_router = serve_front();
+
+    // Final app.
     let app: axum::Router = axum::Router::new()
         .merge(healthcheck_router)
+        .merge(front_router)
         .fallback(get(fallback_handler).with_state(Arc::clone(&state)));
 
-    let config =
-        match RustlsConfig::from_pem_file(PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/cert.pem"), PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/priv.pem"))
-            .await
-        {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                return Err(anyhow!("Could not configure Rustls: {:?}", e));
-            }
-        };
-
-    // Tokio TCP listener에 IP를 연결해주고 오류처리.
-    // Bind IP address to the Tokio TCP listener here.
-    // let listener: tokio::net::TcpListener = match tokio::net::TcpListener::bind(HOST_ADDR).await {
-    //     Ok(listener) => listener,
-    //     Err(e) => {
-    //         return Err(anyhow!("Could not initialize TcpListener: {:?}", e));
-    //     }
-    // };
+    // TLS config.
+    let config = match RustlsConfig::from_pem_file(
+        PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/cert.pem"),
+        PathBuf::from("/home/cyh/cyhdev/src/server_init/keys/priv.pem"),
+    )
+    .await
+    {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            return Err(anyhow!("Could not configure Rustls: {:?}", e));
+        }
+    };
 
     // 나중에 오류처리로 넘길 것.
     // Handle error later.
@@ -74,7 +70,8 @@ pub async fn server_initializer(
         )
     );
 
-    // Rustls - HTTPS.
+    // 여기서 앱을 Axum으로 서빙.
+    // Serve app here.
     match axum_server::bind_rustls(HOST_ADDR, config)
         .serve(app.into_make_service())
         .await
@@ -87,19 +84,9 @@ pub async fn server_initializer(
         }
     };
 
-    // 여기서 앱을 Axum으로 서빙.
-    // Serve app with Axum here.
-    // match axum::serve(
-    //     listener,
-    //     app.into_make_service_with_connect_info::<SocketAddr>(),
-    // )
-    // .await
-    // {
-    //     Ok(_) => (),
-    //     Err(e) => {
-    //         return Err(anyhow!("Axum could not serve app: {:?}", e));
-    //     }
-    // };
-
     Ok(())
+}
+
+fn serve_front() -> Router {
+    Router::new().route_service("/", ServeFile::new("assets/index.html"))
 }
