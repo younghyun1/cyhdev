@@ -7,7 +7,7 @@ use axum::{
 };
 use axum_server::tls_rustls::RustlsConfig;
 use chrono::{DateTime, Utc};
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::{
