@@ -38,7 +38,7 @@ pub async fn server_initializer(
     let front_router = Router::new()
         .route(
             "/", // Serve index.html directly at the root
-            get_service(ServeFile::new("/home/cyh/cyhdev/assets/index.html")).handle_error(
+            get_service(ServeFile::new("/home/cyh/cyhdev/front/index.html")).handle_error(
                 |e| async move {
                     (
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -48,14 +48,15 @@ pub async fn server_initializer(
             ),
         )
         .nest_service(
-            "/assets", // Serve all files under /assets path
-            get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
+            "/front", // Serve all files under /assets path
+            get_service(ServeDir::new("/home/cyh/cyhdev/front")).handle_error(|e| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("Could not serve directory: {}", e),
                 )
             }),
         );
+
     // 서버 관리용.
     // For server maintenance handlers.
     let healthcheck_router: axum::Router = axum::Router::new()
