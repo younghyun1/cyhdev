@@ -47,7 +47,8 @@ pub async fn server_initializer(
                 },
             ),
         )
-        .fallback(
+        .nest_service(
+            "/assets",
             get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -65,7 +66,7 @@ pub async fn server_initializer(
 
     // Final app.
     let app: axum::Router = axum::Router::new()
-        // .fallback(get(fallback_handler).with_state(Arc::clone(&state)))
+        .fallback(get(fallback_handler).with_state(Arc::clone(&state)))
         .merge(front_router)
         .merge(healthcheck_router);
 
