@@ -37,4 +37,5 @@ Cargo.lock
 /keys
 
 /.idea
-./cyhdevcyhdev
+cyhdev
+./cyhdev
