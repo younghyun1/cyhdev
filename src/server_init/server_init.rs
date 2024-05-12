@@ -35,27 +35,15 @@ pub async fn server_initializer(
     };
 
     // Serves front.
-    let front_router = Router::new()
-        .route(
-            "/",
-            get_service(ServeFile::new("/home/cyh/cyhdev/assets/index.html")).handle_error(
-                |e| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Could not serve file: {}", e),
-                    )
-                },
-            ),
-        )
-        .nest_service(
-            "/",
-            get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Could not serve directory: {}", e),
-                )
-            }),
-        );
+    let front_router = Router::new().route(
+        "/",
+        get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Could not serve directory: {}", e),
+            )
+        }),
+    );
 
     // 서버 관리용.
     // For server maintenance handlers.
