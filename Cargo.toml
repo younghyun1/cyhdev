@@ -33,6 +33,8 @@ axum = { version = "0.7.5", default-features = false, features = [
     "macros",
 ] } #is the web framework
 axum-server = { version = "0.6.0", features = ["tls-rustls"] }
+tower-http = { version = "0.5.2", features = ["fs"] }
+#axum-extra = { version = "0.9.3", features = ["cookie"] }
 
 #datetime
 chrono = { version = "0.4.38", default-features = false, features = ["alloc", "std", "now", "serde"] }

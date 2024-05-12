@@ -29,11 +29,14 @@ pub async fn server_initializer(
         Err(e) => return Err(anyhow!("Could not create ServerState: {:?}", e)),
     };
 
+    let front_rotuer: axum::Router = axum::Router::new()
+        .route("/", get());
+
     // 서버 관리용.
     // For server maintenance handlers.
     let healthcheck_router: axum::Router = axum::Router::new()
-        .route("/healthcheck/healthcheck", get(healthcheck_handler)) // simple healthcheck
-        .route("/healthcheck/systemcheck", get(systemcheck_handler))
+        .route("api/healthcheck", get(healthcheck_handler)) // simple healthcheck
+        .route("api/healthcheck", get(systemcheck_handler))
         .with_state(Arc::clone(&state)); // system diagnosis
 
     let app: axum::Router = axum::Router::new()
