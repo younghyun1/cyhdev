@@ -33,8 +33,8 @@ pub async fn server_initializer(
     // 서버 관리용.
     // For server maintenance handlers.
     let healthcheck_router: axum::Router = axum::Router::new()
-        .route("api/healthcheck", get(healthcheck_handler)) // simple healthcheck
-        .route("api/healthcheck", get(systemcheck_handler))
+        .route("/api/healthcheck", get(healthcheck_handler)) // simple healthcheck
+        .route("/api/healthcheck", get(systemcheck_handler))
         .with_state(Arc::clone(&state)); // system diagnosis
 
     let front_router = serve_front();
