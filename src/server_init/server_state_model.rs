@@ -6,7 +6,7 @@ use rand::prelude::SliceRandom;
 use rand::thread_rng;
 use tokio::sync::RwLock;
 
-use crate::handlers::healthcheck_handlers::fallback::QUOTE_NUMBER;
+use crate::handlers::healthcheck_handlers::quotes::QUOTE_NUMBER;
 
 pub struct ServerState {
     pub pool: Arc<Pool>,

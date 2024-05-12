@@ -9,6 +9,7 @@ mod handlers {
     pub mod healthcheck_handlers {
         pub mod fallback;
         pub mod healthcheck;
+        pub mod quotes;
         pub mod systemcheck;
     }
 }

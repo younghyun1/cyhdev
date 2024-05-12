@@ -8,6 +8,6 @@ use crate::APP_NAME_VERSION;
 pub async fn healthcheck_handler() -> (StatusCode, std::string::String) {
     (
         StatusCode::OK,
-        format!("{} reports a healthy 200 OK!", APP_NAME_VERSION),
+        format!("{} good to go!", APP_NAME_VERSION),
     )
 }
