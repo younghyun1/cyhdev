@@ -48,7 +48,7 @@ pub async fn server_initializer(
             ),
         )
         .nest_service(
-            "/front", // Serve all files under /assets path
+            "/front", // Serve all files under /front path
             get_service(ServeDir::new("/home/cyh/cyhdev/front")).handle_error(|e| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
