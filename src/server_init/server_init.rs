@@ -1,10 +1,10 @@
 use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
-use axum::{routing::get, Router};
+use axum::routing::get;
 use axum_server::tls_rustls::RustlsConfig;
 use chrono::{DateTime, Utc};
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeFile;
 use tracing::info;
 
 use crate::{
@@ -37,7 +37,7 @@ pub async fn server_initializer(
         .route("/api/healthcheck", get(systemcheck_handler))
         .with_state(Arc::clone(&state)); // system diagnosis
 
-    let front_router = serve_front();
+    let front_router = axum::Router::new().route_service("/", ServeFile::new("assets/index.html"));
 
     // Final app.
     let app: axum::Router = axum::Router::new()
@@ -85,8 +85,4 @@ pub async fn server_initializer(
     };
 
     Ok(())
-}
-
-fn serve_front() -> Router {
-    Router::new().route_service("/", ServeFile::new("assets/index.html"))
 }
