@@ -47,12 +47,31 @@
             color: #333;
         }
 
-        article {
+        article,
+        .center-button {
             margin-top: 20px;
         }
 
         footer {
             font-size: 0.8em;
+        }
+
+        .center-button {
+            text-align: center;
+        }
+
+        .button-link {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #444;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .button-link:hover {
+            background-color: #555;
         }
     </style>
 </head>
@@ -93,6 +112,9 @@
                 <li>Construction and Electrical Engineering</li>
             </ul>
         </section>
+        <div class="center-button">
+            <a href="/another-page.html" class="button-link">Visit Another Page</a>
+        </div>
         <section id="studies">
             <h2>Currently Studying</h2>
             <ul>
