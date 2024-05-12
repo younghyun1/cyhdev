@@ -55,6 +55,7 @@ pub async fn server_initializer(
                 )
             }),
         );
+
     // 서버 관리용.
     // For server maintenance handlers.
     let healthcheck_router: axum::Router = axum::Router::new()
@@ -64,7 +65,7 @@ pub async fn server_initializer(
 
     // Final app.
     let app: axum::Router = axum::Router::new()
-        .fallback(get(fallback_handler).with_state(Arc::clone(&state)))
+        // .fallback(get(fallback_handler).with_state(Arc::clone(&state)))
         .merge(front_router)
         .merge(healthcheck_router);
 
