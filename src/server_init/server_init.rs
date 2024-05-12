@@ -48,7 +48,7 @@ pub async fn server_initializer(
             ),
         )
         .nest_service(
-            "/assets",
+            "/",
             get_service(ServeDir::new("/home/cyh/cyhdev/assets")).handle_error(|e| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
