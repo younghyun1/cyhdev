@@ -2,13 +2,14 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use axum::{
-    http::StatusCode,
+    http::{StatusCode, Uri},
+    response::Redirect,
     routing::{get, get_service},
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use chrono::{DateTime, Utc};
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
         fallback::fallback_handler, healthcheck::healthcheck_handler,
         systemcheck::systemcheck_handler,
     },
-    APP_NAME_VERSION, HOST_ADDR,
+    APP_NAME_VERSION, HOST_ADDR_HTTP, HOST_ADDR_HTTPS,
 };
 
 use super::{server_state_model::ServerState, state_init::init_state};
@@ -37,18 +38,11 @@ pub async fn server_initializer(
     // Serves front.
     let front_router = Router::new()
         .route(
-            "/", // Serve index.html directly at the root
-            get_service(ServeFile::new("/home/cyh/cyhdev/front/index.html")).handle_error(
-                |e| async move {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Could not serve file: {}", e),
-                    )
-                },
-            ),
+            "/",
+            get(|| async { Redirect::permanent("/front/index.html") }),
         )
         .nest_service(
-            "/front", // Serve all files under /front path
+            "/front",
             get_service(ServeDir::new("/home/cyh/cyhdev/front")).handle_error(|e| async move {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -90,24 +84,57 @@ pub async fn server_initializer(
         format!(
             "{} started successfully on {} in {:?}.",
             APP_NAME_VERSION,
-            HOST_ADDR,
+            HOST_ADDR_HTTPS,
             server_start.elapsed()
         )
     );
 
     // 여기서 앱을 Axum으로 서빙.
     // Serve app here.
-    match axum_server::bind_rustls(HOST_ADDR, config)
-        .serve(app.into_make_service())
-        .await
-    {
-        Ok(_) => {
-            info!("Server terminating.")
-        }
-        Err(e) => {
-            return Err(anyhow!("Server terminating with error: {:?}", e));
-        }
-    };
+    let https_server = tokio::spawn(async move {
+        match axum_server::bind_rustls(HOST_ADDR_HTTPS, config)
+            .serve(app.into_make_service())
+            .await
+        {
+            Ok(_) => {
+                info!("Server terminating.")
+            }
+            Err(e) => {
+                return Err(anyhow!("Server terminating with error: {:?}", e));
+            }
+        };
+        Ok(())
+    });
+
+    // HTTP to HTTPS redirection server
+    let http_server = tokio::spawn(async move {
+        let redirect_app = Router::new().route(
+            "/*path",
+            get(|uri: Uri| async move {
+                let https_uri = format!("https://{}{}", HOST_ADDR_HTTPS, uri);
+                Redirect::permanent(&https_uri)
+            }),
+        );
+
+        match axum_server::bind(HOST_ADDR_HTTP)
+            .serve(redirect_app.into_make_service())
+            .await
+        {
+            Ok(_) => {
+                info!("HTTP redirect server terminating.")
+            }
+            Err(e) => {
+                return Err(anyhow!(
+                    "HTTP redirect server terminating with error: {:?}",
+                    e
+                ));
+            }
+        };
+        Ok(())
+    });
+
+    // Wait for both servers to complete
+    let _ = tokio::try_join!(https_server, http_server)?;
 
     Ok(())
 }
