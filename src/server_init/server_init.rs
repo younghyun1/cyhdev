@@ -2,6 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use axum::{
+    extract::Host,
     http::{StatusCode, Uri},
     response::Redirect,
     routing::{get, get_service},
@@ -110,8 +111,8 @@ pub async fn server_initializer(
     let http_server = tokio::spawn(async move {
         let redirect_app = Router::new().route(
             "/*path",
-            get(|uri: Uri| async move {
-                let https_uri = format!("https://{}{}", "www.cyhdev.com", uri);
+            get(|Host(host): Host, uri: Uri| async move {
+                let https_uri = format!("https://{}{}", host, uri);
                 Redirect::permanent(&https_uri)
             }),
         );
@@ -132,7 +133,7 @@ pub async fn server_initializer(
         };
         Ok(())
     });
-
+    
     // Wait for both servers to complete
     let _ = tokio::try_join!(https_server, http_server)?;
 
