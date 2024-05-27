@@ -18,7 +18,7 @@ use crate::{
         fallback::fallback_handler, healthcheck::healthcheck_handler,
         systemcheck::systemcheck_handler,
     },
-    APP_NAME_VERSION, HOST_ADDR_HTTP, HOST_ADDR_HTTPS,
+    APP_NAME_VERSION, DOMAIN_NAME, HOST_ADDR_HTTP, HOST_ADDR_HTTPS,
 };
 
 use super::{server_state_model::ServerState, state_init::init_state};
@@ -108,11 +108,12 @@ pub async fn server_initializer(
     });
 
     // HTTP to HTTPS redirection server
+    // HTTP to HTTPS redirection server
     let http_server = tokio::spawn(async move {
         let redirect_app = Router::new().route(
             "/*path",
-            get(|Host(host): Host, uri: Uri| async move {
-                let https_uri = format!("https://{}{}", host, uri);
+            get(|uri: Uri| async move {
+                let https_uri = format!("https://{}{}", DOMAIN_NAME, uri);
                 Redirect::permanent(&https_uri)
             }),
         );
@@ -133,7 +134,7 @@ pub async fn server_initializer(
         };
         Ok(())
     });
-    
+
     // Wait for both servers to complete
     let _ = tokio::try_join!(https_server, http_server)?;
 

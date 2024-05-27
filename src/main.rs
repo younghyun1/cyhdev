@@ -28,6 +28,8 @@ mod server_init {
 }
 
 pub const APP_NAME_VERSION: &'static str = "cyhdev-0.0.1";
+pub const DOMAIN_NAME: &'static str = "www.cyhdev.com";
+
 pub const HOST_PORT_HTTP: u16 = 80;
 pub const HOST_ADDR_HTTP: SocketAddr =
     SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, HOST_PORT_HTTP));
