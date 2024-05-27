@@ -2,7 +2,6 @@ use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use axum::{
-    extract::Host,
     http::{StatusCode, Uri},
     response::Redirect,
     routing::{get, get_service},
@@ -107,7 +106,6 @@ pub async fn server_initializer(
         Ok(())
     });
 
-    // HTTP to HTTPS redirection server
     // HTTP to HTTPS redirection server
     let http_server = tokio::spawn(async move {
         let redirect_app = Router::new().route(
