@@ -39,6 +39,13 @@
             margin: 0 10px;
         }
 
+        .top-bar {
+            background: #222;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+
         h1 {
             color: white;
         }
@@ -77,6 +84,9 @@
 </head>
 
 <body>
+    <div class="top-bar">
+        <a href="#blog" class="button-link">Blog</a>
+    </div>
     <header>
         <h1>Chi Younghyun</h1>
         <p>Backend Software Engineer (I'm sure you can tell.)</p>
@@ -90,17 +100,17 @@
     <div class="container">
         <section id="about">
             <h2>About Me</h2>
-            <p>I am a junior backend software engineer specializing in systems integration using technologies like Rust,
-                Axum, PostgreSQL, and AWS at EAN Technologies Co. Ltd. I graduated with a B.Eng in Software Engineering
-                from Sungkyunkwan University.</p>
+            <p>I am a software engineer building web-based building energy management and automation systems in Rust
+                with a focus on performant, compact deployments able to collect large amounts of sensor data. I
+                graduated with a B.Eng in Software Engineering from Sungkyunkwan University.</p>
         </section>
         <section id="tech">
             <h2>Technology Stack</h2>
             <ul>
                 <li>Programming Languages: Rust, C, C++, Java, Python, x86 Assembly, JS, TS</li>
-                <li>Frameworks: Axum, Express, Spring</li>
+                <li>Frameworks: Axum, Express, Spring, Django</li>
                 <li>Platforms: AWS, GCP, Oracle Cloud, Naver Cloud</li>
-                <li>Databases: PostgreSQL, MySQL, SQLite, Redis</li>
+                <li>Databases: PostgreSQL, MySQL, SQLite, Redis, In-RAM lookup tables</li>
             </ul>
         </section>
         <section id="interests">
@@ -112,14 +122,12 @@
                 <li>Construction and Electrical Engineering</li>
             </ul>
         </section>
-        <div class="center-button">
-            <a href="/front/another-page.html" class="button-link">Visit Another Page</a>
-        </div>
         <section id="studies">
             <h2>Currently Studying</h2>
             <ul>
                 <li>Performance optimization in Rust applications</li>
                 <li>Electrical and HVAC systems</li>
+                <li>Generics and Templates</li>
             </ul>
         </section>
     </div>
