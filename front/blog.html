@@ -54,12 +54,39 @@
         footer {
             font-size: 0.8em;
         }
+
+        form {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+
+        form input[type="text"],
+        form textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+        }
+
+        form button {
+            padding: 10px 20px;
+            background: #444;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        form button:hover {
+            background: #333;
+        }
     </style>
 </head>
 
 <body>
     <header>
         <h1>Chi Younghyun's Blog</h1>
+        <p>Backend Software Engineer (I'm sure you can tell.)</p>
     </header>
     <nav>
         <a href="index.html#home">Home</a>
@@ -67,34 +94,41 @@
         <a href="index.html#photography">Photography</a>
     </nav>
     <div class="container">
-        <article>
-            <h2>Blog Post Title 1</h2>
-            <p><em>Posted on May 27, 2024</em></p>
-            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam scelerisque leo eget lacus fermentum, at
-                faucibus erat placerat. Integer vitae hendrerit nulla. Vestibulum ante ipsum primis in faucibus orci
-                luctus et ultrices posuere cubilia curae; Integer id nisl leo. Curabitur nec sem odio. Cras tincidunt
-                risus quis felis cursus, nec ullamcorper turpis dignissim.</p>
-        </article>
-        <article>
-            <h2>Blog Post Title 2</h2>
-            <p><em>Posted on May 20, 2024</em></p>
-            <p>Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi
-                vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus
-                eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum.</p>
-        </article>
-        <article>
-            <h2>Blog Post Title 3</h2>
-            <p><em>Posted on May 10, 2024</em></p>
-            <p>Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Sed aliquam, nisi
-                quis porttitor congue, elit erat euismod orci, ac placerat dolor lectus quis orci. Phasellus
-                consectetuer
-                vestibulum elit. Aenean tellus metus, bibendum sed, posuere ac, mattis non, nunc. Vestibulum fringilla
-                pede sit amet augue.</p>
-        </article>
+        <form id="postForm">
+            <h2>New Blog Post</h2>
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required>
+            <label for="content">Content:</label>
+            <textarea id="content" name="content" rows="10" required></textarea>
+            <button type="submit">Submit</button>
+        </form>
     </div>
     <footer>
         <p>Contact me at <a href="mailto:younghyun1@gmail.com">younghyun1@gmail.com</a></p>
     </footer>
+    <script>
+        document.getElementById('postForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            const response = await fetch('https://www.cyhdev.com/api/post', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title, content })
+            });
+
+            if (response.ok) {
+                alert('Post submitted successfully!');
+                document.getElementById('postForm').reset();
+            } else {
+                alert('Failed to submit post.');
+            }
+        });
+    </script>
 </body>
 
 </html>

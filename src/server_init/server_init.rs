@@ -17,7 +17,7 @@ use crate::{
         fallback::fallback_handler, healthcheck::healthcheck_handler,
         systemcheck::systemcheck_handler,
     },
-    APP_NAME_VERSION, DOMAIN_NAME, HOST_ADDR_HTTP, HOST_ADDR_HTTPS,
+    APP_NAME_VERSION, HOST_ADDR_HTTP, HOST_ADDR_HTTPS,
 };
 
 use super::{server_state_model::ServerState, state_init::init_state};
@@ -111,7 +111,7 @@ pub async fn server_initializer(
         let redirect_app = Router::new().route(
             "/*path",
             get(|uri: Uri| async move {
-                let https_uri = format!("https://{}{}", DOMAIN_NAME, uri);
+                let https_uri = format!("https://www.cyhdev.com/{}", uri);
                 Redirect::permanent(&https_uri)
             }),
         );
