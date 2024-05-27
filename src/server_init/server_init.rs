@@ -111,7 +111,7 @@ pub async fn server_initializer(
         let redirect_app = Router::new().route(
             "/*path",
             get(|uri: Uri| async move {
-                let https_uri = format!("https://{}{}", HOST_ADDR_HTTPS, uri);
+                let https_uri = format!("https://{}{}", "www.cyhdev.com", uri);
                 Redirect::permanent(&https_uri)
             }),
         );
