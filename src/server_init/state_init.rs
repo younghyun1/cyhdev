@@ -14,11 +14,7 @@ pub async fn init_state(server_start_time: DateTime<Utc>, pw: String) -> Result<
     let mut cfg: Config = Config::new();
     cfg.url = Some(format!(
         "postgres://{}:{}@{}:{}/{}",
-        DB_USERNAME,
-        pw,
-        DB_ADDR.to_string(),
-        DB_PORT,
-        DB_NAME
+        DB_USERNAME, pw, DB_ADDR, DB_PORT, DB_NAME
     ));
     cfg.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,

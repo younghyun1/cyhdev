@@ -28,10 +28,10 @@ impl ShuffleBag {
         }
 
         bag.shuffle(&mut thread_rng());
-        return Arc::new(RwLock::new(ShuffleBag {
+        Arc::new(RwLock::new(ShuffleBag {
             count: 0usize,
             shuffle_bag: bag,
-        }));
+        }))
     }
     pub fn shuffle_bag(&mut self) {
         self.shuffle_bag.shuffle(&mut thread_rng());

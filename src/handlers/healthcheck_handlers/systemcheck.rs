@@ -48,8 +48,7 @@ pub async fn systemcheck_handler(
 
     // DB 연결 말고도 확인할만한게 있을 수 있으니 Vec<bool>로 성공 조건을 넣어줄 것.
     // Potentially many other things to check apart from DB connection. Push them all into the Vec<bool>.
-    let mut checks_vec: Vec<bool> = Vec::new();
-    checks_vec.push(database_connection.is_ok());
+    let checks_vec = vec![database_connection.is_ok()];
 
     // 여기서 sys_info 라이브러리를 사용하여 CPU, RAM 상태를 기록.
     // Use the sys_info library here to record the CPU and RAM state.
@@ -74,7 +73,7 @@ pub async fn systemcheck_handler(
     // 통과 조건에 따른 message 포맷팅.
     // Message formatting depending on whether all checks were passed.
     if all_good {
-        message.push(format!("{}", APP_NAME_VERSION));
+        message.push(APP_NAME_VERSION.to_string());
         message.push(format!(
             "Database connection: {}; message: {}",
             bte(database_connection.is_ok()),
@@ -117,7 +116,7 @@ pub async fn systemcheck_handler(
     // 여기서 답변 만듬.
     // Make reply here.
     let healthcheck_reply: HealthCheckReplyJson = HealthCheckReplyJson {
-        message: message,
+        message,
         status: all_good,
         database_connection: database_connection.is_ok(),
         database_latency: format!("{:?}", duration_db_ping),
@@ -155,5 +154,5 @@ pub async fn check_database_connection(pool: Arc<Pool>) -> Result<String> {
         }
     };
 
-    return Ok(rows[0].get(0));
+    Ok(rows[0].get(0))
 }

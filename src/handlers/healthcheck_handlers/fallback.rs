@@ -59,5 +59,5 @@ pub async fn fallback_handler(State(state): State<Arc<ServerState>>) -> impl Int
         quote
     );
 
-    return (StatusCode::NOT_FOUND, Html(html_page));
+    (StatusCode::NOT_FOUND, Html(html_page))
 }

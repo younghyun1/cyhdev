@@ -2,7 +2,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
-use server_init::server_init::server_initializer;
+use server_init::server_init_proc::server_initializer;
 use tracing::info;
 
 mod handlers {
@@ -22,13 +22,13 @@ mod utils {
     }
 }
 mod server_init {
-    pub mod server_init;
+    pub mod server_init_proc;
     pub mod server_state_model;
     pub mod state_init;
 }
 
-pub const APP_NAME_VERSION: &'static str = "cyhdev-0.0.1";
-pub const DOMAIN_NAME: &'static str = "www.cyhdev.com";
+pub const APP_NAME_VERSION: &str = "cyhdev-0.0.1";
+pub const DOMAIN_NAME: &str = "www.cyhdev.com";
 
 pub const HOST_PORT_HTTP: u16 = 80;
 pub const HOST_ADDR_HTTP: SocketAddr =
@@ -39,8 +39,8 @@ pub const HOST_ADDR_HTTPS: SocketAddr =
 
 pub const DB_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
 pub const DB_PORT: u16 = 5432;
-pub const DB_USERNAME: &'static str = "cyh_dba";
-pub const DB_NAME: &'static str = "postgres";
+pub const DB_USERNAME: &str = "cyh_dba";
+pub const DB_NAME: &str = "postgres";
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {

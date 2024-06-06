@@ -1,6 +1,6 @@
 pub const QUOTE_NUMBER: usize = 16;
 
-pub const QUOTATION_LIST: [&'static str; QUOTE_NUMBER] = [
+pub const QUOTATION_LIST: [&str; QUOTE_NUMBER] = [
     "We are made for action, and activity is the sovereign remedy for all physical ills. -Friedrich II of Prussia",
     "They are not capable of understanding a brilliant language but we want to use them to build good software. So, the language that we give them has to be easy for them to understand and easy to adopt. -Rob Pike, on the Go Programming Language",
     "You copied that function without understanding why it does what it does, and as a result your code IS GARBAGE. AGAIN. -Linus Torvalds",
