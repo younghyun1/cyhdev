@@ -48,7 +48,7 @@ pub async fn systemcheck_handler(
 
     // DB 연결 말고도 확인할만한게 있을 수 있으니 Vec<bool>로 성공 조건을 넣어줄 것.
     // Potentially many other things to check apart from DB connection. Push them all into the Vec<bool>.
-    let checks_vec = [database_connection.is_ok()];
+    let checks_vec: [bool; 1] = [database_connection.is_ok()];
 
     // 여기서 sys_info 라이브러리를 사용하여 CPU, RAM 상태를 기록.
     // Use the sys_info library here to record the CPU and RAM state.
