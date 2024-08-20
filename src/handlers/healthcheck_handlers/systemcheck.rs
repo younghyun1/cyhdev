@@ -54,7 +54,7 @@ pub async fn systemcheck_handler(
     // 여기서 sys_info 라이브러리를 사용하여 CPU, RAM 상태를 기록.
     // Use the sys_info library here to record the CPU and RAM state.
     let mut system: System = System::new_all();
-    let cpu_usage: f32 = system.global_cpu_info().cpu_usage();
+    let cpu_usage: f32 = system.global_cpu_usage();
     std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
     // Refresh CPUs again.
     system.refresh_all();
