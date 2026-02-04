@@ -140,16 +140,22 @@ export default function Home() {
                     <article class="group relative bg-white dark:bg-slate-900 p-5 border border-slate-200 dark:border-slate-800 hover:border-slate-900 dark:hover:border-slate-100 transition-colors duration-200">
                       <div class="flex flex-col gap-1">
                         <div class="flex justify-between items-center text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
-                          <span>
-                            {new Date(post.post_created_at).toLocaleDateString(
-                              undefined,
-                              {
+                          <div class="flex items-center gap-2">
+                            <span>
+                              {new Date(
+                                post.post_created_at,
+                              ).toLocaleDateString(undefined, {
                                 year: "numeric",
                                 month: "long",
                                 day: "numeric",
-                              },
-                            )}
-                          </span>
+                              })}
+                            </span>
+                            <Show when={!post.post_is_published}>
+                              <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                Draft
+                              </span>
+                            </Show>
+                          </div>
                           <span class="opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 transition-opacity">
                             &lt;READ&gt;
                           </span>

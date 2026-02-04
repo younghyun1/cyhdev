@@ -7,6 +7,7 @@ export default function NewPostPage() {
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal("");
   const [body, setBody] = createSignal("");
+  const [isPublished, setIsPublished] = createSignal(true);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ export default function NewPostPage() {
         post_title: title(),
         post_content: body(),
         post_tags: postTags,
-        post_is_published: true,
+        post_is_published: isPublished(),
       });
       if (res.success) {
         navigate(`/blog/${res.data.post_id}`, { replace: true });
@@ -61,7 +62,21 @@ export default function NewPostPage() {
               onInput={(e) => setTags(e.currentTarget.value)}
               class={pageStyles.input}
             />
-            <div class="w-full h-[28rem] min-w-0">
+            <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                checked={isPublished()}
+                onChange={(e) => setIsPublished(e.currentTarget.checked)}
+                class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+              />
+              Publish immediately
+            </label>
+            {!isPublished() && (
+              <div class={pageStyles.muted}>
+                This will be saved as a draft and only visible to superusers.
+              </div>
+            )}
+            <div class="w-full h-112 min-w-0">
               <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                 Content (Markdown)
               </label>
@@ -79,7 +94,13 @@ export default function NewPostPage() {
               disabled={isSubmitting()}
               class={pageStyles.buttonPrimary}
             >
-              {isSubmitting() ? "Publishing..." : "Publish"}
+              {isSubmitting()
+                ? isPublished()
+                  ? "Publishing..."
+                  : "Saving..."
+                : isPublished()
+                  ? "Publish"
+                  : "Save Draft"}
             </button>
           </form>
         </div>

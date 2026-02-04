@@ -93,6 +93,11 @@ export default function PostsList() {
                         <span>
                           {new Date(post.post_created_at).toLocaleDateString()}
                         </span>
+                        <Show when={!post.post_is_published}>
+                          <span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            Draft
+                          </span>
+                        </Show>
                         <Show
                           when={
                             user()?.user_info?.user_id &&

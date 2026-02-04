@@ -425,7 +425,7 @@ export default function PostViewPage() {
               >
                 <div class="mt-2">
                   <textarea
-                    class={`${pageStyles.textarea} min-h-[80px]`}
+                    class={`${pageStyles.textarea} min-h-20`}
                     value={editText[comment.comment_id] ?? ""}
                     onInput={(e) =>
                       setEditText(comment.comment_id, e.currentTarget.value)
@@ -520,7 +520,7 @@ export default function PostViewPage() {
               <Show when={replyOpen[comment.comment_id]}>
                 <div class="mt-2">
                   <textarea
-                    class={`${pageStyles.textarea} min-h-[80px]`}
+                    class={`${pageStyles.textarea} min-h-20`}
                     value={replyText[comment.comment_id] ?? ""}
                     onInput={(e) =>
                       setReplyText(comment.comment_id, e.currentTarget.value)
@@ -629,9 +629,16 @@ export default function PostViewPage() {
                     </div>
                     <div class="flex-1">
                       <div class="flex justify-between items-start mb-2">
-                        <h1 class="text-3xl font-bold">
-                          {data().post.post_title}
-                        </h1>
+                        <div class="flex items-center gap-3">
+                          <h1 class="text-3xl font-bold">
+                            {data().post.post_title}
+                          </h1>
+                          <Show when={!data().post.post_is_published}>
+                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                              Draft
+                            </span>
+                          </Show>
+                        </div>
                         <Show
                           when={
                             user()?.user_info?.user_id &&

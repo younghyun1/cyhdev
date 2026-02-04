@@ -29,6 +29,10 @@ export default function EditPostPage() {
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal("");
   const [body, setBody] = createSignal("");
+  const [isPublished, setIsPublished] = createSignal(true);
+  const [initialPublished, setInitialPublished] = createSignal<boolean | null>(
+    null,
+  );
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -46,6 +50,8 @@ export default function EditPostPage() {
       if (res.success && res.data) {
         const post = res.data.post;
         setTitle(post.post_title);
+        setIsPublished(post.post_is_published);
+        setInitialPublished(post.post_is_published);
         const markdownFromMetadata = post.post_metadata?.markdown_content;
         if (
           typeof markdownFromMetadata === "string" &&
@@ -84,7 +90,7 @@ export default function EditPostPage() {
           post_title: title(),
           post_content: body(),
           post_tags: postTags,
-          post_is_published: true,
+          post_is_published: isPublished(),
         },
         params.post_id,
       );
@@ -127,7 +133,21 @@ export default function EditPostPage() {
                 onInput={(e) => setTags(e.currentTarget.value)}
                 class={pageStyles.input}
               />
-              <div class="w-full h-[28rem] min-w-0">
+              <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={isPublished()}
+                  onChange={(e) => setIsPublished(e.currentTarget.checked)}
+                  class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                />
+                Published
+              </label>
+              {!isPublished() && (
+                <div class={pageStyles.muted}>
+                  This will remain a draft and only visible to superusers.
+                </div>
+              )}
+              <div class="w-full h-112 min-w-0">
                 <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                   Content (Markdown)
                 </label>
@@ -146,7 +166,15 @@ export default function EditPostPage() {
                   disabled={isSubmitting()}
                   class={pageStyles.buttonPrimary}
                 >
-                  {isSubmitting() ? "Updating..." : "Update"}
+                  {isSubmitting()
+                    ? isPublished()
+                      ? "Updating..."
+                      : "Saving..."
+                    : isPublished() && initialPublished() === false
+                      ? "Publish"
+                      : isPublished()
+                        ? "Update"
+                        : "Save Draft"}
                 </button>
                 <button
                   type="button"
