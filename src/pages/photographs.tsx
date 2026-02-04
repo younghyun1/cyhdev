@@ -364,6 +364,7 @@ export default function Photographs() {
       formData.append("comments", uploadComment());
       formData.append("lat", String(uploadLat()));
       formData.append("lon", String(uploadLon()));
+      formData.append("context", "photography");
 
       await photographyApi.uploadPhotograph(formData, {
         onUploadProgress: (percent) => {
@@ -582,7 +583,7 @@ export default function Photographs() {
       <main class={pageStyles.page}>
         <div class="flex flex-col items-center w-full">
           {/* Header / Actions */}
-          <div class="w-full max-w-[1600px] px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
+          <div class="w-full max-w-400 px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
             <h1 class={pageStyles.titleSm}>Photographs</h1>
             <Show when={isSuperuser()}>
               <button
@@ -629,7 +630,7 @@ export default function Photographs() {
 
           {/* Error Message */}
           <Show when={error()}>
-            <div class={`${pageStyles.alertError} w-full max-w-[1600px] mb-4`}>
+            <div class={`${pageStyles.alertError} w-full max-w-400 mb-4`}>
               {error()}
             </div>
           </Show>
@@ -1021,7 +1022,7 @@ export default function Photographs() {
                       </svg>
                     </button>
                     <Show when={showMapLinks()}>
-                      <div class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[160px] py-1">
+                      <div class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-40 py-1">
                         <a
                           href={getGoogleMapsUrl(
                             selectedPhoto()!.photograph_lat,
@@ -1062,7 +1063,7 @@ export default function Photographs() {
                     </Show>
                   </div>
                 </div>
-                <div class="mt-2 h-[200px] rounded overflow-hidden relative">
+                <div class="mt-2 h-50 rounded overflow-hidden relative">
                   <DetailsMap
                     lat={selectedPhoto()!.photograph_lat}
                     lon={selectedPhoto()!.photograph_lon}

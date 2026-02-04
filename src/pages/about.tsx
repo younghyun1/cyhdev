@@ -44,7 +44,7 @@ export default function About() {
                   loading="lazy"
                 />
               </a>
-              <figcaption class="mt-1 text-xs text-gray-500 dark:text-gray-500 text-center sm:text-right max-w-[11rem]"></figcaption>
+              <figcaption class="mt-1 text-xs text-gray-500 dark:text-gray-500 text-center sm:text-right max-w-44"></figcaption>
             </figure>
           </div>
           <div>

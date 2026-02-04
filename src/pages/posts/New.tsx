@@ -76,7 +76,7 @@ export default function NewPostPage() {
                 This will be saved as a draft and only visible to superusers.
               </div>
             )}
-            <div class="w-full h-112 min-w-0">
+            <div class="w-full h-112 min-w-0 relative">
               <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                 Content (Markdown)
               </label>
@@ -89,19 +89,28 @@ export default function NewPostPage() {
               </div>
             </div>
             {error() && <div class={pageStyles.alertError}>{error()}</div>}
-            <button
-              type="submit"
-              disabled={isSubmitting()}
-              class={pageStyles.buttonPrimary}
-            >
-              {isSubmitting()
-                ? isPublished()
-                  ? "Publishing..."
-                  : "Saving..."
-                : isPublished()
-                  ? "Publish"
-                  : "Save Draft"}
-            </button>
+            <div class="flex gap-4 relative z-10">
+              <button
+                type="submit"
+                disabled={isSubmitting()}
+                class={pageStyles.buttonPrimary}
+              >
+                {isSubmitting()
+                  ? isPublished()
+                    ? "Publishing..."
+                    : "Saving..."
+                  : isPublished()
+                    ? "Publish"
+                    : "Save Draft"}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/blog")}
+                class={pageStyles.buttonSecondary}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
         {/* Optionally, place a sidebar here if you want Reddit-style right column */}

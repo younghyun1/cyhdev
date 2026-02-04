@@ -147,7 +147,7 @@ export default function EditPostPage() {
                   This will remain a draft and only visible to superusers.
                 </div>
               )}
-              <div class="w-full h-112 min-w-0">
+              <div class="w-full h-112 min-w-0 relative">
                 <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                   Content (Markdown)
                 </label>

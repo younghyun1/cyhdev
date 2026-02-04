@@ -5,6 +5,7 @@ import type { EditorOptions } from "@toast-ui/editor";
 import "@toast-ui/editor/dist/toastui-editor.css";
 import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
 import { theme } from "../state/theme";
+import { photographyApi } from "../services/all_api";
 
 interface MarkdownEditorProps {
   value: string;
@@ -20,7 +21,32 @@ export default function MarkdownEditor(
   let editor: Editor | undefined;
 
   onMount(() => {
-    const { minHeight, ...restOptions } = props.options ?? {};
+    const { minHeight, hooks, ...restOptions } = props.options ?? {};
+    const addImageBlobHook =
+      hooks?.addImageBlobHook ??
+      (async (
+        blob: Blob | File,
+        callback: (url: string, alt?: string) => void,
+      ) => {
+        try {
+          const fileName = blob instanceof File ? blob.name : "post-image";
+          const formData = new FormData();
+          formData.append("file", blob, fileName);
+          formData.append("context", "post");
+          formData.append("comments", fileName);
+          formData.append("lat", "0");
+          formData.append("lon", "0");
+
+          const resp = await photographyApi.uploadPhotograph(formData);
+          if (!resp?.success || !resp.data?.photograph_link) {
+            throw new Error("Upload failed");
+          }
+          callback(resp.data.photograph_link, fileName);
+        } catch (err) {
+          console.error("Image upload failed:", err);
+          alert("Image upload failed. Please try again.");
+        }
+      });
     editor = new Editor({
       el: containerRef!,
       height: restOptions.height ?? minHeight ?? "100%",
@@ -28,6 +54,10 @@ export default function MarkdownEditor(
       previewStyle: "vertical",
       usageStatistics: false,
       initialValue: props.value ?? "",
+      hooks: {
+        ...hooks,
+        addImageBlobHook,
+      },
       ...restOptions,
     });
     editor.on("change", () => {
