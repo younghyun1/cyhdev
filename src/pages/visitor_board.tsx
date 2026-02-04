@@ -1,5 +1,6 @@
 import { createEffect, onCleanup } from "solid-js";
 import { visitorBoardApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -114,7 +115,7 @@ export default function VisitorBoard() {
   });
 
   return (
-    <>
+    <main class={`${pageStyles.page} flex`}>
       <style>{style}</style>
       <style>
         {`
@@ -131,6 +132,6 @@ export default function VisitorBoard() {
           <div ref={(el) => (mapDiv = el)} id="map" class="visitor-board-map" />
         </div>
       </div>
-    </>
+    </main>
   );
 }

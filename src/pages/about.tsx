@@ -1,12 +1,15 @@
 import { A } from "@solidjs/router";
+import { pageStyles } from "../styles/pageStyles";
 
 export default function About() {
   return (
-    <div class="bg-sky-50 dark:bg-black min-h-screen transition-colors duration-90">
-      <section class="max-w-3xl mx-auto text-gray-700 dark:text-gray-100 p-8">
-        <div class="border-l-4 border-sky-500 dark:border-sky-400 pl-3 mb-8">
+    <main class={pageStyles.page}>
+      <section
+        class={`${pageStyles.pageInnerNarrow} text-slate-700 dark:text-slate-100`}
+      >
+        <div class="border-l-4 border-slate-300 dark:border-slate-700 pl-3 mb-8">
           <h1 class="text-2xl font-bold mb-1 tracking-tight">About</h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-slate-500 dark:text-slate-400">
             Last updated: 2025-12-08
           </p>
         </div>
@@ -51,10 +54,7 @@ export default function About() {
                 <span class="w-20 inline-block font-medium text-gray-500">
                   Email:
                 </span>
-                <a
-                  href="mailto:younghyun1@gmail.com"
-                  class="text-sky-600 dark:text-sky-400 hover:underline"
-                >
+                <a href="mailto:younghyun1@gmail.com" class={pageStyles.link}>
                   younghyun1@gmail.com
                 </a>
               </li>
@@ -62,10 +62,7 @@ export default function About() {
                 <span class="w-20 inline-block font-medium text-gray-500">
                   GitHub:
                 </span>
-                <a
-                  href="https://github.com/younghyun1"
-                  class="text-sky-600 dark:text-sky-400 hover:underline"
-                >
+                <a href="https://github.com/younghyun1" class={pageStyles.link}>
                   github.com/younghyun1
                 </a>
               </li>
@@ -75,7 +72,7 @@ export default function About() {
                 </span>
                 <a
                   href="https://linkedin.com/in/younghyun-chi-a60b59a9"
-                  class="text-sky-600 dark:text-sky-400 hover:underline"
+                  class={pageStyles.link}
                 >
                   linkedin.com/in/younghyun-chi-a60b59a9
                 </a>
@@ -234,7 +231,7 @@ export default function About() {
                   Seongnam, South Korea | Jan 2025 - Jul 2025
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Software Engineer
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -270,7 +267,7 @@ export default function About() {
                   Seoul, South Korea | Nov 2024 - Dec 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Contract Software Engineer
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -298,7 +295,7 @@ export default function About() {
                   Seoul, South Korea | Aug 2023 - Aug 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Backend Software Engineer (Lead)
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -346,7 +343,7 @@ export default function About() {
                   Austin, TX (Remote) | Aug 2022 - Mar 2023
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Intern Software Engineer
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -382,7 +379,7 @@ export default function About() {
                   Seoul, South Korea | Jun-Jul 2023, Aug 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Translator/Interpreter
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -408,7 +405,7 @@ export default function About() {
                 <h3 class="text-lg font-bold">
                   <a
                     href="https://en.wikipedia.org/wiki/United_States_Army"
-                    class="text-sky-700 dark:text-sky-300 hover:underline"
+                    class={pageStyles.link}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -417,7 +414,7 @@ export default function About() {
                   (
                   <a
                     href="https://en.wikipedia.org/wiki/2nd_Infantry_Division_(United_States)"
-                    class="text-sky-700 dark:text-sky-300 hover:underline"
+                    class={pageStyles.link}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -426,7 +423,7 @@ export default function About() {
                   ) /{" "}
                   <a
                     href="https://en.wikipedia.org/wiki/Republic_of_Korea_Army"
-                    class="text-sky-700 dark:text-sky-300 hover:underline"
+                    class={pageStyles.link}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -436,7 +433,7 @@ export default function About() {
                 <span class="text-sm font-mono text-gray-500">
                   <a
                     href="https://en.wikipedia.org/wiki/Dongducheon"
-                    class="text-sky-700 dark:text-sky-300 hover:underline"
+                    class={pageStyles.link}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -445,10 +442,10 @@ export default function About() {
                   , South Korea | Mar 2016 - Dec 2017
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 <a
                   href="https://en.wikipedia.org/wiki/Korean_Augmentation_to_the_United_States_Army"
-                  class="text-sky-700 dark:text-sky-300 hover:underline"
+                  class={pageStyles.link}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -470,7 +467,7 @@ export default function About() {
                   Maintained operational readiness during the{" "}
                   <a
                     href="https://en.wikipedia.org/wiki/2017%E2%80%932018_North_Korea_crisis"
-                    class="text-sky-700 dark:text-sky-300 hover:underline"
+                    class={pageStyles.link}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -488,7 +485,7 @@ export default function About() {
                   South Korea | 2020 - 2022
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
                 Loader
               </p>
               <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
@@ -514,7 +511,7 @@ export default function About() {
                 Suwon, South Korea | Mar 2015 - Aug 2023
               </span>
             </div>
-            <p class="text-sm font-medium mb-2 text-sky-600 dark:text-sky-400">
+            <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
               B. Eng in Software Engineering
             </p>
             <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
@@ -607,7 +604,7 @@ export default function About() {
               <div class="mt-2">
                 <A
                   href="/photographs"
-                  class="inline-flex items-center text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                  class={`inline-flex items-center ${pageStyles.link} font-medium`}
                 >
                   View Photography Portfolio &rarr;
                 </A>
@@ -661,6 +658,6 @@ export default function About() {
           </div>
         </section>
       </section>
-    </div>
+    </main>
   );
 }

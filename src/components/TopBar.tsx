@@ -9,6 +9,7 @@ import {
 } from "../state/auth";
 import { theme, toggleTheme } from "../state/theme";
 import { authApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
 
 const [menuOpen, setMenuOpen] = createSignal(false);
 const [sidebarOpen, setSidebarOpen] = createSignal(false);
@@ -74,13 +75,13 @@ const TopBar = () => {
 
   return (
     <>
-      <header class="fixed top-0 left-0 right-0 z-40 border-b border-gray-200 dark:border-gray-800 bg-white text-gray-900 dark:bg-black dark:text-white transition-colors duration-90">
+      <header class="fixed top-0 left-0 right-0 z-40 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 backdrop-blur transition-colors duration-90">
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="flex items-center justify-between gap-2 py-2 sm:py-3">
             <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
               {/* Hamburger Button (Mobile Only) */}
               <button
-                class="md:hidden p-1 text-gray-700 dark:text-gray-200 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                class="md:hidden p-1 text-slate-700 dark:text-slate-200 focus:outline-none hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open sidebar menu"
               >
@@ -116,7 +117,7 @@ const TopBar = () => {
                       <li class="py-1 px-2 md:px-3">
                         <a
                           href={link.href}
-                          class="whitespace-nowrap no-underline hover:underline transition-colors duration-90"
+                          class="whitespace-nowrap no-underline text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 hover:underline transition-colors duration-90"
                         >
                           {link.label}
                         </a>
@@ -135,7 +136,7 @@ const TopBar = () => {
                   <div class="flex items-center gap-2 sm:gap-3">
                     <button
                       type="button"
-                      class="text-xs border rounded border-gray-300 dark:border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
+                      class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
                       aria-label="Toggle dark/light mode"
                       onClick={toggleTheme}
                     >
@@ -145,12 +146,12 @@ const TopBar = () => {
                     </button>
 
                     <span class="relative">
-                      <span class="inline-block w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_2px_rgb(239,68,68,0.6)] mr-1 sm:mr-2" />
+                      <span class="inline-block w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_2px_rgb(244,63,94,0.6)] mr-1 sm:mr-2" />
                     </span>
 
                     <a
                       href="/login"
-                      class="bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold px-3 py-1.5 sm:px-4 sm:py-2 rounded text-xs sm:text-sm transition-colors duration-90 dark:bg-gray-900 dark:hover:bg-gray-700 dark:text-white whitespace-nowrap"
+                      class={`${pageStyles.buttonSecondary} px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm whitespace-nowrap`}
                     >
                       Login
                     </a>
@@ -160,7 +161,7 @@ const TopBar = () => {
                 <div class="flex items-center gap-2 sm:gap-4">
                   <button
                     type="button"
-                    class="text-xs border rounded border-gray-300 dark:border-gray-400 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
+                    class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
                     aria-label="Toggle dark/light mode"
                     onClick={toggleTheme}
                   >
@@ -170,7 +171,7 @@ const TopBar = () => {
                   </button>
 
                   <span class="relative flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-full bg-green-400 shadow-[0_0_8px_2px_rgb(34,197,94,0.7)] mr-1 sm:mr-2" />
+                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgb(52,211,153,0.7)] mr-1 sm:mr-2" />
                   </span>
 
                   <div class="hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
@@ -178,7 +179,7 @@ const TopBar = () => {
                       {user()?.user_info.user_name}
                     </span>
 
-                    <span class="text-[10px] sm:text-xs text-gray-300">
+                    <span class="text-[10px] sm:text-xs text-slate-400">
                       {user()?.user_info.user_email}
                     </span>
                   </div>
@@ -199,15 +200,15 @@ const TopBar = () => {
                           "/default-profile.png"
                         }
                         alt="User"
-                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white shadow-md object-cover transition ring-2 ring-transparent hover:ring-blue-500"
+                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white shadow-md object-cover transition ring-2 ring-transparent hover:ring-amber-500"
                       />
                     </button>
 
                     <Show when={menuOpen()}>
-                      <div class="profile-menu absolute right-0 mt-2 w-40 sm:w-48 bg-white text-gray-900 rounded shadow-lg py-1 z-50 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-90">
+                      <div class="profile-menu absolute right-0 mt-2 w-40 sm:w-48 bg-white/95 text-slate-900 rounded shadow-lg py-1 z-50 dark:bg-slate-950/95 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800 transition-colors duration-90">
                         <a
                           href="/edit-profile"
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-gray-100 hover:dark:bg-gray-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-slate-100 hover:dark:bg-slate-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                         >
                           <svg
                             width="18"
@@ -225,7 +226,7 @@ const TopBar = () => {
                         </a>
 
                         <button
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-gray-100 hover:dark:bg-gray-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-slate-100 hover:dark:bg-slate-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                           onClick={handleLogout}
                         >
                           <svg
@@ -260,14 +261,14 @@ const TopBar = () => {
           />
 
           {/* Sidebar */}
-          <aside class="relative z-50 w-64 bg-white dark:bg-gray-900 h-full shadow-xl flex flex-col transition-transform">
-            <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-              <span class="font-bold text-lg text-gray-900 dark:text-white">
+          <aside class="relative z-50 w-64 bg-white/95 dark:bg-slate-950/95 h-full shadow-xl flex flex-col transition-transform">
+            <div class="p-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+              <span class="font-bold text-lg text-slate-900 dark:text-slate-100">
                 Menu
               </span>
               <button
                 onClick={() => setSidebarOpen(false)}
-                class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
               >
                 <svg
                   class="w-6 h-6"
@@ -291,7 +292,7 @@ const TopBar = () => {
                     <li>
                       <a
                         href={link.href}
-                        class="block px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                        class="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                         onClick={() => setSidebarOpen(false)}
                       >
                         {link.label}

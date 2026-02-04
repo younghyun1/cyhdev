@@ -1,6 +1,7 @@
 import { createResource, Show } from "solid-js";
 import HostStatsDashboard from "../components/HostStatsDashboard";
 import { healthApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
 
 export default function BackendStats() {
   const [fastfetch] = createResource(async () => {
@@ -14,21 +15,24 @@ export default function BackendStats() {
   });
 
   return (
-    <div class="w-full min-h-full p-4 sm:p-8 flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8">
-      <HostStatsDashboard />
+    <main class={pageStyles.page}>
+      <div
+        class={`${pageStyles.pageInner} flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
+      >
+        <HostStatsDashboard />
 
-      <Show when={fastfetch()}>
-        <div
-          class="w-full max-w-7xl xl:w-auto p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
-          style={{
-            background: "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
-            "border-color": "#3b82f6",
-            color: "#e2e8f0",
-          }}
-        >
-          <pre class="m-auto" innerHTML={fastfetch()} />
-        </div>
-      </Show>
-    </div>
+        <Show when={fastfetch()}>
+          <div
+            class="w-full max-w-7xl xl:w-auto p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border border-slate-700/70 flex flex-col"
+            style={{
+              background: "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
+              color: "#e2e8f0",
+            }}
+          >
+            <pre class="m-auto" innerHTML={fastfetch()} />
+          </div>
+        </Show>
+      </div>
+    </main>
   );
 }

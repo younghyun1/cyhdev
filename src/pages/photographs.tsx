@@ -9,6 +9,7 @@ import {
 } from "solid-js";
 import { photographyApi } from "../services/all_api";
 import { isSuperuser } from "../state/auth";
+import { pageStyles } from "../styles/pageStyles";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -578,133 +579,133 @@ export default function Photographs() {
   return (
     <>
       <style>{styles}</style>
-      <div class="flex flex-col items-center w-full min-h-screen bg-white dark:bg-gray-900 transition-colors duration-90">
-        {/* Header / Actions */}
-        <div class="w-full max-w-[1600px] p-4 flex justify-between items-center">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Photographs
-          </h1>
-          <Show when={isSuperuser()}>
-            <button
-              class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
-              onClick={() => setShowUpload(true)}
-            >
-              Upload Photo
-            </button>
+      <main class={pageStyles.page}>
+        <div class="flex flex-col items-center w-full">
+          {/* Header / Actions */}
+          <div class="w-full max-w-[1600px] px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
+            <h1 class={pageStyles.titleSm}>Photographs</h1>
+            <Show when={isSuperuser()}>
+              <button
+                class={pageStyles.buttonPrimary}
+                onClick={() => setShowUpload(true)}
+              >
+                Upload Photo
+              </button>
+            </Show>
+
+            <div class="flex gap-2 ml-4">
+              <Show when={isSuperuser()}>
+                <Show
+                  when={isSelectionMode()}
+                  fallback={
+                    <button
+                      class={pageStyles.buttonSecondary}
+                      onClick={() => setIsSelectionMode(true)}
+                    >
+                      Select
+                    </button>
+                  }
+                >
+                  <button
+                    class={pageStyles.buttonDanger}
+                    disabled={selectedForDeletion().size === 0 || loading()}
+                    onClick={handleDelete}
+                  >
+                    Delete ({selectedForDeletion().size})
+                  </button>
+                  <button
+                    class={pageStyles.buttonSecondary}
+                    onClick={() => {
+                      setIsSelectionMode(false);
+                      setSelectedForDeletion(new Set<string>());
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </Show>
+              </Show>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          <Show when={error()}>
+            <div class={`${pageStyles.alertError} w-full max-w-[1600px] mb-4`}>
+              {error()}
+            </div>
           </Show>
 
-          <div class="flex gap-2 ml-4">
-            <Show when={isSuperuser()}>
-              <Show
-                when={isSelectionMode()}
-                fallback={
-                  <button
-                    class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-4 py-2 rounded shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                    onClick={() => setIsSelectionMode(true)}
-                  >
-                    Select
-                  </button>
-                }
-              >
-                <button
-                  class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={selectedForDeletion().size === 0 || loading()}
-                  onClick={handleDelete}
-                >
-                  Delete ({selectedForDeletion().size})
-                </button>
-                <button
-                  class="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-4 py-2 rounded shadow hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                  onClick={() => {
-                    setIsSelectionMode(false);
-                    setSelectedForDeletion(new Set<string>());
-                  }}
-                >
-                  Cancel
-                </button>
-              </Show>
+          {/* JS-Calculated Masonry Grid */}
+          <div class="masonry-grid mx-auto">
+            <For each={columns()}>
+              {(colPhotos) => (
+                <div class="masonry-column">
+                  <For each={colPhotos}>
+                    {(photo) => (
+                      <div
+                        class="photo-card"
+                        onClick={() => {
+                          if (isSelectionMode()) {
+                            toggleSelection(photo.photograph_id);
+                          } else {
+                            setSelectedPhoto(photo);
+                          }
+                        }}
+                        title={photo.photograph_comments}
+                      >
+                        <img
+                          src={
+                            photo.photograph_thumbnail_link ||
+                            photo.photograph_link
+                          }
+                          alt={photo.photograph_comments}
+                          loading="lazy"
+                        />
+                        <Show when={isSelectionMode()}>
+                          <div
+                            class={`absolute inset-0 transition-all z-10 ${
+                              selectedForDeletion().has(photo.photograph_id)
+                                ? "ring-4 ring-red-500 ring-inset bg-black/20"
+                                : "hover:bg-black/10"
+                            }`}
+                          >
+                            <div
+                              class={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
+                                selectedForDeletion().has(photo.photograph_id)
+                                  ? "bg-red-500"
+                                  : "bg-black/40"
+                              }`}
+                            >
+                              <Show
+                                when={selectedForDeletion().has(
+                                  photo.photograph_id,
+                                )}
+                              >
+                                <span class="text-white text-xs font-bold">
+                                  ✓
+                                </span>
+                              </Show>
+                            </div>
+                          </div>
+                        </Show>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              )}
+            </For>
+          </div>
+
+          {/* Loading / Sentinel */}
+          <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
+            <Show when={loading()}>
+              <span class={pageStyles.muted}>Loading more...</span>
+            </Show>
+            <Show when={!hasMore() && photos().length > 0}>
+              <span class={pageStyles.muted}>No more photos</span>
             </Show>
           </div>
         </div>
-
-        {/* Error Message */}
-        <Show when={error()}>
-          <div class="p-4 mb-4 text-red-600 bg-red-100 rounded">{error()}</div>
-        </Show>
-
-        {/* JS-Calculated Masonry Grid */}
-        <div class="masonry-grid">
-          <For each={columns()}>
-            {(colPhotos) => (
-              <div class="masonry-column">
-                <For each={colPhotos}>
-                  {(photo) => (
-                    <div
-                      class="photo-card"
-                      onClick={() => {
-                        if (isSelectionMode()) {
-                          toggleSelection(photo.photograph_id);
-                        } else {
-                          setSelectedPhoto(photo);
-                        }
-                      }}
-                      title={photo.photograph_comments}
-                    >
-                      <img
-                        src={
-                          photo.photograph_thumbnail_link ||
-                          photo.photograph_link
-                        }
-                        alt={photo.photograph_comments}
-                        loading="lazy"
-                      />
-                      <Show when={isSelectionMode()}>
-                        <div
-                          class={`absolute inset-0 transition-all z-10 ${
-                            selectedForDeletion().has(photo.photograph_id)
-                              ? "ring-4 ring-red-500 ring-inset bg-black/20"
-                              : "hover:bg-black/10"
-                          }`}
-                        >
-                          <div
-                            class={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
-                              selectedForDeletion().has(photo.photograph_id)
-                                ? "bg-red-500"
-                                : "bg-black/40"
-                            }`}
-                          >
-                            <Show
-                              when={selectedForDeletion().has(
-                                photo.photograph_id,
-                              )}
-                            >
-                              <span class="text-white text-xs font-bold">
-                                ✓
-                              </span>
-                            </Show>
-                          </div>
-                        </div>
-                      </Show>
-                    </div>
-                  )}
-                </For>
-              </div>
-            )}
-          </For>
-        </div>
-
-        {/* Loading / Sentinel */}
-        <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
-          <Show when={loading()}>
-            <span class="text-gray-500 dark:text-gray-400">
-              Loading more...
-            </span>
-          </Show>
-          <Show when={!hasMore() && photos().length > 0}>
-            <span class="text-gray-400 dark:text-gray-600">No more photos</span>
-          </Show>
-        </div>
-      </div>
+      </main>
 
       {/* Upload Modal */}
       <Show when={showUpload()}>
@@ -715,12 +716,14 @@ export default function Photographs() {
           }}
         >
           <div class="modal-content upload-modal p-6">
-            <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+            <h2 class={`${pageStyles.sectionTitle} mb-4`}>
               Upload New Photograph
             </h2>
             <form onSubmit={handleUpload} class="flex flex-col gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
+                >
                   Select Image
                 </label>
                 <input
@@ -730,12 +733,14 @@ export default function Photographs() {
                     setUploadFile(e.currentTarget.files?.[0] || null)
                   }
                   required
-                  class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300"
+                  class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200"
                 />
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
+                >
                   Comments
                 </label>
                 <textarea
@@ -743,17 +748,19 @@ export default function Photographs() {
                   onInput={(e) => setUploadComment(e.currentTarget.value)}
                   required
                   rows={3}
-                  class="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                  class={pageStyles.textarea}
                   placeholder="Describe your photo..."
                 />
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label
+                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
+                >
                   Location (Search or Click on map)
                 </label>
                 <Show when={uploadLat() !== null}>
-                  <p class="text-xs text-green-600 mb-1">
+                  <p class="text-xs text-emerald-600 mb-1">
                     Selected: {uploadLat()?.toFixed(5)},{" "}
                     {uploadLon()?.toFixed(5)}
                   </p>
@@ -763,13 +770,13 @@ export default function Photographs() {
 
               <Show when={uploading()}>
                 <div class="w-full mt-2">
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded h-2 overflow-hidden">
+                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded h-2 overflow-hidden">
                     <div
-                      class="bg-blue-600 h-2 transition-all duration-150"
+                      class="bg-slate-900 dark:bg-slate-100 h-2 transition-all duration-150"
                       style={{ width: `${uploadProgress()}%` }}
                     />
                   </div>
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
+                  <p class={`mt-1 text-xs ${pageStyles.muted} text-right`}>
                     {uploadProgress()}%
                   </p>
                 </div>
@@ -779,14 +786,14 @@ export default function Photographs() {
                 <button
                   type="button"
                   onClick={() => setShowUpload(false)}
-                  class="px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                  class={pageStyles.buttonSecondary}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={uploading()}
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  class={pageStyles.buttonPrimary}
                 >
                   {uploading() ? "Uploading..." : "Upload"}
                 </button>

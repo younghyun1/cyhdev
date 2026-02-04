@@ -1,4 +1,5 @@
 import { Component } from "solid-js";
+import { pageStyles } from "../styles/pageStyles";
 
 const CodeBlock: Component<{
   title: string;
@@ -58,16 +59,16 @@ const CodeBlock: Component<{
   }
 
   return (
-    <div class="my-6 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 bg-[#1e1e1e] shadow-md dark:shadow-none ring-1 ring-gray-900/5">
-      <div class="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-gray-700">
-        <span class="text-xs font-mono text-gray-400 truncate flex-1">
+    <div class="my-6 rounded-lg overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-[#1e1e1e] shadow-md dark:shadow-none ring-1 ring-slate-900/5">
+      <div class="flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-slate-700">
+        <span class="text-xs font-mono text-slate-400 truncate flex-1">
           {props.title}
         </span>
         <a
           href={props.href}
           target="_blank"
           rel="noopener noreferrer"
-          class="text-xs text-sky-400 hover:text-sky-300 hover:underline whitespace-nowrap ml-4"
+          class="text-xs text-slate-300 hover:text-white underline underline-offset-4 whitespace-nowrap ml-4"
         >
           GitHub ↗
         </a>
@@ -83,29 +84,31 @@ const CodeBlock: Component<{
 
 export default function AboutBlog() {
   return (
-    <div class="bg-sky-50 dark:bg-black min-h-screen transition-colors duration-90">
-      <section class="max-w-3xl mx-auto text-gray-700 dark:text-gray-100 p-8">
-        <div class="border-l-4 border-sky-500 dark:border-sky-400 pl-3 mb-8">
+    <main class={pageStyles.page}>
+      <section
+        class={`${pageStyles.pageInnerNarrow} text-slate-700 dark:text-slate-100`}
+      >
+        <div class="border-l-4 border-slate-300 dark:border-slate-700 pl-3 mb-8">
           <h1 class="text-2xl font-bold mb-1 tracking-tight">
             Blog Tech Stack
           </h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-slate-500 dark:text-slate-400">
             Last updated: 2026-01-14<br></br>
           </p>
         </div>
 
         <section class="space-y-8">
           {/* 0) On-Prem */}
-          <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-5">
-            <h2 class="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+          <section class={pageStyles.cardPadded}>
+            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
               0) Host Machine, OS, filesystem, and network configuration
             </h2>
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
               The site is hosted on a miniserver at my residence behind a 1Gbps
               wired Xfinity connection. The{" "}
               <a
                 href="https://store.minisforum.com/products/minisforum-um690l-slim"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -132,7 +135,7 @@ export default function AboutBlog() {
               builds and installs for packages, as provided by the wonderful{" "}
               <a
                 href="https://somegit.dev/ALHP/ALHP.GO"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -148,7 +151,7 @@ export default function AboutBlog() {
             <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
               <a
                 href="https://en.wikipedia.org/wiki/Btrfs"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -161,7 +164,7 @@ export default function AboutBlog() {
               directories from CoW.{" "}
               <a
                 href="https://www.enterprisedb.com/blog/postgres-vs-file-systems-performance-comparison"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -192,7 +195,7 @@ export default function AboutBlog() {
               socket, which actually is way, way faster than{" "}
               <a
                 href="https://www.cybertec-postgresql.com/en/postgresql-performance-advice-unix-sockets-vs-localhost/"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -207,7 +210,7 @@ export default function AboutBlog() {
               2025, also introduced async I/O in the form of{" "}
               <a
                 href="https://pganalyze.com/blog/postgres-18-async-io"
-                class="text-sky-700 dark:text-sky-300 hover:underline"
+                class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -290,6 +293,6 @@ export default function AboutBlog() {
           </section>
         </section>
       </section>
-    </div>
+    </main>
   );
 }

@@ -8,6 +8,7 @@ import {
 import { uploadWithProgress } from "../services/upload_with_progress";
 import { user, setUser } from "../state/auth";
 import { authApi, dropdownApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
 
 const MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES: string[] = [
@@ -225,15 +226,17 @@ function EditProfilePage() {
     }
   };
 
-  return (
-    <section class="px-4 py-8 md:py-10 bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-100 transition-colors duration-100 min-h-[60vh]">
-      <div class="max-w-3xl mx-auto">
-        <h1 class="text-2xl font-bold mb-6">Edit Profile</h1>
+  const readOnlyInputClass = `${pageStyles.input} bg-slate-100 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 disabled:opacity-70`;
 
-        <div class="space-y-10">
-          <section>
+  return (
+    <main class={pageStyles.page}>
+      <div class={pageStyles.pageInnerNarrow}>
+        <h1 class={`${pageStyles.title} mb-6`}>Edit Profile</h1>
+
+        <div class="space-y-6">
+          <section class={pageStyles.cardPadded}>
             <h2 class="text-lg font-semibold">Change Profile Picture</h2>
-            <hr class="my-3 border-gray-200 dark:border-gray-800" />
+            <hr class={`my-3 ${pageStyles.divider}`} />
             <div class="flex items-start gap-6">
               <div class="w-32 h-32 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 shadow">
                 <img
@@ -261,7 +264,7 @@ function EditProfilePage() {
                     type="button"
                     onClick={() => fileInputRef?.click()}
                     disabled={uploading()}
-                    class="px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60"
+                    class={`${pageStyles.buttonSecondary} disabled:opacity-60`}
                   >
                     Choose Image
                   </button>
@@ -269,13 +272,13 @@ function EditProfilePage() {
                   <button
                     onClick={handleUpload}
                     disabled={uploading() || !profileImage()}
-                    class="px-4 py-2 text-sm rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
+                    class={`${pageStyles.buttonPrimary} disabled:opacity-60`}
                   >
                     {uploading() ? "Uploading..." : "Upload"}
                   </button>
                 </div>
 
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                <div class={`${pageStyles.muted} mt-3`}>
                   Common formats (PNG, JPG, GIF, WEBP). Max 10MB.
                 </div>
 
@@ -283,7 +286,7 @@ function EditProfilePage() {
                   <div class="w-full mt-4">
                     <div class="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
                       <div
-                        class="h-full bg-blue-600 transition-all"
+                        class="h-full bg-slate-900 dark:bg-slate-100 transition-all"
                         style={{ width: `${progress()}%` }}
                       />
                     </div>
@@ -295,7 +298,7 @@ function EditProfilePage() {
 
                 <Show when={error()}>
                   <div
-                    class="mt-3 text-sm bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded px-3 py-2"
+                    class={`mt-3 ${pageStyles.alertError}`}
                     aria-live="polite"
                   >
                     {error()}
@@ -305,48 +308,42 @@ function EditProfilePage() {
             </div>
           </section>
 
-          <section>
+          <section class={pageStyles.cardPadded}>
             <h2 class="text-lg font-semibold">Profile Info</h2>
-            <hr class="my-3 border-gray-200 dark:border-gray-800" />
+            <hr class={`my-3 ${pageStyles.divider}`} />
             <div class="space-y-4">
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  Display name
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>Display name</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={user()?.user_info?.user_name ?? ""}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  Email
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>Email</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={user()?.user_info?.user_email ?? ""}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  User ID
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>User ID</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={user()?.user_info?.user_id ?? ""}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
+                <div class={`col-span-4 ${pageStyles.muted}`}>
                   Email Verified
                 </div>
                 <div class="col-span-8">
@@ -355,45 +352,39 @@ function EditProfilePage() {
                     value={
                       user()?.user_info?.user_is_email_verified ? "Yes" : "No"
                     }
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  Country
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>Country</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={formatCountry(user()?.user_info?.user_country)}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  Language
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>Language</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={formatLanguage(user()?.user_info?.user_language)}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class="col-span-4 text-sm text-gray-600 dark:text-gray-300">
-                  Subdivision
-                </div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>Subdivision</div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={formatSubdivision(
                       user()?.user_info?.user_subdivision,
                     )}
-                    class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+                    class={readOnlyInputClass}
                   />
                 </div>
               </div>
@@ -401,7 +392,7 @@ function EditProfilePage() {
           </section>
         </div>
       </div>
-    </section>
+    </main>
   );
 }
 

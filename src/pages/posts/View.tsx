@@ -3,6 +3,7 @@ import { createStore } from "solid-js/store";
 import { useParams, useNavigate } from "@solidjs/router";
 import { blogApi, dropdownApi } from "../../services/all_api";
 import { isAuthenticated, user } from "../../state/auth";
+import { pageStyles } from "../../styles/pageStyles";
 
 // VoteState Mapping based on Rust Enum:
 // 0: Upvoted
@@ -424,7 +425,7 @@ export default function PostViewPage() {
               >
                 <div class="mt-2">
                   <textarea
-                    class="w-full min-h-[80px] border rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                    class={`${pageStyles.textarea} min-h-[80px]`}
                     value={editText[comment.comment_id] ?? ""}
                     onInput={(e) =>
                       setEditText(comment.comment_id, e.currentTarget.value)
@@ -437,7 +438,7 @@ export default function PostViewPage() {
                   </Show>
                   <div class="mt-2 flex items-center gap-2">
                     <button
-                      class="bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold disabled:opacity-60"
+                      class={`${pageStyles.buttonPrimary} px-3 py-1 text-sm`}
                       disabled={
                         editLoading[comment.comment_id] ||
                         !(editText[comment.comment_id] ?? "").trim()
@@ -448,7 +449,7 @@ export default function PostViewPage() {
                     </button>
                     <button
                       type="button"
-                      class="px-3 py-1 rounded text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                      class={`${pageStyles.buttonSecondary} px-3 py-1 text-sm`}
                       onClick={() => toggleEdit(comment)}
                     >
                       Cancel
@@ -489,7 +490,7 @@ export default function PostViewPage() {
               </div>
               <div class="mt-1 flex gap-3">
                 <button
-                  class="text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  class={`${pageStyles.link} text-xs`}
                   onClick={() => toggleReply(comment.comment_id)}
                 >
                   Reply
@@ -503,7 +504,7 @@ export default function PostViewPage() {
                   }
                 >
                   <button
-                    class="text-xs text-gray-600 hover:underline dark:text-gray-400"
+                    class={`${pageStyles.link} text-xs`}
                     onClick={() => toggleEdit(comment)}
                   >
                     Edit
@@ -519,7 +520,7 @@ export default function PostViewPage() {
               <Show when={replyOpen[comment.comment_id]}>
                 <div class="mt-2">
                   <textarea
-                    class="w-full min-h-[80px] border rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                    class={`${pageStyles.textarea} min-h-[80px]`}
                     value={replyText[comment.comment_id] ?? ""}
                     onInput={(e) =>
                       setReplyText(comment.comment_id, e.currentTarget.value)
@@ -533,7 +534,7 @@ export default function PostViewPage() {
                   </Show>
                   <div class="mt-2 flex items-center gap-2">
                     <button
-                      class="bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold disabled:opacity-60"
+                      class={`${pageStyles.buttonPrimary} px-3 py-1 text-sm`}
                       disabled={
                         replyLoading[comment.comment_id] ||
                         !(replyText[comment.comment_id] ?? "").trim()
@@ -546,7 +547,7 @@ export default function PostViewPage() {
                     </button>
                     <button
                       type="button"
-                      class="px-3 py-1 rounded text-sm border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                      class={`${pageStyles.buttonSecondary} px-3 py-1 text-sm`}
                       onClick={() => {
                         setReplyOpen(comment.comment_id, false);
                         setReplyText(comment.comment_id, "");
@@ -569,178 +570,189 @@ export default function PostViewPage() {
   }
 
   return (
-    <main class="w-full max-w-5xl mx-auto py-8 px-4 flex flex-row gap-8">
-      <div class="flex-1">
-        <Show when={postResource.loading}>
-          <div>Loading post...</div>
-        </Show>
-        <Show when={postResource.error}>
-          <div class="text-red-600">
-            Failed to load post: {String(postResource.error)}
-          </div>
-        </Show>
-        <Show when={postResource()}>
-          {(data) => {
-            const postVoteState = () =>
-              optimisticVotes.post?.vote_state ?? data().vote_state;
-            const postUpvotes = () =>
-              optimisticVotes.post?.total_upvotes ?? data().post.total_upvotes;
-            const postDownvotes = () =>
-              optimisticVotes.post?.total_downvotes ??
-              data().post.total_downvotes;
-            const sortedComments = createMemo(() =>
-              sortCommentsTree(buildCommentTree(data().comments || [])),
-            );
+    <main class={pageStyles.page}>
+      <div class={`${pageStyles.pageInner} max-w-5xl flex flex-row gap-8`}>
+        <div class="flex-1">
+          <Show when={postResource.loading}>
+            <div class={pageStyles.muted}>Loading post...</div>
+          </Show>
+          <Show when={postResource.error}>
+            <div class={pageStyles.alertError}>
+              Failed to load post: {String(postResource.error)}
+            </div>
+          </Show>
+          <Show when={postResource()}>
+            {(data) => {
+              const postVoteState = () =>
+                optimisticVotes.post?.vote_state ?? data().vote_state;
+              const postUpvotes = () =>
+                optimisticVotes.post?.total_upvotes ??
+                data().post.total_upvotes;
+              const postDownvotes = () =>
+                optimisticVotes.post?.total_downvotes ??
+                data().post.total_downvotes;
+              const sortedComments = createMemo(() =>
+                sortCommentsTree(buildCommentTree(data().comments || [])),
+              );
 
-            return (
-              <>
-                <div class="mb-4 flex flex-row items-start gap-4">
-                  <div class="flex flex-col items-center pr-4 select-none border-r border-gray-300 dark:border-gray-700 mr-2">
-                    <button
-                      class={`text-2xl transition ${postVoteState() === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
-                      onClick={() =>
-                        handleVote("post", true, {
-                          postId: data().post.post_id,
-                        })
-                      }
-                      aria-label="Upvote"
-                    >
-                      ▲
-                    </button>
-
-                    <span class="text-sm font-semibold text-center my-1 text-gray-800 dark:text-gray-100">
-                      {postUpvotes() - postDownvotes()}
-                    </span>
-
-                    <button
-                      class={`text-2xl transition ${postVoteState() === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
-                      onClick={() =>
-                        handleVote("post", false, {
-                          postId: data().post.post_id,
-                        })
-                      }
-                      aria-label="Downvote"
-                    >
-                      ▼
-                    </button>
-                  </div>
-                  <div class="flex-1">
-                    <div class="flex justify-between items-start mb-2">
-                      <h1 class="text-3xl font-bold">
-                        {data().post.post_title}
-                      </h1>
-                      <Show
-                        when={
-                          user()?.user_info?.user_id &&
-                          (data().post as any).user_id ===
-                            user()?.user_info?.user_id
+              return (
+                <>
+                  <div class="mb-4 flex flex-row items-start gap-4">
+                    <div class="flex flex-col items-center pr-4 select-none border-r border-slate-200 dark:border-slate-800 mr-2">
+                      <button
+                        class={`text-2xl transition ${postVoteState() === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
+                        onClick={() =>
+                          handleVote("post", true, {
+                            postId: data().post.post_id,
+                          })
                         }
+                        aria-label="Upvote"
                       >
-                        <div class="flex gap-2 ml-4">
-                          <button
-                            class="text-sm text-blue-600 border border-blue-600 rounded px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition whitespace-nowrap"
-                            onClick={() =>
-                              navigate(`/blog/${data().post.post_id}/edit`)
+                        ▲
+                      </button>
+
+                      <span class="text-sm font-semibold text-center my-1 text-gray-800 dark:text-gray-100">
+                        {postUpvotes() - postDownvotes()}
+                      </span>
+
+                      <button
+                        class={`text-2xl transition ${postVoteState() === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
+                        onClick={() =>
+                          handleVote("post", false, {
+                            postId: data().post.post_id,
+                          })
+                        }
+                        aria-label="Downvote"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                    <div class="flex-1">
+                      <div class="flex justify-between items-start mb-2">
+                        <h1 class="text-3xl font-bold">
+                          {data().post.post_title}
+                        </h1>
+                        <Show
+                          when={
+                            user()?.user_info?.user_id &&
+                            (data().post as any).user_id ===
+                              user()?.user_info?.user_id
+                          }
+                        >
+                          <div class="flex gap-2 ml-4">
+                            <button
+                              class={`${pageStyles.buttonSecondary} whitespace-nowrap`}
+                              onClick={() =>
+                                navigate(`/blog/${data().post.post_id}/edit`)
+                              }
+                            >
+                              Edit Post
+                            </button>
+                            <button
+                              class={`${pageStyles.buttonDanger} whitespace-nowrap`}
+                              onClick={handleDeletePost}
+                            >
+                              Delete Post
+                            </button>
+                          </div>
+                        </Show>
+                      </div>
+                      <div class="flex items-center text-sm text-gray-400 mb-2">
+                        <Show
+                          when={
+                            data().user_badge_info?.user_profile_picture_url
+                          }
+                        >
+                          <img
+                            src={
+                              data().user_badge_info.user_profile_picture_url
                             }
-                          >
-                            Edit Post
-                          </button>
-                          <button
-                            class="text-sm text-red-600 border border-red-600 rounded px-2 py-1 hover:bg-red-50 dark:hover:bg-red-900/20 transition whitespace-nowrap"
-                            onClick={handleDeletePost}
-                          >
-                            Delete Post
-                          </button>
-                        </div>
-                      </Show>
-                    </div>
-                    <div class="flex items-center text-sm text-gray-400 mb-2">
-                      <Show
-                        when={data().user_badge_info?.user_profile_picture_url}
-                      >
-                        <img
-                          src={data().user_badge_info.user_profile_picture_url}
-                          alt={data().user_badge_info.user_name}
-                          class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-700 mr-2"
-                        />
-                      </Show>
-                      <span class="text-gray-700 dark:text-gray-300">
-                        {data().user_badge_info?.user_name ?? "Unknown"}
-                      </span>
-                      <Show
-                        when={formatCountry((data().post as any).user_country)}
-                      >
-                        <span class="ml-2">
-                          ({formatCountry((data().post as any).user_country)})
+                            alt={data().user_badge_info.user_name}
+                            class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-700 mr-2"
+                          />
+                        </Show>
+                        <span class="text-gray-700 dark:text-gray-300">
+                          {data().user_badge_info?.user_name ?? "Unknown"}
                         </span>
-                      </Show>
-                      <span class="ml-3">
-                        {new Date(data().post.post_created_at).toLocaleString()}
-                      </span>
+                        <Show
+                          when={formatCountry(
+                            (data().post as any).user_country,
+                          )}
+                        >
+                          <span class="ml-2">
+                            ({formatCountry((data().post as any).user_country)})
+                          </span>
+                        </Show>
+                        <span class="ml-3">
+                          {new Date(
+                            data().post.post_created_at,
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                      <div
+                        class="prose dark:prose-invert max-w-none mb-3"
+                        innerHTML={data().post.post_content}
+                      />
                     </div>
-                    <div
-                      class="prose dark:prose-invert max-w-none mb-3"
-                      innerHTML={data().post.post_content}
-                    />
                   </div>
-                </div>
-                <hr class="my-5" />
-                <section>
-                  <div class="mb-3 flex items-center justify-between">
-                    <h2 class="text-xl font-semibold">Comments</h2>
-                    <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                      <span>Sort by</span>
-                      <select
-                        class="px-2 py-1 rounded border bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-                        value={commentSort()}
-                        onChange={(e) =>
-                          setCommentSort(
-                            e.currentTarget.value as
-                              | "best"
-                              | "top"
-                              | "new"
-                              | "old",
-                          )
-                        }
-                      >
-                        <option value="best">Best</option>
-                        <option value="top">Top</option>
-                        <option value="new">New</option>
-                        <option value="old">Old</option>
-                      </select>
-                    </label>
-                  </div>
-                  {renderComments(sortedComments())}
-                </section>
-                <hr class="my-5" />
-                <section>
-                  <h3 class="text-lg font-semibold mb-2">Add Comment</h3>
-                  <form
-                    onSubmit={handleSubmitComment}
-                    class="flex flex-col gap-2"
-                  >
-                    <textarea
-                      class="w-full min-h-[120px] border rounded p-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-                      value={commentValue()}
-                      onInput={(e) => setCommentValue(e.currentTarget.value)}
-                      placeholder="Write a comment (plaintext)..."
-                    />
-                    <Show when={commentError()}>
-                      <span class="text-red-600">{commentError()}</span>
-                    </Show>
-                    <button
-                      class="self-end bg-blue-600 text-white px-4 py-2 rounded font-semibold disabled:opacity-60 transition"
-                      type="submit"
-                      disabled={commentLoading() || !commentValue().trim()}
+                  <hr class={`my-5 ${pageStyles.divider}`} />
+                  <section>
+                    <div class="mb-3 flex items-center justify-between">
+                      <h2 class="text-xl font-semibold">Comments</h2>
+                      <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                        <span>Sort by</span>
+                        <select
+                          class={pageStyles.select}
+                          value={commentSort()}
+                          onChange={(e) =>
+                            setCommentSort(
+                              e.currentTarget.value as
+                                | "best"
+                                | "top"
+                                | "new"
+                                | "old",
+                            )
+                          }
+                        >
+                          <option value="best">Best</option>
+                          <option value="top">Top</option>
+                          <option value="new">New</option>
+                          <option value="old">Old</option>
+                        </select>
+                      </label>
+                    </div>
+                    {renderComments(sortedComments())}
+                  </section>
+                  <hr class={`my-5 ${pageStyles.divider}`} />
+                  <section>
+                    <h3 class="text-lg font-semibold mb-2">Add Comment</h3>
+                    <form
+                      onSubmit={handleSubmitComment}
+                      class="flex flex-col gap-2"
                     >
-                      {commentLoading() ? "Posting..." : "Post Comment"}
-                    </button>
-                  </form>
-                </section>
-              </>
-            );
-          }}
-        </Show>
+                      <textarea
+                        class={pageStyles.textarea}
+                        value={commentValue()}
+                        onInput={(e) => setCommentValue(e.currentTarget.value)}
+                        placeholder="Write a comment (plaintext)..."
+                      />
+                      <Show when={commentError()}>
+                        <span class="text-red-600">{commentError()}</span>
+                      </Show>
+                      <button
+                        class={`${pageStyles.buttonPrimary} self-end`}
+                        type="submit"
+                        disabled={commentLoading() || !commentValue().trim()}
+                      >
+                        {commentLoading() ? "Posting..." : "Post Comment"}
+                      </button>
+                    </form>
+                  </section>
+                </>
+              );
+            }}
+          </Show>
+        </div>
       </div>
     </main>
   );

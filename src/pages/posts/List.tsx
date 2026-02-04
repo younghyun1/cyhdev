@@ -7,6 +7,7 @@ import { pageStyles } from "../../styles/pageStyles";
 export default function PostsList() {
   const [posts, { refetch }] = createResource(() => blogApi.getPosts());
   const navigate = useNavigate();
+  const postItems = () => posts()?.data?.posts ?? [];
 
   const handleDeletePost = async (e: Event, postId: string) => {
     e.preventDefault();
@@ -38,31 +39,38 @@ export default function PostsList() {
         <hr class={`${pageStyles.divider} mb-6`} />
 
         <Show when={posts.loading}>
-          <div class="p-4 text-center text-gray-500">Loading posts...</div>
+          <div class={`${pageStyles.muted} p-4 text-center`}>
+            Loading posts...
+          </div>
         </Show>
 
         <Show when={posts.error}>
-          <div class="text-red-600 p-4 border border-red-200 rounded bg-red-50">
+          <div class={pageStyles.alertError}>
             Error loading posts: {String(posts.error)}
           </div>
         </Show>
 
-        <ul class="flex flex-col gap-4">
-          {" "}
-          {/* added gap for spacing between items */}
-          {/* 2. SOLID FIX: Use <For> instead of .map for better performance */}
-          <Show
-            when={posts()}
-            fallback={
-              <div class="text-center py-8 text-gray-500">No posts found.</div>
-            }
-          >
-            <For each={posts()?.data.posts}>
+        <Show when={!posts.loading && !posts.error && postItems().length === 0}>
+          <div class={`${pageStyles.cardPadded} text-center`}>
+            <div class="text-base font-semibold text-slate-900 dark:text-slate-100">
+              No posts yet
+            </div>
+            <p class={`${pageStyles.muted} mt-1`}>
+              Check back soon, or create the first one.
+            </p>
+          </div>
+        </Show>
+
+        <Show when={postItems().length > 0}>
+          <ul class="flex flex-col gap-4">
+            <For each={postItems()}>
               {(post) => (
-                <li class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm transition hover:shadow-md">
+                <li
+                  class={`${pageStyles.card} overflow-hidden transition hover:shadow-md`}
+                >
                   <div class="flex">
-                    <div class="flex flex-col items-center justify-center w-16 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 rounded-l">
-                      <span class="text-sm font-bold text-gray-700 dark:text-gray-200">
+                    <div class="flex flex-col items-center justify-center w-16 bg-slate-50 dark:bg-slate-800/60 border-r border-slate-200/80 dark:border-slate-800 rounded-l">
+                      <span class="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {((post as any)?.total_upvotes ?? 0) -
                           ((post as any)?.total_downvotes ?? 0)}
                       </span>
@@ -70,18 +78,18 @@ export default function PostsList() {
 
                     {/* Content Column */}
                     <div class="flex-1 px-4 py-3">
-                      <div class="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <div class="text-xs text-slate-500 mb-1 flex items-center gap-1">
                         <Show when={(post as any).user_profile_picture_url}>
                           <img
                             src={(post as any).user_profile_picture_url}
                             alt={(post as any).user_name}
-                            class="w-5 h-5 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+                            class="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700"
                           />
                         </Show>
-                        <span class="font-medium text-gray-900 dark:text-gray-300">
+                        <span class="font-medium text-slate-900 dark:text-slate-300">
                           {(post as any).user_name ?? "Unknown"}
                         </span>
-                        <span class="text-gray-400">•</span>
+                        <span class="text-slate-400">•</span>
                         <span>
                           {new Date(post.post_created_at).toLocaleDateString()}
                         </span>
@@ -92,7 +100,7 @@ export default function PostsList() {
                           }
                         >
                           <button
-                            class="ml-auto text-red-600 hover:text-red-800 hover:underline"
+                            class={`${pageStyles.buttonGhost} ml-auto text-rose-600 dark:text-rose-400`}
                             onClick={(e) => handleDeletePost(e, post.post_id)}
                           >
                             Delete
@@ -102,7 +110,7 @@ export default function PostsList() {
 
                       <A
                         href={`/blog/${post.post_id}`}
-                        class="block text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 decoration-2 hover:underline underline-offset-2"
+                        class="block text-lg font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 decoration-2 hover:underline underline-offset-2"
                       >
                         {post.post_title}
                       </A>
@@ -111,8 +119,8 @@ export default function PostsList() {
                 </li>
               )}
             </For>
-          </Show>
-        </ul>
+          </ul>
+        </Show>
       </div>
     </main>
   );

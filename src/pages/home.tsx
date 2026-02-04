@@ -1,6 +1,7 @@
 import { createResource, For, Show, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { blogApi, photographyApi, healthApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
 
 export default function Home() {
   const [posts] = createResource(() =>
@@ -23,9 +24,9 @@ export default function Home() {
   };
 
   return (
-    <div class="w-full min-h-screen flex flex-col font-sans bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
+    <main class={`${pageStyles.page} font-sans`}>
       {/* Top Navigation / Compact Hero */}
-      <header class="border-b-2 border-zinc-900 dark:border-zinc-200 bg-white dark:bg-zinc-900">
+      <header class="border-b border-slate-200/80 dark:border-slate-800">
         <div class="max-w-7xl mx-auto px-6 py-8 md:py-10">
           <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
             {/* Identity Block */}
@@ -37,9 +38,9 @@ export default function Home() {
                 </span>{" "}
                 // 池營賢 // 池营贤
               </h1>
-              <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed border-l-4 border-amber-500 pl-4">
+              <p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 font-medium leading-relaxed border-l-4 border-amber-500 pl-4">
                 Experienced backend, infrastructure, and data engineer.
-                <span class="block text-sm mt-2 font-mono text-zinc-500">
+                <span class="block text-sm mt-2 font-mono text-slate-500">
                   Passionate about creating secure and high-performance servers
                   and infrastructure. I also enjoy photography and have dabbled
                   in journalism, translation/interpretation, soldiering, manual
@@ -53,7 +54,7 @@ export default function Home() {
 
             {/* Quick Links / Command Center */}
             <div class="flex flex-col gap-3 font-mono text-sm shrink-0">
-              <div class="text-zinc-400 uppercase text-xs tracking-widest mb-1">
+              <div class="text-slate-400 uppercase text-xs tracking-widest mb-1">
                 Connect
               </div>
               <a
@@ -89,13 +90,13 @@ export default function Home() {
           <div class="mt-8 flex gap-4">
             <A
               href="/blog"
-              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+              class={`${pageStyles.buttonPrimary} px-6 py-3 text-base font-mono`}
             >
               Read Blog
             </A>
             <A
               href="/photographs"
-              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
+              class={`${pageStyles.buttonSecondary} px-6 py-3 text-base font-mono`}
             >
               View My Photography
             </A>
@@ -107,14 +108,11 @@ export default function Home() {
       <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Latest Blog Posts - Spans 7 columns */}
         <section class="lg:col-span-7 flex flex-col h-full">
-          <div class="flex items-end justify-between mb-6 pb-2 border-b-2 border-dashed border-zinc-300 dark:border-zinc-700">
+          <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-amber-500"></span> Latest Posts
+              <span class="w-3 h-3 bg-amber-600"></span> Latest Posts
             </h2>
-            <A
-              href="/blog"
-              class="font-mono text-sm underline decoration-zinc-400 hover:decoration-amber-500 hover:text-amber-600 transition-colors"
-            >
+            <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
               view blog posts &rarr;
             </A>
           </div>
@@ -124,7 +122,7 @@ export default function Home() {
               fallback={
                 <div class="space-y-4">
                   {[1, 2, 3].map(() => (
-                    <div class="h-24 bg-zinc-200 dark:bg-zinc-800 animate-pulse border border-zinc-300 dark:border-zinc-700"></div>
+                    <div class="h-24 bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700"></div>
                   ))}
                 </div>
               }
@@ -132,16 +130,16 @@ export default function Home() {
               <Show
                 when={posts()}
                 fallback={
-                  <div class="p-6 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 font-mono text-sm">
+                  <div class="p-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-mono text-sm">
                     No data found.
                   </div>
                 }
               >
                 <For each={posts()?.data?.posts}>
                   {(post) => (
-                    <article class="group relative bg-white dark:bg-zinc-900 p-5 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-900 dark:hover:border-zinc-100 transition-colors duration-200">
+                    <article class="group relative bg-white dark:bg-slate-900 p-5 border border-slate-200 dark:border-slate-800 hover:border-slate-900 dark:hover:border-slate-100 transition-colors duration-200">
                       <div class="flex flex-col gap-1">
-                        <div class="flex justify-between items-center text-xs font-mono text-zinc-500 dark:text-zinc-400 mb-1">
+                        <div class="flex justify-between items-center text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
                           <span>
                             {new Date(post.post_created_at).toLocaleDateString(
                               undefined,
@@ -156,7 +154,7 @@ export default function Home() {
                             &lt;READ&gt;
                           </span>
                         </div>
-                        <h3 class="text-xl font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                           <A href={`/blog/${post.post_id}`}>
                             <span class="absolute inset-0" />
                             {post.post_title}
@@ -173,13 +171,13 @@ export default function Home() {
 
         {/* Recent Photographs - Spans 5 columns */}
         <section class="lg:col-span-5 flex flex-col h-full">
-          <div class="flex items-end justify-between mb-6 pb-2 border-b-2 border-dashed border-zinc-300 dark:border-zinc-700">
+          <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-purple-500"></span> Photography
+              <span class="w-3 h-3 bg-amber-600"></span> Photography
             </h2>
             <A
               href="/photographs"
-              class="font-mono text-sm underline decoration-zinc-400 hover:decoration-purple-500 hover:text-purple-600 transition-colors"
+              class={`${pageStyles.link} font-mono text-sm`}
             >
               view gallery &rarr;
             </A>
@@ -190,7 +188,7 @@ export default function Home() {
               fallback={
                 <>
                   {[1, 2, 3, 4].map(() => (
-                    <div class="aspect-square bg-zinc-200 dark:bg-zinc-800 animate-pulse border border-zinc-300 dark:border-zinc-700"></div>
+                    <div class="aspect-square bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700"></div>
                   ))}
                 </>
               }
@@ -198,7 +196,7 @@ export default function Home() {
               <Show
                 when={getPhotoItems().length > 0}
                 fallback={
-                  <div class="col-span-2 p-6 border border-zinc-200 dark:border-zinc-800 font-mono text-sm text-center">
+                  <div class="col-span-2 p-6 border border-slate-200 dark:border-slate-800 font-mono text-sm text-center">
                     /img/null
                   </div>
                 }
@@ -207,7 +205,7 @@ export default function Home() {
                   {(photo) => (
                     <A
                       href="/photographs"
-                      class="group relative block aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800"
+                      class="group relative block aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
                     >
                       <img
                         src={
@@ -219,7 +217,7 @@ export default function Home() {
                         loading="lazy"
                       />
                       {/* Crosshair overlay effect */}
-                      <div class="absolute inset-0 border-2 border-transparent group-hover:border-purple-500/50 transition-colors pointer-events-none z-10"></div>
+                      <div class="absolute inset-0 border-2 border-transparent group-hover:border-amber-500/50 transition-colors pointer-events-none z-10"></div>
                       <div class="absolute top-2 right-2 text-[10px] font-mono bg-black text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                         {photo.photograph_id}
                       </div>
@@ -231,6 +229,6 @@ export default function Home() {
           </div>
         </section>
       </div>
-    </div>
+    </main>
   );
 }
