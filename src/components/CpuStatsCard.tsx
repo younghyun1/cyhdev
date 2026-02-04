@@ -104,13 +104,16 @@ export default function CpuStatsCard(props: {
             CPU Usage
           </h3>
         </div>
-        <div class="text-xl font-mono font-bold" style={{ color: C().cpu }}>
+        <div
+          class="text-xl font-mono font-bold tabular-nums"
+          style={{ color: C().cpu }}
+        >
           {latest() ? latest()!.cpu.toFixed(1) + "%" : "--%"}
         </div>
       </div>
 
       <div
-        class="relative flex-1 border rounded-xl shadow-sm overflow-hidden min-h-[250px]"
+        class="relative flex-1 border rounded-xl shadow-sm overflow-hidden min-h-62.5"
         style={{
           border: `1px solid ${C().border}`,
           background: C().bg,

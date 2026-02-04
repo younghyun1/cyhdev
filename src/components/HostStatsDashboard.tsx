@@ -165,14 +165,16 @@ export default function HostStatsDashboard(props: {
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">Uptime</div>
-                    <div class="text-xl font-mono font-bold">{liveUptime}</div>
+                    <div class="text-xl font-mono font-bold tabular-nums">
+                      {liveUptime}
+                    </div>
                   </div>
                   <div
                     class="p-4 rounded-lg bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">Responses Handled</div>
-                    <div class="text-xl font-mono font-bold">
+                    <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.responses_handled.toLocaleString()}
                     </div>
                   </div>
@@ -181,7 +183,7 @@ export default function HostStatsDashboard(props: {
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">Active Sessions</div>
-                    <div class="text-xl font-mono font-bold">
+                    <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.users_logged_in}
                     </div>
                   </div>
@@ -190,7 +192,7 @@ export default function HostStatsDashboard(props: {
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">DB Latency</div>
-                    <div class="text-xl font-mono font-bold">
+                    <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.db_latency}
                     </div>
                   </div>

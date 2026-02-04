@@ -122,7 +122,7 @@ export default function RamStatsCard(props: {
           </h3>
         </div>
         <div
-          class="text-xl font-bold font-mono text-right"
+          class="text-xl font-bold font-mono text-right tabular-nums"
           style={{ color: C().memU }}
         >
           {latest()
@@ -134,7 +134,7 @@ export default function RamStatsCard(props: {
       </div>
 
       <div
-        class="relative flex-1 border rounded-xl shadow-sm overflow-hidden min-h-[250px]"
+        class="relative flex-1 border rounded-xl shadow-sm overflow-hidden min-h-62.5"
         style={{
           border: `1px solid ${C().border}`,
           background: C().bg,
@@ -144,7 +144,6 @@ export default function RamStatsCard(props: {
           <Line data={chartData()} options={chartOptions()} />
         </div>
       </div>
-      
     </div>
   );
 }

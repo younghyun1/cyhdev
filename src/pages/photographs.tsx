@@ -463,10 +463,21 @@ export default function Photographs() {
     return <div ref={(el) => (mapDiv = el)} class="map-container" />;
   };
 
-  // Map Component for Details
+  // State for external map links popup
+  const [showMapLinks, setShowMapLinks] = createSignal(false);
+
+  // Map Component for Details - uses key prop to force remount on photo change
   const DetailsMap = (props: { lat: number; lon: number }) => {
     let mapDiv: HTMLDivElement | undefined;
     let map: L.Map | null = null;
+    let marker: L.Marker | null = null;
+
+    const emojiIcon = L.divIcon({
+      className: "emoji-marker",
+      html: "📍",
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+    });
 
     onMount(() => {
       map = L.map(mapDiv!).setView([props.lat, props.lon], 13);
@@ -475,14 +486,17 @@ export default function Photographs() {
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       }).addTo(map);
 
-      const emojiIcon = L.divIcon({
-        className: "emoji-marker",
-        html: "📍",
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-      });
+      marker = L.marker([props.lat, props.lon], { icon: emojiIcon }).addTo(map);
+    });
 
-      L.marker([props.lat, props.lon], { icon: emojiIcon }).addTo(map);
+    // React to prop changes
+    createEffect(() => {
+      const lat = props.lat;
+      const lon = props.lon;
+      if (map && marker) {
+        map.setView([lat, lon], 13);
+        marker.setLatLng([lat, lon]);
+      }
     });
 
     onCleanup(() => {
@@ -491,6 +505,20 @@ export default function Photographs() {
 
     return <div ref={(el) => (mapDiv = el)} class="map-container" />;
   };
+
+  // External map link generators
+  const getGoogleMapsUrl = (lat: number, lon: number) =>
+    `https://www.google.com/maps?q=${lat},${lon}`;
+  const getGoogleEarthUrl = (lat: number, lon: number) =>
+    `https://earth.google.com/web/@${lat},${lon},0a,1000d,35y,0h,0t,0r`;
+  const getOpenStreetMapUrl = (lat: number, lon: number) =>
+    `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=15`;
+
+  // Close map links popup when photo changes
+  createEffect(() => {
+    selectedPhoto(); // track changes
+    setShowMapLinks(false);
+  });
 
   // --- Navigation Logic ---
   const navigatePhoto = async (direction: "prev" | "next") => {
@@ -959,10 +987,74 @@ export default function Photographs() {
               </div>
 
               <div>
-                <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Location Map
-                </h3>
-                <div class="mt-2 h-[200px] rounded overflow-hidden">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Location Map
+                  </h3>
+                  <div class="relative">
+                    <button
+                      onClick={() => setShowMapLinks(!showMapLinks())}
+                      class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      title="Open in external map"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.5"
+                        stroke="currentColor"
+                        class="w-5 h-5"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                        />
+                      </svg>
+                    </button>
+                    <Show when={showMapLinks()}>
+                      <div class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[160px] py-1">
+                        <a
+                          href={getGoogleMapsUrl(
+                            selectedPhoto()!.photograph_lat,
+                            selectedPhoto()!.photograph_lon,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          onClick={() => setShowMapLinks(false)}
+                        >
+                          <span>Google Maps</span>
+                        </a>
+                        <a
+                          href={getGoogleEarthUrl(
+                            selectedPhoto()!.photograph_lat,
+                            selectedPhoto()!.photograph_lon,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          onClick={() => setShowMapLinks(false)}
+                        >
+                          <span>Google Earth</span>
+                        </a>
+                        <a
+                          href={getOpenStreetMapUrl(
+                            selectedPhoto()!.photograph_lat,
+                            selectedPhoto()!.photograph_lon,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          onClick={() => setShowMapLinks(false)}
+                        >
+                          <span>OpenStreetMap</span>
+                        </a>
+                      </div>
+                    </Show>
+                  </div>
+                </div>
+                <div class="mt-2 h-[200px] rounded overflow-hidden relative">
                   <DetailsMap
                     lat={selectedPhoto()!.photograph_lat}
                     lon={selectedPhoto()!.photograph_lon}

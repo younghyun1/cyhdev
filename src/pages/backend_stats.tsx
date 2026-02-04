@@ -14,12 +14,19 @@ export default function BackendStats() {
   });
 
   return (
-    <div class="w-full min-h-full p-4 sm:p-8 flex flex-col xl:flex-row items-center xl:items-start justify-center gap-8">
+    <div class="w-full min-h-full p-4 sm:p-8 flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8">
       <HostStatsDashboard />
 
       <Show when={fastfetch()}>
-        <div class="w-full max-w-7xl xl:w-auto bg-black text-white p-6 rounded-xl shadow-2xl font-mono text-xs sm:text-sm overflow-x-auto border border-gray-800">
-          <pre innerHTML={fastfetch()} />
+        <div
+          class="w-full max-w-7xl xl:w-auto p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
+          style={{
+            background: "linear-gradient(135deg, #1f2937 0%, #111827 100%)",
+            "border-color": "#3b82f6",
+            color: "#e2e8f0",
+          }}
+        >
+          <pre class="m-auto" innerHTML={fastfetch()} />
         </div>
       </Show>
     </div>

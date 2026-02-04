@@ -6,7 +6,7 @@ export default function Home() {
   const [posts] = createResource(() =>
     blogApi.getPosts({ page: 1, posts_per_page: 3 }),
   );
-  const [photos] = createResource(() => photographyApi.getPhotographs(1, 8));
+  const [photos] = createResource(() => photographyApi.getPhotographs(1, 4));
 
   // Helper to extract photo items safely
   const getPhotoItems = () => {
@@ -89,13 +89,13 @@ export default function Home() {
           <div class="mt-8 flex gap-4">
             <A
               href="/blog"
-              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
             >
               Read Blog
             </A>
             <A
               href="/photographs"
-              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+              class="px-6 py-3 bg-transparent border-2 border-zinc-900 dark:border-zinc-200 text-zinc-900 dark:text-zinc-100 font-bold font-mono hover:bg-zinc-900 hover:text-white dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5"
             >
               View My Photography
             </A>
@@ -104,7 +104,7 @@ export default function Home() {
       </header>
 
       {/* Main Content Grid */}
-      <div class="flex-grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Latest Blog Posts - Spans 7 columns */}
         <section class="lg:col-span-7 flex flex-col h-full">
           <div class="flex items-end justify-between mb-6 pb-2 border-b-2 border-dashed border-zinc-300 dark:border-zinc-700">
@@ -119,7 +119,7 @@ export default function Home() {
             </A>
           </div>
 
-          <div class="flex-grow space-y-4">
+          <div class="grow space-y-4">
             <Suspense
               fallback={
                 <div class="space-y-4">
@@ -189,7 +189,7 @@ export default function Home() {
             <Suspense
               fallback={
                 <>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(() => (
+                  {[1, 2, 3, 4].map(() => (
                     <div class="aspect-square bg-zinc-200 dark:bg-zinc-800 animate-pulse border border-zinc-300 dark:border-zinc-700"></div>
                   ))}
                 </>
@@ -215,7 +215,7 @@ export default function Home() {
                           photo.photograph_link
                         }
                         alt={photo.photograph_comments || "Photograph"}
-                        class="w-full h-full object-cover transition-all duration-300 grayscale group-hover:grayscale-0 group-hover:scale-105"
+                        class="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                         loading="lazy"
                       />
                       {/* Crosshair overlay effect */}
