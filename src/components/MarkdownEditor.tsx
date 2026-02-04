@@ -1,63 +1,58 @@
 import { onCleanup, onMount, createEffect } from "solid-js";
 import type { JSX } from "solid-js";
-import EasyMDE from "easymde";
-import "easymde/dist/easymde.min.css";
-import { theme } from "../state/theme"; // Import the theme signal
+import Editor from "@toast-ui/editor";
+import type { EditorOptions } from "@toast-ui/editor";
+import "@toast-ui/editor/dist/toastui-editor.css";
+import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
+import { theme } from "../state/theme";
 
 interface MarkdownEditorProps {
   value: string;
   onChange: (val: string) => void;
-  options?: EasyMDE.Options;
-  textareaClass?: string;
+  options?: Partial<EditorOptions> & { minHeight?: string };
+  class?: string;
 }
 
-  export default function MarkdownEditor(
+export default function MarkdownEditor(
   props: MarkdownEditorProps,
 ): JSX.Element {
-  let textareaRef: HTMLTextAreaElement | undefined;
-  let mde: EasyMDE | undefined;
+  let containerRef: HTMLDivElement | undefined;
+  let editor: Editor | undefined;
 
   onMount(() => {
-    mde = new EasyMDE({
-      element: textareaRef!,
+    const { minHeight, ...restOptions } = props.options ?? {};
+    editor = new Editor({
+      el: containerRef!,
+      height: restOptions.height ?? minHeight ?? "100%",
+      initialEditType: "markdown",
+      previewStyle: "vertical",
+      usageStatistics: false,
       initialValue: props.value ?? "",
-      ...props.options,
-      spellChecker: false,
-      status: false,
-      // autoDownloadFontAwesome is true by default, so we can remove the line.
+      ...restOptions,
     });
-    // Sync from editor to parent
-    mde.codemirror.on("change", () => {
-      props.onChange(mde!.value());
+    editor.on("change", () => {
+      props.onChange(editor!.getMarkdown());
     });
   });
 
   onCleanup(() => {
-    if (mde) mde.toTextArea();
-    mde = undefined;
+    editor?.destroy();
+    editor = undefined;
   });
 
-  // NEW: Add an effect to apply dark theme styles
   createEffect(() => {
-    const editorEl = textareaRef?.nextElementSibling;
-    if (editorEl) {
-      if (theme() === "dark") {
-        editorEl.classList.add("easymde-dark");
-      } else {
-        editorEl.classList.remove("easymde-dark");
-      }
+    if (containerRef) {
+      containerRef.classList.toggle("toastui-editor-dark", theme() === "dark");
     }
   });
 
-  return (
-    <textarea
-      ref={textareaRef}
-      class={
-        props.textareaClass ??
-        "w-full min-h-[180px] border border-gray-300 dark:border-gray-700 rounded"
-      }
-      value={props.value}
-      autocomplete="off"
-    />
-  );
+  createEffect(() => {
+    if (!editor) return;
+    const next = props.value ?? "";
+    if (next !== editor.getMarkdown()) {
+      editor.setMarkdown(next, false);
+    }
+  });
+
+  return <div ref={containerRef} class={props.class ?? "w-full h-full"} />;
 }

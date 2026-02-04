@@ -3,6 +3,24 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
+import TurndownService from "turndown";
+import { gfm } from "turndown-plugin-gfm";
+
+const htmlTagPattern = /<\/?[a-z][\s\S]*>/i;
+const turndownService = new TurndownService({
+  codeBlockStyle: "fenced",
+});
+turndownService.use(gfm);
+
+const normalizeMarkdown = (content: string) => {
+  if (!content) return "";
+  if (!htmlTagPattern.test(content)) return content;
+  try {
+    return turndownService.turndown(content);
+  } catch {
+    return content;
+  }
+};
 
 export default function EditPostPage() {
   const params = useParams();
@@ -28,7 +46,15 @@ export default function EditPostPage() {
       if (res.success && res.data) {
         const post = res.data.post;
         setTitle(post.post_title);
-        setBody(post.post_content);
+        const markdownFromMetadata = post.post_metadata?.markdown_content;
+        if (
+          typeof markdownFromMetadata === "string" &&
+          markdownFromMetadata.trim().length > 0
+        ) {
+          setBody(markdownFromMetadata);
+        } else {
+          setBody(normalizeMarkdown(post.post_content));
+        }
         // Note: Tags might not be returned by readPost depending on backend implementation
         // If they are available in the future, we would set them here.
         // setTags(post.tags?.join(", ") ?? "");
