@@ -76,17 +76,15 @@ export default function NewPostPage() {
                 This will be saved as a draft and only visible to superusers.
               </div>
             )}
-            <div class="w-full h-112 min-w-0 relative">
+            <div class="w-full min-w-0">
               <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                 Content (Markdown)
               </label>
-              <div class="h-full overflow-hidden">
-                <MarkdownEditor
-                  value={body()}
-                  onChange={setBody}
-                  options={{ minHeight: "100%" }}
-                />
-              </div>
+              <MarkdownEditor
+                value={body()}
+                onChange={setBody}
+                options={{ height: "28rem" }}
+              />
             </div>
             {error() && <div class={pageStyles.alertError}>{error()}</div>}
             <div class="flex gap-4 relative z-10">
