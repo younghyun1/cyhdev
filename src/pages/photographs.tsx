@@ -8,6 +8,7 @@ import {
   createMemo,
 } from "solid-js";
 import { photographyApi } from "../services/all_api";
+import { isSuperuser } from "../state/auth";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -583,7 +584,7 @@ export default function Photographs() {
           <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Photographs
           </h1>
-          <Show when={user()?.user_info?.user_id}>
+          <Show when={isSuperuser()}>
             <button
               class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
               onClick={() => setShowUpload(true)}
@@ -593,7 +594,7 @@ export default function Photographs() {
           </Show>
 
           <div class="flex gap-2 ml-4">
-            <Show when={user()?.user_info?.user_id}>
+            <Show when={isSuperuser()}>
               <Show
                 when={isSelectionMode()}
                 fallback={

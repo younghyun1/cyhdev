@@ -2,6 +2,7 @@ import { createSignal, createEffect, Show } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import { pageStyles } from "../../styles/pageStyles";
 
 export default function EditPostPage() {
   const params = useParams();
@@ -74,62 +75,64 @@ export default function EditPostPage() {
   };
 
   return (
-    <main class="w-full max-w-5xl mx-auto py-8 px-4 flex flex-row gap-8">
-      <div class="flex-1">
-        <h2 class="text-2xl font-bold mb-4">Edit Post</h2>
+    <main class={pageStyles.page}>
+      <div class={`${pageStyles.pageInner} flex flex-row gap-8`}>
+        <div class="flex-1">
+          <h2 class={`${pageStyles.titleSm} mb-4`}>Edit Post</h2>
 
-        <Show when={isLoading()}>
-          <div class="text-gray-500">Loading post...</div>
-        </Show>
+          <Show when={isLoading()}>
+            <div class={pageStyles.muted}>Loading post...</div>
+          </Show>
 
-        <Show when={!isLoading()}>
-          <form onSubmit={handleSubmit} class="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="Title"
-              value={title()}
-              onInput={(e) => setTitle(e.currentTarget.value)}
-              required
-              class="px-3 py-2 rounded border bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-            />
-            <input
-              type="text"
-              placeholder="Tags (comma separated)"
-              value={tags()}
-              onInput={(e) => setTags(e.currentTarget.value)}
-              class="px-3 py-2 rounded border bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-            />
-            <div class="w-full h-[28rem] min-w-0">
-              <label class="font-medium text-gray-700 dark:text-gray-200 mb-2 block">
-                Content (Markdown)
-              </label>
-              <div class="h-full overflow-hidden">
-                <MarkdownEditor
-                  value={body()}
-                  onChange={setBody}
-                  options={{ minHeight: "100%" }}
-                />
+          <Show when={!isLoading()}>
+            <form onSubmit={handleSubmit} class="flex flex-col gap-4">
+              <input
+                type="text"
+                placeholder="Title"
+                value={title()}
+                onInput={(e) => setTitle(e.currentTarget.value)}
+                required
+                class={pageStyles.input}
+              />
+              <input
+                type="text"
+                placeholder="Tags (comma separated)"
+                value={tags()}
+                onInput={(e) => setTags(e.currentTarget.value)}
+                class={pageStyles.input}
+              />
+              <div class="w-full h-[28rem] min-w-0">
+                <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
+                  Content (Markdown)
+                </label>
+                <div class="h-full overflow-hidden">
+                  <MarkdownEditor
+                    value={body()}
+                    onChange={setBody}
+                    options={{ minHeight: "100%" }}
+                  />
+                </div>
               </div>
-            </div>
-            {error() && <div class="text-red-600">{error()}</div>}
-            <div class="flex gap-4">
-              <button
-                type="submit"
-                disabled={isSubmitting()}
-                class="bg-blue-600 text-white px-6 py-2 rounded font-semibold disabled:opacity-70"
-              >
-                {isSubmitting() ? "Updating..." : "Update"}
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/blog/${params.post_id}`)}
-                class="px-6 py-2 rounded font-semibold border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </Show>
+              {error() && <div class={pageStyles.alertError}>{error()}</div>}
+              <div class="flex gap-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting()}
+                  class={pageStyles.buttonPrimary}
+                >
+                  {isSubmitting() ? "Updating..." : "Update"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/blog/${params.post_id}`)}
+                  class={pageStyles.buttonSecondary}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Show>
+        </div>
       </div>
     </main>
   );

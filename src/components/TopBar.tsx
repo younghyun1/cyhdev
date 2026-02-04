@@ -2,6 +2,7 @@ import { Show, createSignal, For } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
   isAuthenticated,
+  setSuperuser,
   user,
   setAuthenticated,
   setUser,
@@ -33,6 +34,7 @@ const handleLogout = async () => {
   }
   setAuthenticated(false);
   setUser(null);
+  setSuperuser(false);
   setMenuOpen(false);
 };
 

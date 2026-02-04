@@ -203,6 +203,7 @@ import type {
 
 import type {
   EmailValidateResponse,
+  IsSuperuserResponse,
   LoginResponse,
   LogoutResponse,
   MeResponse,
@@ -350,6 +351,8 @@ export const authApi = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
+  isSuperuser: async () =>
+    await get<ApiResponse<IsSuperuserResponse>>("/api/auth/is-superuser"),
   logout: async () =>
     await post<ApiResponse<LogoutResponse>>("/api/auth/logout"),
   uploadProfilePicture: async (body: FormData) =>

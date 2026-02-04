@@ -39,6 +39,10 @@ export interface MeResponse {
   axum_version: string;
 }
 
+export interface IsSuperuserResponse {
+  is_superuser: boolean;
+}
+
 export interface ResetPasswordRequestResponse {
   user_email: string;
   verify_by: string; // ISO8601 date string

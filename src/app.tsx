@@ -9,7 +9,7 @@ import { theme, applyTheme } from "./state/theme"; // <-- import theme for dynam
 
 import { authApi } from "./services/all_api";
 
-import { setAuthenticated, setUser } from "./state/auth";
+import { setAuthenticated, setSuperuser, setUser } from "./state/auth";
 import { setServerBuildInfo } from "./state/server_info";
 
 const App: Component = (props: { children: Element }) => {
@@ -19,23 +19,37 @@ const App: Component = (props: { children: Element }) => {
     try {
       const resp = await authApi.me();
       if (resp?.success && resp.data) {
-        setAuthenticated(true);
-        setUser(resp.data);
+        const hasUser = !!resp.data.user_info?.user_id;
+        setAuthenticated(hasUser);
+        setUser(hasUser ? resp.data : null);
 
         // Save backend build info from response
         setServerBuildInfo({
           built_time: resp.data.build_time,
           name: resp.data.axum_version,
         });
+
+        if (hasUser) {
+          try {
+            const superuserResp = await authApi.isSuperuser();
+            setSuperuser(!!superuserResp.data?.is_superuser);
+          } catch {
+            setSuperuser(false);
+          }
+        } else {
+          setSuperuser(false);
+        }
       } else {
         setAuthenticated(false);
         setUser(null);
         setServerBuildInfo({});
+        setSuperuser(false);
       }
     } catch (e) {
       setAuthenticated(false);
       setUser(null);
       setServerBuildInfo({});
+      setSuperuser(false);
     }
   });
   createEffect(() => {

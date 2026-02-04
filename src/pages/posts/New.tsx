@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import { pageStyles } from "../../styles/pageStyles";
 export default function NewPostPage() {
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal("");
@@ -40,48 +41,50 @@ export default function NewPostPage() {
   };
 
   return (
-    <main class="w-full max-w-5xl mx-auto py-8 px-4 flex flex-row gap-8">
-      <div class="flex-1">
-        <h2 class="text-2xl font-bold mb-4">New Post</h2>
-        <form onSubmit={handleSubmit} class="flex flex-col gap-4">
-          <input
-            type="text"
-            placeholder="Title"
-            value={title()}
-            onInput={(e) => setTitle(e.currentTarget.value)}
-            required
-            class="px-3 py-2 rounded border bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-          />
-          <input
-            type="text"
-            placeholder="Tags (comma separated)"
-            value={tags()}
-            onInput={(e) => setTags(e.currentTarget.value)}
-            class="px-3 py-2 rounded border bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-          />
-          <div class="w-full h-[28rem] min-w-0">
-            <label class="font-medium text-gray-700 dark:text-gray-200 mb-2 block">
-              Content (Markdown)
-            </label>
-            <div class="h-full overflow-hidden">
-              <MarkdownEditor
-                value={body()}
-                onChange={setBody}
-                options={{ minHeight: "100%" }}
-              />
+    <main class={pageStyles.page}>
+      <div class={`${pageStyles.pageInner} flex flex-row gap-8`}>
+        <div class="flex-1">
+          <h2 class={`${pageStyles.titleSm} mb-4`}>New Post</h2>
+          <form onSubmit={handleSubmit} class="flex flex-col gap-4">
+            <input
+              type="text"
+              placeholder="Title"
+              value={title()}
+              onInput={(e) => setTitle(e.currentTarget.value)}
+              required
+              class={pageStyles.input}
+            />
+            <input
+              type="text"
+              placeholder="Tags (comma separated)"
+              value={tags()}
+              onInput={(e) => setTags(e.currentTarget.value)}
+              class={pageStyles.input}
+            />
+            <div class="w-full h-[28rem] min-w-0">
+              <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
+                Content (Markdown)
+              </label>
+              <div class="h-full overflow-hidden">
+                <MarkdownEditor
+                  value={body()}
+                  onChange={setBody}
+                  options={{ minHeight: "100%" }}
+                />
+              </div>
             </div>
-          </div>
-          {error() && <div class="text-red-600">{error()}</div>}
-          <button
-            type="submit"
-            disabled={isSubmitting()}
-            class="bg-blue-600 text-white px-6 py-2 rounded font-semibold disabled:opacity-70"
-          >
-            {isSubmitting() ? "Publishing..." : "Publish"}
-          </button>
-        </form>
+            {error() && <div class={pageStyles.alertError}>{error()}</div>}
+            <button
+              type="submit"
+              disabled={isSubmitting()}
+              class={pageStyles.buttonPrimary}
+            >
+              {isSubmitting() ? "Publishing..." : "Publish"}
+            </button>
+          </form>
+        </div>
+        {/* Optionally, place a sidebar here if you want Reddit-style right column */}
       </div>
-      {/* Optionally, place a sidebar here if you want Reddit-style right column */}
     </main>
   );
 }

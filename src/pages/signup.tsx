@@ -1,6 +1,13 @@
 import { createSignal, createEffect, onMount, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi, dropdownApi } from "../services/all_api";
+import type {
+  IsoCountry,
+  IsoCountrySubdivision,
+  IsoLanguage,
+} from "../dtos/responses/dropdown";
+import type { SignupResponse } from "../dtos/responses/auth";
+import { pageStyles } from "../styles/pageStyles";
 
 function SignupPage() {
   // ––––– form state (all dropdowns as strings!)
@@ -15,15 +22,14 @@ function SignupPage() {
   // ––––– status flags
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [success, setSuccess] = createSignal<null | {
-    user_email: string;
-    verify_by: string;
-  }>(null);
+  const [success, setSuccess] = createSignal<SignupResponse | null>(null);
 
   // ––––– dropdown data
-  const [countries, setCountries] = createSignal<any[]>([]);
-  const [languages, setLanguages] = createSignal<any[]>([]);
-  const [subdivisions, setSubdivisions] = createSignal<any[]>([]);
+  const [countries, setCountries] = createSignal<IsoCountry[]>([]);
+  const [languages, setLanguages] = createSignal<IsoLanguage[]>([]);
+  const [subdivisions, setSubdivisions] = createSignal<IsoCountrySubdivision[]>(
+    [],
+  );
 
   const navigate = useNavigate();
 
@@ -39,9 +45,7 @@ function SignupPage() {
     dropdownApi
       .countryList()
       .then((res) => {
-        const arr = Array.isArray(res.data?.countries)
-          ? res.data.countries
-          : [];
+        const arr = Array.isArray(res.data) ? res.data : [];
         console.log("[countryList] got", arr.length);
         setCountries(arr);
       })
@@ -125,9 +129,9 @@ function SignupPage() {
       } else {
         setError("Signup failed.");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[signup] exception", err);
-      setError(err.message || "Signup failed.");
+      setError(err instanceof Error ? err.message : "Signup failed.");
     } finally {
       setLoading(false);
     }
@@ -155,28 +159,24 @@ function SignupPage() {
     return primary ? [primary, ...rest] : rest;
   };
 
-  const fieldClasses =
-    "w-full mb-4 px-3 py-3 border rounded " +
-    "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 " +
-    "border-gray-300 dark:border-gray-700 " +
-    "focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all";
+  const fieldClasses = `${pageStyles.input} mb-4`;
 
   return (
-    <div class="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <div class="w-[350px] p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-        <h2 class="text-2xl font-semibold mb-6 text-gray-900 dark:text-gray-100">
-          Sign Up
-        </h2>
+    <div
+      class={`${pageStyles.page} flex items-center justify-center px-6 py-10`}
+    >
+      <div class={`${pageStyles.card} w-full max-w-md p-8`}>
+        <h2 class={`${pageStyles.titleSm} mb-6`}>Sign Up</h2>
 
         <Show
           when={!success()}
           fallback={
             <div class="text-center">
-              <p class="mb-4 text-green-700 dark:text-green-300">
+              <p class={`${pageStyles.alertSuccess} mb-4`}>
                 Signup successful! Check your email to verify your account.
               </p>
               <button
-                class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                class={`${pageStyles.buttonPrimary} w-full py-2`}
                 onClick={() => {
                   console.log("[action] go to /login");
                   navigate("/login");
@@ -233,7 +233,7 @@ function SignupPage() {
             </Show>
 
             <select
-              class={fieldClasses}
+              class={pageStyles.select + " mb-4"}
               value={userCountry()}
               onInput={(e) => {
                 console.log("[select] userCountry →", e.currentTarget.value);
@@ -245,13 +245,13 @@ function SignupPage() {
               {countries().map((c) => (
                 <option value={c.country_code}>
                   {c.country_flag ? c.country_flag + " " : ""}
-                  {c.country_eng_name ?? c.country_name}
+                  {c.country_eng_name}
                 </option>
               ))}
             </select>
 
             <select
-              class={fieldClasses}
+              class={pageStyles.select + " mb-4"}
               value={userLanguage()}
               onInput={(e) => {
                 console.log(
@@ -269,7 +269,7 @@ function SignupPage() {
             </select>
 
             <select
-              class={fieldClasses + " mb-6"}
+              class={`${pageStyles.select} mb-6`}
               value={userSubdivision()}
               onInput={(e) => {
                 console.log(
@@ -287,7 +287,7 @@ function SignupPage() {
             </select>
 
             <Show when={error()}>
-              <div class="mb-4 text-center text-red-600 dark:text-red-400">
+              <div class={`${pageStyles.alertError} mb-4 text-center`}>
                 {error()}
               </div>
             </Show>
@@ -295,14 +295,14 @@ function SignupPage() {
             <button
               type="submit"
               disabled={loading() || passwordsMismatch()}
-              class="w-full mb-3 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+              class={`${pageStyles.buttonPrimary} w-full mb-3 py-3`}
             >
               {loading() ? "Signing Up…" : "Sign Up"}
             </button>
 
             <button
               type="button"
-              class="w-full py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-blue-600 dark:text-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              class={`${pageStyles.buttonSecondary} w-full py-3`}
               onClick={() => {
                 console.log("[action] back to /login");
                 navigate("/login");
