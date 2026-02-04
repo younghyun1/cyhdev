@@ -59,7 +59,7 @@ const App: Component = (props: { children: Element }) => {
   return (
     <div
       id="app-root"
-      class="transition-colors duration-90 min-h-screen flex flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 overflow-x-hidden"
+      class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-slate-100 overflow-x-hidden"
     >
       <TopBar />
 

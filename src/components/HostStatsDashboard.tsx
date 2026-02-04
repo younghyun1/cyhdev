@@ -111,7 +111,7 @@ export default function HostStatsDashboard(props: {
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
               : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-            "border-color": isDark() ? "#3b82f6" : "#2563eb",
+            "border-color": isDark() ? "#f59e0b" : "#b45309",
           }}
         >
           <div
@@ -209,7 +209,7 @@ export default function HostStatsDashboard(props: {
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
               : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-            "border-color": isDark() ? "#3b82f6" : "#2563eb",
+            "border-color": isDark() ? "#f59e0b" : "#b45309",
           }}
         >
           <div

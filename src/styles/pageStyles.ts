@@ -1,5 +1,5 @@
 export const pageStyles = {
-  page: "min-h-screen w-full bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100/70 text-slate-900 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/40 dark:text-slate-100 transition-colors",
+  page: "min-h-screen w-full bg-transparent text-slate-900 dark:text-slate-100 transition-colors",
   pageInner: "mx-auto w-full max-w-6xl px-6 py-10",
   pageInnerNarrow: "mx-auto w-full max-w-xl px-6 py-10",
   titleRow: "flex items-center justify-between gap-4",
