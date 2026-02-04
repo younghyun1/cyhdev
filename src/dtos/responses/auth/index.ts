@@ -37,6 +37,7 @@ export interface MeResponse {
   user_profile_picture: UserProfilePicture | null;
   build_time: string;
   axum_version: string;
+  rust_version: string;
 }
 
 export interface IsSuperuserResponse {

@@ -10,5 +10,12 @@ export interface HealthStateResponse {
   db_latency: string;
 }
 
+/** Response from GET /api/healthcheck/server */
+export interface ServerHealthcheckResponse {
+  build_time: string;
+  axum_version: string;
+  rust_version: string;
+}
+
 /** Response from GET /api/healthcheck/fastfetch - returns HTML string */
 export type FastfetchResponse = string;

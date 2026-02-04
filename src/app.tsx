@@ -8,14 +8,26 @@ import BottomBar from "./components/BottomBar";
 import { theme, applyTheme } from "./state/theme"; // <-- import theme for dynamic color
 
 import { authApi } from "./services/all_api";
+import { fetchServerBuildInfo } from "./services/api";
 
 import { setAuthenticated, setSuperuser, setUser } from "./state/auth";
-import { setServerBuildInfo } from "./state/server_info";
+import { updateServerBuildInfo } from "./state/server_info";
 
 const App: Component = (props: { children: Element }) => {
   const location = useLocation();
 
   onMount(async () => {
+    fetchServerBuildInfo()
+      .then((info) => {
+        updateServerBuildInfo({
+          built_time: info.build_time,
+          name: info.axum_version,
+          rust_version: info.rust_version,
+        });
+      })
+      .catch(() => {
+        // Non-fatal; header-based updates can still populate build info.
+      });
     try {
       const resp = await authApi.me();
       if (resp?.success && resp.data) {
@@ -23,10 +35,11 @@ const App: Component = (props: { children: Element }) => {
         setAuthenticated(hasUser);
         setUser(hasUser ? resp.data : null);
 
-        // Save backend build info from response
-        setServerBuildInfo({
+        // Save backend build info from response without clobbering header-based info
+        updateServerBuildInfo({
           built_time: resp.data.build_time,
           name: resp.data.axum_version,
+          rust_version: resp.data.rust_version,
         });
 
         if (hasUser) {
@@ -42,13 +55,11 @@ const App: Component = (props: { children: Element }) => {
       } else {
         setAuthenticated(false);
         setUser(null);
-        setServerBuildInfo({});
         setSuperuser(false);
       }
     } catch (e) {
       setAuthenticated(false);
       setUser(null);
-      setServerBuildInfo({});
       setSuperuser(false);
     }
   });

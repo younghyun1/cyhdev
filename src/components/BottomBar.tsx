@@ -93,7 +93,7 @@ const BottomBar: Component = () => {
       {/* Mobile-only details modal */}
       <Show when={detailsOpen() && isMobile()}>
         <div
-          class="fixed inset-0 z-[60] flex items-end justify-center sm:hidden"
+          class="fixed inset-0 z-60 flex items-end justify-center sm:hidden"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeDetails();
           }}
