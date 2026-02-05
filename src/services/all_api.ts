@@ -481,6 +481,57 @@ export const visitorBoardApi = {
     await get<ApiResponse<VisitorBoardEntry[]>>("/api/visitor-board"),
 };
 
+// WASM Module types
+export interface WasmModuleItem {
+  wasm_module_id: string;
+  user_id: string;
+  wasm_module_title: string;
+  wasm_module_description: string;
+  wasm_module_link: string;
+  wasm_module_thumbnail_link: string;
+  wasm_module_created_at: string;
+  wasm_module_updated_at: string;
+}
+
+export interface GetWasmModulesResponse {
+  items: WasmModuleItem[];
+}
+
+export interface UpdateWasmModuleRequest {
+  wasm_module_title?: string;
+  wasm_module_description?: string;
+}
+
+export const wasmModuleApi = {
+  getWasmModules: async () =>
+    await get<ApiResponse<GetWasmModulesResponse>>("/api/wasm-modules"),
+
+  uploadWasmModule: async (
+    formData: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    await postFormData<ApiResponse<WasmModuleItem>>(
+      "/api/wasm-modules",
+      formData,
+      { onUploadProgress: opts?.onUploadProgress },
+    ),
+
+  updateWasmModule: async (
+    wasm_module_id: string,
+    body: UpdateWasmModuleRequest,
+  ) =>
+    await patch<ApiResponse<WasmModuleItem>>(
+      "/api/wasm-modules/{wasm_module_id}",
+      { body, params: { wasm_module_id } },
+    ),
+
+  deleteWasmModule: async (wasm_module_id: string) =>
+    await del<ApiResponse<{ deleted_wasm_module_id: string }>>(
+      "/api/wasm-modules/{wasm_module_id}",
+      { params: { wasm_module_id } },
+    ),
+};
+
 export { get, post, patch, del, interpolate };
 
 // Re-export commonly used types for convenience

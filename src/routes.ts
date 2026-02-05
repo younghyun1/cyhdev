@@ -54,6 +54,10 @@ export const routes: RouteDefinition[] = [
     component: lazy(() => import("./pages/photographs")),
   },
   {
+    path: "/projects",
+    component: lazy(() => import("./pages/projects")),
+  },
+  {
     path: "/geo-ip-db",
     component: lazy(() => import("./pages/geo_ip_info")),
   },

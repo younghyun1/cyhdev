@@ -45,7 +45,6 @@ const NAV_LINKS = [
   { href: "/about-blog", label: "About Blog" },
   { href: "/blog", label: "Blog" },
   { href: "/photographs", label: "Photographs" },
-  { href: "/forum", label: "Forum" },
   { href: "/projects", label: "Projects and Demos" },
   { href: "/visitor-board", label: "Visitor Board" },
   { href: "/geo-ip-db", label: "Geo-IP Database" },
