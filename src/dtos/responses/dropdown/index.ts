@@ -34,7 +34,7 @@ export type GetLanguagesResponse = IsoLanguage[];
 export type GetLanguageResponse = IsoLanguage;
 
 /** Response from GET /api/dropdown/country */
-export type GetCountriesResponse = IsoCountry[];
+export type GetCountriesResponse = { countries: IsoCountry[] };
 
 /** Response from GET /api/dropdown/country/{country_id} */
 export type GetCountryResponse = IsoCountry;

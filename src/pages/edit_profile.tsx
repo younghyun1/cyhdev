@@ -8,6 +8,11 @@ import {
 import { uploadWithProgress } from "../services/upload_with_progress";
 import { user, setUser } from "../state/auth";
 import { authApi, dropdownApi } from "../services/all_api";
+import type {
+  IsoCountry,
+  IsoCountrySubdivision,
+  IsoLanguage,
+} from "../dtos/responses/dropdown";
 import { pageStyles } from "../styles/pageStyles";
 
 const MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE = 10 * 1024 * 1024; // 10MB
@@ -66,39 +71,27 @@ function EditProfilePage() {
 
   // Build lookup maps
   const countryMap = createMemo(() => {
-    const res: any = countries();
-    const list = Array.isArray(res?.data?.countries)
-      ? res.data.countries
-      : Array.isArray(res?.data)
-        ? res.data
-        : (res?.countries ?? []);
-    const m: Record<number, any> = {};
+    const res = countries();
+    const list = Array.isArray(res?.data?.countries) ? res.data.countries : [];
+    const m: Record<number, IsoCountry> = {};
     for (const c of list) {
       m[Number(c.country_code)] = c;
     }
     return m;
   });
   const languageMap = createMemo(() => {
-    const res: any = languages();
-    const list = Array.isArray(res?.data)
-      ? res.data
-      : Array.isArray(res)
-        ? res
-        : [];
-    const m: Record<number, any> = {};
+    const res = languages();
+    const list = Array.isArray(res?.data) ? res.data : [];
+    const m: Record<number, IsoLanguage> = {};
     for (const l of list) {
       m[Number(l.language_code)] = l;
     }
     return m;
   });
   const subdivisionMap = createMemo(() => {
-    const res: any = subdivisions();
-    const list = Array.isArray(res?.data)
-      ? res.data
-      : Array.isArray(res)
-        ? res
-        : [];
-    const m: Record<number, any> = {};
+    const res = subdivisions();
+    const list = Array.isArray(res?.data) ? res.data : [];
+    const m: Record<number, IsoCountrySubdivision> = {};
     for (const s of list) {
       m[Number(s.subdivision_id)] = s;
     }
@@ -111,14 +104,14 @@ function EditProfilePage() {
     const c = countryMap()[Number(code)];
     if (!c) return String(code);
     const flag = c.country_flag ? c.country_flag + " " : "";
-    const name = c.country_eng_name ?? c.country_name ?? "";
+    const name = c.country_eng_name ?? "";
     return `${flag}${name || code}`.trim();
   };
   const formatLanguage = (code: any) => {
     if (code === null || code === undefined) return "";
     const l = languageMap()[Number(code)];
     if (!l) return String(code);
-    return l.language_eng_name ?? l.language_name ?? String(code);
+    return l.language_eng_name ?? String(code);
   };
   const formatSubdivision = (id: any) => {
     if (id === null || id === undefined) return "No Subdivision / N/A";

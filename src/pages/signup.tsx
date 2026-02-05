@@ -45,7 +45,9 @@ function SignupPage() {
     dropdownApi
       .countryList()
       .then((res) => {
-        const arr = Array.isArray(res.data) ? res.data : [];
+        const arr = Array.isArray(res.data?.countries)
+          ? res.data.countries
+          : [];
         console.log("[countryList] got", arr.length);
         setCountries(arr);
       })
