@@ -12,8 +12,24 @@ import { blogApi } from "../../services/all_api";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
-import hljs from "highlight.js";
+import hljs from "highlight.js/lib/core";
+import rust from "highlight.js/lib/languages/rust";
+import sql from "highlight.js/lib/languages/sql";
+import typescript from "highlight.js/lib/languages/typescript";
+import toml from "highlight.js/lib/languages/ini";
+import html from "highlight.js/lib/languages/xml";
+import css from "highlight.js/lib/languages/css";
+import dockerfile from "highlight.js/lib/languages/dockerfile";
 import "highlight.js/styles/github-dark.css";
+
+hljs.registerLanguage("rust", rust);
+hljs.registerLanguage("sql", sql);
+hljs.registerLanguage("typescript", typescript);
+hljs.registerLanguage("ts", typescript);
+hljs.registerLanguage("toml", toml);
+hljs.registerLanguage("html", html);
+hljs.registerLanguage("css", css);
+hljs.registerLanguage("dockerfile", dockerfile);
 
 // VoteState Mapping based on Rust Enum:
 // 0: Upvoted
