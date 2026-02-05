@@ -448,10 +448,16 @@ export const blogApi = {
   searchPosts: async (
     query: string,
     searchType: "title" | "tag" = "title",
+    page = 1,
     limit = 20,
+    tags?: string[],
   ) =>
     await get<ApiResponse<SearchPostsResponse>>(
-      `/api/blog/search?q=${encodeURIComponent(query)}&search_type=${searchType}&limit=${limit}`,
+      `/api/blog/search?q=${encodeURIComponent(query)}&search_type=${searchType}&page=${page}&limit=${limit}${
+        tags && tags.length > 0
+          ? `&tags=${encodeURIComponent(tags.join(","))}`
+          : ""
+      }`,
     ),
 };
 

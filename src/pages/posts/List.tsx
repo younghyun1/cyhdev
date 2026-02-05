@@ -5,7 +5,6 @@ import {
   For,
   createSignal,
   createEffect,
-  createMemo,
 } from "solid-js";
 import { blogApi } from "../../services/all_api";
 import { isSuperuser, user } from "../../state/auth";
@@ -18,6 +17,18 @@ const getParamString = (param: string | string[] | undefined): string => {
   return param ?? "";
 };
 
+const parseTagsParam = (param: string | string[] | undefined): string[] => {
+  const raw = getParamString(param);
+  return raw
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+};
+
+const normalizeTag = (tag: string): string => tag.trim().toLowerCase();
+
+const PAGE_SIZE = 20;
+
 export default function PostsList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = createSignal(
@@ -27,42 +38,129 @@ export default function PostsList() {
     (getParamString(searchParams.type) as "title" | "tag") || "title",
   );
   const [debouncedQuery, setDebouncedQuery] = createSignal("");
+  const [tagInput, setTagInput] = createSignal("");
+  const [selectedTags, setSelectedTags] = createSignal<string[]>(
+    parseTagsParam(searchParams.tags),
+  );
+  const initialPage = Math.max(
+    1,
+    Number.parseInt(getParamString(searchParams.page) || "1", 10) || 1,
+  );
+  const [page, setPage] = createSignal(initialPage);
+  const [availablePages, setAvailablePages] = createSignal(1);
 
   // Debounce search input
   let debounceTimer: ReturnType<typeof setTimeout>;
   createEffect(() => {
     const query = searchQuery();
+    const type = searchType();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       setDebouncedQuery(query);
       if (query) {
-        setSearchParams({ q: query, type: searchType() });
+        setSearchParams({ q: query, type });
       } else {
         setSearchParams({ q: undefined, type: undefined });
       }
     }, 300);
   });
 
+  createEffect(() => {
+    const tags = selectedTags();
+    if (tags.length > 0) {
+      setSearchParams({ tags: tags.join(",") });
+    } else {
+      setSearchParams({ tags: undefined });
+    }
+  });
+
+  createEffect(() => {
+    const currentPage = page();
+    if (currentPage > 1) {
+      setSearchParams({ page: String(currentPage) });
+    } else {
+      setSearchParams({ page: undefined });
+    }
+  });
+
+  let initializedFilters = false;
+  createEffect(() => {
+    debouncedQuery();
+    searchType();
+    selectedTags();
+    if (initializedFilters) {
+      setPage(1);
+      setSearchParams({ page: undefined });
+    } else {
+      initializedFilters = true;
+    }
+  });
+
+  const addTag = (tag: string) => {
+    const normalized = normalizeTag(tag);
+    if (!normalized) return;
+    setSelectedTags((prev) =>
+      prev.includes(normalized) ? prev : [...prev, normalized],
+    );
+    setTagInput("");
+  };
+
+  const removeTag = (tag: string) => {
+    setSelectedTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const clearTags = () => setSelectedTags([]);
+
   // Fetch posts or search results based on query
   const [posts, { refetch }] = createResource(
-    () => ({ query: debouncedQuery(), type: searchType() }),
-    async ({ query, type }) => {
-      if (query.trim()) {
-        return blogApi.searchPosts(query, type, 50);
+    () => ({
+      query: debouncedQuery(),
+      type: searchType(),
+      tags: selectedTags(),
+      page: page(),
+    }),
+    async ({ query, type, tags, page }) => {
+      const trimmedQuery = query.trim();
+      const activeTags = tags.map(normalizeTag).filter(Boolean);
+
+      if (trimmedQuery || activeTags.length > 0) {
+        return blogApi.searchPosts(
+          trimmedQuery,
+          type,
+          page,
+          PAGE_SIZE,
+          activeTags,
+        );
       }
-      return blogApi.getPosts();
+
+      return blogApi.getPosts({ page, posts_per_page: PAGE_SIZE });
     },
   );
 
   const navigate = useNavigate();
-  const postItems = () => posts()?.data?.posts ?? [];
+  const [displayPosts, setDisplayPosts] = createSignal<any[]>([]);
+  createEffect(() => {
+    const data = posts()?.data;
+    if (data?.posts !== undefined) {
+      setDisplayPosts(data.posts);
+    }
+    if (data && "available_pages" in data) {
+      setAvailablePages(
+        (data as { available_pages?: number }).available_pages ?? 1,
+      );
+    }
+  });
+  createEffect(() => {
+    const totalPages = availablePages();
+    if (totalPages > 0 && page() > totalPages) {
+      setPage(totalPages);
+    }
+  });
+  const postItems = () => displayPosts();
 
   // Search by tag when clicking a tag badge
   const searchByTag = (tag: string) => {
-    setSearchQuery(tag);
-    setSearchType("tag");
-    setDebouncedQuery(tag);
-    setSearchParams({ q: tag, type: "tag" });
+    addTag(tag);
   };
 
   const handleDeletePost = async (e: Event, postId: string) => {
@@ -153,6 +251,58 @@ export default function PostsList() {
           </div>
         </div>
 
+        {/* Tag filters */}
+        <div class="mb-6">
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-wrap gap-2 items-center">
+              <div class="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Add a tag and press Enter..."
+                  value={tagInput()}
+                  onInput={(e) => setTagInput(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag(tagInput());
+                    }
+                  }}
+                  class="w-full px-3 py-2 pr-20 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  onClick={() => addTag(tagInput())}
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                >
+                  Add
+                </button>
+              </div>
+              <Show when={selectedTags().length > 0}>
+                <button
+                  onClick={clearTags}
+                  class="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  Clear tags
+                </button>
+              </Show>
+            </div>
+            <Show when={selectedTags().length > 0}>
+              <div class="flex flex-wrap gap-1.5">
+                <For each={selectedTags()}>
+                  {(tag) => (
+                    <button
+                      onClick={() => removeTag(tag)}
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors cursor-pointer"
+                    >
+                      #{tag}
+                      <span class="text-[0.6rem]">×</span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </Show>
+          </div>
+        </div>
+
         <Show when={debouncedQuery()}>
           <div class="mb-4 text-sm text-slate-500 dark:text-slate-400">
             Showing results for "{debouncedQuery()}" (
@@ -160,9 +310,15 @@ export default function PostsList() {
           </div>
         </Show>
 
-        <Show when={posts.loading}>
+        <Show when={posts.loading && postItems().length === 0}>
           <div class={`${pageStyles.muted} p-4 text-center`}>
             Loading posts...
+          </div>
+        </Show>
+
+        <Show when={posts.loading && postItems().length > 0}>
+          <div class={`${pageStyles.muted} mb-2 text-xs`}>
+            Updating results...
           </div>
         </Show>
 
@@ -268,6 +424,28 @@ export default function PostsList() {
               )}
             </For>
           </ul>
+        </Show>
+
+        <Show when={availablePages() > 1}>
+          <div class="mt-6 flex items-center justify-between">
+            <button
+              class={pageStyles.buttonSecondary}
+              disabled={page() <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
+            <div class="text-sm text-slate-600 dark:text-slate-300">
+              Page {page()} of {availablePages()}
+            </div>
+            <button
+              class={pageStyles.buttonSecondary}
+              disabled={page() >= availablePages()}
+              onClick={() => setPage((p) => Math.min(availablePages(), p + 1))}
+            >
+              Next
+            </button>
+          </div>
         </Show>
       </div>
     </main>

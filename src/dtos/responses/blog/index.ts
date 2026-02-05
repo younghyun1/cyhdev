@@ -31,6 +31,8 @@ export interface SearchPostsResponse {
   posts: PostInfo[];
   query: string;
   search_type: string;
+  available_pages: number;
+  page: number;
 }
 
 export interface UserBadgeInfo {
