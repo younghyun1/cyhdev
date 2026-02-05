@@ -76,7 +76,7 @@ export default function NewPostPage() {
                 This will be saved as a draft and only visible to superusers.
               </div>
             )}
-            <div class="w-full min-w-0">
+            <div class="w-full min-w-0 mb-8 relative z-0">
               <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
                 Content (Markdown)
               </label>

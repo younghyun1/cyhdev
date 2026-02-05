@@ -27,6 +27,7 @@
     "axios": "^1.13.4",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.2.2",
+    "marked": "^12.0.2",
     "solid-chartjs": "^1.3.11",
     "solid-js": "^1.9.11",
     "turndown": "^7.2.1",

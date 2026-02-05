@@ -594,6 +594,16 @@ export default function PostViewPage() {
               const sortedComments = createMemo(() =>
                 sortCommentsTree(buildCommentTree(data().comments || [])),
               );
+              const renderedPostHtml = createMemo(() => {
+                const post = data().post as any;
+                const content = String(post?.post_content ?? "").trim();
+                if (content) return content;
+                const markdown =
+                  typeof post?.post_metadata?.markdown_content === "string"
+                    ? post.post_metadata.markdown_content.trim()
+                    : "";
+                return markdown || "";
+              });
 
               return (
                 <>
@@ -664,7 +674,7 @@ export default function PostViewPage() {
                           </div>
                         </Show>
                       </div>
-                      <div class="flex items-center text-sm text-gray-400 mb-2">
+                      <div class="flex items-center text-sm text-gray-400 mb-2 flex-wrap gap-y-1">
                         <Show
                           when={
                             data().user_badge_info?.user_profile_picture_url
@@ -695,10 +705,18 @@ export default function PostViewPage() {
                             data().post.post_created_at,
                           ).toLocaleString()}
                         </span>
+                        <span class="ml-3 text-gray-500">•</span>
+                        <span>
+                          {(data().post as any).post_view_count ?? 0} views
+                        </span>
+                        <span class="ml-3 text-gray-500">•</span>
+                        <span>
+                          {(data().post as any).post_share_count ?? 0} shares
+                        </span>
                       </div>
                       <div
                         class="prose dark:prose-invert max-w-none mb-3"
-                        innerHTML={data().post.post_content}
+                        innerHTML={renderedPostHtml()}
                       />
                     </div>
                   </div>
