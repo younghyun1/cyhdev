@@ -1,9 +1,19 @@
-import { Show, createSignal, createResource, For, createMemo } from "solid-js";
+import {
+  Show,
+  createSignal,
+  createResource,
+  For,
+  createMemo,
+  createEffect,
+} from "solid-js";
 import { createStore } from "solid-js/store";
 import { useParams, useNavigate } from "@solidjs/router";
-import { blogApi, dropdownApi } from "../../services/all_api";
+import { blogApi } from "../../services/all_api";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
+import { UserBadge } from "../../components/UserBadge";
+import hljs from "highlight.js";
+import "highlight.js/styles/github-dark.css";
 
 // VoteState Mapping based on Rust Enum:
 // 0: Upvoted
@@ -44,31 +54,7 @@ export default function PostViewPage() {
       }
     >;
   }>({ comments: {} });
-  // Load countries (cached by dropdownApi) and build a lookup for flag/name
-  const [countries] = createResource(
-    async () => await dropdownApi.countryList(),
-  );
-  const countryMap = createMemo(() => {
-    const res: any = countries();
-    const list = Array.isArray(res?.data?.countries)
-      ? res.data.countries
-      : Array.isArray(res?.data)
-        ? res.data
-        : (res?.countries ?? []);
-    const m: Record<number, any> = {};
-    for (const c of list) {
-      m[Number(c.country_code)] = c;
-    }
-    return m;
-  });
-  const formatCountry = (code: any) => {
-    if (code === null || code === undefined) return null;
-    const c = countryMap()[Number(code)];
-    if (!c) return null;
-    const flag = c.country_flag ? c.country_flag + " " : "";
-    const name = c.country_eng_name ?? c.country_name ?? "";
-    return `${flag}${name}`;
-  };
+
   // Store for locally added comments (optimistic replies)
   const [localComments, setLocalComments] = createStore<Record<string, any>>(
     {},
@@ -396,21 +382,12 @@ export default function PostViewPage() {
               style={{ "margin-left": `${depth * 16}px` }}
             >
               <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                <Show when={(comment as any).user_profile_picture_url}>
-                  <img
-                    src={(comment as any).user_profile_picture_url}
-                    alt={(comment as any).user_name}
-                    class="w-5 h-5 rounded-full object-cover border border-gray-200 dark:border-gray-700"
-                  />
-                </Show>
-                <span class="font-bold">
-                  {(comment as any).user_name ?? "Guest"}
-                </span>
-                <Show when={formatCountry((comment as any).user_country)}>
-                  <span class="ml-2 text-[0.75rem] text-gray-500 dark:text-gray-400">
-                    ({formatCountry((comment as any).user_country)})
-                  </span>
-                </Show>
+                <UserBadge
+                  userName={comment.user_name ?? "Guest"}
+                  profilePictureUrl={comment.user_profile_picture_url}
+                  countryFlag={comment.user_country_flag}
+                  size="sm"
+                />
                 <span class="ml-3 text-xs">
                   {new Date(comment.comment_created_at).toLocaleString()}
                 </span>
@@ -675,31 +652,18 @@ export default function PostViewPage() {
                         </Show>
                       </div>
                       <div class="flex items-center text-sm text-gray-400 mb-2 flex-wrap gap-y-1">
-                        <Show
-                          when={
+                        <UserBadge
+                          userName={
+                            data().user_badge_info?.user_name ?? "Unknown"
+                          }
+                          profilePictureUrl={
                             data().user_badge_info?.user_profile_picture_url
                           }
-                        >
-                          <img
-                            src={
-                              data().user_badge_info.user_profile_picture_url
-                            }
-                            alt={data().user_badge_info.user_name}
-                            class="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-gray-700 mr-2"
-                          />
-                        </Show>
-                        <span class="text-gray-700 dark:text-gray-300">
-                          {data().user_badge_info?.user_name ?? "Unknown"}
-                        </span>
-                        <Show
-                          when={formatCountry(
-                            (data().post as any).user_country,
-                          )}
-                        >
-                          <span class="ml-2">
-                            ({formatCountry((data().post as any).user_country)})
-                          </span>
-                        </Show>
+                          countryFlag={
+                            data().user_badge_info?.user_country_flag
+                          }
+                          size="md"
+                        />
                         <span class="ml-3">
                           {new Date(
                             data().post.post_created_at,
@@ -717,6 +681,14 @@ export default function PostViewPage() {
                       <div
                         class="prose dark:prose-invert max-w-none mb-3"
                         innerHTML={renderedPostHtml()}
+                        ref={(el) => {
+                          createEffect(() => {
+                            renderedPostHtml();
+                            el.querySelectorAll("pre code").forEach((block) => {
+                              hljs.highlightElement(block as HTMLElement);
+                            });
+                          });
+                        }}
                       />
                     </div>
                   </div>

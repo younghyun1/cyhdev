@@ -16,6 +16,7 @@ export interface CommentResponse {
   vote_state: 0 | 1 | 2;
   user_name: string;
   user_profile_picture_url: string;
+  user_country_flag?: string;
 }
 
 export interface ReadPostResponse {
@@ -28,6 +29,7 @@ export interface ReadPostResponse {
 export interface UserBadgeInfo {
   user_name: string;
   user_profile_picture_url: string;
+  user_country_flag?: string;
 }
 
 export interface SubmitPostResponse {
@@ -54,6 +56,7 @@ export interface VotePostResponse {
 // Blog domain shared types
 export interface PostInfo {
   post_id: string;
+  user_id: string;
   post_title: string;
   post_slug: string;
   post_created_at: string;
@@ -63,6 +66,7 @@ export interface PostInfo {
   vote_state: 0 | 1 | 2;
   user_name: string;
   user_profile_picture_url: string;
+  user_country_flag?: string;
 }
 
 export interface Post {
@@ -98,6 +102,7 @@ export interface SubmitCommentResponse {
   vote_state: 0 | 1 | 2;
   user_name: string;
   user_profile_picture_url: string;
+  user_country_flag?: string;
 }
 
 export interface DeletePostResponse {

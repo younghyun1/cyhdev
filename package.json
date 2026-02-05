@@ -25,6 +25,7 @@
     "@solidjs/router": "^0.15.4",
     "@toast-ui/editor": "^3.2.2",
     "axios": "^1.13.4",
+    "highlight.js": "^11.11.1",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.2.2",
     "marked": "^12.0.2",

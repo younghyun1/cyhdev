@@ -1,8 +1,9 @@
 import { A, useNavigate } from "@solidjs/router";
-import { createResource, Show, For } from "solid-js"; // Import For
+import { createResource, Show, For } from "solid-js";
 import { blogApi } from "../../services/all_api";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
+import { UserBadge } from "../../components/UserBadge";
 
 export default function PostsList() {
   const [posts, { refetch }] = createResource(() => blogApi.getPosts());
@@ -71,24 +72,20 @@ export default function PostsList() {
                   <div class="flex">
                     <div class="flex flex-col items-center justify-center w-16 bg-slate-50 dark:bg-slate-800/60 border-r border-slate-200/80 dark:border-slate-800 rounded-l">
                       <span class="text-sm font-bold text-slate-700 dark:text-slate-200">
-                        {((post as any)?.total_upvotes ?? 0) -
-                          ((post as any)?.total_downvotes ?? 0)}
+                        {((post as any).total_upvotes ?? 0) -
+                          ((post as any).total_downvotes ?? 0)}
                       </span>
                     </div>
 
                     {/* Content Column */}
                     <div class="flex-1 px-4 py-3">
                       <div class="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                        <Show when={(post as any).user_profile_picture_url}>
-                          <img
-                            src={(post as any).user_profile_picture_url}
-                            alt={(post as any).user_name}
-                            class="w-5 h-5 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                          />
-                        </Show>
-                        <span class="font-medium text-slate-900 dark:text-slate-300">
-                          {(post as any).user_name ?? "Unknown"}
-                        </span>
+                        <UserBadge
+                          userName={post.user_name ?? "Unknown"}
+                          profilePictureUrl={post.user_profile_picture_url}
+                          countryFlag={post.user_country_flag}
+                          size="sm"
+                        />
                         <span class="text-slate-400">•</span>
                         <span>
                           {new Date(post.post_created_at).toLocaleDateString()}
@@ -107,7 +104,7 @@ export default function PostsList() {
                         <Show
                           when={
                             user()?.user_info?.user_id &&
-                            (post as any).user_id === user()?.user_info?.user_id
+                            post.user_id === user()?.user_info?.user_id
                           }
                         >
                           <button
