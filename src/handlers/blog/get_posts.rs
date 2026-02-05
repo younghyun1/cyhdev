@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    domain::blog::blog::{PostInfo, PostInfoWithVote, UserBadgeInfo, VoteState},
+    domain::blog::blog::{CachedPostInfo, PostInfoWithVote, UserBadgeInfo, VoteState},
     dto::{
         requests::blog::get_posts_request::GetPostsRequest,
         responses::{blog::get_posts::GetPostsResponse, response_data::http_resp},
@@ -50,7 +50,7 @@ pub async fn get_posts(
         AuthStatus::LoggedOut => false,
     };
 
-    let (post_infos, available_pages): (Vec<PostInfo>, usize) = state
+    let (post_infos, available_pages): (Vec<CachedPostInfo>, usize) = state
         .get_posts_from_cache(request.page, request.posts_per_page, include_unpublished)
         .await;
 
@@ -153,7 +153,7 @@ pub async fn get_posts(
                 .get(&post.user_id)
                 .and_then(|&code| country_map.get_flag_by_code(code));
 
-            PostInfoWithVote::from_info_with_vote(
+            PostInfoWithVote::from_cached_info_with_vote(
                 post,
                 vote_state,
                 UserBadgeInfo {
