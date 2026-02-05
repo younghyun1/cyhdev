@@ -348,6 +348,8 @@ export default function Projects() {
   );
   const [editTitle, setEditTitle] = createSignal("");
   const [editDescription, setEditDescription] = createSignal("");
+  const [editBundle, setEditBundle] = createSignal<File | null>(null);
+  const [editThumbnail, setEditThumbnail] = createSignal<File | null>(null);
   const [savingEdit, setSavingEdit] = createSignal(false);
   const [actionError, setActionError] = createSignal<string | null>(null);
   const [actionSuccess, setActionSuccess] = createSignal<string | null>(null);
@@ -399,6 +401,8 @@ export default function Projects() {
     if (current) {
       setEditTitle(current.wasm_module_title);
       setEditDescription(current.wasm_module_description);
+      setEditBundle(null);
+      setEditThumbnail(null);
     }
   });
 
@@ -483,12 +487,15 @@ export default function Projects() {
     setActionSuccess(null);
 
     try {
-      const response = await wasmModuleApi.updateWasmModule(
+      const formData = new FormData();
+      formData.append("title", editTitle().trim());
+      formData.append("description", editDescription().trim());
+      if (editBundle()) formData.append("bundle_file", editBundle()!);
+      if (editThumbnail()) formData.append("thumbnail", editThumbnail()!);
+
+      const response = await wasmModuleApi.updateWasmModuleAssets(
         current.wasm_module_id,
-        {
-          wasm_module_title: editTitle().trim(),
-          wasm_module_description: editDescription().trim(),
-        },
+        formData,
       );
 
       const updated = response.data;
@@ -860,6 +867,40 @@ export default function Projects() {
                     value={editDescription()}
                     onInput={(e) => setEditDescription(e.currentTarget.value)}
                   />
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="edit-bundle">
+                    Replace bundle (optional)
+                  </label>
+                  <input
+                    id="edit-bundle"
+                    class={pageStyles.input}
+                    type="file"
+                    accept=".html,.htm,.html.gz,.htm.gz,.wasm,.wasm.gz"
+                    onChange={(e) =>
+                      setEditBundle(e.currentTarget.files?.[0] || null)
+                    }
+                  />
+                  <span class="form-help">
+                    Upload a new `.html`/`.html.gz` bundle or `.wasm` file.
+                  </span>
+                </div>
+                <div class="form-field">
+                  <label class="form-label" for="edit-thumbnail">
+                    Replace thumbnail (optional)
+                  </label>
+                  <input
+                    id="edit-thumbnail"
+                    class={pageStyles.input}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      setEditThumbnail(e.currentTarget.files?.[0] || null)
+                    }
+                  />
+                  <span class="form-help">
+                    Recommended: square image for best grid cropping.
+                  </span>
                 </div>
 
                 <div class="flex gap-2 justify-end">

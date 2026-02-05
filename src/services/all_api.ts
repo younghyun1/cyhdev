@@ -525,6 +525,17 @@ export const wasmModuleApi = {
       { body, params: { wasm_module_id } },
     ),
 
+  updateWasmModuleAssets: async (
+    wasm_module_id: string,
+    formData: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    await postFormData<ApiResponse<WasmModuleItem>>(
+      "/api/wasm-modules/{wasm_module_id}/assets",
+      formData,
+      { params: { wasm_module_id }, onUploadProgress: opts?.onUploadProgress },
+    ),
+
   deleteWasmModule: async (wasm_module_id: string) =>
     await del<ApiResponse<{ deleted_wasm_module_id: string }>>(
       "/api/wasm-modules/{wasm_module_id}",
