@@ -7,7 +7,7 @@ import {
   createEffect,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { useParams, useNavigate } from "@solidjs/router";
+import { useParams, useNavigate, A } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
@@ -694,6 +694,23 @@ export default function PostViewPage() {
                           {(data().post as any).post_share_count ?? 0} shares
                         </span>
                       </div>
+                      {/* Tag badges */}
+                      <Show
+                        when={data().post_tags && data().post_tags.length > 0}
+                      >
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                          <For each={data().post_tags}>
+                            {(tag) => (
+                              <A
+                                href={`/blog?q=${encodeURIComponent(tag)}&type=tag`}
+                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
+                              >
+                                #{tag}
+                              </A>
+                            )}
+                          </For>
+                        </div>
+                      </Show>
                       <div
                         class="prose dark:prose-invert max-w-none mb-3"
                         innerHTML={renderedPostHtml()}

@@ -21,9 +21,16 @@ export interface CommentResponse {
 
 export interface ReadPostResponse {
   post: Post;
+  post_tags: string[];
   comments: CommentResponse[];
   vote_state: 0 | 1 | 2;
   user_badge_info: UserBadgeInfo;
+}
+
+export interface SearchPostsResponse {
+  posts: PostInfo[];
+  query: string;
+  search_type: string;
 }
 
 export interface UserBadgeInfo {

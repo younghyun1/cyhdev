@@ -223,6 +223,7 @@ import type {
 import type {
   GetPostsResponse,
   ReadPostResponse,
+  SearchPostsResponse,
   SubmitCommentResponse,
   SubmitPostResponse,
   VoteCommentResponse,
@@ -443,6 +444,14 @@ export const blogApi = {
     await del<ApiResponse<DeleteCommentResponse>>(
       "/api/blog/{post_id}/{comment_id}",
       { params: { post_id, comment_id } },
+    ),
+  searchPosts: async (
+    query: string,
+    searchType: "title" | "tag" = "title",
+    limit = 20,
+  ) =>
+    await get<ApiResponse<SearchPostsResponse>>(
+      `/api/blog/search?q=${encodeURIComponent(query)}&search_type=${searchType}&limit=${limit}`,
     ),
 };
 

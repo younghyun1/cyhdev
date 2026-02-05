@@ -61,9 +61,10 @@ export default function EditPostPage() {
         } else {
           setBody(normalizeMarkdown(post.post_content));
         }
-        // Note: Tags might not be returned by readPost depending on backend implementation
-        // If they are available in the future, we would set them here.
-        // setTags(post.tags?.join(", ") ?? "");
+        // Load tags from response
+        if (res.data.post_tags && res.data.post_tags.length > 0) {
+          setTags(res.data.post_tags.join(", "));
+        }
       } else {
         setError("Failed to load post.");
       }

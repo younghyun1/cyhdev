@@ -1,14 +1,69 @@
-import { A, useNavigate } from "@solidjs/router";
-import { createResource, Show, For } from "solid-js";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import {
+  createResource,
+  Show,
+  For,
+  createSignal,
+  createEffect,
+  createMemo,
+} from "solid-js";
 import { blogApi } from "../../services/all_api";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
 
+// Helper to normalize search param (can be string | string[] | undefined)
+const getParamString = (param: string | string[] | undefined): string => {
+  if (Array.isArray(param)) return param[0] ?? "";
+  return param ?? "";
+};
+
 export default function PostsList() {
-  const [posts, { refetch }] = createResource(() => blogApi.getPosts());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = createSignal(
+    getParamString(searchParams.q),
+  );
+  const [searchType, setSearchType] = createSignal<"title" | "tag">(
+    (getParamString(searchParams.type) as "title" | "tag") || "title",
+  );
+  const [debouncedQuery, setDebouncedQuery] = createSignal("");
+
+  // Debounce search input
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  createEffect(() => {
+    const query = searchQuery();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      setDebouncedQuery(query);
+      if (query) {
+        setSearchParams({ q: query, type: searchType() });
+      } else {
+        setSearchParams({ q: undefined, type: undefined });
+      }
+    }, 300);
+  });
+
+  // Fetch posts or search results based on query
+  const [posts, { refetch }] = createResource(
+    () => ({ query: debouncedQuery(), type: searchType() }),
+    async ({ query, type }) => {
+      if (query.trim()) {
+        return blogApi.searchPosts(query, type, 50);
+      }
+      return blogApi.getPosts();
+    },
+  );
+
   const navigate = useNavigate();
   const postItems = () => posts()?.data?.posts ?? [];
+
+  // Search by tag when clicking a tag badge
+  const searchByTag = (tag: string) => {
+    setSearchQuery(tag);
+    setSearchType("tag");
+    setDebouncedQuery(tag);
+    setSearchParams({ q: tag, type: "tag" });
+  };
 
   const handleDeletePost = async (e: Event, postId: string) => {
     e.preventDefault();
@@ -37,7 +92,73 @@ export default function PostsList() {
           </Show>
         </div>
 
-        <hr class={`${pageStyles.divider} mb-6`} />
+        <hr class={`${pageStyles.divider} mb-4`} />
+
+        {/* Search UI */}
+        <div class="flex flex-col sm:flex-row gap-2 mb-6">
+          <div class="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchQuery()}
+              onInput={(e) => setSearchQuery(e.currentTarget.value)}
+              class="w-full px-3 py-2 pr-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <Show when={searchQuery()}>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setDebouncedQuery("");
+                  setSearchParams({ q: undefined, type: undefined });
+                }}
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </Show>
+          </div>
+          <div class="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+            <button
+              onClick={() => setSearchType("title")}
+              class={`px-4 py-2 text-sm font-medium transition-colors ${
+                searchType() === "title"
+                  ? "bg-blue-500 text-white"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              Title
+            </button>
+            <button
+              onClick={() => setSearchType("tag")}
+              class={`px-4 py-2 text-sm font-medium transition-colors border-l border-slate-300 dark:border-slate-600 ${
+                searchType() === "tag"
+                  ? "bg-blue-500 text-white"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              Tag
+            </button>
+          </div>
+        </div>
+
+        <Show when={debouncedQuery()}>
+          <div class="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            Showing results for "{debouncedQuery()}" (
+            {searchType() === "tag" ? "tag" : "title"} search)
+          </div>
+        </Show>
 
         <Show when={posts.loading}>
           <div class={`${pageStyles.muted} p-4 text-center`}>
@@ -122,6 +243,25 @@ export default function PostsList() {
                       >
                         {post.post_title}
                       </A>
+
+                      {/* Tag badges */}
+                      <Show when={post.post_tags && post.post_tags.length > 0}>
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                          <For each={post.post_tags}>
+                            {(tag) => (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  searchByTag(tag);
+                                }}
+                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors cursor-pointer"
+                              >
+                                #{tag}
+                              </button>
+                            )}
+                          </For>
+                        </div>
+                      </Show>
                     </div>
                   </div>
                 </li>
