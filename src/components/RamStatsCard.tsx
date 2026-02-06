@@ -118,7 +118,8 @@ export default function RamStatsCard(props: {
             class="text-sm font-bold uppercase tracking-wider opacity-80"
             style={{ color: C().font }}
           >
-            Memory Usage
+            Memory Usage (thing's running a Minecraft server; server by itself
+            has ~1.5GB IP geolocator cache)
           </h3>
         </div>
         <div
