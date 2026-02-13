@@ -124,25 +124,24 @@ export default function AboutBlog() {
             </p>
 
             <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
-              0-1) ArchLinux
+              0-1) Gentoo
             </h3>
             <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
               Not exactly the OS of choice for an enterprise server; if I were
               working somewhere, I would have just done Debian Stable with an
               ext4 filesystem with any old database engine. However, I
-              personally I really enjoy tinkering and trying out the latest
-              builds of everything, as well as doing CPU architecture optimized
-              builds and installs for packages, as provided by the wonderful{" "}
+              personally I really enjoy tinkering and compiling stuff myself, as
+              well as doing CPU architecture optimized builds and installs for
+              packages, as enabled by the wonderful{" "}
               <a
-                href="https://somegit.dev/ALHP/ALHP.GO"
+                href="https://www.gentoo.org/"
                 class={pageStyles.link}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                ALHP
+                Gentoo
               </a>{" "}
-              project. I would like to try hosting something on Gentoo
-              sometimes, but I suspect the builds <em>will</em> take forever.
+              project.
             </p>
 
             <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
