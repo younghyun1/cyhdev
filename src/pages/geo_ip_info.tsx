@@ -182,6 +182,19 @@ export default function GeoIpInfo() {
             />
           </Show>
         </section>
+
+        <p class="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">
+          This site uses the IP2Location LITE database for{" "}
+          <a
+            href="https://lite.ip2location.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            IP geolocation
+          </a>
+          .
+        </p>
       </div>
     </main>
   );

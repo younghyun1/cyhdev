@@ -129,6 +129,18 @@ export default function VisitorBoard() {
           <div ref={(el) => (mapDiv = el)} id="map" class="visitor-board-map" />
         </div>
       </div>
+      <p class="pb-4 text-center text-xs text-slate-400 dark:text-slate-500">
+        This site uses the IP2Location LITE database for{" "}
+        <a
+          href="https://lite.ip2location.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline hover:text-slate-600 dark:hover:text-slate-300"
+        >
+          IP geolocation
+        </a>
+        .
+      </p>
     </main>
   );
 }
