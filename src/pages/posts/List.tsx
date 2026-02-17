@@ -393,7 +393,7 @@ export default function PostsList() {
                       </div>
 
                       <A
-                        href={`/blog/${post.post_id}`}
+                        href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
                         class="block text-lg font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 decoration-2 hover:underline underline-offset-2"
                       >
                         {post.post_title}

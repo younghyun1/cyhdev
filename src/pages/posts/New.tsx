@@ -30,7 +30,12 @@ export default function NewPostPage() {
         post_is_published: isPublished(),
       });
       if (res.success) {
-        navigate(`/blog/${res.data.post_id}`, { replace: true });
+        navigate(
+          `/blog/${encodeURIComponent(res.data.post_slug || res.data.post_id)}`,
+          {
+            replace: true,
+          },
+        );
       } else {
         setError("Failed to publish post.");
       }

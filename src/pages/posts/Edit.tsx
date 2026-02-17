@@ -96,7 +96,12 @@ export default function EditPostPage() {
         params.post_id,
       );
       if (res.success) {
-        navigate(`/blog/${res.data.post_id}`, { replace: true });
+        navigate(
+          `/blog/${encodeURIComponent(res.data.post_slug || res.data.post_id)}`,
+          {
+            replace: true,
+          },
+        );
       } else {
         setError("Failed to update post.");
       }

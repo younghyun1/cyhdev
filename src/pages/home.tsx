@@ -153,7 +153,9 @@ export default function Home() {
                           </span>
                         </div>
                         <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                          <A href={`/blog/${post.post_id}`}>
+                          <A
+                            href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
+                          >
                             <span class="absolute inset-0" />
                             {post.post_title}
                           </A>
