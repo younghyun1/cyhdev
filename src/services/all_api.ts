@@ -16,6 +16,32 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   params?: Record<string, string | number | boolean | undefined>;
 };
 
+type HttpError = Error & {
+  status: number;
+  body_text: string;
+};
+
+function buildHttpError(status: number, bodyText: string): HttpError {
+  let message = `Request failed (${status})`;
+  if (bodyText) {
+    try {
+      const parsed = JSON.parse(bodyText) as { message?: unknown };
+      if (typeof parsed.message === "string" && parsed.message.trim()) {
+        message = parsed.message.trim();
+      } else {
+        message = bodyText;
+      }
+    } catch {
+      message = bodyText;
+    }
+  }
+
+  const err = new Error(message) as HttpError;
+  err.status = status;
+  err.body_text = bodyText;
+  return err;
+}
+
 /**
  * Generic HTTP GET
  */
@@ -23,7 +49,10 @@ async function get<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = interpolate(path, options.params);
   const { body: _, params: __, ...fetchOptions } = options;
   const res = await apiFetch(url, { ...fetchOptions, method: "GET" });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const bodyText = await res.text();
+    throw buildHttpError(res.status, bodyText);
+  }
   return res.json();
 }
 
@@ -43,7 +72,10 @@ async function post<T>(path: string, options: RequestOptions = {}): Promise<T> {
     },
   };
   const res = await apiFetch(url, fetchOpts);
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const bodyText = await res.text();
+    throw buildHttpError(res.status, bodyText);
+  }
   // Handle 204/empty-body responses gracefully for side-effect endpoints (e.g., vote rescinds)
   if (res.status === 204) {
     return undefined as unknown as T;
@@ -122,7 +154,10 @@ async function patch<T>(
     },
   };
   const res = await apiFetch(url, fetchOpts);
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const bodyText = await res.text();
+    throw buildHttpError(res.status, bodyText);
+  }
   // Handle 204/empty-body responses gracefully for side-effect endpoints (e.g., vote rescinds)
   if (res.status === 204) {
     return undefined as unknown as T;
@@ -154,7 +189,10 @@ async function del<T>(path: string, options: RequestOptions = {}): Promise<T> {
         : { ...options.headers },
   };
   const res = await apiFetch(url, fetchOpts);
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const bodyText = await res.text();
+    throw buildHttpError(res.status, bodyText);
+  }
   if (res.status === 204) {
     return undefined as unknown as T;
   }

@@ -42,6 +42,7 @@ export default function PostViewPage() {
   const params = useParams();
   const navigate = useNavigate();
   const postId = () => params.post_id;
+  const [postLoadError, setPostLoadError] = createSignal<string | null>(null);
   const [commentValue, setCommentValue] = createSignal("");
   const [commentLoading, setCommentLoading] = createSignal(false);
   const [commentError, setCommentError] = createSignal<string | null>(null);
@@ -51,8 +52,30 @@ export default function PostViewPage() {
 
   const [postResource, { refetch }] = createResource(postId, async (pid) => {
     if (!pid) return null;
-    const res = await blogApi.readPost(pid);
-    return res?.data;
+    setPostLoadError(null);
+
+    try {
+      const res = await blogApi.readPost(pid);
+      return res?.data ?? null;
+    } catch (err: unknown) {
+      const status =
+        typeof err === "object" &&
+        err !== null &&
+        "status" in err &&
+        typeof (err as { status?: unknown }).status === "number"
+          ? (err as { status: number }).status
+          : undefined;
+      const message =
+        err instanceof Error ? err.message : "Failed to load post.";
+
+      if (status === 400 || status === 404) {
+        navigate("/under-construction", { replace: true });
+        return null;
+      }
+
+      setPostLoadError(message || "Failed to load post.");
+      return null;
+    }
   });
 
   // Store for optimistic vote states (Post + Comments)
@@ -584,9 +607,18 @@ export default function PostViewPage() {
           <Show when={postResource.loading}>
             <div class={pageStyles.muted}>Loading post...</div>
           </Show>
-          <Show when={postResource.error}>
+          <Show when={postLoadError()}>
             <div class={pageStyles.alertError}>
-              Failed to load post: {String(postResource.error)}
+              Failed to load post.
+              <div class="mt-2 text-sm opacity-90">{postLoadError()}</div>
+              <div class="mt-3">
+                <button
+                  class={pageStyles.buttonSecondary}
+                  onClick={() => navigate("/blog", { replace: true })}
+                >
+                  Back to Blog
+                </button>
+              </div>
             </div>
           </Show>
           <Show when={postResource()}>
