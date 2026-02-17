@@ -1,6 +1,6 @@
 import { createResource, For, Show, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
-import { blogApi, photographyApi, healthApi } from "../services/all_api";
+import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 
 export default function Home() {
@@ -9,18 +9,10 @@ export default function Home() {
   );
   const [photos] = createResource(() => photographyApi.getPhotographs(1, 4));
 
-  // Helper to extract photo items safely
   const getPhotoItems = () => {
     const res = photos();
-    if (!res) return [];
-
-    const payload = (res as any).data || res;
-
-    if (payload?.data?.items) {
-      return payload.data.items;
-    }
-
-    return payload?.items || [];
+    if (!res?.data) return [];
+    return res.data.items ?? [];
   };
 
   return (

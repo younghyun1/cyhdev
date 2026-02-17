@@ -68,8 +68,8 @@ export default function EditPostPage() {
       } else {
         setError("Failed to load post.");
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to load post.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load post.");
     } finally {
       setIsLoading(false);
     }
@@ -100,8 +100,8 @@ export default function EditPostPage() {
       } else {
         setError("Failed to update post.");
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to update post.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update post.");
     } finally {
       setIsSubmitting(false);
     }

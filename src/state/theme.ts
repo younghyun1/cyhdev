@@ -1,6 +1,5 @@
-import { createEffect, createSignal, onMount } from "solid-js";
+import { createSignal } from "solid-js";
 
-// Util to get stored theme or default (light)
 function getInitialTheme(): "light" | "dark" {
   if (typeof window !== "undefined") {
     const persisted = localStorage.getItem("theme");
@@ -16,10 +15,10 @@ export const [theme, setTheme] = createSignal<"light" | "dark">(
   getInitialTheme(),
 );
 
-export function applyTheme(theme: "light" | "dark") {
+export function applyTheme(t: "light" | "dark") {
   const html = document.documentElement;
   html.classList.remove("light", "dark");
-  html.classList.add(theme);
+  html.classList.add(t);
 }
 
 export function toggleTheme() {
@@ -27,11 +26,3 @@ export function toggleTheme() {
   setTheme(next);
   localStorage.setItem("theme", next);
 }
-
-// Apply theme reactively whenever the signal changes.
-// `onMount` ensures we don't touch `document` during SSR/hydration edge cases.
-onMount(() => {
-  createEffect(() => {
-    applyTheme(theme());
-  });
-});

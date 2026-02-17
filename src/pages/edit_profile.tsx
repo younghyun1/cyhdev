@@ -48,7 +48,6 @@ function EditProfilePage() {
   >(null);
 
   const userCountryId = () => user()?.user_info?.user_country;
-  const userSubdivisionId = () => user()?.user_info?.user_subdivision;
 
   // Load dropdown caches/resources
   const [countries] = createResource(
@@ -60,10 +59,8 @@ function EditProfilePage() {
   const [subdivisions] = createResource(userCountryId, async (cid) => {
     if (cid === null || cid === undefined) return [];
     try {
-      const res: any = await dropdownApi.countrySubdivisions(Number(cid));
-      if (Array.isArray(res?.data)) return res.data;
-      if (Array.isArray(res)) return res;
-      return [];
+      const res = await dropdownApi.countrySubdivisions(Number(cid));
+      return Array.isArray(res?.data) ? res.data : [];
     } catch {
       return [];
     }
@@ -90,7 +87,7 @@ function EditProfilePage() {
   });
   const subdivisionMap = createMemo(() => {
     const res = subdivisions();
-    const list = Array.isArray(res?.data) ? res.data : [];
+    const list = Array.isArray(res) ? res : [];
     const m: Record<number, IsoCountrySubdivision> = {};
     for (const s of list) {
       m[Number(s.subdivision_id)] = s;
@@ -98,23 +95,22 @@ function EditProfilePage() {
     return m;
   });
 
-  // Formatters
-  const formatCountry = (code: any) => {
-    if (code === null || code === undefined) return "";
+  const formatCountry = (code: number | null | undefined) => {
+    if (code == null) return "";
     const c = countryMap()[Number(code)];
     if (!c) return String(code);
     const flag = c.country_flag ? c.country_flag + " " : "";
     const name = c.country_eng_name ?? "";
     return `${flag}${name || code}`.trim();
   };
-  const formatLanguage = (code: any) => {
-    if (code === null || code === undefined) return "";
+  const formatLanguage = (code: number | null | undefined) => {
+    if (code == null) return "";
     const l = languageMap()[Number(code)];
     if (!l) return String(code);
     return l.language_eng_name ?? String(code);
   };
-  const formatSubdivision = (id: any) => {
-    if (id === null || id === undefined) return "No Subdivision / N/A";
+  const formatSubdivision = (id: number | null | undefined) => {
+    if (id == null) return "No Subdivision / N/A";
     const s = subdivisionMap()[Number(id)];
     if (!s) return String(id);
     return s.subdivision_name ?? String(id);
@@ -162,15 +158,6 @@ function EditProfilePage() {
     }
   };
 
-  const clearSelection = () => {
-    setProfileImage(null);
-    setSelectedPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
-    setError(null);
-  };
-
   const handleUpload = async () => {
     if (!profileImage()) {
       setError("Please select an image to upload.");
@@ -206,14 +193,18 @@ function EditProfilePage() {
           } else {
             setError("Upload succeeded, but failed to refresh profile.");
           }
-        } catch (e: any) {
-          setError(e?.message ?? "Failed to refresh profile.");
+        } catch (e: unknown) {
+          setError(
+            e instanceof Error ? e.message : "Failed to refresh profile.",
+          );
         }
       } else {
         setError("Upload failed. Please try again.");
       }
-    } catch (err: any) {
-      setError(err.message ?? "Unknown error during upload.");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Unknown error during upload.",
+      );
     } finally {
       setUploading(false);
     }

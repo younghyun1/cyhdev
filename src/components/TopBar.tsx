@@ -1,4 +1,4 @@
-import { Show, createSignal, For } from "solid-js";
+import { Show, createSignal, For, onCleanup } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
   isAuthenticated,
@@ -14,23 +14,39 @@ import { pageStyles } from "../styles/pageStyles";
 const [menuOpen, setMenuOpen] = createSignal(false);
 const [sidebarOpen, setSidebarOpen] = createSignal(false);
 
+let activeClickOutsideHandler: ((event: MouseEvent) => void) | null = null;
+
+function removeClickOutsideHandler() {
+  if (activeClickOutsideHandler) {
+    window.removeEventListener("mousedown", activeClickOutsideHandler);
+    activeClickOutsideHandler = null;
+  }
+}
+
 const handleMenuToggle = (e: MouseEvent) => {
   e.preventDefault();
-  setMenuOpen((open) => !open);
-  // Close on click-outside:
-  const handleClickOutside = (event: MouseEvent) => {
-    if (!(event.target as HTMLElement).closest(".profile-menu, .menu-toggle")) {
-      setMenuOpen(false);
-      window.removeEventListener("mousedown", handleClickOutside);
-    }
-  };
-  window.addEventListener("mousedown", handleClickOutside);
+  const willOpen = !menuOpen();
+  setMenuOpen(willOpen);
+
+  removeClickOutsideHandler();
+
+  if (willOpen) {
+    activeClickOutsideHandler = (event: MouseEvent) => {
+      if (
+        !(event.target as HTMLElement).closest(".profile-menu, .menu-toggle")
+      ) {
+        setMenuOpen(false);
+        removeClickOutsideHandler();
+      }
+    };
+    window.addEventListener("mousedown", activeClickOutsideHandler);
+  }
 };
 
 const handleLogout = async () => {
   try {
     await authApi.logout();
-  } catch (e) {
+  } catch {
     // Ignore error; in either case we void the state.
   }
   setAuthenticated(false);
@@ -53,6 +69,8 @@ const NAV_LINKS = [
 
 const TopBar = () => {
   const location = useLocation();
+
+  onCleanup(() => removeClickOutsideHandler());
 
   const titleFromPath = () => {
     const pathname = location.pathname || "/";

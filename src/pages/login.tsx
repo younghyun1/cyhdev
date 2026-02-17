@@ -1,7 +1,8 @@
 import { createSignal, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { useNavigate, useSearchParams } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
+import { consumePostLoginRedirect } from "../services/api";
 import { pageStyles } from "../styles/pageStyles";
 
 function LoginPage() {
@@ -10,36 +11,53 @@ function LoginPage() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const handleLogin = async (e: Event) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams(window.location.search);
-      const next = params.get("next");
-      const saved = sessionStorage.getItem("post_login_redirect");
-      const target = next || saved || "/";
-      sessionStorage.setItem("post_login_redirect", target);
-
       const res = await authApi.login({
         user_email: email(),
         user_password: password(),
       });
       if (res.success) {
-        // Redirect is handled globally in apiFetch using sessionStorage.post_login_redirect
+        // Set auth state
+        const meResp = await authApi.me();
+        if (meResp?.success && meResp.data) {
+          const hasUser = !!meResp.data.user_info?.user_id;
+          setAuthenticated(hasUser);
+          setUser(hasUser ? meResp.data : null);
+          if (hasUser) {
+            try {
+              const superuserResp = await authApi.isSuperuser();
+              setSuperuser(!!superuserResp.data?.is_superuser);
+            } catch {
+              setSuperuser(false);
+            }
+          }
+        }
+
+        // Redirect: prefer sessionStorage (set by 401 interceptor), fall back to ?next param
+        const savedRedirect = consumePostLoginRedirect();
+        const nextParam = Array.isArray(searchParams.next)
+          ? searchParams.next[0]
+          : searchParams.next;
+        const target = savedRedirect || nextParam || "/";
+        navigate(target, { replace: true });
         return;
       } else {
         setAuthenticated(false);
         setUser(null);
         setSuperuser(false);
-        setError(res?.data?.message ?? "Login failed");
+        setError("Login failed");
       }
-    } catch (e: any) {
+    } catch (err: unknown) {
       setAuthenticated(false);
       setUser(null);
       setSuperuser(false);
-      setError(e?.message ?? "Login failed");
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }

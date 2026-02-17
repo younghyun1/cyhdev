@@ -10,7 +10,7 @@ export function uploadWithProgress({
   onProgress: (percentage: number) => void;
   headers?: Record<string, string>;
   credentials?: RequestCredentials;
-}): Promise<any> {
+}): Promise<{ success: boolean; data?: unknown }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url, true);
@@ -29,12 +29,12 @@ export function uploadWithProgress({
       }
     };
 
-    xhr.onload = function() {
+    xhr.onload = function () {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           resolve(JSON.parse(xhr.responseText));
-        } catch (err) {
-          resolve(xhr.responseText);
+        } catch {
+          resolve({ success: true, data: xhr.responseText });
         }
       } else {
         reject(new Error(xhr.responseText || "Upload failed"));

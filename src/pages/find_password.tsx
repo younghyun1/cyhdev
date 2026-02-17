@@ -25,13 +25,14 @@ function FindPasswordPage() {
         "If an account with that email exists, a password reset link has been sent.",
       );
       setEmail(""); // Clear the input on success
-    } catch (e: any) {
-      let msg = e?.message || "An unexpected error occurred. Please try again.";
+    } catch (e: unknown) {
+      let msg =
+        e instanceof Error
+          ? e.message
+          : "An unexpected error occurred. Please try again.";
       try {
         const json = JSON.parse(msg);
-        if (json.message) {
-          msg = json.message;
-        }
+        if (json.message) msg = json.message;
       } catch {
         // ignore
       }

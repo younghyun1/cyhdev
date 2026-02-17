@@ -73,6 +73,10 @@ export interface PostInfo {
   post_is_published: boolean;
   post_tags: string[];
   vote_state: 0 | 1 | 2;
+  total_upvotes: number;
+  total_downvotes: number;
+  post_view_count: number;
+  post_share_count: number;
   user_name: string;
   user_profile_picture_url: string;
   user_country_flag?: string;
@@ -91,7 +95,7 @@ export interface Post {
   post_is_published: boolean;
   post_view_count: number;
   post_share_count: number;
-  post_metadata: any;
+  post_metadata: { markdown_content?: string } | null;
   total_upvotes: number;
   total_downvotes: number;
 

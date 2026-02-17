@@ -34,8 +34,8 @@ export default function NewPostPage() {
       } else {
         setError("Failed to publish post.");
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to submit post.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to submit post.");
     } finally {
       setIsSubmitting(false);
     }

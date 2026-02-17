@@ -1,21 +1,18 @@
-import { Suspense, type Component, onMount, createEffect } from "solid-js";
-
-import { useLocation } from "@solidjs/router";
-
+import {
+  Suspense,
+  type ParentComponent,
+  onMount,
+  createEffect,
+} from "solid-js";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
-
-import { theme, applyTheme } from "./state/theme"; // <-- import theme for dynamic color
-
+import { theme, applyTheme } from "./state/theme";
 import { authApi } from "./services/all_api";
 import { fetchServerBuildInfo } from "./services/api";
-
 import { setAuthenticated, setSuperuser, setUser } from "./state/auth";
 import { updateServerBuildInfo } from "./state/server_info";
 
-const App: Component = (props: { children: Element }) => {
-  const location = useLocation();
-
+const App: ParentComponent = (props) => {
   onMount(async () => {
     fetchServerBuildInfo()
       .then((info) => {
@@ -57,7 +54,7 @@ const App: Component = (props: { children: Element }) => {
         setUser(null);
         setSuperuser(false);
       }
-    } catch (e) {
+    } catch {
       setAuthenticated(false);
       setUser(null);
       setSuperuser(false);

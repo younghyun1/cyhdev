@@ -9,6 +9,7 @@ import {
 import { createStore } from "solid-js/store";
 import { useParams, useNavigate, A } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
+import type { CommentResponse } from "../../dtos/responses/blog";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
@@ -72,9 +73,9 @@ export default function PostViewPage() {
   }>({ comments: {} });
 
   // Store for locally added comments (optimistic replies)
-  const [localComments, setLocalComments] = createStore<Record<string, any>>(
-    {},
-  );
+  const [localComments, setLocalComments] = createStore<
+    Record<string, CommentResponse>
+  >({});
 
   // Per-comment reply state
   const [replyOpen, setReplyOpen] = createStore<Record<string, boolean>>({});
@@ -231,8 +232,10 @@ export default function PostViewPage() {
       );
       setCommentValue("");
       refetch();
-    } catch (err: any) {
-      setCommentError(err?.message ?? "Failed to submit comment");
+    } catch (err: unknown) {
+      setCommentError(
+        err instanceof Error ? err.message : "Failed to submit comment",
+      );
     } finally {
       setCommentLoading(false);
     }
@@ -264,21 +267,27 @@ export default function PostViewPage() {
         postId(),
       );
       // Optimistically add the new reply locally so it appears immediately
-      if (res && (res as any).data) {
-        const newComment = (res as any).data;
+      if (res?.data) {
+        const newComment = res.data;
         setLocalComments(newComment.comment_id, newComment);
       }
       setReplyText(parentCommentId, "");
       setReplyOpen(parentCommentId, false);
       // No immediate refetch; the local comment will reconcile on future refetch
-    } catch (err: any) {
-      setReplyError(parentCommentId, err?.message ?? "Failed to submit reply");
+    } catch (err: unknown) {
+      setReplyError(
+        parentCommentId,
+        err instanceof Error ? err.message : "Failed to submit reply",
+      );
     } finally {
       setReplyLoading(parentCommentId, false);
     }
   };
 
-  const toggleEdit = (comment: any) => {
+  const toggleEdit = (comment: {
+    comment_id: string;
+    comment_content: string;
+  }) => {
     const current = !!editOpen[comment.comment_id];
     if (current) {
       setEditOpen(comment.comment_id, false);
@@ -304,16 +313,23 @@ export default function PostViewPage() {
       );
       refetch();
       setEditOpen(commentId, false);
-    } catch (err: any) {
-      setEditError(commentId, err?.message ?? "Failed to update comment");
+    } catch (err: unknown) {
+      setEditError(
+        commentId,
+        err instanceof Error ? err.message : "Failed to update comment",
+      );
     } finally {
       setEditLoading(commentId, false);
     }
   };
 
-  function buildCommentTree(flatComments: any[]): any[] {
-    const commentsById: Record<string, any> = {};
-    const roots: any[] = [];
+  type CommentTreeNode = CommentResponse & { children: CommentTreeNode[] };
+
+  function buildCommentTree(
+    flatComments: CommentResponse[],
+  ): CommentTreeNode[] {
+    const commentsById: Record<string, CommentTreeNode> = {};
+    const roots: CommentTreeNode[] = [];
 
     // Merge locally added comments (optimistic replies) without changing existing order
     const flat = [...flatComments];
@@ -338,15 +354,14 @@ export default function PostViewPage() {
     return roots;
   }
 
-  // Helpers for base-data sorting (ignore optimistic changes to keep order stable)
-  function getBaseCommentState(c: any) {
+  function getBaseCommentState(c: CommentTreeNode) {
     return {
       up: c.total_upvotes,
       down: c.total_downvotes,
       createdAt: new Date(c.comment_created_at).getTime(),
     };
   }
-  function compareComments(a: any, b: any) {
+  function compareComments(a: CommentTreeNode, b: CommentTreeNode) {
     const sort = commentSort();
     const A = getBaseCommentState(a);
     const B = getBaseCommentState(b);
@@ -355,7 +370,7 @@ export default function PostViewPage() {
         const sa = A.up - A.down;
         const sb = B.up - B.down;
         if (sb !== sa) return sb - sa;
-        return B.createdAt - A.createdAt; // tie-break by newer first
+        return B.createdAt - A.createdAt;
       }
       case "top": {
         if (B.up !== A.up) return B.up - A.up;
@@ -369,7 +384,7 @@ export default function PostViewPage() {
         return 0;
     }
   }
-  function sortCommentsTree(nodes: any[]): any[] {
+  function sortCommentsTree(nodes: CommentTreeNode[]): CommentTreeNode[] {
     const copy = nodes.map((n) => ({
       ...n,
       children:
@@ -378,7 +393,7 @@ export default function PostViewPage() {
     copy.sort(compareComments);
     return copy;
   }
-  function renderComments(comments: any[], depth = 0) {
+  function renderComments(comments: CommentTreeNode[], depth = 0) {
     return (
       <For each={comments}>
         {(comment) => {
@@ -491,7 +506,7 @@ export default function PostViewPage() {
                 <Show
                   when={
                     user()?.user_info?.user_id &&
-                    ((comment as any).user_id === user()?.user_info?.user_id ||
+                    (comment.user_id === user()?.user_info?.user_id ||
                       postResource()?.post?.user_id ===
                         user()?.user_info?.user_id)
                   }
@@ -588,12 +603,16 @@ export default function PostViewPage() {
                 sortCommentsTree(buildCommentTree(data().comments || [])),
               );
               const renderedPostHtml = createMemo(() => {
-                const post = data().post as any;
-                const content = String(post?.post_content ?? "").trim();
+                const post = data().post;
+                const content = (post.post_content ?? "").trim();
                 if (content) return content;
+                const metadata = post.post_metadata as
+                  | { markdown_content?: string }
+                  | null
+                  | undefined;
                 const markdown =
-                  typeof post?.post_metadata?.markdown_content === "string"
-                    ? post.post_metadata.markdown_content.trim()
+                  typeof metadata?.markdown_content === "string"
+                    ? metadata.markdown_content.trim()
                     : "";
                 return markdown || "";
               });
@@ -645,8 +664,7 @@ export default function PostViewPage() {
                         <Show
                           when={
                             user()?.user_info?.user_id &&
-                            (data().post as any).user_id ===
-                              user()?.user_info?.user_id
+                            data().post.user_id === user()?.user_info?.user_id
                           }
                         >
                           <div class="flex gap-2 ml-4">
@@ -686,13 +704,9 @@ export default function PostViewPage() {
                           ).toLocaleString()}
                         </span>
                         <span class="ml-3 text-gray-500">•</span>
-                        <span>
-                          {(data().post as any).post_view_count ?? 0} views
-                        </span>
+                        <span>{data().post.post_view_count ?? 0} views</span>
                         <span class="ml-3 text-gray-500">•</span>
-                        <span>
-                          {(data().post as any).post_share_count ?? 0} shares
-                        </span>
+                        <span>{data().post.post_share_count ?? 0} shares</span>
                       </div>
                       {/* Tag badges */}
                       <Show

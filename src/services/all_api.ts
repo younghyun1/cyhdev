@@ -13,8 +13,7 @@ function interpolate(
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: object;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  params?: Record<string, any>;
+  params?: Record<string, string | number | boolean | undefined>;
 };
 
 /**
@@ -40,7 +39,7 @@ async function post<T>(path: string, options: RequestOptions = {}): Promise<T> {
     body: body !== undefined ? JSON.stringify(body) : undefined,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...options.headers,
     },
   };
   const res = await apiFetch(url, fetchOpts);
@@ -119,7 +118,7 @@ async function patch<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
     headers: {
       "Content-Type": "application/json",
-      ...(options.headers || {}),
+      ...options.headers,
     },
   };
   const res = await apiFetch(url, fetchOpts);
@@ -144,8 +143,17 @@ async function patch<T>(
  */
 async function del<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = interpolate(path, options.params);
-  const { body: _, params: __, ...fetchOptions } = options;
-  const res = await apiFetch(url, { ...fetchOptions, method: "DELETE" });
+  const { body, params: _, ...restOptions } = options;
+  const fetchOpts: RequestInit = {
+    ...restOptions,
+    method: "DELETE",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers:
+      body !== undefined
+        ? { "Content-Type": "application/json", ...options.headers }
+        : { ...options.headers },
+  };
+  const res = await apiFetch(url, fetchOpts);
   if (!res.ok) throw new Error(await res.text());
   if (res.status === 204) {
     return undefined as unknown as T;
@@ -266,10 +274,7 @@ export const photographyApi = {
   deletePhotographs: async (photograph_ids: string[]) =>
     await del<ApiResponse<DeletePhotographsResponse>>(
       "/api/photographs/delete",
-      {
-        body: { photograph_ids },
-        headers: { "Content-Type": "application/json" },
-      },
+      { body: { photograph_ids } },
     ),
 };
 
@@ -382,7 +387,7 @@ export const userApi = {
 export const blogApi = {
   getPosts: async (query?: GetPostsRequest) =>
     await get<ApiResponse<GetPostsResponse>>("/api/blog/posts", {
-      params: query,
+      params: query ? { ...query } : undefined,
     }),
   readPost: async (post_id: string) =>
     await get<ApiResponse<ReadPostResponse>>("/api/blog/posts/{post_id}", {
@@ -465,7 +470,7 @@ export const i18nApi = {
   getCountryLanguageBundle: async (query?: GetCountryLanguageBundleRequest) =>
     await get<ApiResponse<GetCountryLanguageBundleResponse>>(
       "/api/i18n/country-language-bundle",
-      { params: query },
+      { params: query ? { ...query } : undefined },
     ),
 };
 

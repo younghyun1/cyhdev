@@ -49,13 +49,14 @@ function ResetPasswordPage() {
       setSuccess(true);
       // Optional: Automatically redirect after a few seconds
       setTimeout(() => navigate("/login"), 3000);
-    } catch (e: any) {
-      let msg = e?.message || "An unexpected error occurred. Please try again.";
+    } catch (e: unknown) {
+      let msg =
+        e instanceof Error
+          ? e.message
+          : "An unexpected error occurred. Please try again.";
       try {
         const json = JSON.parse(msg);
-        if (json.message) {
-          msg = json.message;
-        }
+        if (json.message) msg = json.message;
       } catch {
         // ignore
       }

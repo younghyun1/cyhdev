@@ -50,8 +50,8 @@ export default function HostStatsDashboard(props: {
     try {
       ws = new WebSocket(url);
       ws.binaryType = "arraybuffer";
-    } catch (e: any) {
-      setError("WS open failed: " + e);
+    } catch (e: unknown) {
+      setError("WS open failed: " + String(e));
       return;
     }
 

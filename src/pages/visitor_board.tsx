@@ -53,8 +53,6 @@ export default function VisitorBoard() {
   let markers: L.Marker[] = [];
 
   createEffect(() => {
-    let disposed = false;
-
     async function loadVisitorBoard() {
       try {
         const resp = await visitorBoardApi.getVisitorBoard();
@@ -96,7 +94,7 @@ export default function VisitorBoard() {
         if (markers.length > 0) {
           markers[0].openPopup();
         }
-      } catch (e) {
+      } catch {
         if (map && map.remove) map.remove();
         map = null;
         if (mapDiv)
@@ -106,7 +104,6 @@ export default function VisitorBoard() {
     loadVisitorBoard();
 
     onCleanup(() => {
-      disposed = true;
       if (map && map.remove) {
         map.remove();
       }

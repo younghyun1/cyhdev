@@ -5,8 +5,10 @@ import {
   For,
   createSignal,
   createEffect,
+  onCleanup,
 } from "solid-js";
 import { blogApi } from "../../services/all_api";
+import type { PostInfo } from "../../dtos/responses/blog";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
@@ -51,6 +53,7 @@ export default function PostsList() {
 
   // Debounce search input
   let debounceTimer: ReturnType<typeof setTimeout>;
+  onCleanup(() => clearTimeout(debounceTimer));
   createEffect(() => {
     const query = searchQuery();
     const type = searchType();
@@ -138,16 +141,14 @@ export default function PostsList() {
   );
 
   const navigate = useNavigate();
-  const [displayPosts, setDisplayPosts] = createSignal<any[]>([]);
+  const [displayPosts, setDisplayPosts] = createSignal<PostInfo[]>([]);
   createEffect(() => {
     const data = posts()?.data;
     if (data?.posts !== undefined) {
       setDisplayPosts(data.posts);
     }
     if (data && "available_pages" in data) {
-      setAvailablePages(
-        (data as { available_pages?: number }).available_pages ?? 1,
-      );
+      setAvailablePages(data.available_pages ?? 1);
     }
   });
   createEffect(() => {
@@ -349,8 +350,8 @@ export default function PostsList() {
                   <div class="flex">
                     <div class="flex flex-col items-center justify-center w-16 bg-slate-50 dark:bg-slate-800/60 border-r border-slate-200/80 dark:border-slate-800 rounded-l">
                       <span class="text-sm font-bold text-slate-700 dark:text-slate-200">
-                        {((post as any).total_upvotes ?? 0) -
-                          ((post as any).total_downvotes ?? 0)}
+                        {(post.total_upvotes ?? 0) -
+                          (post.total_downvotes ?? 0)}
                       </span>
                     </div>
 
@@ -368,11 +369,9 @@ export default function PostsList() {
                           {new Date(post.post_created_at).toLocaleDateString()}
                         </span>
                         <span class="text-slate-400">•</span>
-                        <span>{(post as any).post_view_count ?? 0} views</span>
+                        <span>{post.post_view_count ?? 0} views</span>
                         <span class="text-slate-400">•</span>
-                        <span>
-                          {(post as any).post_share_count ?? 0} shares
-                        </span>
+                        <span>{post.post_share_count ?? 0} shares</span>
                         <Show when={!post.post_is_published}>
                           <span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                             Draft

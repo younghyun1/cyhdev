@@ -26,7 +26,7 @@ export default function RamStatsCard(props: {
 
   function makeGradient(
     ctx: CanvasRenderingContext2D,
-    area: any,
+    area: { top: number; bottom: number },
     color: string,
   ) {
     const grad = ctx.createLinearGradient(0, area.top, 0, area.bottom);
@@ -35,7 +35,7 @@ export default function RamStatsCard(props: {
     return grad;
   }
 
-  function padToLimit<T>(arr: T[], filler: any = null): (T | null)[] {
+  function padToLimit<T>(arr: T[], filler: T | null = null): (T | null)[] {
     const padLen = Math.max(0, props.limit - arr.length);
     return [...arr, ...Array(padLen).fill(filler)];
   }

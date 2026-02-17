@@ -17,35 +17,10 @@ import "leaflet/dist/leaflet.css";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
 import "leaflet-geosearch/dist/geosearch.css";
 
-// --- Types ---
-interface PhotographItem {
-  photograph_id: string;
-  user_id: string;
-  photograph_shot_at?: string;
-  photograph_created_at: string;
-  photograph_updated_at: string;
-  photograph_image_type: number;
-  photograph_is_on_cloud: boolean;
-  photograph_link: string;
-  photograph_thumbnail_link: string;
-  photograph_comments: string;
-  photograph_lat: number;
-  photograph_lon: number;
-}
-
-interface PaginationMeta {
-  page: number;
-  page_size: number;
-  total_items: number;
-  total_pages: number;
-  has_next: boolean;
-  has_prev: boolean;
-}
-
-interface GetPhotographsResponse {
-  items: PhotographItem[];
-  pagination: PaginationMeta;
-}
+import type {
+  PhotographItem,
+  GetPhotographsResponse,
+} from "../dtos/responses/photography";
 
 // --- Styles ---
 const styles = `
@@ -206,8 +181,6 @@ const styles = `
 }
 `;
 
-import { isAuthenticated, user } from "../state/auth";
-
 export default function Photographs() {
   // State
   const [photos, setPhotos] = createSignal<PhotographItem[]>([]);
@@ -316,7 +289,7 @@ export default function Photographs() {
         setPage((p) => p + 1);
         setHasMore(data.pagination.has_next);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch photos:", err);
       setError("Failed to load photographs.");
     } finally {
@@ -383,14 +356,8 @@ export default function Photographs() {
       setPage(1);
       setHasMore(true);
       fetchPhotos();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload failed:", err);
-      if (err.response?.status === 401 || err.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(
-          window.location.pathname,
-        )}`;
-        return;
-      }
       alert("Failed to upload photo.");
     } finally {
       setUploading(false);
@@ -434,10 +401,12 @@ export default function Photographs() {
 
       map.addControl(searchControl);
 
-      map.on("geosearch/showlocation", (result: any) => {
+      map.on("geosearch/showlocation", ((result: {
+        location: { x: number; y: number };
+      }) => {
         const { x, y } = result.location;
         updateMarker(y, x);
-      });
+      }) as unknown as L.LeafletEventHandlerFn);
 
       const updateMarker = (lat: number, lng: number) => {
         setUploadLat(lat);

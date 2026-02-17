@@ -41,46 +41,39 @@ function SignupPage() {
 
   // ––––– fetch countries & languages once on mount
   onMount(() => {
-    console.log("[onMount] fetching countryList & languageList");
     dropdownApi
       .countryList()
       .then((res) => {
         const arr = Array.isArray(res.data?.countries)
           ? res.data.countries
           : [];
-        console.log("[countryList] got", arr.length);
         setCountries(arr);
       })
-      .catch((err) => console.error("[countryList] ERROR", err));
+      .catch(() => {});
 
     dropdownApi
       .languageList()
       .then((res) => {
         const arr = Array.isArray(res.data) ? res.data : [];
-        console.log("[languageList] got", arr.length);
         setLanguages(arr);
       })
-      .catch((err) => console.error("[languageList] ERROR", err));
+      .catch(() => {});
   });
 
   // ––––– whenever userCountry changes, fetch subdivisions
   createEffect(() => {
     const cc = userCountry();
-    console.log("[effect] country changed →", cc);
     if (cc) {
       dropdownApi
         .countrySubdivisions(Number(cc))
         .then((res) => {
           const arr = Array.isArray(res.data) ? res.data : [];
-          console.log("[subdivisions] got", arr.length);
           setSubdivisions(arr);
         })
-        .catch((err) => {
-          console.error("[subdivisions] ERROR", err);
+        .catch(() => {
           setSubdivisions([]);
         });
     } else {
-      console.log("[subdivisions] cleared");
       setSubdivisions([]);
     }
   });
@@ -99,7 +92,6 @@ function SignupPage() {
       !userLanguage()
     ) {
       setError("Please fill out all required fields.");
-      console.warn("[submit] validation failed");
       return;
     }
 
@@ -117,22 +109,14 @@ function SignupPage() {
       user_language: Number(userLanguage()),
       user_subdivision: userSubdivision() ? Number(userSubdivision()) : null,
     };
-    // Avoid logging plaintext passwords in production
-    console.log("[submit] payload (redacted):", {
-      ...body,
-      user_password: "***redacted***",
-    });
-
     try {
       const res = await authApi.signup(body);
-      console.log("[signup] response", res);
       if (res.success && res.data) {
         setSuccess(res.data);
       } else {
         setError("Signup failed.");
       }
     } catch (err: unknown) {
-      console.error("[signup] exception", err);
       setError(err instanceof Error ? err.message : "Signup failed.");
     } finally {
       setLoading(false);
@@ -179,10 +163,7 @@ function SignupPage() {
               </p>
               <button
                 class={`${pageStyles.buttonPrimary} w-full py-2`}
-                onClick={() => {
-                  console.log("[action] go to /login");
-                  navigate("/login");
-                }}
+                onClick={() => navigate("/login")}
               >
                 Go to Login
               </button>
@@ -237,10 +218,7 @@ function SignupPage() {
             <select
               class={pageStyles.select + " mb-4"}
               value={userCountry()}
-              onInput={(e) => {
-                console.log("[select] userCountry →", e.currentTarget.value);
-                setUserCountry(e.currentTarget.value);
-              }}
+              onInput={(e) => setUserCountry(e.currentTarget.value)}
               required
             >
               <option value="">Select Country…</option>
@@ -255,13 +233,7 @@ function SignupPage() {
             <select
               class={pageStyles.select + " mb-4"}
               value={userLanguage()}
-              onInput={(e) => {
-                console.log(
-                  "[select] raw userLanguage →",
-                  e.currentTarget.value,
-                );
-                setUserLanguage(e.currentTarget.value);
-              }}
+              onInput={(e) => setUserLanguage(e.currentTarget.value)}
               required
             >
               <option value="">Select Language…</option>
@@ -273,13 +245,7 @@ function SignupPage() {
             <select
               class={`${pageStyles.select} mb-6`}
               value={userSubdivision()}
-              onInput={(e) => {
-                console.log(
-                  "[select] userSubdivision →",
-                  e.currentTarget.value,
-                );
-                setUserSubdivision(e.currentTarget.value);
-              }}
+              onInput={(e) => setUserSubdivision(e.currentTarget.value)}
               disabled={!subdivisions().length}
             >
               <option value="">No Subdivision / N/A</option>
@@ -305,10 +271,7 @@ function SignupPage() {
             <button
               type="button"
               class={`${pageStyles.buttonSecondary} w-full py-3`}
-              onClick={() => {
-                console.log("[action] back to /login");
-                navigate("/login");
-              }}
+              onClick={() => navigate("/login")}
             >
               Back to Login
             </button>

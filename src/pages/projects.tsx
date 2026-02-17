@@ -457,14 +457,8 @@ export default function Projects() {
       setUploadBundle(null);
       setUploadThumbnail(null);
       await loadModules({ silent: true });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to upload WASM module:", err);
-      if (err?.response?.status === 401 || err?.status === 401) {
-        window.location.href = `/login?next=${encodeURIComponent(
-          window.location.pathname,
-        )}`;
-        return;
-      }
       setUploadError("Upload failed. Please check the files and try again.");
     } finally {
       setUploading(false);
