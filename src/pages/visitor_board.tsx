@@ -4,6 +4,9 @@ import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
+const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
+const MARKER_EMOJI = "📍";
+
 // Local styles for the visitor board to avoid scrollbars and perfectly center the map
 const style = `
 .visitor-board-center-outer {
@@ -67,17 +70,22 @@ export default function VisitorBoard() {
         if (map && map.remove) {
           map.remove();
         }
-        map = L.map(mapDiv!).setView(initialLatLng, 3);
+        map = L.map(mapDiv!, {
+          maxBounds: WORLD_BOUNDS,
+          maxBoundsViscosity: 1.0,
+        }).setView(initialLatLng, 3);
 
         L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          bounds: WORLD_BOUNDS,
+          noWrap: true,
         }).addTo(map);
 
         // Add all markers with a large 📍 emoji as the marker icon
         const emojiIcon = L.divIcon({
           className: "emoji-marker",
-          html: "📍",
+          html: MARKER_EMOJI,
           iconSize: [30, 30],
           iconAnchor: [15, 30],
           popupAnchor: [0, -30],
