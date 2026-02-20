@@ -1,5 +1,30 @@
 import { A } from "@solidjs/router";
 import { pageStyles } from "../styles/pageStyles";
+import badgeAWS232F3E from "../assets/badges/AWS-232F3E.svg";
+import badgeAmazonLinux232F3E from "../assets/badges/Amazon_Linux-232F3E.svg";
+import badgeArchLinux1793D1 from "../assets/badges/Arch_Linux-1793D1.svg";
+import badgeAxum000000 from "../assets/badges/Axum-000000.svg";
+import badgeBACnet004B87 from "../assets/badges/BACnet-004B87.svg";
+import badgeCA8B9CC from "../assets/badges/C-A8B9CC.svg";
+import badgeDjango092E20 from "../assets/badges/Django-092E20.svg";
+import badgeDocker2496ED from "../assets/badges/Docker-2496ED.svg";
+import badgeGoogleCloud4285F4 from "../assets/badges/Google_Cloud-4285F4.svg";
+import badgeJava007396 from "../assets/badges/Java-007396.svg";
+import badgeKubernetes326CE5 from "../assets/badges/Kubernetes-326CE5.svg";
+import badgeLinuxFCC624 from "../assets/badges/Linux-FCC624.svg";
+import badgeModbusFFCC00 from "../assets/badges/Modbus-FFCC00.svg";
+import badgeMySQL4479A1 from "../assets/badges/MySQL-4479A1.svg";
+import badgeNGINX009639 from "../assets/badges/NGINX-009639.svg";
+import badgePostgreSQL316192 from "../assets/badges/PostgreSQL-316192.svg";
+import badgeProtocolBuffers3367D6 from "../assets/badges/Protocol_Buffers-3367D6.svg";
+import badgePython3776AB from "../assets/badges/Python-3776AB.svg";
+import badgeRust000000 from "../assets/badges/Rust-000000.svg";
+import badgeSpringBoot6DB33F from "../assets/badges/Spring_Boot-6DB33F.svg";
+import badgeTypeScript3178C6 from "../assets/badges/TypeScript-3178C6.svg";
+import badgeUbuntuE95420 from "../assets/badges/Ubuntu-E95420.svg";
+import badgeWebSockets010101 from "../assets/badges/WebSockets-010101.svg";
+import badgeWindows0078D6 from "../assets/badges/Windows-0078D6.svg";
+import badgemacOS000000 from "../assets/badges/macOS-000000.svg";
 
 export default function About() {
   return (
@@ -82,103 +107,103 @@ export default function About() {
           <br></br>
           <div class="flex flex-wrap gap-2 mb-6">
             <img
-              src="/badges/Rust-000000.svg"
+              src={badgeRust000000}
               alt="Rust"
             />
             <img
-              src="/badges/C-A8B9CC.svg"
+              src={badgeCA8B9CC}
               alt="C"
             />
             <img
-              src="/badges/TypeScript-3178C6.svg"
+              src={badgeTypeScript3178C6}
               alt="TypeScript"
             />
             <img
-              src="/badges/Python-3776AB.svg"
+              src={badgePython3776AB}
               alt="Python"
             />
             <img
-              src="/badges/Java-007396.svg"
+              src={badgeJava007396}
               alt="Java"
             />
             <img
-              src="/badges/Axum-000000.svg"
+              src={badgeAxum000000}
               alt="Axum"
             />
             <img
-              src="/badges/Spring_Boot-6DB33F.svg"
+              src={badgeSpringBoot6DB33F}
               alt="Spring Boot"
             />
             <img
-              src="/badges/Django-092E20.svg"
+              src={badgeDjango092E20}
               alt="Django"
             />
             <img
-              src="/badges/PostgreSQL-316192.svg"
+              src={badgePostgreSQL316192}
               alt="PostgreSQL"
             />
             <img
-              src="/badges/MySQL-4479A1.svg"
+              src={badgeMySQL4479A1}
               alt="MySQL"
             />
             <img
-              src="/badges/AWS-232F3E.svg"
+              src={badgeAWS232F3E}
               alt="AWS"
             />
             <img
-              src="/badges/Google_Cloud-4285F4.svg"
+              src={badgeGoogleCloud4285F4}
               alt="Google Cloud"
             />
             <img
-              src="/badges/Docker-2496ED.svg"
+              src={badgeDocker2496ED}
               alt="Docker"
             />
             <img
-              src="/badges/Kubernetes-326CE5.svg"
+              src={badgeKubernetes326CE5}
               alt="Kubernetes"
             />
             <img
-              src="/badges/NGINX-009639.svg"
+              src={badgeNGINX009639}
               alt="NGINX"
             />
             <img
-              src="/badges/Linux-FCC624.svg"
+              src={badgeLinuxFCC624}
               alt="Linux"
             />
             <img
-              src="/badges/Arch_Linux-1793D1.svg"
+              src={badgeArchLinux1793D1}
               alt="Arch Linux"
             />
             <img
-              src="/badges/Ubuntu-E95420.svg"
+              src={badgeUbuntuE95420}
               alt="Ubuntu"
             />
             <img
-              src="/badges/Amazon_Linux-232F3E.svg"
+              src={badgeAmazonLinux232F3E}
               alt="Amazon Linux"
             />
             <img
-              src="/badges/Windows-0078D6.svg"
+              src={badgeWindows0078D6}
               alt="Windows"
             />
             <img
-              src="/badges/macOS-000000.svg"
+              src={badgemacOS000000}
               alt="macOS"
             />
             <img
-              src="/badges/Protocol_Buffers-3367D6.svg"
+              src={badgeProtocolBuffers3367D6}
               alt="Protocol Buffers"
             />
             <img
-              src="/badges/BACnet-004B87.svg"
+              src={badgeBACnet004B87}
               alt="BACnet"
             />
             <img
-              src="/badges/Modbus-FFCC00.svg"
+              src={badgeModbusFFCC00}
               alt="Modbus"
             />
             <img
-              src="/badges/WebSockets-010101.svg"
+              src={badgeWebSockets010101}
               alt="WebSockets"
             />
           </div>
