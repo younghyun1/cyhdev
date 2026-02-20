@@ -82,103 +82,103 @@ export default function About() {
           <br></br>
           <div class="flex flex-wrap gap-2 mb-6">
             <img
-              src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=orange"
+              src="/badges/Rust-000000.svg"
               alt="Rust"
             />
             <img
-              src="https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white"
+              src="/badges/C-A8B9CC.svg"
               alt="C"
             />
             <img
-              src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white"
+              src="/badges/TypeScript-3178C6.svg"
               alt="TypeScript"
             />
             <img
-              src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=green"
+              src="/badges/Python-3776AB.svg"
               alt="Python"
             />
             <img
-              src="https://img.shields.io/badge/Java-007396?style=for-the-badge&logo=java&logoColor=white"
+              src="/badges/Java-007396.svg"
               alt="Java"
             />
             <img
-              src="https://img.shields.io/badge/Axum-000000?style=for-the-badge&logo=rust&logoColor=orange"
+              src="/badges/Axum-000000.svg"
               alt="Axum"
             />
             <img
-              src="https://img.shields.io/badge/Spring%20Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white"
+              src="/badges/Spring_Boot-6DB33F.svg"
               alt="Spring Boot"
             />
             <img
-              src="https://img.shields.io/badge/Django-092E20?style=for-the-badge&logo=django&logoColor=white"
+              src="/badges/Django-092E20.svg"
               alt="Django"
             />
             <img
-              src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white"
+              src="/badges/PostgreSQL-316192.svg"
               alt="PostgreSQL"
             />
             <img
-              src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white"
+              src="/badges/MySQL-4479A1.svg"
               alt="MySQL"
             />
             <img
-              src="https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white"
+              src="/badges/AWS-232F3E.svg"
               alt="AWS"
             />
             <img
-              src="https://img.shields.io/badge/Google%20Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white"
+              src="/badges/Google_Cloud-4285F4.svg"
               alt="Google Cloud"
             />
             <img
-              src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white"
+              src="/badges/Docker-2496ED.svg"
               alt="Docker"
             />
             <img
-              src="https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white"
+              src="/badges/Kubernetes-326CE5.svg"
               alt="Kubernetes"
             />
             <img
-              src="https://img.shields.io/badge/NGINX-009639?style=for-the-badge&logo=nginx&logoColor=white"
+              src="/badges/NGINX-009639.svg"
               alt="NGINX"
             />
             <img
-              src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black"
+              src="/badges/Linux-FCC624.svg"
               alt="Linux"
             />
             <img
-              src="https://img.shields.io/badge/Arch%20Linux-1793D1?style=for-the-badge&logo=arch-linux&logoColor=white"
+              src="/badges/Arch_Linux-1793D1.svg"
               alt="Arch Linux"
             />
             <img
-              src="https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white"
+              src="/badges/Ubuntu-E95420.svg"
               alt="Ubuntu"
             />
             <img
-              src="https://img.shields.io/badge/Amazon%20Linux-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=FF9900"
+              src="/badges/Amazon_Linux-232F3E.svg"
               alt="Amazon Linux"
             />
             <img
-              src="https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white"
+              src="/badges/Windows-0078D6.svg"
               alt="Windows"
             />
             <img
-              src="https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white"
+              src="/badges/macOS-000000.svg"
               alt="macOS"
             />
             <img
-              src="https://img.shields.io/badge/Protocol%20Buffers-3367D6?style=for-the-badge&logo=google&logoColor=white"
+              src="/badges/Protocol_Buffers-3367D6.svg"
               alt="Protocol Buffers"
             />
             <img
-              src="https://img.shields.io/badge/BACnet-004B87?style=for-the-badge&logo=home-assistant&logoColor=white"
+              src="/badges/BACnet-004B87.svg"
               alt="BACnet"
             />
             <img
-              src="https://img.shields.io/badge/Modbus-FFCC00?style=for-the-badge&logo=modin&logoColor=000000"
+              src="/badges/Modbus-FFCC00.svg"
               alt="Modbus"
             />
             <img
-              src="https://img.shields.io/badge/WebSockets-010101?style=for-the-badge&logo=socketdotio&logoColor=white"
+              src="/badges/WebSockets-010101.svg"
               alt="WebSockets"
             />
           </div>
