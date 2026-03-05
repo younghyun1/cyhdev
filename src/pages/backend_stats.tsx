@@ -27,13 +27,15 @@ export default function BackendStats() {
   return (
     <main class={pageStyles.page}>
       <div
-        class={`${pageStyles.pageInner} flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
+        class={`${pageStyles.pageInner} max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
       >
-        <HostStatsDashboard onRefresh={refreshAll} />
+        <div class="w-full max-w-7xl xl:w-[56rem] 2xl:w-[64rem]">
+          <HostStatsDashboard onRefresh={refreshAll} />
+        </div>
 
         <Show when={fastfetch()}>
           <div
-            class="w-full max-w-7xl xl:w-2xl 2xl:w-3xl p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
+            class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
             style={{
               background: isDark()
                 ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"

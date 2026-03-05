@@ -11,7 +11,8 @@ export default function AboutBlog() {
             Blog Tech Stack
           </h1>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            Last updated: 2026-01-14<br />
+            Last updated: 2026-01-14
+            <br />
           </p>
         </div>
 
@@ -41,10 +42,10 @@ export default function AboutBlog() {
               Minecraft server. If you'd like to play, shoot me an email.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               0-1) Gentoo
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               Not exactly the OS of choice for an enterprise server; if I were
               working somewhere, I would have just done Debian Stable with an
               ext4 filesystem with any old database engine. However, I
@@ -62,10 +63,10 @@ export default function AboutBlog() {
               project.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               0-2) Using btrfs on a database-BE/FE-Minecraft host
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               <a
                 href="https://en.wikipedia.org/wiki/Btrfs"
                 class={pageStyles.link}
@@ -93,10 +94,10 @@ export default function AboutBlog() {
               benchmark.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               0-3) Internal and external network configuration
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               When signing up for Xfinity's 2Gbps television cable Internet
               service, I hadn't realized that they would be cheap enough to
               provide a modem-router that in fact does <em>not</em> support
@@ -138,14 +139,14 @@ export default function AboutBlog() {
           </section>
 
           {/* 1) PostgreSQL */}
-          <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-5">
-            <h2 class="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+          <section class={pageStyles.cardPadded}>
+            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
               1) Data
             </h2>
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-1) PostgreSQL 18
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               Throughout my startup and corporate career in Korea, I've noticed
               a culture that considers MySQL or MariaDB the only worthwhile
               RDBMS and I've yet to figure out why. Some of my older bosses have
@@ -157,54 +158,54 @@ export default function AboutBlog() {
               encoding of JSON data.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-2) Schema highlights (blog + auth)
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-3) UUIDv7
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-4) Diagram (request + data path)
             </h3>
-            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
           </section>
 
           {/* 2) Backend */}
-          <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-5">
-            <h2 class="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+          <section class={pageStyles.cardPadded}>
+            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
               2) Backend (Rust)
             </h2>
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
           </section>
 
           {/* 3) Frontend */}
-          <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-5">
-            <h2 class="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+          <section class={pageStyles.cardPadded}>
+            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
               3) Frontend
             </h2>
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
           </section>
 
           {/* 4) Network & HTTPS */}
-          <section class="rounded-lg border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-5">
-            <h2 class="text-lg font-bold mb-2 text-gray-900 dark:text-gray-100">
+          <section class={pageStyles.cardPadded}>
+            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
               4) HTTPS, routing, and safety rails
             </h2>
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-400">
+            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
               TODO
             </p>
           </section>
