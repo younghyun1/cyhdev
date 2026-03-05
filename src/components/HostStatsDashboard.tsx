@@ -26,7 +26,6 @@ const HISTORY_LIMIT = 60;
 export default function HostStatsDashboard(props: {
   wsUrl?: string;
   apiKey?: string;
-  onRefresh?: () => void | Promise<void>;
 }) {
   const [history, setHistory] = createSignal<HostStatPoint[]>([]);
   const [error, setError] = createSignal<string | null>(null);
@@ -133,13 +132,7 @@ export default function HostStatsDashboard(props: {
                   color: C().font,
                   border: `1px solid ${C().border}`,
                 }}
-                onClick={async () => {
-                  if (props.onRefresh) {
-                    await props.onRefresh();
-                  } else {
-                    await refreshHealthState();
-                  }
-                }}
+                onClick={() => refreshHealthState()}
               >
                 Refresh
               </button>

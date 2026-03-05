@@ -3,24 +3,17 @@ import HostStatsDashboard from "../components/HostStatsDashboard";
 import { healthApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { theme } from "../state/theme";
-import { refreshHealthState } from "../state/health";
 
 export default function BackendStats() {
-  const [fastfetch, { refetch: refetchFastfetch }] = createResource(
-    async () => {
-      try {
-        const res = await healthApi.fastfetch();
-        return res.data;
-      } catch (e) {
-        console.error(e);
-        return null;
-      }
-    },
-  );
-
-  const refreshAll = async () => {
-    await Promise.all([refreshHealthState(), refetchFastfetch()]);
-  };
+  const [fastfetch] = createResource(async () => {
+    try {
+      const res = await healthApi.fastfetch();
+      return res.data;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  });
 
   const isDark = () => theme() === "dark";
 
@@ -30,7 +23,7 @@ export default function BackendStats() {
         class={`${pageStyles.pageInner} max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
       >
         <div class="w-full max-w-7xl xl:w-[56rem] 2xl:w-[64rem]">
-          <HostStatsDashboard onRefresh={refreshAll} />
+          <HostStatsDashboard />
         </div>
 
         <Show when={fastfetch()}>
@@ -44,20 +37,7 @@ export default function BackendStats() {
               color: isDark() ? "#e2e8f0" : "#0f172a",
             }}
           >
-            <div class="flex items-center justify-end pb-3 mb-3 border-b border-opacity-20 border-current">
-              <button
-                class="px-3 py-1 text-xs font-semibold rounded hover:opacity-80 transition-opacity"
-                style={{
-                  background: isDark() ? "#111827" : "#f3f4f6",
-                  color: isDark() ? "#e2e8f0" : "#334155",
-                  border: `1px solid ${isDark() ? "#374151" : "#d1d5db"}`,
-                }}
-                onClick={refreshAll}
-              >
-                Refresh
-              </button>
-            </div>
-            <div class="m-auto whitespace-pre" innerHTML={fastfetch() ?? ""} />
+            <pre class="m-auto whitespace-pre" innerHTML={fastfetch() ?? ""} />
           </div>
         </Show>
       </div>
