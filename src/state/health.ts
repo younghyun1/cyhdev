@@ -86,9 +86,11 @@ export async function refreshHealthState() {
         baseline_timestamp: resp.data.timestamp,
       });
     } else {
-      setHealthState(null);
+      // Keep previous successful state to avoid UI flicker on transient failures.
+      console.warn("Health refresh returned an unsuccessful response");
     }
-  } catch {
-    setHealthState(null);
+  } catch (e) {
+    // Keep previous successful state to avoid UI flicker on transient failures.
+    console.error("Health refresh failed", e);
   }
 }
