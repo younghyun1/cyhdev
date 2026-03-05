@@ -121,12 +121,12 @@ export default function GeoIpInfo() {
           <Suspense
             fallback={
               <div class={`${pageStyles.cardPadded} animate-pulse`}>
-                <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4"></div>
+                <div class="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4" />
                 <div class="grid grid-cols-2 gap-4">
-                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div class="h-4 bg-slate-200 dark:bg-slate-700 rounded" />
                 </div>
               </div>
             }

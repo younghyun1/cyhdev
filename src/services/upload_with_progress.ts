@@ -18,8 +18,8 @@ export function uploadWithProgress({
     if (credentials === "include") {
       xhr.withCredentials = true;
     }
-    for (const k of Object.keys(headers)) {
-      xhr.setRequestHeader(k, headers[k]);
+    for (const [k, v] of Object.entries(headers)) {
+      xhr.setRequestHeader(k, v);
     }
 
     xhr.upload.onprogress = (e) => {

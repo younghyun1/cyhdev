@@ -1,4 +1,4 @@
-import { onCleanup, onMount, createEffect } from "solid-js";
+import { onCleanup, onMount, createEffect, untrack } from "solid-js";
 import type { JSX } from "solid-js";
 import Editor from "@toast-ui/editor";
 import type { EditorOptions } from "@toast-ui/editor";
@@ -61,7 +61,9 @@ export default function MarkdownEditor(
       ...restOptions,
     });
     editor.on("change", () => {
-      props.onChange(editor!.getMarkdown());
+      if (!editor) return;
+      const onEditorChange = untrack(() => props.onChange);
+      onEditorChange(editor.getMarkdown());
     });
   });
 

@@ -139,66 +139,72 @@ export default function HostStatsDashboard(props: {
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {(() => {
-              const hs = healthState();
-              if (!hs)
-                return <div class="col-span-full">Loading health stats...</div>;
-
-              const baselineMs =
-                hs.baseline_uptime_ms ?? parseUptimeToMs(hs.server_uptime);
-              const baselineTs = hs.baseline_timestamp ?? hs.timestamp;
-              let liveUptime: string = hs.server_uptime;
-              if (baselineMs != null && baselineTs) {
-                const base = new Date(baselineTs);
-                const now = clientNow() ?? new Date();
-                const extra = now.getTime() - base.getTime();
-                const totalMs =
-                  baselineMs +
-                  (Number.isFinite(extra) ? Math.max(extra, 0) : 0);
-                liveUptime = formatUptimeMs(totalMs);
+            <Show
+              when={healthState()}
+              fallback={
+                <div class="col-span-full">Loading health stats...</div>
               }
+            >
+              {(health) => {
+                const hs = health();
+                const baselineMs =
+                  hs.baseline_uptime_ms ?? parseUptimeToMs(hs.server_uptime);
+                const baselineTs = hs.baseline_timestamp ?? hs.timestamp;
+                let liveUptime: string = hs.server_uptime;
+                if (baselineMs != null && baselineTs) {
+                  const base = new Date(baselineTs);
+                  const now = clientNow() ?? new Date();
+                  const extra = now.getTime() - base.getTime();
+                  const totalMs =
+                    baselineMs +
+                    (Number.isFinite(extra) ? Math.max(extra, 0) : 0);
+                  liveUptime = formatUptimeMs(totalMs);
+                }
 
-              return (
-                <>
-                  <div
-                    class="p-4 rounded-lg bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">Uptime</div>
-                    <div class="text-xl font-mono font-bold tabular-nums">
-                      {liveUptime}
+                return (
+                  <>
+                    <div
+                      class="p-4 rounded-lg bg-opacity-50"
+                      style={{ background: C().cardBg }}
+                    >
+                      <div class="text-xs opacity-70 mb-1">Uptime</div>
+                      <div class="text-xl font-mono font-bold tabular-nums">
+                        {liveUptime}
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    class="p-4 rounded-lg bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">Responses Handled</div>
-                    <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.responses_handled.toLocaleString()}
+                    <div
+                      class="p-4 rounded-lg bg-opacity-50"
+                      style={{ background: C().cardBg }}
+                    >
+                      <div class="text-xs opacity-70 mb-1">
+                        Responses Handled
+                      </div>
+                      <div class="text-xl font-mono font-bold tabular-nums">
+                        {hs.responses_handled.toLocaleString()}
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    class="p-4 rounded-lg bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">Active Sessions</div>
-                    <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.users_logged_in}
+                    <div
+                      class="p-4 rounded-lg bg-opacity-50"
+                      style={{ background: C().cardBg }}
+                    >
+                      <div class="text-xs opacity-70 mb-1">Active Sessions</div>
+                      <div class="text-xl font-mono font-bold tabular-nums">
+                        {hs.users_logged_in}
+                      </div>
                     </div>
-                  </div>
-                  <div
-                    class="p-4 rounded-lg bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">DB Latency</div>
-                    <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.db_latency}
+                    <div
+                      class="p-4 rounded-lg bg-opacity-50"
+                      style={{ background: C().cardBg }}
+                    >
+                      <div class="text-xs opacity-70 mb-1">DB Latency</div>
+                      <div class="text-xl font-mono font-bold tabular-nums">
+                        {hs.db_latency}
+                      </div>
                     </div>
-                  </div>
-                </>
-              );
-            })()}
+                  </>
+                );
+              }}
+            </Show>
           </div>
         </div>
 
@@ -219,14 +225,14 @@ export default function HostStatsDashboard(props: {
             <div
               class="w-3 h-3 rounded-full animate-pulse"
               style={{ background: isDark() ? "#10b981" : "#059669" }}
-            ></div>
+            />
             <h2
               class="text-lg font-bold tracking-wide"
               style={{ color: C().font }}
             >
               LIVE HOST METRICS
             </h2>
-            <div class="flex-1"></div>
+            <div class="flex-1" />
             <div class="text-xs opacity-60" style={{ color: C().font }}>
               Realtime over WebSocket - custom binary protocol
             </div>

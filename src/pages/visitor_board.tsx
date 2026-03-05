@@ -63,8 +63,9 @@ export default function VisitorBoard() {
         // If you have image URLs, e.g., [ [lat, lng], count, imgUrl ]
         const pairs: [number[], number, string?][] =
           resp?.data && Array.isArray(resp.data) ? resp.data : [];
-        let initialLatLng: [number, number] =
-          pairs.length > 0 ? [pairs[0][0][0], pairs[0][0][1]] : [51.505, -0.09];
+        const first = pairs[0];
+        const initialLatLng: [number, number] =
+          first ? [first[0][0] ?? 51.505, first[0][1] ?? -0.09] : [51.505, -0.09];
 
         // Remove old map if present
         if (map && map.remove) {
@@ -93,14 +94,14 @@ export default function VisitorBoard() {
 
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
-          let popupHtml = `Visitations from here: <b>${count}</b>`;
-          return L.marker([lat, lng], { icon: emojiIcon })
+          const popupHtml = `Visitations from here: <b>${count}</b>`;
+          return L.marker([lat ?? 0, lng ?? 0], { icon: emojiIcon })
             .addTo(map!)
             .bindPopup(popupHtml);
         });
 
         if (markers.length > 0) {
-          markers[0].openPopup();
+          markers[0]?.openPopup();
         }
       } catch {
         if (map && map.remove) map.remove();

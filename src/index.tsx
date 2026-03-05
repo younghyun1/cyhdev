@@ -15,4 +15,4 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() => <Router root={App}>{routes}</Router>, root);
+render(() => <Router root={App}>{routes}</Router>, root!);

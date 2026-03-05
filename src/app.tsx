@@ -1,4 +1,5 @@
 import {
+  ErrorBoundary,
   Suspense,
   type ParentComponent,
   onMount,
@@ -72,7 +73,26 @@ const App: ParentComponent = (props) => {
       <TopBar />
 
       <main class="flex-1 min-h-0 pb-10 pt-12 sm:pt-14">
-        <Suspense>{props.children}</Suspense>
+        <ErrorBoundary
+          fallback={(err, reset) => (
+            <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
+              <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
+                Something went wrong
+              </h2>
+              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
+                {err instanceof Error ? err.message : "An unexpected error occurred."}
+              </p>
+              <button
+                class="px-4 py-2 text-sm font-medium rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                onClick={reset}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+        >
+          <Suspense>{props.children}</Suspense>
+        </ErrorBoundary>
       </main>
 
       <BottomBar />

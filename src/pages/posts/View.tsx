@@ -122,7 +122,7 @@ export default function PostViewPage() {
   const handleDeletePost = async () => {
     if (!confirm("Are you sure you want to delete this post?")) return;
     try {
-      await blogApi.deletePost(postId());
+      await blogApi.deletePost(postId()!);
       navigate("/blog");
     } catch (e) {
       alert("Failed to delete post: " + e);
@@ -132,7 +132,7 @@ export default function PostViewPage() {
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
     try {
-      await blogApi.deleteComment(postId(), commentId);
+      await blogApi.deleteComment(postId()!, commentId);
       refetch();
     } catch (e) {
       alert("Failed to delete comment: " + e);
@@ -142,8 +142,9 @@ export default function PostViewPage() {
   const handleVote = async (
     type: "post" | "comment",
     isUpvote: boolean,
-    ids: { postId: string; commentId?: string },
+    ids: { postId: string | undefined; commentId?: string },
   ) => {
+    if (!ids.postId) return;
     const originalPostState = postResource()?.post;
     const originalCommentState =
       type === "comment" && ids.commentId
@@ -251,7 +252,7 @@ export default function PostViewPage() {
           parent_comment_id: null,
           comment_content: commentValue(),
         },
-        postId(),
+        postId()!,
       );
       setCommentValue("");
       refetch();
@@ -287,7 +288,7 @@ export default function PostViewPage() {
           parent_comment_id: parentCommentId,
           comment_content: content,
         },
-        postId(),
+        postId()!,
       );
       // Optimistically add the new reply locally so it appears immediately
       if (res?.data) {
@@ -331,7 +332,7 @@ export default function PostViewPage() {
     try {
       await blogApi.updateComment(
         { comment_content: content },
-        postId(),
+        postId()!,
         commentId,
       );
       refetch();
@@ -357,8 +358,9 @@ export default function PostViewPage() {
     // Merge locally added comments (optimistic replies) without changing existing order
     const flat = [...flatComments];
     for (const id in localComments) {
-      if (!flat.find((c) => c.comment_id === id)) {
-        flat.push(localComments[id]);
+      const local = localComments[id];
+      if (local && !flat.find((c) => c.comment_id === id)) {
+        flat.push(local);
       }
     }
 
@@ -366,12 +368,14 @@ export default function PostViewPage() {
       commentsById[c.comment_id] = { ...c, children: [] };
     }
     for (const c of flat) {
-      if (c.parent_comment_id && commentsById[c.parent_comment_id]) {
-        commentsById[c.parent_comment_id].children.push(
-          commentsById[c.comment_id],
-        );
+      const parent = c.parent_comment_id
+        ? commentsById[c.parent_comment_id]
+        : undefined;
+      const self = commentsById[c.comment_id]!;
+      if (parent) {
+        parent.children.push(self);
       } else {
-        roots.push(commentsById[c.comment_id]);
+        roots.push(self);
       }
     }
     return roots;
@@ -759,6 +763,7 @@ export default function PostViewPage() {
                       </Show>
                       <div
                         class="prose dark:prose-invert max-w-none mb-3"
+                        // eslint-disable-next-line solid/no-innerhtml
                         innerHTML={renderedPostHtml()}
                         ref={(el) => {
                           createEffect(() => {

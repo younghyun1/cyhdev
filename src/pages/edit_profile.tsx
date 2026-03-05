@@ -125,37 +125,36 @@ function EditProfilePage() {
 
   const handleFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-      const file = target.files[0];
+    const file = target.files?.[0];
+    if (!file) return;
 
-      setError(null);
+    setError(null);
 
-      if (file.size > MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE) {
-        setProfileImage(null);
-        setSelectedPreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return null;
-        });
-        setError("File is too big. Maximum size is 10MB.");
-        return;
-      }
-
-      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        setProfileImage(null);
-        setSelectedPreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return null;
-        });
-        setError("Unsupported image type. Please choose a valid image.");
-        return;
-      }
-
-      setProfileImage(file);
+    if (file.size > MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE) {
+      setProfileImage(null);
       setSelectedPreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
-        return URL.createObjectURL(file);
+        return null;
       });
+      setError("File is too big. Maximum size is 10MB.");
+      return;
     }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setProfileImage(null);
+      setSelectedPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      setError("Unsupported image type. Please choose a valid image.");
+      return;
+    }
+
+    setProfileImage(file);
+    setSelectedPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
   };
 
   const handleUpload = async () => {

@@ -1,5 +1,5 @@
 import { Line } from "solid-chartjs";
-import type { ChartOptions, ChartData } from "chart.js";
+import type { ChartOptions, ChartData, ScriptableContext, TooltipItem } from "chart.js";
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
 
@@ -60,7 +60,7 @@ export default function RamStatsCard(props: {
           props.data.map((s) => (s.memT - s.memF) / (1024 * 1024)),
         ),
         fill: true,
-        backgroundColor: (ctx) => {
+        backgroundColor: (ctx: ScriptableContext<"line">) => {
           const c = ctx.chart;
           if (!c.chartArea) return C().memU;
           return makeGradient(c.ctx, c.chartArea, C().memU);
@@ -92,9 +92,9 @@ export default function RamStatsCard(props: {
       legend: { labels: { color: C().font } },
       tooltip: {
         callbacks: {
-          label: (ctx) => {
-            const v = ctx.parsed.y as number;
-            return `${ctx.dataset.label}: ${v.toFixed(1)} MiB`;
+          label: (ctx: TooltipItem<"line">) => {
+            const v = ctx.parsed.y;
+            return `${ctx.dataset.label}: ${(v ?? 0).toFixed(1)} MiB`;
           },
         },
         backgroundColor: C().bg,
@@ -113,13 +113,12 @@ export default function RamStatsCard(props: {
           <div
             class="w-2 h-2 rounded-full"
             style={{ background: C().memU }}
-          ></div>
+           />
           <h3
             class="text-sm font-bold uppercase tracking-wider opacity-80"
             style={{ color: C().font }}
           >
-            Memory Usage (thing's running a Minecraft server; server by itself
-            has ~1.5GB IP geolocator cache)
+            Memory Usage
           </h3>
         </div>
         <div

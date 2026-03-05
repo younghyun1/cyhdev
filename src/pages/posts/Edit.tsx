@@ -1,4 +1,4 @@
-import { createSignal, createEffect, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
@@ -37,42 +37,44 @@ export default function EditPostPage() {
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
 
-  createEffect(async () => {
-    const postId = params.post_id;
-    if (!postId) {
-      setError("No post ID provided");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const res = await blogApi.readPost(postId);
-      if (res.success && res.data) {
-        const post = res.data.post;
-        setTitle(post.post_title);
-        setIsPublished(post.post_is_published);
-        setInitialPublished(post.post_is_published);
-        const markdownFromMetadata = post.post_metadata?.markdown_content;
-        if (
-          typeof markdownFromMetadata === "string" &&
-          markdownFromMetadata.trim().length > 0
-        ) {
-          setBody(markdownFromMetadata);
-        } else {
-          setBody(normalizeMarkdown(post.post_content));
-        }
-        // Load tags from response
-        if (res.data.post_tags && res.data.post_tags.length > 0) {
-          setTags(res.data.post_tags.join(", "));
-        }
-      } else {
-        setError("Failed to load post.");
+  onMount(() => {
+    void (async () => {
+      const postId = params.post_id;
+      if (!postId) {
+        setError("No post ID provided");
+        setIsLoading(false);
+        return;
       }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load post.");
-    } finally {
-      setIsLoading(false);
-    }
+
+      try {
+        const res = await blogApi.readPost(postId);
+        if (res.success && res.data) {
+          const post = res.data.post;
+          setTitle(post.post_title);
+          setIsPublished(post.post_is_published);
+          setInitialPublished(post.post_is_published);
+          const markdownFromMetadata = post.post_metadata?.markdown_content;
+          if (
+            typeof markdownFromMetadata === "string" &&
+            markdownFromMetadata.trim().length > 0
+          ) {
+            setBody(markdownFromMetadata);
+          } else {
+            setBody(normalizeMarkdown(post.post_content));
+          }
+          // Load tags from response
+          if (res.data.post_tags && res.data.post_tags.length > 0) {
+            setTags(res.data.post_tags.join(", "));
+          }
+        } else {
+          setError("Failed to load post.");
+        }
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load post.");
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   });
 
   const handleSubmit = async (e: Event) => {
@@ -93,7 +95,7 @@ export default function EditPostPage() {
           post_tags: postTags,
           post_is_published: isPublished(),
         },
-        params.post_id,
+        params.post_id!,
       );
       if (res.success) {
         navigate(

@@ -11,7 +11,7 @@ export default function AboutBlog() {
             Blog Tech Stack
           </h1>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            Last updated: 2026-01-14<br></br>
+            Last updated: 2026-01-14<br />
           </p>
         </div>
 
@@ -103,8 +103,8 @@ export default function AboutBlog() {
               2.5Gbps Ethernet. So 1Gbps it shall have to be, but I can't
               imagine a scenario in which that becomes a problem for my little
               website. Route 53 provides DNS services for my domain.
-              <br></br>
-              <br></br>
+              <br />
+              <br />
               Internally, there really is no reason to use reverse proxy,
               containerization or distributed service tools; it's just a plain
               old postgreSQL engine running on the OS, a Rust binary acting as

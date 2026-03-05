@@ -1,6 +1,7 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
-const pkg = require("./package.json");
+import pkg from "./package.json" with { type: "json" };
 
 export default defineConfig({
   plugins: [solidPlugin()],
@@ -14,10 +15,10 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    rollupOptions: {
-      output: {
-        manualChunks: () => "app.js",
-      },
-    },
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    transformMode: { web: [/\.[jt]sx?$/] },
   },
 });

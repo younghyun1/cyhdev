@@ -34,7 +34,7 @@ export default function BackendStats() {
               color: isDark() ? "#e2e8f0" : "#0f172a",
             }}
           >
-            <pre class="m-auto" innerHTML={fastfetch()} />
+            <pre class="m-auto">{fastfetch() ?? ""}</pre>
           </div>
         </Show>
       </div>

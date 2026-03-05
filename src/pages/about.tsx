@@ -69,7 +69,7 @@ export default function About() {
                   loading="lazy"
                 />
               </a>
-              <figcaption class="mt-1 text-xs text-gray-500 dark:text-gray-500 text-center sm:text-right max-w-44"></figcaption>
+              <figcaption class="mt-1 text-xs text-gray-500 dark:text-gray-500 text-center sm:text-right max-w-44" />
             </figure>
           </div>
           <div>
@@ -104,7 +104,7 @@ export default function About() {
               </li>
             </ul>
           </div>
-          <br></br>
+          <br />
           <div class="flex flex-wrap gap-2 mb-6">
             <img
               src={badgeRust000000}

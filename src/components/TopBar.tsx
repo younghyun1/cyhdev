@@ -193,11 +193,11 @@ const TopBar = () => {
 
                   <div class="hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
                     <span class="font-medium text-xs sm:text-sm">
-                      {user()?.user_info.user_name}
+                      {user()?.user_info?.user_name}
                     </span>
 
                     <span class="text-[10px] sm:text-xs text-slate-400">
-                      {user()?.user_info.user_email}
+                      {user()?.user_info?.user_email}
                     </span>
                   </div>
 

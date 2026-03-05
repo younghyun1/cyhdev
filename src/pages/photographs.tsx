@@ -220,7 +220,7 @@ export default function Photographs() {
       () => [] as PhotographItem[],
     );
     photos().forEach((photo, i) => {
-      cols[i % numColumns()].push(photo);
+      cols[i % numColumns()]!.push(photo);
     });
     return cols;
   });
@@ -302,7 +302,7 @@ export default function Photographs() {
     fetchPhotos();
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore() && !loading()) {
+        if (entries[0]?.isIntersecting && hasMore() && !loading()) {
           fetchPhotos();
         }
       },
@@ -390,7 +390,7 @@ export default function Photographs() {
       });
 
       const provider = new OpenStreetMapProvider();
-      // @ts-ignore
+      // @ts-expect-error GeoSearchControl constructor types do not match runtime usage.
       const searchControl = new GeoSearchControl({
         provider: provider,
         style: "bar",
@@ -504,11 +504,11 @@ export default function Photographs() {
     );
 
     if (direction === "prev" && idx > 0) {
-      setSelectedPhoto(currentPhotos[idx - 1]);
+      setSelectedPhoto(currentPhotos[idx - 1] ?? null);
     } else if (direction === "next") {
       // If we are not at the end of the loaded list
       if (idx < currentPhotos.length - 1) {
-        setSelectedPhoto(currentPhotos[idx + 1]);
+        setSelectedPhoto(currentPhotos[idx + 1] ?? null);
       }
       // If we are at the end, but the API has more pages
       else if (hasMore() && !loading()) {
@@ -519,8 +519,9 @@ export default function Photographs() {
         const updatedPhotos = photos();
 
         // Select the next item (which is now at the index that used to be out of bounds)
-        if (updatedPhotos[idx + 1]) {
-          setSelectedPhoto(updatedPhotos[idx + 1]);
+        const next = updatedPhotos[idx + 1];
+        if (next) {
+          setSelectedPhoto(next);
         }
       }
     }
@@ -888,12 +889,12 @@ export default function Photographs() {
                         r="10"
                         stroke="currentColor"
                         stroke-width="4"
-                      ></circle>
+                      />
                       <path
                         class="opacity-75"
                         fill="currentColor"
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      ></path>
+                      />
                     </svg>
                   </Show>
                 </button>

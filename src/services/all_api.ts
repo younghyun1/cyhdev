@@ -1,5 +1,4 @@
-import { apiFetch } from "./api";
-import axios, { AxiosRequestConfig } from "axios";
+import { apiFetch, apiUrl } from "./api";
 
 // Helper to interpolate path params, e.g. /path/{id}
 function interpolate(
@@ -92,10 +91,9 @@ async function post<T>(path: string, options: RequestOptions = {}): Promise<T> {
 }
 
 /**
- * Generic HTTP POST for FormData
- * Uses Axios so we can get real upload progress events.
+ * Generic HTTP POST for FormData with upload progress via XHR.
  */
-async function postFormData<T>(
+function postFormData<T>(
   path: string,
   formData: FormData,
   options: Omit<RequestOptions, "body" | "params"> & {
@@ -103,36 +101,57 @@ async function postFormData<T>(
     params?: Record<string, string | number | undefined>;
   } = {},
 ): Promise<T> {
-  const url = interpolate(path, options.params);
+  const url = apiUrl(interpolate(path, options.params));
 
-  const config: AxiosRequestConfig<FormData> = {
-    url,
-    method: "POST",
-    data: formData,
-    // Normalize headers to a plain Record<string, string> so TypeScript is happy
-    headers: {
-      ...(options.headers
-        ? Object.fromEntries(
-            Object.entries(options.headers as Record<string, string>),
-          )
-        : {}),
-      // Let Axios set the correct multipart boundary. If you prefer, you can omit this
-      // header entirely and Axios will infer it from the FormData.
-      "Content-Type": "multipart/form-data",
-    },
-    withCredentials:
-      typeof options.credentials !== "undefined"
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url, true);
+
+    // Set withCredentials
+    const useCredentials =
+      options.credentials !== undefined
         ? options.credentials === "include"
-        : true,
-    onUploadProgress: (event) => {
-      if (!options.onUploadProgress || !event.total) return;
-      const percent = Math.round((event.loaded * 100) / event.total);
-      options.onUploadProgress(percent);
-    },
-  };
+        : true;
+    xhr.withCredentials = useCredentials;
 
-  const res = await axios.request<T>(config);
-  return res.data;
+    // Set custom headers (skip Content-Type so browser sets multipart boundary)
+    if (options.headers) {
+      for (const [k, v] of Object.entries(
+        options.headers as Record<string, string>,
+      )) {
+        if (k.toLowerCase() !== "content-type") {
+          xhr.setRequestHeader(k, v);
+        }
+      }
+    }
+
+    // Set API key header (same as apiFetch)
+    const apiKey = import.meta.env.VITE_API_KEY ?? "";
+    if (apiKey) xhr.setRequestHeader("x-api-key", apiKey);
+
+    if (options.onUploadProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          options.onUploadProgress!(Math.round((e.loaded * 100) / e.total));
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as T);
+        } catch {
+          resolve(undefined as unknown as T);
+        }
+      } else {
+        reject(buildHttpError(xhr.status, xhr.responseText));
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.send(formData);
+  });
 }
 
 /**

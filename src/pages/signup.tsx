@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, Show } from "solid-js";
+import { createSignal, createEffect, onMount, Show, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi, dropdownApi } from "../services/all_api";
 import type {
@@ -222,12 +222,12 @@ function SignupPage() {
               required
             >
               <option value="">Select Country…</option>
-              {countries().map((c) => (
+              <For each={countries()}>{(c) => (
                 <option value={c.country_code}>
                   {c.country_flag ? c.country_flag + " " : ""}
                   {c.country_eng_name}
                 </option>
-              ))}
+              )}</For>
             </select>
 
             <select
@@ -237,9 +237,9 @@ function SignupPage() {
               required
             >
               <option value="">Select Language…</option>
-              {sortedLanguages().map((l) => (
+              <For each={sortedLanguages()}>{(l) => (
                 <option value={l.language_code}>{l.language_eng_name}</option>
-              ))}
+              )}</For>
             </select>
 
             <select
@@ -249,9 +249,9 @@ function SignupPage() {
               disabled={!subdivisions().length}
             >
               <option value="">No Subdivision / N/A</option>
-              {subdivisions().map((s) => (
+              <For each={subdivisions()}>{(s) => (
                 <option value={s.subdivision_id}>{s.subdivision_name}</option>
-              ))}
+              )}</For>
             </select>
 
             <Show when={error()}>

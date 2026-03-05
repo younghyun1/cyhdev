@@ -1,5 +1,6 @@
+import type {
+  Component} from "solid-js";
 import {
-  Component,
   Show,
   createEffect,
   createMemo,
@@ -42,7 +43,7 @@ const BottomBar: Component = () => {
   // Refresh health state on route changes
   createEffect(() => {
     // depend on pathname so this re-runs on each navigation
-    const _path = location.pathname;
+    void location.pathname; // depend on pathname so this re-runs on each navigation
     refreshHealthState();
   });
 

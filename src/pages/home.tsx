@@ -37,9 +37,8 @@ export default function Home() {
                   and infrastructure. I also enjoy photography and have dabbled
                   in journalism, translation/interpretation, soldiering, manual
                   labor, activism, and various misadventures.
-                  <br></br>
-                  <br></br>I hold craftsmanship and good governance to be
-                  sacred.
+                  <br />
+                  <br />I hold craftsmanship and good governance to be sacred.
                 </span>
               </p>
             </div>
@@ -102,7 +101,7 @@ export default function Home() {
         <section class="lg:col-span-7 flex flex-col h-full">
           <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-amber-600"></span> Latest Posts
+              <span class="w-3 h-3 bg-amber-600" /> Latest Posts
             </h2>
             <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
               view blog posts &rarr;
@@ -113,9 +112,11 @@ export default function Home() {
             <Suspense
               fallback={
                 <div class="space-y-4">
-                  {[1, 2, 3].map(() => (
-                    <div class="h-24 bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700"></div>
-                  ))}
+                  <For each={[1, 2, 3]}>
+                    {() => (
+                      <div class="h-24 bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
+                    )}
+                  </For>
                 </div>
               }
             >
@@ -173,7 +174,7 @@ export default function Home() {
         <section class="lg:col-span-5 flex flex-col h-full">
           <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-amber-600"></span> Photography
+              <span class="w-3 h-3 bg-amber-600" /> Photography
             </h2>
             <A
               href="/photographs"
@@ -187,9 +188,11 @@ export default function Home() {
             <Suspense
               fallback={
                 <>
-                  {[1, 2, 3, 4].map(() => (
-                    <div class="aspect-square bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700"></div>
-                  ))}
+                  <For each={[1, 2, 3, 4]}>
+                    {() => (
+                      <div class="aspect-square bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
+                    )}
+                  </For>
                 </>
               }
             >
@@ -217,7 +220,7 @@ export default function Home() {
                         loading="lazy"
                       />
                       {/* Crosshair overlay effect */}
-                      <div class="absolute inset-0 border-2 border-transparent group-hover:border-amber-500/50 transition-colors pointer-events-none z-10"></div>
+                      <div class="absolute inset-0 border-2 border-transparent group-hover:border-amber-500/50 transition-colors pointer-events-none z-10" />
                       <div class="absolute top-2 right-2 text-[10px] font-mono bg-black text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                         {photo.photograph_id}
                       </div>
