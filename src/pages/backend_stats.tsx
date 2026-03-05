@@ -5,17 +5,15 @@ import { pageStyles } from "../styles/pageStyles";
 import { theme } from "../state/theme";
 
 export default function BackendStats() {
-  const [fastfetch, { refetch: refetchFastfetch }] = createResource(
-    async () => {
-      try {
-        const res = await healthApi.fastfetch();
-        return res.data;
-      } catch (e) {
-        console.error(e);
-        return null;
-      }
-    },
-  );
+  const [fastfetch] = createResource(async () => {
+    try {
+      const res = await healthApi.fastfetch();
+      return res.data;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  });
 
   const isDark = () => theme() === "dark";
 
@@ -25,7 +23,7 @@ export default function BackendStats() {
         class={`${pageStyles.pageInner} max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
       >
         <div class="w-full max-w-7xl xl:w-[56rem] 2xl:w-[64rem]">
-          <HostStatsDashboard onRefresh={() => refetchFastfetch()} />
+          <HostStatsDashboard />
         </div>
 
         <Show when={fastfetch()}>

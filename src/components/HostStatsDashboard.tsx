@@ -1,4 +1,4 @@
-import { onMount, onCleanup, createSignal, Show } from "solid-js";
+import { onMount, onCleanup, createMemo, createSignal, Show } from "solid-js";
 import { theme } from "../state/theme";
 import {
   healthState,
@@ -26,7 +26,6 @@ const HISTORY_LIMIT = 60;
 export default function HostStatsDashboard(props: {
   wsUrl?: string;
   apiKey?: string;
-  onRefresh?: () => unknown;
 }) {
   const [history, setHistory] = createSignal<HostStatPoint[]>([]);
   const [error, setError] = createSignal<string | null>(null);
@@ -38,6 +37,23 @@ export default function HostStatsDashboard(props: {
     border: isDark() ? "#374151" : "#d1d5db",
     font: isDark() ? "#e2e8f0" : "#334155",
     cardBg: isDark() ? "#111827" : "#f3f4f6",
+  });
+
+  const liveUptime = createMemo(() => {
+    const hs = healthState();
+    if (!hs) return "–";
+
+    const baselineMs =
+      hs.baseline_uptime_ms ?? parseUptimeToMs(hs.server_uptime);
+    const baselineTs = hs.baseline_timestamp ?? hs.timestamp;
+    if (baselineMs == null || !baselineTs) return hs.server_uptime;
+
+    const base = new Date(baselineTs);
+    const now = clientNow() ?? new Date();
+    const extra = now.getTime() - base.getTime();
+    const totalMs =
+      baselineMs + (Number.isFinite(extra) ? Math.max(extra, 0) : 0);
+    return formatUptimeMs(totalMs);
   });
 
   let ws: WebSocket;
@@ -133,10 +149,7 @@ export default function HostStatsDashboard(props: {
                   color: C().font,
                   border: `1px solid ${C().border}`,
                 }}
-                onClick={() => {
-                  void refreshHealthState();
-                  void props.onRefresh?.();
-                }}
+                onClick={() => void refreshHealthState()}
               >
                 Refresh
               </button>
@@ -145,69 +158,51 @@ export default function HostStatsDashboard(props: {
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <Show
               when={healthState()}
+              keyed
               fallback={
                 <div class="col-span-full">Loading health stats...</div>
               }
             >
-              {(health) => {
-                const hs = health();
-                const baselineMs =
-                  hs.baseline_uptime_ms ?? parseUptimeToMs(hs.server_uptime);
-                const baselineTs = hs.baseline_timestamp ?? hs.timestamp;
-                let liveUptime: string = hs.server_uptime;
-                if (baselineMs != null && baselineTs) {
-                  const base = new Date(baselineTs);
-                  const now = clientNow() ?? new Date();
-                  const extra = now.getTime() - base.getTime();
-                  const totalMs =
-                    baselineMs +
-                    (Number.isFinite(extra) ? Math.max(extra, 0) : 0);
-                  liveUptime = formatUptimeMs(totalMs);
-                }
-
-                return (
-                  <>
-                    <div
-                      class="p-4 rounded-lg bg-opacity-50"
-                      style={{ background: C().cardBg }}
-                    >
-                      <div class="text-xs opacity-70 mb-1">Uptime</div>
-                      <div class="text-xl font-mono font-bold tabular-nums">
-                        {liveUptime}
-                      </div>
+              {(hs) => (
+                <>
+                  <div
+                    class="p-4 rounded-lg bg-opacity-50"
+                    style={{ background: C().cardBg }}
+                  >
+                    <div class="text-xs opacity-70 mb-1">Uptime</div>
+                    <div class="text-xl font-mono font-bold tabular-nums">
+                      {liveUptime()}
                     </div>
-                    <div
-                      class="p-4 rounded-lg bg-opacity-50"
-                      style={{ background: C().cardBg }}
-                    >
-                      <div class="text-xs opacity-70 mb-1">
-                        Responses Handled
-                      </div>
-                      <div class="text-xl font-mono font-bold tabular-nums">
-                        {hs.responses_handled.toLocaleString()}
-                      </div>
+                  </div>
+                  <div
+                    class="p-4 rounded-lg bg-opacity-50"
+                    style={{ background: C().cardBg }}
+                  >
+                    <div class="text-xs opacity-70 mb-1">Responses Handled</div>
+                    <div class="text-xl font-mono font-bold tabular-nums">
+                      {hs.responses_handled.toLocaleString()}
                     </div>
-                    <div
-                      class="p-4 rounded-lg bg-opacity-50"
-                      style={{ background: C().cardBg }}
-                    >
-                      <div class="text-xs opacity-70 mb-1">Active Sessions</div>
-                      <div class="text-xl font-mono font-bold tabular-nums">
-                        {hs.users_logged_in}
-                      </div>
+                  </div>
+                  <div
+                    class="p-4 rounded-lg bg-opacity-50"
+                    style={{ background: C().cardBg }}
+                  >
+                    <div class="text-xs opacity-70 mb-1">Active Sessions</div>
+                    <div class="text-xl font-mono font-bold tabular-nums">
+                      {hs.users_logged_in}
                     </div>
-                    <div
-                      class="p-4 rounded-lg bg-opacity-50"
-                      style={{ background: C().cardBg }}
-                    >
-                      <div class="text-xs opacity-70 mb-1">DB Latency</div>
-                      <div class="text-xl font-mono font-bold tabular-nums">
-                        {hs.db_latency}
-                      </div>
+                  </div>
+                  <div
+                    class="p-4 rounded-lg bg-opacity-50"
+                    style={{ background: C().cardBg }}
+                  >
+                    <div class="text-xs opacity-70 mb-1">DB Latency</div>
+                    <div class="text-xl font-mono font-bold tabular-nums">
+                      {hs.db_latency}
                     </div>
-                  </>
-                );
-              }}
+                  </div>
+                </>
+              )}
             </Show>
           </div>
         </div>
