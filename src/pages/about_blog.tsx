@@ -11,7 +11,7 @@ export default function AboutBlog() {
             Blog Tech Stack
           </h1>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            Last updated: 2026-01-14
+            Last updated: 2026-03-06
             <br />
           </p>
         </div>
@@ -162,21 +162,62 @@ export default function AboutBlog() {
               1-2) Schema highlights (blog + auth)
             </h3>
             <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              The schema is intentionally boring in the good way: users,
+              sessions-in-memory, email verification tokens, password reset
+              tokens, posts, comments, vote tables, tags, profile pictures, and
+              a few geography/i18n support tables. The blog itself is not just a
+              <code>posts</code> table and a prayer. Posts carry slugs,
+              summaries, metadata as JSONB, publish state, denormalized
+              counters, and tag mappings. Comments are threaded via a nullable
+              parent comment ID. Votes are split into dedicated post and comment
+              vote tables, which keeps query paths simpler and avoids some very
+              silly conditional logic later on.
+              <br />
+              <br />
+              Auth is similarly practical: the user record stores country and
+              language so the site can do more than just ask for an email and
+              forget you exist. Role and permission tables are present because I
+              dislike painting myself into authorization corners. Profile
+              pictures are versioned in their own table rather than smeared onto
+              the user row, which makes replacement logic cleaner and avoids
+              overloading the hot user record with unrelated concerns.
             </p>
 
             <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-3) UUIDv7
             </h3>
             <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              Pretty much everything user-facing is keyed by UUIDs, and that was
+              not an accident. I do not enjoy exposing sequential IDs that let
+              anybody infer row counts or enumerate resources like it's 2009.
+              Time-ordered UUIDs also behave much more politely for indexes than
+              fully random UUIDv4 values, which is handy when writes are not
+              purely theoretical. In other words: globally unique, hard to
+              guess, and less hostile to locality. Insert patterns stay saner,
+              B-tree churn is lower, and the database spends less time doing
+              avoidable housekeeping.
             </p>
 
             <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
               1-4) Diagram (request + data path)
             </h3>
             <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              Very glamorous enterprise architecture diagram, reproduced here in
+              text form because I have not yet bothered to draw boxes:
+              <br />
+              <br />
+              Browser request -&gt; Axum router -&gt; middleware chain (logging,
+              auth/session lookup, rate limit, body size checks) -&gt; handler
+              -&gt; Diesel async query or in-memory cache lookup -&gt;
+              PostgreSQL over a UNIX socket -&gt; DTO response -&gt; compressed
+              HTTPS response back to browser.
+              <br />
+              <br />
+              Static assets take an even shorter route. The built SolidJS app is
+              embedded directly into the Rust binary and served with content
+              negotiation for zstd/gzip if the browser supports it. No Node
+              process lingering in production, no separate static file host, and
+              no extra hop between "request arrived" and "bytes went out."
             </p>
           </section>
 
@@ -186,7 +227,31 @@ export default function AboutBlog() {
               2) Backend (Rust)
             </h2>
             <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              The backend is a Rust service built on Axum, Tokio, Diesel, and
+              PostgreSQL, with mimalloc as the global allocator because if one
+              is going to self-host on a machine with actual cores, one may as
+              well be at least a little bit serious about allocator behavior. It
+              terminates TLS directly with rustls, serves the embedded SPA,
+              exposes JSON APIs for auth/blog/photography/i18n, and also pushes
+              host stats over WebSockets for the server dashboard. The router
+              includes request compression, permissive CORS for now, fairly
+              generous rate limiting, and a Swagger UI that gets gated behind
+              auth in production.
+              <br />
+              <br />
+              On the application side, the design leans into a single process
+              with a shared server state object, in-memory session management,
+              startup cache synchronization, and scheduled maintenance jobs.
+              Authentication uses secure HTTP-only cookies, email verification,
+              password reset tokens, and explicit role checks for superuser
+              operations. The more interesting part is the latency profile:
+              database traffic stays on a UNIX socket, the connection pool sizes
+              itself against physical core count, blog list reads come largely
+              from cache, and the response assembly does the enrichment work in
+              batches rather than degenerating into a pile of tiny lookups. That
+              keeps the stack fast in the way I actually care about: fewer hops,
+              fewer copies, fewer round trips, and less waiting around for
+              abstraction to finish congratulating itself.
             </p>
           </section>
 
@@ -196,7 +261,26 @@ export default function AboutBlog() {
               3) Frontend
             </h2>
             <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              The frontend is a client-side SolidJS SPA built with Vite and
+              TypeScript. Routes are lazy-loaded, state is kept fairly
+              straightforward, and the whole thing is compiled into static
+              assets that get bundled into the Rust binary at deploy time. That
+              means there is no production JavaScript server process to babysit,
+              and initial delivery is just the Rust server handing out static
+              files as efficiently as it can.
+              <br />
+              <br />
+              The blog UI itself is a mix of practicality and me refusing to use
+              toy editors. Markdown authoring is handled with Toast UI Editor,
+              and pasted or uploaded images go straight through the photography
+              upload API so post composition is not a miserable experience.
+              Search supports title queries and tags, pages are navigable via
+              query params, auth state is tracked client-side but enforced
+              server-side, and the app keeps an eye on response headers so it
+              can display server build information. Styling is Tailwind-based
+              with a shared page style system. Solid helps here by being lean at
+              runtime and very sparing with DOM churn, which is exactly what I
+              want from a UI layer whose main job is to stay out of the way.
             </p>
           </section>
 
@@ -206,7 +290,24 @@ export default function AboutBlog() {
               4) HTTPS, routing, and safety rails
             </h2>
             <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
-              TODO
+              HTTPS is handled directly by the Rust server with rustls. Plain
+              HTTP requests get bounced to HTTPS, cookies are marked secure and
+              HTTP-only, and the production cookie domain is locked to the site
+              domain rather than sprayed around indiscriminately. Static assets
+              are served with zstd or gzip when supported, and SPA fallback
+              routing means deep links work without involving some separate
+              reverse proxy layer.
+              <br />
+              <br />
+              The safety rails are not especially exotic, but they are there:
+              request body limits for uploads, middleware logging, auth gates on
+              protected routes, superuser checks on sensitive endpoints, rate
+              limiting to make abuse less amusing, and API key support for
+              client requests. More importantly, the deployment shape itself is
+              simple enough to reason about. One binary, one database, one host,
+              TLS on the app, and very few excuses for mystery latency or
+              configuration drift. It is not fashionable architecture, but it is
+              fast, observable, and stubbornly low-overhead.
             </p>
           </section>
         </section>
