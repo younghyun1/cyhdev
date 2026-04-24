@@ -97,13 +97,15 @@ export default function Home() {
       </header>
 
       {/* Main Content Grid */}
-      <div class="grow w-full px-6 py-12">
-        <div class="mx-auto grid max-w-[104rem] grid-cols-1 gap-8 xl:grid-cols-[20rem_minmax(0,80rem)]">
-          <aside class="flex flex-col h-full xl:sticky xl:top-24 xl:self-start">
+      <div class="grow">
+        <div class="relative mx-auto max-w-7xl px-6 py-12">
+          <aside
+            class="mx-auto mb-8 flex h-full w-full max-w-md flex-col 2xl:absolute 2xl:left-[calc((100vw-80rem)/-2+1.5rem)] 2xl:top-12 2xl:mb-0 2xl:max-w-none 2xl:w-[clamp(14rem,calc((100vw-80rem)/2-3rem),22rem)]"
+          >
             <LiveChatPanel mode="compact" />
           </aside>
 
-          <div class="grid w-full max-w-7xl grid-cols-1 gap-8 lg:grid-cols-12">
+          <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Latest Blog Posts - Spans 7 columns */}
             <section class="lg:col-span-7 flex flex-col h-full">
               <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">

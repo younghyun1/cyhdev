@@ -10,6 +10,37 @@ function interpolate(
   );
 }
 
+function pathParamKeys(path: string): Set<string> {
+  const keys = new Set<string>();
+  for (const match of path.matchAll(/{([^}]+)}/g)) {
+    const key = match[1];
+    if (key) {
+      keys.add(key);
+    }
+  }
+  return keys;
+}
+
+function buildPath(
+  path: string,
+  params: Record<string, string | number | boolean | undefined> = {},
+): string {
+  const pathKeys = pathParamKeys(path);
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!pathKeys.has(key) && value !== undefined) {
+      query.append(key, String(value));
+    }
+  }
+
+  const interpolated = interpolate(path, params);
+  const queryString = query.toString();
+  if (!queryString) return interpolated;
+
+  return `${interpolated}${interpolated.includes("?") ? "&" : "?"}${queryString}`;
+}
+
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: object;
   params?: Record<string, string | number | boolean | undefined>;
@@ -45,7 +76,7 @@ function buildHttpError(status: number, bodyText: string): HttpError {
  * Generic HTTP GET
  */
 async function get<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const url = interpolate(path, options.params);
+  const url = buildPath(path, options.params);
   const { body: _, params: __, ...fetchOptions } = options;
   const res = await apiFetch(url, { ...fetchOptions, method: "GET" });
   if (!res.ok) {
@@ -59,7 +90,7 @@ async function get<T>(path: string, options: RequestOptions = {}): Promise<T> {
  * Generic HTTP POST
  */
 async function post<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const url = interpolate(path, options.params);
+  const url = buildPath(path, options.params);
   const { body, params: _, ...restOptions } = options;
   const fetchOpts: RequestInit = {
     ...restOptions,
@@ -101,7 +132,7 @@ function postFormData<T>(
     params?: Record<string, string | number | undefined>;
   } = {},
 ): Promise<T> {
-  const url = apiUrl(interpolate(path, options.params));
+  const url = apiUrl(buildPath(path, options.params));
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -161,7 +192,7 @@ async function patch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const url = interpolate(path, options.params);
+  const url = buildPath(path, options.params);
   const { body, params: _, ...restOptions } = options;
   const fetchOpts: RequestInit = {
     ...restOptions,
@@ -196,7 +227,7 @@ async function patch<T>(
  * Generic HTTP DELETE
  */
 async function del<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const url = interpolate(path, options.params);
+  const url = buildPath(path, options.params);
   const { body, params: _, ...restOptions } = options;
   const fetchOpts: RequestInit = {
     ...restOptions,
@@ -297,14 +328,8 @@ import type {
   DeleteCommentResponse,
 } from "../dtos/responses/blog";
 
-import type {
-  GetCountryLanguageBundleRequest,
-  GetUiTextBundleRequest,
-} from "../dtos/requests/i18n";
-import type {
-  GetCountryLanguageBundleResponse,
-  UiTextBundleResponse,
-} from "../dtos/responses/i18n";
+import type { GetUiTextBundleRequest } from "../dtos/requests/i18n";
+import type { UiTextBundleResponse } from "../dtos/responses/i18n";
 import type { SyncI18nCacheResponse } from "../dtos/responses/admin";
 import type { PublicUserInfoResponse } from "../dtos/responses/user";
 
@@ -535,11 +560,6 @@ export const blogApi = {
 };
 
 export const i18nApi = {
-  getCountryLanguageBundle: async (query?: GetCountryLanguageBundleRequest) =>
-    await get<ApiResponse<GetCountryLanguageBundleResponse>>(
-      "/api/i18n/country-language-bundle",
-      { params: query ? { ...query } : undefined },
-    ),
   getUiTextBundle: async (locale: string) => {
     const query: GetUiTextBundleRequest = { locale };
     return await get<ApiResponse<UiTextBundleResponse>>("/api/i18n/ui-text", {
@@ -549,9 +569,9 @@ export const i18nApi = {
 };
 
 export const adminApi = {
-  syncCountryLanguageBundle: async () =>
+  syncI18nCache: async () =>
     await get<ApiResponse<SyncI18nCacheResponse>>(
-      "/api/admin/sync-country-language-bundle",
+      "/api/admin/sync-i18n-cache",
     ),
 };
 

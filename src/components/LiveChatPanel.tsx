@@ -9,6 +9,13 @@ import {
 } from "solid-js";
 import { A } from "@solidjs/router";
 import { liveChatApi, liveChatWebSocketUrl } from "../services/live_chat";
+import {
+  LIVE_CHAT_BINARY_PROTOCOL,
+  decodeServerEventFrame,
+  encodePingFrame,
+  encodeSendMessageFrame,
+  encodeTypingFrame,
+} from "../services/live_chat_binary";
 import type { LiveChatClientEvent } from "../dtos/requests/live_chat";
 import type {
   ChatActor,
@@ -42,7 +49,8 @@ type LiveChatMessageView =
     };
 
 const PAGE_SIZE = 50;
-const TYPING_DEBOUNCE_MS = 900;
+const TYPING_IDLE_STOP_MS = 1500;
+const TYPING_REFRESH_MS = 2000;
 const LIVE_CHAT_MAX_MESSAGE_CHARS = 300;
 const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 80;
 
@@ -153,7 +161,7 @@ function markPendingMessagesFailed(list: LiveChatMessageView[]): LiveChatMessage
   });
 }
 
-function parseServerEvent(raw: string): LiveChatServerEvent | null {
+function parseJsonServerEvent(raw: string): LiveChatServerEvent | null {
   try {
     const parsed = JSON.parse(raw) as LiveChatServerEvent;
     if (typeof parsed === "object" && parsed !== null && "type" in parsed) {
@@ -180,7 +188,10 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   const [loadingOlder, setLoadingOlder] = createSignal(false);
 
   let ws: WebSocket | null = null;
-  let typingTimer: number | undefined;
+  let typingStopTimer: number | undefined;
+  let typingRefreshTimer: number | undefined;
+  let typingExpiryTimer: number | undefined;
+  let typingActive = false;
   let messagesScrollEl: HTMLDivElement | undefined;
   let messagesEndEl: HTMLDivElement | undefined;
   let shouldScrollAfterRender = true;
@@ -200,6 +211,19 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     if (names.length === 1) return `${names[0]} is typing`;
     return `${names.slice(0, 2).join(", ")} are typing`;
   });
+
+  const scheduleTypingExpiry = (expiresAt: string) => {
+    if (typingExpiryTimer !== undefined) {
+      window.clearTimeout(typingExpiryTimer);
+      typingExpiryTimer = undefined;
+    }
+
+    const delay = new Date(expiresAt).getTime() - Date.now() + 100;
+    typingExpiryTimer = window.setTimeout(
+      () => setTypingActors([]),
+      Math.max(delay, 0),
+    );
+  };
 
   const isNearBottom = () => {
     if (!messagesScrollEl) return true;
@@ -240,7 +264,8 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   const connect = () => {
     setConnectionState("connecting");
     setError(null);
-    ws = new WebSocket(liveChatWebSocketUrl());
+    ws = new WebSocket(liveChatWebSocketUrl(), [LIVE_CHAT_BINARY_PROTOCOL]);
+    ws.binaryType = "arraybuffer";
 
     ws.onopen = () => setConnectionState("open");
     ws.onclose = () => setConnectionState("closed");
@@ -249,11 +274,16 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       setError("Live chat connection failed.");
     };
     ws.onmessage = (event) => {
-      if (typeof event.data !== "string") return;
-      const serverEvent = parseServerEvent(event.data);
+      const serverEvent = parseServerEventData(event.data);
       if (!serverEvent) return;
       handleServerEvent(serverEvent);
     };
+  };
+
+  const parseServerEventData = (data: unknown): LiveChatServerEvent | null => {
+    if (typeof data === "string") return parseJsonServerEvent(data);
+    if (data instanceof ArrayBuffer) return decodeServerEventFrame(data);
+    return null;
   };
 
   const handleServerEvent = (event: LiveChatServerEvent) => {
@@ -286,6 +316,18 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           const withoutActor = prev.filter((item) => actorKey(item) !== key);
           return event.is_typing ? [...withoutActor, event.actor] : withoutActor;
         });
+        if (event.is_typing) {
+          scheduleTypingExpiry(event.expires_at);
+        }
+        break;
+      case "typing_set":
+        setTypingActors(event.actors);
+        if (event.actors.length > 0) {
+          scheduleTypingExpiry(event.expires_at);
+        } else if (typingExpiryTimer !== undefined) {
+          window.clearTimeout(typingExpiryTimer);
+          typingExpiryTimer = undefined;
+        }
         break;
       case "presence":
         setConnectedCount(event.connected_count);
@@ -307,7 +349,21 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       return false;
     }
     try {
-      ws.send(JSON.stringify(event));
+      if (ws.protocol === LIVE_CHAT_BINARY_PROTOCOL) {
+        switch (event.type) {
+          case "send_message":
+            ws.send(encodeSendMessageFrame(event.client_message_id, event.body));
+            break;
+          case "typing":
+            ws.send(encodeTypingFrame(event.is_typing));
+            break;
+          case "heartbeat":
+            ws.send(encodePingFrame(parseHeartbeatNonce(event.nonce)));
+            break;
+        }
+      } else {
+        ws.send(JSON.stringify(event));
+      }
       return true;
     } catch (err) {
       console.error("Failed to send live chat event:", err);
@@ -320,20 +376,58 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     sendEvent({ type: "typing", is_typing: isTyping });
   };
 
+  const parseHeartbeatNonce = (nonce: string): bigint => {
+    try {
+      return BigInt(nonce);
+    } catch {
+      return 0n;
+    }
+  };
+
+  const clearTypingTimers = () => {
+    if (typingStopTimer !== undefined) {
+      window.clearTimeout(typingStopTimer);
+      typingStopTimer = undefined;
+    }
+    if (typingRefreshTimer !== undefined) {
+      window.clearInterval(typingRefreshTimer);
+      typingRefreshTimer = undefined;
+    }
+  };
+
+  const stopTyping = () => {
+    if (!typingActive) {
+      clearTypingTimers();
+      return;
+    }
+    typingActive = false;
+    clearTypingTimers();
+    sendTyping(false);
+  };
+
+  const startTyping = () => {
+    if (!typingActive) {
+      typingActive = true;
+      sendTyping(true);
+      typingRefreshTimer = window.setInterval(
+        () => sendTyping(true),
+        TYPING_REFRESH_MS,
+      );
+    }
+
+    if (typingStopTimer !== undefined) {
+      window.clearTimeout(typingStopTimer);
+    }
+    typingStopTimer = window.setTimeout(stopTyping, TYPING_IDLE_STOP_MS);
+  };
+
   const handleInput = (value: string) => {
     const limitedValue = limitMessageInput(value);
     setInput(limitedValue);
-    if (typingTimer !== undefined) {
-      window.clearTimeout(typingTimer);
-    }
     if (limitedValue.trim()) {
-      sendTyping(true);
-      typingTimer = window.setTimeout(
-        () => sendTyping(false),
-        TYPING_DEBOUNCE_MS,
-      );
+      startTyping();
     } else {
-      sendTyping(false);
+      stopTyping();
     }
   };
 
@@ -375,7 +469,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       ].slice(-300),
     );
     setInput("");
-    sendTyping(false);
+    stopTyping();
   };
 
   const loadOlder = async () => {
@@ -412,18 +506,16 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   onMount(connect);
 
   onCleanup(() => {
-    if (typingTimer !== undefined) {
-      window.clearTimeout(typingTimer);
-    }
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      sendTyping(false);
+    stopTyping();
+    if (typingExpiryTimer !== undefined) {
+      window.clearTimeout(typingExpiryTimer);
     }
     ws?.close();
   });
 
   return (
     <section
-      class={`${pageStyles.card} flex min-h-0 flex-col ${isFull() ? "h-[calc(100vh-12rem)] max-h-[44rem]" : "h-[22rem] max-h-[calc(100vh-10rem)]"}`}
+      class={`${pageStyles.card} flex min-h-0 flex-col ${isFull() ? "h-[calc(100vh-12rem)] max-h-[44rem]" : "h-[28rem] max-h-[calc(100vh-10rem)]"}`}
     >
       <header
         class={`${pageStyles.cardHeader} flex items-center justify-between gap-3`}

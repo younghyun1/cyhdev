@@ -72,6 +72,11 @@ export type LiveChatServerEvent =
       expires_at: string;
     }
   | {
+      type: "typing_set";
+      actors: ChatActor[];
+      expires_at: string;
+    }
+  | {
       type: "presence";
       connected_count: number;
     }
