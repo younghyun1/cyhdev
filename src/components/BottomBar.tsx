@@ -1,5 +1,4 @@
-import type {
-  Component} from "solid-js";
+import type { Component } from "solid-js";
 import {
   Show,
   createEffect,
@@ -19,6 +18,7 @@ import {
   formatIsoAge,
 } from "../state/health";
 import { serverBuildInfo } from "../state/server_info";
+import { t } from "../state/i18n";
 
 // Expose build info injected by Vite
 declare const __BUILD_TIMESTAMP__: string;
@@ -81,8 +81,8 @@ const BottomBar: Component = () => {
 
   const mobileSummary = createMemo(() => {
     const hs = healthState();
-    if (!hs) return "status: …";
-    return `up ${liveUptime()} · ${hs.responses_handled} resp · ${hs.users_logged_in} sess`;
+    if (!hs) return `${t("bottom_bar.site_status")}: …`;
+    return `${t("bottom_bar.up")} ${liveUptime()} · ${hs.responses_handled} ${t("bottom_bar.responses")} · ${hs.users_logged_in} ${t("bottom_bar.sessions")}`;
   });
 
   const handleFooterClick = () => {
@@ -103,15 +103,15 @@ const BottomBar: Component = () => {
           <div class="relative w-full max-h-[75vh] overflow-y-auto rounded-t-xl bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 p-4 shadow-2xl">
             <div class="flex items-center justify-between gap-3">
               <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Site status
+                {t("bottom_bar.site_status")}
               </div>
               <button
                 type="button"
                 class="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
                 onClick={closeDetails}
-                aria-label="Close status details"
+                aria-label={t("common.close")}
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
 
@@ -121,10 +121,13 @@ const BottomBar: Component = () => {
             >
               <div class="space-y-1">
                 <div>
-                  FE: built {__BUILD_TIMESTAMP__} w. solidjs {__SOLID_VERSION__}
+                  {t("bottom_bar.fe")}: {t("bottom_bar.built")}{" "}
+                  {__BUILD_TIMESTAMP__} {t("bottom_bar.with_solid")}{" "}
+                  {__SOLID_VERSION__}
                 </div>
                 <div>
-                  BE: built {serverBuildInfo().built_time ?? "…"} (
+                  {t("bottom_bar.be")}: {t("bottom_bar.built")}{" "}
+                  {serverBuildInfo().built_time ?? "…"} (
                   {serverBuildInfo().name ?? "…"})
                   {serverBuildInfo().rust_version && (
                     <> rust/{serverBuildInfo().rust_version}</>
@@ -133,22 +136,29 @@ const BottomBar: Component = () => {
               </div>
 
               <div class="space-y-1">
-                <Show when={healthState()} fallback={<div>metrics: …</div>}>
+                <Show
+                  when={healthState()}
+                  fallback={<div>{t("bottom_bar.metrics")}: …</div>}
+                >
                   {(() => {
                     const hs = healthState()!;
                     return (
                       <>
                         <div>
-                          up {liveUptime()} · handled {hs.responses_handled}{" "}
-                          responses · sessions {hs.users_logged_in}
+                          {t("bottom_bar.up")} {liveUptime()} ·{" "}
+                          {t("bottom_bar.handled")} {hs.responses_handled}{" "}
+                          {t("bottom_bar.responses")} ·{" "}
+                          {t("bottom_bar.sessions")} {hs.users_logged_in}
                         </div>
                         <div>
-                          db {hs.db_version} · db latency {hs.db_latency}
+                          {t("bottom_bar.db")} {hs.db_version} ·{" "}
+                          {t("bottom_bar.db_latency")} {hs.db_latency}
                         </div>
                         <div>
-                          time to generate state report:{" "}
-                          {hs.time_to_process ?? "?"} · net{" "}
-                          {hs.client_latency_ms?.toFixed(1) ?? "?"}ms · state{" "}
+                          {t("bottom_bar.time_to_report")}:{" "}
+                          {hs.time_to_process ?? "?"} · {t("bottom_bar.net")}{" "}
+                          {hs.client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
+                          {t("bottom_bar.state_age")}{" "}
                           {formatIsoAge(hs.timestamp, clientNow())}
                         </div>
                       </>
@@ -168,7 +178,7 @@ const BottomBar: Component = () => {
         }}
         onClick={handleFooterClick}
         role={isMobile() ? "button" : undefined}
-        aria-label={isMobile() ? "Open site status details" : undefined}
+        aria-label={isMobile() ? t("bottom_bar.open_details") : undefined}
         tabIndex={isMobile() ? 0 : undefined}
         onKeyDown={(e) => {
           if (!isMobile()) return;
@@ -188,11 +198,14 @@ const BottomBar: Component = () => {
           {/* Desktop/tablet: keep full content */}
           <div class="hidden sm:block text-gray-900 dark:text-white leading-tight space-y-0.5 max-w-[55%]">
             <div>
-              FE: built {__BUILD_TIMESTAMP__} w. solidjs {__SOLID_VERSION__}
+              {t("bottom_bar.fe")}: {t("bottom_bar.built")}{" "}
+              {__BUILD_TIMESTAMP__} {t("bottom_bar.with_solid")}{" "}
+              {__SOLID_VERSION__}
             </div>
 
             <div>
-              BE: built {serverBuildInfo().built_time ?? "…"} (
+              {t("bottom_bar.be")}: {t("bottom_bar.built")}{" "}
+              {serverBuildInfo().built_time ?? "…"} (
               {serverBuildInfo().name ?? "…"})
               {serverBuildInfo().rust_version && (
                 <> rust/{serverBuildInfo().rust_version}</>
@@ -207,31 +220,38 @@ const BottomBar: Component = () => {
                 return (
                   <>
                     <div>
-                      up {liveUptime()} · handled {hs.responses_handled}{" "}
-                      responses · sessions {hs.users_logged_in}
+                      {t("bottom_bar.up")} {liveUptime()} ·{" "}
+                      {t("bottom_bar.handled")} {hs.responses_handled}{" "}
+                      {t("bottom_bar.responses")} ·{" "}
+                      {t("bottom_bar.sessions")} {hs.users_logged_in}
                     </div>
 
                     <div class="hidden xs:block sm:block">
-                      db {hs.db_version} · db latency {hs.db_latency}
+                      {t("bottom_bar.db")} {hs.db_version} ·{" "}
+                      {t("bottom_bar.db_latency")} {hs.db_latency}
                     </div>
 
                     <div class="hidden sm:block">
-                      time to generate state report: {hs.time_to_process ?? "?"}{" "}
-                      · net {hs.client_latency_ms?.toFixed(1) ?? "?"}ms · state{" "}
+                      {t("bottom_bar.time_to_report")}:{" "}
+                      {hs.time_to_process ?? "?"} · {t("bottom_bar.net")}{" "}
+                      {hs.client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
+                      {t("bottom_bar.state_age")}{" "}
                       {formatIsoAge(hs.timestamp, clientNow())}
                     </div>
                   </>
                 );
               })()
             ) : (
-              <div>metrics: …</div>
+              <div>{t("bottom_bar.metrics")}: …</div>
             )}
           </div>
 
           {/* Mobile: compact summary + hint */}
           <div class="sm:hidden w-full flex items-center justify-between gap-2 text-gray-900 dark:text-white leading-tight">
             <div class="truncate">{mobileSummary()}</div>
-            <div class="shrink-0 text-[10px] opacity-70">tap</div>
+            <div class="shrink-0 text-[10px] opacity-70">
+              {t("bottom_bar.tap")}
+            </div>
           </div>
         </div>
       </footer>

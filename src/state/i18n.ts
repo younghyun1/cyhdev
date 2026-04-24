@@ -50,8 +50,9 @@ export async function loadUiTextBundle(nextLocale = locale()) {
       return;
     }
   } catch {
-    setTexts(EN_US_DEFAULT_TEXTS);
+    // Keep the app renderable with the typed local default bundle.
   }
+  setTexts(EN_US_DEFAULT_TEXTS);
 }
 
 export async function setLocale(nextLocale: UiLocale) {

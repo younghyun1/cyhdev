@@ -10,6 +10,9 @@ import {
 import { theme, toggleTheme } from "../state/theme";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import LanguageSelect from "./LanguageSelect";
+import type { UiTextKey } from "../i18n/keys";
+import { t } from "../state/i18n";
 
 const [menuOpen, setMenuOpen] = createSignal(false);
 const [sidebarOpen, setSidebarOpen] = createSignal(false);
@@ -55,16 +58,21 @@ const handleLogout = async () => {
   setMenuOpen(false);
 };
 
-const NAV_LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About Me" },
-  { href: "/about-blog", label: "About Blog" },
-  { href: "/blog", label: "Blog" },
-  { href: "/photographs", label: "Photographs" },
-  { href: "/projects", label: "Projects and Demos" },
-  { href: "/visitor-board", label: "Visitor Board" },
-  { href: "/geo-ip-db", label: "Geo-IP Database" },
-  { href: "/backend-stats", label: "Backend Stats" },
+type NavLink = {
+  href: string;
+  labelKey: UiTextKey;
+};
+
+const NAV_LINKS: NavLink[] = [
+  { href: "/", labelKey: "top_bar.nav.home" },
+  { href: "/about", labelKey: "top_bar.nav.about" },
+  { href: "/about-blog", labelKey: "top_bar.nav.about_blog" },
+  { href: "/blog", labelKey: "top_bar.nav.blog" },
+  { href: "/photographs", labelKey: "top_bar.nav.photographs" },
+  { href: "/projects", labelKey: "top_bar.nav.projects" },
+  { href: "/visitor-board", labelKey: "top_bar.nav.visitor_board" },
+  { href: "/geo-ip-db", labelKey: "top_bar.nav.geo_ip" },
+  { href: "/backend-stats", labelKey: "top_bar.nav.backend_stats" },
 ];
 
 const TopBar = () => {
@@ -74,15 +82,13 @@ const TopBar = () => {
 
   const titleFromPath = () => {
     const pathname = location.pathname || "/";
-    if (pathname === "/") return "Home";
+    if (pathname === "/") return t("top_bar.nav.home");
 
-    const segment = pathname.replace(/^\/+/, "").split("/")[0] || "Home";
+    const segment = pathname.replace(/^\/+/, "").split("/")[0] || "";
 
-    // Prefer NAV_LINKS label if present
     const match = NAV_LINKS.find((l) => l.href === `/${segment}`);
-    if (match) return match.label;
+    if (match) return t(match.labelKey);
 
-    // Fallback: Title Case from slug
     return segment
       .split("-")
       .filter(Boolean)
@@ -100,7 +106,7 @@ const TopBar = () => {
               <button
                 class="md:hidden p-1 text-slate-700 dark:text-slate-200 focus:outline-none hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar menu"
+                aria-label={t("top_bar.aria.open_sidebar")}
               >
                 <svg
                   class="w-6 h-6"
@@ -123,7 +129,7 @@ const TopBar = () => {
                 class="shrink-0 text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
               >
                 <span class="block md:hidden text-2xl">{titleFromPath()}</span>
-                <span class="hidden md:block">Younghyun&apos;s Blog</span>
+                <span class="hidden md:block">{t("top_bar.site_title")}</span>
               </a>
 
               {/* Nav: Hidden on mobile, inline on md+ */}
@@ -136,7 +142,7 @@ const TopBar = () => {
                           href={link.href}
                           class="whitespace-nowrap no-underline text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 hover:underline transition-colors duration-90"
                         >
-                          {link.label}
+                          {t(link.labelKey)}
                         </a>
                       </li>
                     )}
@@ -154,13 +160,15 @@ const TopBar = () => {
                     <button
                       type="button"
                       class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
-                      aria-label="Toggle dark/light mode"
+                      aria-label={t("top_bar.aria.toggle_theme")}
                       onClick={toggleTheme}
                     >
                       <span class="inline-block transition-colors duration-90">
                         {theme() === "dark" ? "🌙" : "☀️"}
                       </span>
                     </button>
+
+                    <LanguageSelect />
 
                     <span class="relative">
                       <span class="inline-block w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_2px_rgb(244,63,94,0.6)] mr-1 sm:mr-2" />
@@ -170,7 +178,7 @@ const TopBar = () => {
                       href="/login"
                       class={`${pageStyles.buttonSecondary} px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm whitespace-nowrap`}
                     >
-                      Login
+                      {t("top_bar.auth.login")}
                     </a>
                   </div>
                 }
@@ -179,13 +187,15 @@ const TopBar = () => {
                   <button
                     type="button"
                     class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
-                    aria-label="Toggle dark/light mode"
+                    aria-label={t("top_bar.aria.toggle_theme")}
                     onClick={toggleTheme}
                   >
                     <span class="inline-block transition-colors duration-90">
                       {theme() === "dark" ? "🌙" : "☀️"}
                     </span>
                   </button>
+
+                  <LanguageSelect />
 
                   <span class="relative flex items-center">
                     <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgb(52,211,153,0.7)] mr-1 sm:mr-2" />
@@ -204,7 +214,7 @@ const TopBar = () => {
                   <div class="relative">
                     <button
                       class="menu-toggle profile-picture focus:outline-none"
-                      aria-label="Open user menu"
+                      aria-label={t("top_bar.aria.open_user_menu")}
                       aria-haspopup="menu"
                       aria-expanded={menuOpen() ? "true" : "false"}
                       tabIndex={0}
@@ -239,7 +249,7 @@ const TopBar = () => {
 
                             <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4 12.5-12.5z" />
                           </svg>
-                          Edit Profile
+                          {t("top_bar.profile.edit")}
                         </a>
 
                         <button
@@ -256,7 +266,7 @@ const TopBar = () => {
                           >
                             <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2h-3a2 2 0 01-2-2V7a2 2 0 012-2h3a2 2 0 012 2v1" />
                           </svg>
-                          Logout
+                          {t("top_bar.auth.logout")}
                         </button>
                       </div>
                     </Show>
@@ -281,11 +291,12 @@ const TopBar = () => {
           <aside class="relative z-50 w-64 bg-white/95 dark:bg-slate-950/95 h-full shadow-xl flex flex-col transition-transform">
             <div class="p-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
               <span class="font-bold text-lg text-slate-900 dark:text-slate-100">
-                Menu
+                {t("top_bar.menu.title")}
               </span>
               <button
                 onClick={() => setSidebarOpen(false)}
                 class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                aria-label={t("common.close")}
               >
                 <svg
                   class="w-6 h-6"
@@ -312,7 +323,7 @@ const TopBar = () => {
                         class="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                         onClick={() => setSidebarOpen(false)}
                       >
-                        {link.label}
+                        {t(link.labelKey)}
                       </a>
                     </li>
                   )}

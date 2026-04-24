@@ -16,6 +16,7 @@ import type {
   LiveChatServerEvent,
 } from "../dtos/responses/live_chat";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 import { UserBadge } from "./UserBadge";
 
 export type LiveChatPanelMode = "compact" | "full";
@@ -428,14 +429,14 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         class={`${pageStyles.cardHeader} flex items-center justify-between gap-3`}
       >
         <div>
-          <h2 class="text-lg font-semibold">Live Chat</h2>
+          <h2 class="text-lg font-semibold">{t("page.live_chat.title")}</h2>
           <p class={pageStyles.subtitle}>
-            {connectionState()} · {connectedCount()} online
+            {connectionState()} · {connectedCount()} {t("live_chat.online")}
           </p>
         </div>
         <Show when={!isFull()}>
           <A href="/live-chat" class={pageStyles.buttonSecondary}>
-            Open
+            {t("live_chat.open")}
           </A>
         </Show>
       </header>
@@ -452,7 +453,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
               disabled={loadingOlder()}
               onClick={loadOlder}
             >
-              {loadingOlder() ? "Loading..." : "Load older"}
+              {loadingOlder() ? t("live_chat.loading") : t("live_chat.load_older")}
             </button>
           </div>
         </Show>
@@ -536,7 +537,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
             maxLength={LIVE_CHAT_MAX_MESSAGE_CHARS}
             value={input()}
             onInput={(event) => handleInput(event.currentTarget.value)}
-            placeholder="Message"
+            placeholder={t("live_chat.message_placeholder")}
           />
           <div class="mt-1 text-right font-mono text-[0.65rem] text-slate-500 dark:text-slate-400">
             {inputCharCount()}/{LIVE_CHAT_MAX_MESSAGE_CHARS}
@@ -547,7 +548,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           type="submit"
           disabled={connectionState() !== "open" || !input().trim()}
         >
-          Send
+          {t("live_chat.send")}
         </button>
       </form>
     </section>

@@ -12,9 +12,13 @@ import { authApi } from "./services/all_api";
 import { fetchServerBuildInfo } from "./services/api";
 import { setAuthenticated, setSuperuser, setUser } from "./state/auth";
 import { updateServerBuildInfo } from "./state/server_info";
+import { applyLocale, loadUiTextBundle, locale, t } from "./state/i18n";
 
 const App: ParentComponent = (props) => {
   onMount(async () => {
+    applyLocale(locale());
+    void loadUiTextBundle(locale());
+
     fetchServerBuildInfo()
       .then((info) => {
         updateServerBuildInfo({
@@ -77,16 +81,16 @@ const App: ParentComponent = (props) => {
           fallback={(err, reset) => (
             <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
               <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
-                Something went wrong
+                {t("app.error.title")}
               </h2>
               <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
-                {err instanceof Error ? err.message : "An unexpected error occurred."}
+                {err instanceof Error ? err.message : t("app.error.unknown")}
               </p>
               <button
                 class="px-4 py-2 text-sm font-medium rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 onClick={reset}
               >
-                Try again
+                {t("app.error.try_again")}
               </button>
             </div>
           )}
