@@ -3,6 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
+import { t } from "../../state/i18n";
 export default function NewPostPage() {
   const [title, setTitle] = createSignal("");
   const [tags, setTags] = createSignal("");
@@ -37,10 +38,10 @@ export default function NewPostPage() {
           },
         );
       } else {
-        setError("Failed to publish post.");
+        setError(t("blog.post.failed_publish"));
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to submit post.");
+      setError(e instanceof Error ? e.message : t("blog.post.failed_submit"));
     } finally {
       setIsSubmitting(false);
     }
@@ -50,11 +51,13 @@ export default function NewPostPage() {
     <main class={pageStyles.page}>
       <div class={`${pageStyles.pageInner} flex flex-row gap-8`}>
         <div class="flex-1">
-          <h2 class={`${pageStyles.titleSm} mb-4`}>New Post</h2>
+          <h2 class={`${pageStyles.titleSm} mb-4`}>
+            {t("page.blog.new_title")}
+          </h2>
           <form onSubmit={handleSubmit} class="flex flex-col gap-4">
             <input
               type="text"
-              placeholder="Title"
+              placeholder={t("blog.post.title_placeholder")}
               value={title()}
               onInput={(e) => setTitle(e.currentTarget.value)}
               required
@@ -62,7 +65,7 @@ export default function NewPostPage() {
             />
             <input
               type="text"
-              placeholder="Tags (comma separated)"
+              placeholder={t("blog.post.tags_placeholder")}
               value={tags()}
               onInput={(e) => setTags(e.currentTarget.value)}
               class={pageStyles.input}
@@ -74,16 +77,16 @@ export default function NewPostPage() {
                 onChange={(e) => setIsPublished(e.currentTarget.checked)}
                 class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
               />
-              Publish immediately
+              {t("blog.post.publish_immediately")}
             </label>
             {!isPublished() && (
               <div class={pageStyles.muted}>
-                This will be saved as a draft and only visible to superusers.
+                {t("blog.post.draft_visibility_new")}
               </div>
             )}
             <div class="w-full min-w-0 mb-8 relative z-0">
               <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
-                Content (Markdown)
+                {t("blog.post.content_markdown")}
               </label>
               <MarkdownEditor
                 value={body()}
@@ -100,18 +103,18 @@ export default function NewPostPage() {
               >
                 {isSubmitting()
                   ? isPublished()
-                    ? "Publishing..."
-                    : "Saving..."
+                    ? t("blog.post.publishing")
+                    : t("common.saving")
                   : isPublished()
-                    ? "Publish"
-                    : "Save Draft"}
+                    ? t("blog.post.publish")
+                    : t("blog.post.save_draft")}
               </button>
               <button
                 type="button"
                 onClick={() => navigate("/blog")}
                 class={pageStyles.buttonSecondary}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </form>

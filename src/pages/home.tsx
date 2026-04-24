@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import LiveChatPanel from "../components/LiveChatPanel";
+import { t } from "../state/i18n";
 
 export default function Home() {
   const [posts] = createResource(() =>
@@ -32,14 +33,12 @@ export default function Home() {
                 // 池營賢 // 池营贤
               </h1>
               <p class="text-lg md:text-xl text-slate-600 dark:text-slate-400 font-medium leading-relaxed border-l-4 border-amber-500 pl-4">
-                Experienced backend, infrastructure, and data engineer.
+                {t("home.hero.role")}
                 <span class="block text-sm mt-2 font-mono text-slate-500">
-                  Passionate about creating secure and high-performance servers
-                  and infrastructure. I also enjoy photography and have dabbled
-                  in journalism, translation/interpretation, soldiering, manual
-                  labor, activism, and various misadventures.
+                  {t("home.hero.summary")}
                   <br />
-                  <br />I hold craftsmanship and good governance to be sacred.
+                  <br />
+                  {t("home.hero.principle")}
                 </span>
               </p>
             </div>
@@ -47,7 +46,7 @@ export default function Home() {
             {/* Quick Links / Command Center */}
             <div class="flex flex-col gap-3 font-mono text-sm shrink-0">
               <div class="text-slate-400 uppercase text-xs tracking-widest mb-1">
-                Connect
+                {t("home.connect.title")}
               </div>
               <a
                 href="mailto:younghyun1@gmail.com"
@@ -84,13 +83,13 @@ export default function Home() {
               href="/blog"
               class={`${pageStyles.buttonPrimary} px-6 py-3 text-base font-mono`}
             >
-              Read Blog
+              {t("home.cta.blog")}
             </A>
             <A
               href="/photographs"
               class={`${pageStyles.buttonSecondary} px-6 py-3 text-base font-mono`}
             >
-              View My Photography
+              {t("home.cta.photography")}
             </A>
           </div>
         </div>
@@ -110,10 +109,10 @@ export default function Home() {
             <section class="lg:col-span-7 flex flex-col h-full">
               <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
                 <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-                  <span class="w-3 h-3 bg-amber-600" /> Latest Posts
+                  <span class="w-3 h-3 bg-amber-600" /> {t("home.latest_posts")}
                 </h2>
                 <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
-                  view blog posts &rarr;
+                  {t("home.view_blog_posts")}
                 </A>
               </div>
 
@@ -133,7 +132,7 @@ export default function Home() {
                     when={posts()}
                     fallback={
                       <div class="p-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-mono text-sm">
-                        No data found.
+                        {t("home.no_data_found")}
                       </div>
                     }
                   >
@@ -154,12 +153,12 @@ export default function Home() {
                                 </span>
                                 <Show when={!post.post_is_published}>
                                   <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                    Draft
+                                    {t("common.draft")}
                                   </span>
                                 </Show>
                               </div>
                               <span class="opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 transition-opacity">
-                                &lt;READ&gt;
+                                {t("home.read")}
                               </span>
                             </div>
                             <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
@@ -183,13 +182,13 @@ export default function Home() {
             <section class="lg:col-span-5 flex flex-col h-full">
               <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
                 <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-                  <span class="w-3 h-3 bg-amber-600" /> Photography
+                  <span class="w-3 h-3 bg-amber-600" /> {t("home.photography")}
                 </h2>
                 <A
                   href="/photographs"
                   class={`${pageStyles.link} font-mono text-sm`}
                 >
-                  view gallery &rarr;
+                  {t("home.view_gallery")}
                 </A>
               </div>
 
@@ -224,7 +223,7 @@ export default function Home() {
                               photo.photograph_thumbnail_link ||
                               photo.photograph_link
                             }
-                            alt={photo.photograph_comments || "Photograph"}
+                            alt={photo.photograph_comments || t("home.photography")}
                             class="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                             loading="lazy"
                           />

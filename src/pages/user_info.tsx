@@ -3,6 +3,7 @@ import { Show, createResource } from "solid-js";
 import { userApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { UserBadge } from "../components/UserBadge";
+import { t, tx } from "../state/i18n";
 
 export default function UserInfoPage() {
   const params = useParams<{ userName: string }>();
@@ -15,7 +16,7 @@ export default function UserInfoPage() {
     <main class={pageStyles.page}>
       <section class={pageStyles.pageInner}>
         <A href="/blog" class={pageStyles.link}>
-          &larr; back to blog
+          {t("user.back_to_blog")}
         </A>
 
         <Show
@@ -23,7 +24,7 @@ export default function UserInfoPage() {
           fallback={
             <section class={`${pageStyles.card} mt-6 p-6`}>
               <p class={pageStyles.subtitle}>
-                {userInfo.loading ? "Loading user..." : "User not found."}
+                {userInfo.loading ? t("user.loading") : t("user.not_found")}
               </p>
             </section>
           }
@@ -57,13 +58,14 @@ export default function UserInfoPage() {
                       link={false}
                     />
                     <p class={pageStyles.subtitle}>
-                      Joined{" "}
-                      {new Date(
-                        publicUser().user_created_at,
-                      ).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
+                      {tx("user.joined", {
+                        date: new Date(
+                          publicUser().user_created_at,
+                        ).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }),
                       })}
                     </p>
                   </div>

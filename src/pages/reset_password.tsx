@@ -2,6 +2,7 @@ import { createSignal, Show, onMount } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -14,7 +15,7 @@ function ResetPasswordPage() {
 
   onMount(() => {
     if (!searchParams.token) {
-      setError("Missing password reset token. Please check your email link.");
+      setError(t("auth.reset_password.missing_token_link"));
     }
   });
 
@@ -24,17 +25,17 @@ function ResetPasswordPage() {
     const token = Array.isArray(val) ? val[0] : val;
 
     if (!token) {
-      setError("Missing password reset token.");
+      setError(t("auth.reset_password.missing_token"));
       return;
     }
 
     if (password().length < 8) {
-      setError("Password must be at least 8 characters long.");
+      setError(t("auth.reset_password.too_short"));
       return;
     }
 
     if (password() !== confirmPassword()) {
-      setError("Passwords do not match.");
+      setError(t("auth.signup.password_mismatch"));
       return;
     }
 
@@ -53,7 +54,7 @@ function ResetPasswordPage() {
       let msg =
         e instanceof Error
           ? e.message
-          : "An unexpected error occurred. Please try again.";
+          : t("auth.find_password.unexpected_error");
       try {
         const json = JSON.parse(msg);
         if (json.message) msg = json.message;
@@ -73,19 +74,23 @@ function ResetPasswordPage() {
       <div
         class={`${pageStyles.card} w-full max-w-md p-8 flex flex-col items-center`}
       >
-        <h2 class={`${pageStyles.titleSm} mb-6`}>Reset Password</h2>
+        <h2 class={`${pageStyles.titleSm} mb-6`}>
+          {t("page.reset_password.title")}
+        </h2>
 
         <Show when={success()}>
           <div class="w-full text-center">
             <div class={`${pageStyles.alertSuccess} w-full mb-6 text-center`}>
-              Your password has been successfully reset.
+              {t("auth.reset_password.success")}
             </div>
-            <p class={pageStyles.muted + " mb-6"}>Redirecting to login...</p>
+            <p class={pageStyles.muted + " mb-6"}>
+              {t("auth.reset_password.redirecting")}
+            </p>
             <button
               class={`${pageStyles.buttonPrimary} w-full py-3`}
               onClick={() => navigate("/login")}
             >
-              Go to Login Now
+              {t("auth.reset_password.go_now")}
             </button>
           </div>
         </Show>
@@ -96,12 +101,12 @@ function ResetPasswordPage() {
             class="w-full flex flex-col items-center"
           >
             <p class={`${pageStyles.muted} w-full mb-4 text-center`}>
-              Enter your new password below.
+              {t("auth.reset_password.instructions")}
             </p>
 
             <input
               type="password"
-              placeholder="New Password"
+              placeholder={t("auth.reset_password.new_password")}
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
               class={`${pageStyles.input} mb-4`}
@@ -111,7 +116,7 @@ function ResetPasswordPage() {
 
             <input
               type="password"
-              placeholder="Confirm Password"
+              placeholder={t("auth.reset_password.confirm_password")}
               value={confirmPassword()}
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
               class={`${pageStyles.input} mb-4`}
@@ -129,7 +134,9 @@ function ResetPasswordPage() {
               type="submit"
               disabled={loading() || !searchParams.token}
             >
-              {loading() ? "Resetting..." : "Reset Password"}
+              {loading()
+                ? t("auth.reset_password.resetting")
+                : t("page.reset_password.title")}
             </button>
 
             <button
@@ -137,7 +144,7 @@ function ResetPasswordPage() {
               type="button"
               onClick={() => navigate("/login")}
             >
-              Back to Login
+              {t("auth.signup.back_to_login")}
             </button>
           </form>
         </Show>

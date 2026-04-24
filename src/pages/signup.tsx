@@ -8,6 +8,7 @@ import type {
 } from "../dtos/responses/dropdown";
 import type { SignupResponse } from "../dtos/responses/auth";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 function SignupPage() {
   // ––––– form state (all dropdowns as strings!)
@@ -91,12 +92,12 @@ function SignupPage() {
       !userCountry() ||
       !userLanguage()
     ) {
-      setError("Please fill out all required fields.");
+      setError(t("auth.signup.required_fields"));
       return;
     }
 
     if (passwordsMismatch()) {
-      setError("Passwords do not match.");
+      setError(t("auth.signup.password_mismatch"));
       return;
     }
 
@@ -114,10 +115,10 @@ function SignupPage() {
       if (res.success && res.data) {
         setSuccess(res.data);
       } else {
-        setError("Signup failed.");
+        setError(t("auth.signup.failed"));
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Signup failed.");
+      setError(err instanceof Error ? err.message : t("auth.signup.failed"));
     } finally {
       setLoading(false);
     }
@@ -152,20 +153,20 @@ function SignupPage() {
       class={`${pageStyles.page} flex items-center justify-center px-6 py-10`}
     >
       <div class={`${pageStyles.card} w-full max-w-md p-8`}>
-        <h2 class={`${pageStyles.titleSm} mb-6`}>Sign Up</h2>
+        <h2 class={`${pageStyles.titleSm} mb-6`}>{t("page.signup.title")}</h2>
 
         <Show
           when={!success()}
           fallback={
             <div class="text-center">
               <p class={`${pageStyles.alertSuccess} mb-4`}>
-                Signup successful! Check your email to verify your account.
+                {t("auth.signup.success")}
               </p>
               <button
                 class={`${pageStyles.buttonPrimary} w-full py-2`}
                 onClick={() => navigate("/login")}
               >
-                Go to Login
+                {t("auth.signup.go_to_login")}
               </button>
             </div>
           }
@@ -174,7 +175,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="text"
-              placeholder="Username"
+              placeholder={t("common.username")}
               value={userName()}
               onInput={(e) => setUserName(e.currentTarget.value)}
             />
@@ -182,7 +183,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="email"
-              placeholder="Email"
+              placeholder={t("common.email")}
               autocomplete="username email"
               value={userEmail()}
               onInput={(e) => setUserEmail(e.currentTarget.value)}
@@ -191,7 +192,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="password"
-              placeholder="Password"
+              placeholder={t("common.password")}
               autocomplete="new-password"
               value={userPassword()}
               onInput={(e) => setUserPassword(e.currentTarget.value)}
@@ -201,7 +202,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="password"
-              placeholder="Re-enter Password"
+              placeholder={t("auth.signup.reenter_password")}
               autocomplete="new-password"
               value={confirmPassword()}
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
@@ -211,7 +212,7 @@ function SignupPage() {
 
             <Show when={passwordsMismatch()}>
               <div class="mb-2 -mt-2 text-sm text-red-600 dark:text-red-400">
-                Passwords do not match.
+                {t("auth.signup.password_mismatch")}
               </div>
             </Show>
 
@@ -221,7 +222,7 @@ function SignupPage() {
               onInput={(e) => setUserCountry(e.currentTarget.value)}
               required
             >
-              <option value="">Select Country…</option>
+              <option value="">{t("auth.signup.select_country")}</option>
               <For each={countries()}>{(c) => (
                 <option value={c.country_code}>
                   {c.country_flag ? c.country_flag + " " : ""}
@@ -236,7 +237,7 @@ function SignupPage() {
               onInput={(e) => setUserLanguage(e.currentTarget.value)}
               required
             >
-              <option value="">Select Language…</option>
+              <option value="">{t("auth.signup.select_language")}</option>
               <For each={sortedLanguages()}>{(l) => (
                 <option value={l.language_code}>{l.language_eng_name}</option>
               )}</For>
@@ -248,7 +249,7 @@ function SignupPage() {
               onInput={(e) => setUserSubdivision(e.currentTarget.value)}
               disabled={!subdivisions().length}
             >
-              <option value="">No Subdivision / N/A</option>
+              <option value="">{t("auth.signup.no_subdivision")}</option>
               <For each={subdivisions()}>{(s) => (
                 <option value={s.subdivision_id}>{s.subdivision_name}</option>
               )}</For>
@@ -265,7 +266,7 @@ function SignupPage() {
               disabled={loading() || passwordsMismatch()}
               class={`${pageStyles.buttonPrimary} w-full mb-3 py-3`}
             >
-              {loading() ? "Signing Up…" : "Sign Up"}
+              {loading() ? t("auth.signup.loading") : t("page.signup.title")}
             </button>
 
             <button
@@ -273,7 +274,7 @@ function SignupPage() {
               class={`${pageStyles.buttonSecondary} w-full py-3`}
               onClick={() => navigate("/login")}
             >
-              Back to Login
+              {t("auth.signup.back_to_login")}
             </button>
           </form>
         </Show>

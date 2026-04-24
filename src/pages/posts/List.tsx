@@ -12,6 +12,7 @@ import type { PostInfo } from "../../dtos/responses/blog";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
+import { t, tx } from "../../state/i18n";
 
 // Helper to normalize search param (can be string | string[] | undefined)
 const getParamString = (param: string | string[] | undefined): string => {
@@ -166,12 +167,12 @@ export default function PostsList() {
 
   const handleDeletePost = async (e: Event, postId: string) => {
     e.preventDefault();
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm(t("blog.delete_post_confirm"))) return;
     try {
       await blogApi.deletePost(postId);
       refetch();
     } catch (e) {
-      alert("Failed to delete post: " + e);
+      alert(tx("blog.delete_post_failed", { error: String(e) }));
     }
   };
 
@@ -180,13 +181,13 @@ export default function PostsList() {
       <div class={pageStyles.pageInner}>
         {/* 1. LAYOUT FIX: Align title and button in a row */}
         <div class="flex flex-row items-center justify-between mb-4">
-          <h1 class={pageStyles.titleSm}>Blog Posts</h1>
+          <h1 class={pageStyles.titleSm}>{t("page.blog.list_title")}</h1>
           <Show when={isSuperuser()}>
             <button
               class={pageStyles.buttonPrimary}
               onClick={() => navigate("/blog/new")}
             >
-              + New Post
+              {t("blog.new_post")}
             </button>
           </Show>
         </div>
@@ -198,7 +199,7 @@ export default function PostsList() {
           <div class="flex-1 relative">
             <input
               type="text"
-              placeholder="Search posts..."
+              placeholder={t("blog.search_placeholder")}
               value={searchQuery()}
               onInput={(e) => setSearchQuery(e.currentTarget.value)}
               class="w-full px-3 py-2 pr-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -237,7 +238,7 @@ export default function PostsList() {
                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
               }`}
             >
-              Title
+              {t("blog.search_title")}
             </button>
             <button
               onClick={() => setSearchType("tag")}
@@ -247,7 +248,7 @@ export default function PostsList() {
                   : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
               }`}
             >
-              Tag
+              {t("blog.search_tag")}
             </button>
           </div>
         </div>
@@ -259,7 +260,7 @@ export default function PostsList() {
               <div class="flex-1 relative">
                 <input
                   type="text"
-                  placeholder="Add a tag and press Enter..."
+                  placeholder={t("blog.tag_placeholder")}
                   value={tagInput()}
                   onInput={(e) => setTagInput(e.currentTarget.value)}
                   onKeyDown={(e) => {
@@ -274,7 +275,7 @@ export default function PostsList() {
                   onClick={() => addTag(tagInput())}
                   class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
                 >
-                  Add
+                  {t("blog.add_tag")}
                 </button>
               </div>
               <Show when={selectedTags().length > 0}>
@@ -282,7 +283,7 @@ export default function PostsList() {
                   onClick={clearTags}
                   class="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                 >
-                  Clear tags
+                  {t("blog.clear_tags")}
                 </button>
               </Show>
             </div>
@@ -306,36 +307,41 @@ export default function PostsList() {
 
         <Show when={debouncedQuery()}>
           <div class="mb-4 text-sm text-slate-500 dark:text-slate-400">
-            Showing results for "{debouncedQuery()}" (
-            {searchType() === "tag" ? "tag" : "title"} search)
+            {tx("blog.showing_results", {
+              query: debouncedQuery(),
+              type:
+                searchType() === "tag"
+                  ? t("blog.search_tag").toLowerCase()
+                  : t("blog.search_title").toLowerCase(),
+            })}
           </div>
         </Show>
 
         <Show when={posts.loading && postItems().length === 0}>
           <div class={`${pageStyles.muted} p-4 text-center`}>
-            Loading posts...
+            {t("blog.loading_posts")}
           </div>
         </Show>
 
         <Show when={posts.loading && postItems().length > 0}>
           <div class={`${pageStyles.muted} mb-2 text-xs`}>
-            Updating results...
+            {t("blog.updating_results")}
           </div>
         </Show>
 
         <Show when={posts.error}>
           <div class={pageStyles.alertError}>
-            Error loading posts: {String(posts.error)}
+            {tx("blog.error_loading_posts", { error: String(posts.error) })}
           </div>
         </Show>
 
         <Show when={!posts.loading && !posts.error && postItems().length === 0}>
           <div class={`${pageStyles.cardPadded} text-center`}>
             <div class="text-base font-semibold text-slate-900 dark:text-slate-100">
-              No posts yet
+              {t("blog.no_posts_title")}
             </div>
             <p class={`${pageStyles.muted} mt-1`}>
-              Check back soon, or create the first one.
+              {t("blog.no_posts_subtitle")}
             </p>
           </div>
         </Show>
@@ -359,7 +365,7 @@ export default function PostsList() {
                     <div class="flex-1 px-4 py-3">
                       <div class="text-xs text-slate-500 mb-1 flex items-center gap-1">
                         <UserBadge
-                          userName={post.user_name ?? "Unknown"}
+                          userName={post.user_name ?? t("common.unknown")}
                           profilePictureUrl={post.user_profile_picture_url}
                           countryFlag={post.user_country_flag}
                           size="sm"
@@ -369,12 +375,16 @@ export default function PostsList() {
                           {new Date(post.post_created_at).toLocaleDateString()}
                         </span>
                         <span class="text-slate-400">•</span>
-                        <span>{post.post_view_count ?? 0} views</span>
+                        <span>
+                          {post.post_view_count ?? 0} {t("common.views")}
+                        </span>
                         <span class="text-slate-400">•</span>
-                        <span>{post.post_share_count ?? 0} shares</span>
+                        <span>
+                          {post.post_share_count ?? 0} {t("common.shares")}
+                        </span>
                         <Show when={!post.post_is_published}>
                           <span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            Draft
+                            {t("common.draft")}
                           </span>
                         </Show>
                         <Show
@@ -387,7 +397,7 @@ export default function PostsList() {
                             class={`${pageStyles.buttonGhost} ml-auto text-rose-600 dark:text-rose-400`}
                             onClick={(e) => handleDeletePost(e, post.post_id)}
                           >
-                            Delete
+                            {t("common.delete")}
                           </button>
                         </Show>
                       </div>
@@ -432,17 +442,17 @@ export default function PostsList() {
               disabled={page() <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Prev
+              {t("blog.prev")}
             </button>
             <div class="text-sm text-slate-600 dark:text-slate-300">
-              Page {page()} of {availablePages()}
+              {tx("blog.page_of", { page: page(), pages: availablePages() })}
             </div>
             <button
               class={pageStyles.buttonSecondary}
               disabled={page() >= availablePages()}
               onClick={() => setPage((p) => Math.min(availablePages(), p + 1))}
             >
-              Next
+              {t("common.next")}
             </button>
           </div>
         </Show>

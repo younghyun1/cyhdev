@@ -13,6 +13,7 @@ import type { CommentResponse } from "../../dtos/responses/blog";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
+import { t, tx } from "../../state/i18n";
 import hljs from "highlight.js/lib/core";
 import rust from "highlight.js/lib/languages/rust";
 import sql from "highlight.js/lib/languages/sql";
@@ -66,14 +67,14 @@ export default function PostViewPage() {
           ? (err as { status: number }).status
           : undefined;
       const message =
-        err instanceof Error ? err.message : "Failed to load post.";
+        err instanceof Error ? err.message : t("blog.post.failed_load");
 
       if (status === 400 || status === 404) {
         navigate("/under-construction", { replace: true });
         return null;
       }
 
-      setPostLoadError(message || "Failed to load post.");
+      setPostLoadError(message || t("blog.post.failed_load"));
       return null;
     }
   });
@@ -120,22 +121,22 @@ export default function PostViewPage() {
   );
 
   const handleDeletePost = async () => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm(t("blog.delete_post_confirm"))) return;
     try {
       await blogApi.deletePost(postId()!);
       navigate("/blog");
     } catch (e) {
-      alert("Failed to delete post: " + e);
+      alert(tx("blog.delete_post_failed", { error: String(e) }));
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
+    if (!confirm(t("blog.comments.delete_confirm"))) return;
     try {
       await blogApi.deleteComment(postId()!, commentId);
       refetch();
     } catch (e) {
-      alert("Failed to delete comment: " + e);
+      alert(tx("blog.comments.delete_failed", { error: String(e) }));
     }
   };
 
@@ -258,7 +259,7 @@ export default function PostViewPage() {
       refetch();
     } catch (err: unknown) {
       setCommentError(
-        err instanceof Error ? err.message : "Failed to submit comment",
+        err instanceof Error ? err.message : t("blog.comments.failed_submit"),
       );
     } finally {
       setCommentLoading(false);
@@ -301,7 +302,7 @@ export default function PostViewPage() {
     } catch (err: unknown) {
       setReplyError(
         parentCommentId,
-        err instanceof Error ? err.message : "Failed to submit reply",
+        err instanceof Error ? err.message : t("blog.comments.failed_reply"),
       );
     } finally {
       setReplyLoading(parentCommentId, false);
@@ -340,7 +341,7 @@ export default function PostViewPage() {
     } catch (err: unknown) {
       setEditError(
         commentId,
-        err instanceof Error ? err.message : "Failed to update comment",
+        err instanceof Error ? err.message : t("blog.comments.failed_update"),
       );
     } finally {
       setEditLoading(commentId, false);
@@ -441,7 +442,7 @@ export default function PostViewPage() {
             >
               <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <UserBadge
-                  userName={comment.user_name ?? "Guest"}
+                  userName={comment.user_name ?? t("common.unknown")}
                   profilePictureUrl={comment.user_profile_picture_url}
                   countryFlag={comment.user_country_flag}
                   size="sm"
@@ -480,14 +481,16 @@ export default function PostViewPage() {
                       }
                       onClick={() => handleUpdateComment(comment.comment_id)}
                     >
-                      {editLoading[comment.comment_id] ? "Saving..." : "Save"}
+                      {editLoading[comment.comment_id]
+                        ? t("common.saving")
+                        : t("common.save")}
                     </button>
                     <button
                       type="button"
                       class={`${pageStyles.buttonSecondary} px-3 py-1 text-sm`}
                       onClick={() => toggleEdit(comment)}
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </div>
@@ -501,7 +504,7 @@ export default function PostViewPage() {
                       commentId: comment.comment_id,
                     })
                   }
-                  title="Upvote"
+                  title={t("blog.vote.upvote")}
                 >
                   ▲
                 </button>
@@ -518,7 +521,7 @@ export default function PostViewPage() {
                       commentId: comment.comment_id,
                     })
                   }
-                  title="Downvote"
+                  title={t("blog.vote.downvote")}
                 >
                   ▼
                 </button>
@@ -528,7 +531,7 @@ export default function PostViewPage() {
                   class={`${pageStyles.link} text-xs`}
                   onClick={() => toggleReply(comment.comment_id)}
                 >
-                  Reply
+                  {t("blog.comments.reply")}
                 </button>
                 <Show
                   when={
@@ -542,13 +545,13 @@ export default function PostViewPage() {
                     class={`${pageStyles.link} text-xs`}
                     onClick={() => toggleEdit(comment)}
                   >
-                    Edit
+                    {t("common.edit")}
                   </button>
                   <button
                     class="text-xs text-red-600 hover:underline dark:text-red-400"
                     onClick={() => handleDeleteComment(comment.comment_id)}
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </Show>
               </div>
@@ -560,7 +563,7 @@ export default function PostViewPage() {
                     onInput={(e) =>
                       setReplyText(comment.comment_id, e.currentTarget.value)
                     }
-                    placeholder="Write a reply..."
+                    placeholder={t("blog.comments.reply_placeholder")}
                   />
                   <Show when={replyError[comment.comment_id]}>
                     <div class="text-sm text-red-600">
@@ -577,8 +580,8 @@ export default function PostViewPage() {
                       onClick={() => handleSubmitReply(comment.comment_id)}
                     >
                       {replyLoading[comment.comment_id]
-                        ? "Posting..."
-                        : "Submit Reply"}
+                        ? t("blog.comments.posting")
+                        : t("blog.comments.submit_reply")}
                     </button>
                     <button
                       type="button"
@@ -589,7 +592,7 @@ export default function PostViewPage() {
                         setReplyError(comment.comment_id, null);
                       }}
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </div>
@@ -609,18 +612,18 @@ export default function PostViewPage() {
       <div class={`${pageStyles.pageInner} max-w-5xl flex flex-row gap-8`}>
         <div class="flex-1">
           <Show when={postResource.loading}>
-            <div class={pageStyles.muted}>Loading post...</div>
+            <div class={pageStyles.muted}>{t("blog.loading_posts")}</div>
           </Show>
           <Show when={postLoadError()}>
             <div class={pageStyles.alertError}>
-              Failed to load post.
+              {t("blog.post.failed_load")}
               <div class="mt-2 text-sm opacity-90">{postLoadError()}</div>
               <div class="mt-3">
                 <button
                   class={pageStyles.buttonSecondary}
                   onClick={() => navigate("/blog", { replace: true })}
                 >
-                  Back to Blog
+                  {t("user.back_to_blog")}
                 </button>
               </div>
             </div>
@@ -664,7 +667,7 @@ export default function PostViewPage() {
                             postId: data().post.post_id,
                           })
                         }
-                        aria-label="Upvote"
+                        aria-label={t("blog.vote.upvote")}
                       >
                         ▲
                       </button>
@@ -680,7 +683,7 @@ export default function PostViewPage() {
                             postId: data().post.post_id,
                           })
                         }
-                        aria-label="Downvote"
+                        aria-label={t("blog.vote.downvote")}
                       >
                         ▼
                       </button>
@@ -693,7 +696,7 @@ export default function PostViewPage() {
                           </h1>
                           <Show when={!data().post.post_is_published}>
                             <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                              Draft
+                              {t("common.draft")}
                             </span>
                           </Show>
                         </div>
@@ -710,13 +713,13 @@ export default function PostViewPage() {
                                 navigate(`/blog/${data().post.post_id}/edit`)
                               }
                             >
-                              Edit Post
+                              {t("blog.post.edit_post")}
                             </button>
                             <button
                               class={`${pageStyles.buttonDanger} whitespace-nowrap`}
                               onClick={handleDeletePost}
                             >
-                              Delete Post
+                              {t("blog.post.delete_post")}
                             </button>
                           </div>
                         </Show>
@@ -724,7 +727,8 @@ export default function PostViewPage() {
                       <div class="flex items-center text-sm text-gray-400 mb-2 flex-wrap gap-y-1">
                         <UserBadge
                           userName={
-                            data().user_badge_info?.user_name ?? "Unknown"
+                            data().user_badge_info?.user_name ??
+                            t("common.unknown")
                           }
                           profilePictureUrl={
                             data().user_badge_info?.user_profile_picture_url
@@ -740,9 +744,15 @@ export default function PostViewPage() {
                           ).toLocaleString()}
                         </span>
                         <span class="ml-3 text-gray-500">•</span>
-                        <span>{data().post.post_view_count ?? 0} views</span>
+                        <span>
+                          {data().post.post_view_count ?? 0}{" "}
+                          {t("common.views")}
+                        </span>
                         <span class="ml-3 text-gray-500">•</span>
-                        <span>{data().post.post_share_count ?? 0} shares</span>
+                        <span>
+                          {data().post.post_share_count ?? 0}{" "}
+                          {t("common.shares")}
+                        </span>
                       </div>
                       {/* Tag badges */}
                       <Show
@@ -779,9 +789,11 @@ export default function PostViewPage() {
                   <hr class={`my-5 ${pageStyles.divider}`} />
                   <section>
                     <div class="mb-3 flex items-center justify-between">
-                      <h2 class="text-xl font-semibold">Comments</h2>
+                      <h2 class="text-xl font-semibold">
+                        {t("blog.comments.title")}
+                      </h2>
                       <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                        <span>Sort by</span>
+                        <span>{t("blog.comments.sort_by")}</span>
                         <select
                           class={pageStyles.select}
                           value={commentSort()}
@@ -795,10 +807,10 @@ export default function PostViewPage() {
                             )
                           }
                         >
-                          <option value="best">Best</option>
-                          <option value="top">Top</option>
-                          <option value="new">New</option>
-                          <option value="old">Old</option>
+                          <option value="best">{t("blog.comments.best")}</option>
+                          <option value="top">{t("blog.comments.top")}</option>
+                          <option value="new">{t("blog.comments.new")}</option>
+                          <option value="old">{t("blog.comments.old")}</option>
                         </select>
                       </label>
                     </div>
@@ -806,7 +818,9 @@ export default function PostViewPage() {
                   </section>
                   <hr class={`my-5 ${pageStyles.divider}`} />
                   <section>
-                    <h3 class="text-lg font-semibold mb-2">Add Comment</h3>
+                    <h3 class="text-lg font-semibold mb-2">
+                      {t("blog.comments.add")}
+                    </h3>
                     <form
                       onSubmit={handleSubmitComment}
                       class="flex flex-col gap-2"
@@ -815,7 +829,7 @@ export default function PostViewPage() {
                         class={pageStyles.textarea}
                         value={commentValue()}
                         onInput={(e) => setCommentValue(e.currentTarget.value)}
-                        placeholder="Write a comment (plaintext)..."
+                        placeholder={t("blog.comments.placeholder")}
                       />
                       <Show when={commentError()}>
                         <span class="text-red-600">{commentError()}</span>
@@ -825,7 +839,9 @@ export default function PostViewPage() {
                         type="submit"
                         disabled={commentLoading() || !commentValue().trim()}
                       >
-                        {commentLoading() ? "Posting..." : "Post Comment"}
+                        {commentLoading()
+                          ? t("blog.comments.posting")
+                          : t("blog.comments.post")}
                       </button>
                     </form>
                   </section>

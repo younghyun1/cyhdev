@@ -1,6 +1,7 @@
 import { createSignal, createResource, Show, Suspense } from "solid-js";
 import { geoIpApi, type IpInfo } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import { t, tx } from "../state/i18n";
 
 export default function GeoIpInfo() {
   const [ipInput, setIpInput] = createSignal("");
@@ -30,7 +31,7 @@ export default function GeoIpInfo() {
       setIpInfo(response.data);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to lookup IP information",
+        err instanceof Error ? err.message : t("geo.lookup_failed"),
       );
     } finally {
       setLoading(false);
@@ -48,7 +49,7 @@ export default function GeoIpInfo() {
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            IP Address
+            {t("geo.ip_address")}
           </span>
           <span class="text-lg text-slate-900 dark:text-slate-100 font-mono font-medium">
             {props.info.ip}
@@ -57,7 +58,7 @@ export default function GeoIpInfo() {
 
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Country
+            {t("common.country")}
           </span>
           <span class="text-lg text-slate-900 dark:text-slate-100 font-medium">
             {props.info.country_name}{" "}
@@ -69,34 +70,34 @@ export default function GeoIpInfo() {
 
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Region / State
+            {t("geo.region_state")}
           </span>
           <span class="text-lg text-slate-900 dark:text-slate-100 font-medium">
-            {props.info.state || "N/A"}
+            {props.info.state || t("common.n_a")}
           </span>
         </div>
 
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            City
+            {t("geo.city")}
           </span>
           <span class="text-lg text-slate-900 dark:text-slate-100 font-medium">
-            {props.info.city || "N/A"}
+            {props.info.city || t("common.n_a")}
           </span>
         </div>
 
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Postal Code
+            {t("geo.postal_code")}
           </span>
           <span class="text-lg text-slate-900 dark:text-slate-100 font-medium">
-            {props.info.postal || "N/A"}
+            {props.info.postal || t("common.n_a")}
           </span>
         </div>
 
         <div>
           <span class="block text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Coordinates
+            {t("geo.coordinates")}
           </span>
           <div class="flex items-center gap-2">
             <span class="text-slate-900 dark:text-slate-100 font-mono bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded text-sm">
@@ -112,12 +113,14 @@ export default function GeoIpInfo() {
     <main class={pageStyles.page}>
       <div class={pageStyles.pageInnerNarrow}>
         <h1 class={`${pageStyles.title} mb-8 text-center`}>
-          Geo-IP Database Lookup
+          {t("geo.title")}
         </h1>
 
         {/* Current Client IP Section */}
         <section class="mb-10">
-          <h2 class={`${pageStyles.sectionTitle} mb-4`}>Your IP Information</h2>
+          <h2 class={`${pageStyles.sectionTitle} mb-4`}>
+            {t("geo.your_ip_info")}
+          </h2>
           <Suspense
             fallback={
               <div class={`${pageStyles.cardPadded} animate-pulse`}>
@@ -137,11 +140,11 @@ export default function GeoIpInfo() {
                 <div
                   class={`${pageStyles.cardPadded} text-center text-slate-500 dark:text-slate-400`}
                 >
-                  Could not determine your IP information.
+                  {t("geo.could_not_determine")}
                 </div>
               }
             >
-              <IpInfoDisplay info={myIpInfo()!} title="Your Connection" />
+              <IpInfoDisplay info={myIpInfo()!} title={t("geo.your_connection")} />
             </Show>
           </Suspense>
         </section>
@@ -149,7 +152,7 @@ export default function GeoIpInfo() {
         {/* IP Lookup Section */}
         <section>
           <h2 class={`${pageStyles.sectionTitle} mb-4`}>
-            Lookup Any IP Address
+            {t("geo.lookup_any")}
           </h2>
           <form onSubmit={handleLookup} class="mb-6">
             <div class="flex flex-col sm:flex-row gap-3">
@@ -157,7 +160,7 @@ export default function GeoIpInfo() {
                 type="text"
                 value={ipInput()}
                 onInput={(e) => setIpInput(e.currentTarget.value)}
-                placeholder="Enter IPv4 or IPv6 address..."
+                placeholder={t("geo.input_placeholder")}
                 class={`${pageStyles.input} flex-1`}
               />
               <button
@@ -165,7 +168,7 @@ export default function GeoIpInfo() {
                 disabled={loading() || !ipInput().trim()}
                 class={`${pageStyles.buttonPrimary} px-6 py-2 disabled:opacity-60 disabled:cursor-not-allowed`}
               >
-                {loading() ? "Searching..." : "Lookup"}
+                {loading() ? t("common.searching") : t("common.lookup")}
               </button>
             </div>
             <Show when={error()}>
@@ -178,20 +181,20 @@ export default function GeoIpInfo() {
           <Show when={ipInfo()}>
             <IpInfoDisplay
               info={ipInfo()!}
-              title={`Results for ${ipInfo()!.ip}`}
+              title={tx("geo.results_for", { ip: ipInfo()!.ip })}
             />
           </Show>
         </section>
 
         <p class="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">
-          This site uses the IP2Location LITE database for{" "}
+          {t("geo.attribution_prefix")}{" "}
           <a
             href="https://lite.ip2location.com"
             target="_blank"
             rel="noopener noreferrer"
             class="underline hover:text-slate-600 dark:hover:text-slate-300"
           >
-            IP geolocation
+            {t("geo.attribution_link")}
           </a>
           .
         </p>

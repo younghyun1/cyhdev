@@ -10,6 +10,7 @@ import {
 import CpuStatsCard from "./CpuStatsCard";
 import RamStatsCard from "./RamStatsCard";
 import type { HostStatsRaw, HostStatPoint } from "../dtos/shared/host_stats";
+import { t, tx } from "../state/i18n";
 
 // parse exactly 20 bytes: [f32][u64][u64] (all big-endian)
 function parseHostStats(buf: ArrayBuffer): HostStatsRaw | null {
@@ -68,7 +69,7 @@ export default function HostStatsDashboard(props: {
       ws = new WebSocket(url);
       ws.binaryType = "arraybuffer";
     } catch (e: unknown) {
-      setError("WS open failed: " + String(e));
+      setError(tx("stats.ws_open_failed", { error: String(e) }));
       return;
     }
 
@@ -82,7 +83,7 @@ export default function HostStatsDashboard(props: {
     ws.onmessage = (evt) => {
       const raw = parseHostStats(evt.data as ArrayBuffer);
       if (!raw) {
-        setError("Malformed host‐stats packet");
+        setError(t("stats.malformed_packet"));
         return;
       }
       setHistory((old) => {
@@ -98,8 +99,8 @@ export default function HostStatsDashboard(props: {
       });
     };
 
-    ws.onerror = () => setError("WebSocket error");
-    ws.onclose = () => setError((e) => e || "WebSocket closed");
+    ws.onerror = () => setError(t("stats.websocket_error"));
+    ws.onclose = () => setError((e) => e || t("stats.websocket_closed"));
 
     onCleanup(() => {
       ws.close();
@@ -140,7 +141,7 @@ export default function HostStatsDashboard(props: {
                 class="text-lg font-bold tracking-wide"
                 style={{ color: C().font }}
               >
-                SERVER STATS
+                {t("stats.server_stats")}
               </h2>
               <button
                 class="px-3 py-1 text-xs font-semibold rounded hover:opacity-80 transition-opacity"
@@ -151,7 +152,7 @@ export default function HostStatsDashboard(props: {
                 }}
                 onClick={() => void refreshHealthState()}
               >
-                Refresh
+                {t("common.refresh")}
               </button>
             </div>
           </div>
@@ -160,7 +161,7 @@ export default function HostStatsDashboard(props: {
               when={healthState()}
               keyed
               fallback={
-                <div class="col-span-full">Loading health stats...</div>
+                <div class="col-span-full">{t("stats.loading_health")}</div>
               }
             >
               {(hs) => (
@@ -169,7 +170,9 @@ export default function HostStatsDashboard(props: {
                     class="p-4 rounded-lg bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
-                    <div class="text-xs opacity-70 mb-1">Uptime</div>
+                    <div class="text-xs opacity-70 mb-1">
+                      {t("stats.uptime")}
+                    </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {liveUptime()}
                     </div>
@@ -178,7 +181,9 @@ export default function HostStatsDashboard(props: {
                     class="p-4 rounded-lg bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
-                    <div class="text-xs opacity-70 mb-1">Responses Handled</div>
+                    <div class="text-xs opacity-70 mb-1">
+                      {t("stats.responses_handled")}
+                    </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.responses_handled.toLocaleString()}
                     </div>
@@ -187,7 +192,9 @@ export default function HostStatsDashboard(props: {
                     class="p-4 rounded-lg bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
-                    <div class="text-xs opacity-70 mb-1">Active Sessions</div>
+                    <div class="text-xs opacity-70 mb-1">
+                      {t("stats.active_sessions")}
+                    </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.users_logged_in}
                     </div>
@@ -196,7 +203,9 @@ export default function HostStatsDashboard(props: {
                     class="p-4 rounded-lg bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
-                    <div class="text-xs opacity-70 mb-1">DB Latency</div>
+                    <div class="text-xs opacity-70 mb-1">
+                      {t("bottom_bar.db_latency")}
+                    </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.db_latency}
                     </div>
@@ -229,11 +238,11 @@ export default function HostStatsDashboard(props: {
               class="text-lg font-bold tracking-wide"
               style={{ color: C().font }}
             >
-              LIVE HOST METRICS
+              {t("stats.live_host_metrics")}
             </h2>
             <div class="flex-1" />
             <div class="text-xs opacity-60" style={{ color: C().font }}>
-              Realtime over WebSocket - custom binary protocol
+              {t("stats.realtime_note")}
             </div>
           </div>
 

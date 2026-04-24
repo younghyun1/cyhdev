@@ -79,3 +79,13 @@ export async function setLocale(nextLocale: UiLocale) {
 export function t(key: UiTextKey): string {
   return texts()[key] ?? defaultTextsForLocale(locale())[key];
 }
+
+export function tx(
+  key: UiTextKey,
+  params: Record<string, string | number>,
+): string {
+  return t(key).replace(/\{([A-Za-z0-9_]+)\}/g, (match, name: string) => {
+    const value = params[name];
+    return value === undefined ? match : String(value);
+  });
+}

@@ -14,6 +14,7 @@ import {
   type WasmModuleItem,
 } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import { t, tx } from "../state/i18n";
 
 const styles = `
 .projects-grid {
@@ -368,7 +369,7 @@ export default function Projects() {
       setModules(response.data.items);
     } catch (e) {
       console.error("Failed to load WASM modules:", e);
-      setError("Failed to load projects. Please try again later.");
+      setError(t("projects.load_failed"));
     } finally {
       if (!opts?.silent) setLoading(false);
     }
@@ -425,11 +426,11 @@ export default function Projects() {
     setActionError(null);
 
     if (!uploadBundle() || !uploadThumbnail()) {
-      setUploadError("Please provide both a bundle file and a thumbnail.");
+      setUploadError(t("projects.upload_require_files"));
       return;
     }
     if (!uploadTitle().trim() || !uploadDescription().trim()) {
-      setUploadError("Title and description are required.");
+      setUploadError(t("projects.upload_require_text"));
       return;
     }
 
@@ -450,7 +451,7 @@ export default function Projects() {
       });
 
       setUploadProgress(100);
-      setActionSuccess("Project uploaded successfully.");
+      setActionSuccess(t("projects.upload_success"));
       setShowUpload(false);
       setUploadTitle("");
       setUploadDescription("");
@@ -459,7 +460,7 @@ export default function Projects() {
       await loadModules({ silent: true });
     } catch (err: unknown) {
       console.error("Failed to upload WASM module:", err);
-      setUploadError("Upload failed. Please check the files and try again.");
+      setUploadError(t("projects.upload_failed"));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -472,7 +473,7 @@ export default function Projects() {
     if (!current) return;
 
     if (!editTitle().trim() || !editDescription().trim()) {
-      setActionError("Title and description are required.");
+      setActionError(t("projects.upload_require_text"));
       return;
     }
 
@@ -502,10 +503,10 @@ export default function Projects() {
         setSelectedModule(updated);
       }
       setEditingModule(null);
-      setActionSuccess("Project details updated.");
+      setActionSuccess(t("projects.update_success"));
     } catch (err) {
       console.error("Failed to update WASM module:", err);
-      setActionError("Update failed. Please try again.");
+      setActionError(t("projects.update_failed"));
     } finally {
       setSavingEdit(false);
     }
@@ -513,7 +514,7 @@ export default function Projects() {
 
   const handleDelete = async (module: WasmModuleItem) => {
     if (
-      !confirm(`Delete "${module.wasm_module_title}"? This cannot be undone.`)
+      !confirm(tx("projects.delete_confirm", { title: module.wasm_module_title }))
     ) {
       return;
     }
@@ -530,10 +531,10 @@ export default function Projects() {
       if (selectedModule()?.wasm_module_id === module.wasm_module_id) {
         setSelectedModule(null);
       }
-      setActionSuccess("Project deleted.");
+      setActionSuccess(t("projects.deleted"));
     } catch (err) {
       console.error("Failed to delete WASM module:", err);
-      setActionError("Delete failed. Please try again.");
+      setActionError(t("projects.delete_failed"));
     } finally {
       setDeleteInProgress(null);
     }
@@ -543,25 +544,27 @@ export default function Projects() {
     <main class={pageStyles.page}>
       <style>{styles}</style>
       <div class={pageStyles.pageInner}>
-        <h1 class={pageStyles.title}>Projects & Demos</h1>
+        <h1 class={pageStyles.title}>{t("page.projects.title")}</h1>
         <hr class={`${pageStyles.divider} my-4`} />
         <p class={pageStyles.muted}>
-          Interactive WASM demos and projects. Click a card to launch the demo.
+          {t("projects.subtitle")}
         </p>
 
         <Show when={isSuperuser()}>
           <section class="admin-panel">
             <div class="admin-panel-header">
               <div>
-                <h2 class="admin-panel-title">Manage Projects</h2>
+                <h2 class="admin-panel-title">{t("projects.manage")}</h2>
                 <p class="admin-panel-meta">
-                  Upload new bundles, update details, or remove old demos.
+                  {t("projects.manage_subtitle")}
                 </p>
               </div>
               <div class="admin-panel-badge">
-                <span class="admin-panel-badge-label">Signed in as</span>
+                <span class="admin-panel-badge-label">
+                  {t("projects.signed_in_as")}
+                </span>
                 <UserBadge
-                  userName={user()?.user_info?.user_name || "You"}
+                  userName={user()?.user_info?.user_name || t("live_chat.you")}
                   profilePictureUrl={
                     user()?.user_profile_picture?.user_profile_picture_link ||
                     undefined
@@ -574,7 +577,7 @@ export default function Projects() {
                 class={pageStyles.buttonPrimary}
                 onClick={() => setShowUpload(true)}
               >
-                Upload Project
+                {t("projects.upload_project")}
               </button>
             </div>
 
@@ -591,7 +594,7 @@ export default function Projects() {
 
         <Show when={loading()}>
           <div class="empty-state">
-            <p>Loading projects...</p>
+            <p>{t("projects.loading")}</p>
           </div>
         </Show>
 
@@ -601,7 +604,7 @@ export default function Projects() {
 
         <Show when={!loading() && !error() && modules().length === 0}>
           <div class="empty-state">
-            <p>No projects available yet. Check back later!</p>
+            <p>{t("projects.empty")}</p>
           </div>
         </Show>
 
@@ -641,7 +644,7 @@ export default function Projects() {
                             setEditingModule(module);
                           }}
                         >
-                          Edit details
+                          {t("projects.edit_details")}
                         </button>
                         <button
                           class="action-button danger"
@@ -654,8 +657,8 @@ export default function Projects() {
                           }}
                         >
                           {deleteInProgress() === module.wasm_module_id
-                            ? "Deleting..."
-                            : "Delete"}
+                            ? t("common.deleting")
+                            : t("common.delete")}
                         </button>
                       </div>
                     </Show>
@@ -686,7 +689,7 @@ export default function Projects() {
                 class="close-button"
                 onClick={() => setSelectedModule(null)}
               >
-                Close (Esc)
+                {t("common.close_esc")}
               </button>
             </div>
             <div class="wasm-iframe-container">
@@ -713,42 +716,42 @@ export default function Projects() {
         >
           <div class="admin-modal">
             <div class="admin-modal-header">
-              <h2 class="wasm-modal-title">Upload Project</h2>
+              <h2 class="wasm-modal-title">{t("projects.upload_project")}</h2>
               <button class="close-button" onClick={() => setShowUpload(false)}>
-                Close
+                {t("common.close")}
               </button>
             </div>
             <div class="admin-modal-body">
               <form class="form-grid" onSubmit={handleUpload}>
                 <div class="form-field">
                   <label class="form-label" for="wasm-title">
-                    Title
+                    {t("common.title")}
                   </label>
                   <input
                     id="wasm-title"
                     class={pageStyles.input}
                     value={uploadTitle()}
                     onInput={(e) => setUploadTitle(e.currentTarget.value)}
-                    placeholder="Project title"
+                    placeholder={t("projects.project_title_placeholder")}
                   />
                 </div>
 
                 <div class="form-field">
                   <label class="form-label" for="wasm-description">
-                    Description
+                    {t("common.description")}
                   </label>
                   <textarea
                     id="wasm-description"
                     class={pageStyles.textarea}
                     value={uploadDescription()}
                     onInput={(e) => setUploadDescription(e.currentTarget.value)}
-                    placeholder="Short description for the demo"
+                    placeholder={t("projects.description_placeholder")}
                   />
                 </div>
 
                 <div class="form-field">
                   <label class="form-label" for="wasm-bundle">
-                    Bundle file
+                    {t("projects.bundle_file")}
                   </label>
                   <input
                     id="wasm-bundle"
@@ -760,13 +763,13 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    Upload a `.html`/`.html.gz` bundle or a `.wasm` file.
+                    {t("projects.bundle_help")}
                   </span>
                 </div>
 
                 <div class="form-field">
                   <label class="form-label" for="wasm-thumbnail">
-                    Thumbnail image
+                    {t("projects.thumbnail_image")}
                   </label>
                   <input
                     id="wasm-thumbnail"
@@ -778,7 +781,7 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    Recommended: square image for best grid cropping.
+                    {t("projects.thumbnail_help")}
                   </span>
                 </div>
 
@@ -802,14 +805,14 @@ export default function Projects() {
                     onClick={() => setShowUpload(false)}
                     disabled={uploading()}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     class={pageStyles.buttonPrimary}
                     disabled={uploading()}
                   >
-                    {uploading() ? "Uploading..." : "Upload"}
+                    {uploading() ? t("common.uploading") : t("common.upload")}
                   </button>
                 </div>
               </form>
@@ -830,19 +833,21 @@ export default function Projects() {
         >
           <div class="admin-modal">
             <div class="admin-modal-header">
-              <h2 class="wasm-modal-title">Edit Project Details</h2>
+              <h2 class="wasm-modal-title">
+                {t("projects.edit_project_details")}
+              </h2>
               <button
                 class="close-button"
                 onClick={() => setEditingModule(null)}
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
             <div class="admin-modal-body">
               <form class="form-grid" onSubmit={handleUpdate}>
                 <div class="form-field">
                   <label class="form-label" for="edit-title">
-                    Title
+                    {t("common.title")}
                   </label>
                   <input
                     id="edit-title"
@@ -853,7 +858,7 @@ export default function Projects() {
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="edit-description">
-                    Description
+                    {t("common.description")}
                   </label>
                   <textarea
                     id="edit-description"
@@ -864,7 +869,7 @@ export default function Projects() {
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="edit-bundle">
-                    Replace bundle (optional)
+                    {t("projects.replace_bundle")}
                   </label>
                   <input
                     id="edit-bundle"
@@ -876,12 +881,12 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    Upload a new `.html`/`.html.gz` bundle or `.wasm` file.
+                    {t("projects.bundle_help")}
                   </span>
                 </div>
                 <div class="form-field">
                   <label class="form-label" for="edit-thumbnail">
-                    Replace thumbnail (optional)
+                    {t("projects.replace_thumbnail")}
                   </label>
                   <input
                     id="edit-thumbnail"
@@ -893,7 +898,7 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    Recommended: square image for best grid cropping.
+                    {t("projects.thumbnail_help")}
                   </span>
                 </div>
 
@@ -904,14 +909,16 @@ export default function Projects() {
                     onClick={() => setEditingModule(null)}
                     disabled={savingEdit()}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     type="submit"
                     class={pageStyles.buttonPrimary}
                     disabled={savingEdit()}
                   >
-                    {savingEdit() ? "Saving..." : "Save changes"}
+                    {savingEdit()
+                      ? t("common.saving")
+                      : t("projects.save_changes")}
                   </button>
                 </div>
               </form>

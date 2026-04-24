@@ -23,7 +23,7 @@ import type {
   LiveChatServerEvent,
 } from "../dtos/responses/live_chat";
 import { pageStyles } from "../styles/pageStyles";
-import { t } from "../state/i18n";
+import { t, tx } from "../state/i18n";
 import { UserBadge } from "./UserBadge";
 
 export type LiveChatPanelMode = "compact" | "full";
@@ -208,8 +208,8 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       .filter((typingActor) => actorKey(typingActor) !== currentKey)
       .map(actorLabel);
     if (names.length === 0) return "";
-    if (names.length === 1) return `${names[0]} is typing`;
-    return `${names.slice(0, 2).join(", ")} are typing`;
+    if (names.length === 1) return tx("live_chat.typing_one", { name: names[0]! });
+    return tx("live_chat.typing_many", { names: names.slice(0, 2).join(", ") });
   });
 
   const scheduleTypingExpiry = (expiresAt: string) => {
@@ -271,7 +271,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     ws.onclose = () => setConnectionState("closed");
     ws.onerror = () => {
       setConnectionState("error");
-      setError("Live chat connection failed.");
+      setError(t("live_chat.connection_failed"));
     };
     ws.onmessage = (event) => {
       const serverEvent = parseServerEventData(event.data);
@@ -345,7 +345,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
 
   const sendEvent = (event: LiveChatClientEvent): boolean => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      setError("Live chat is not connected.");
+      setError(t("live_chat.not_connected"));
       return false;
     }
     try {
@@ -367,7 +367,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       return true;
     } catch (err) {
       console.error("Failed to send live chat event:", err);
-      setError("Live chat message could not be sent.");
+      setError(t("live_chat.send_failed"));
       return false;
     }
   };
@@ -437,7 +437,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     if (!body) return;
     if (Array.from(body).length > LIVE_CHAT_MAX_MESSAGE_CHARS) {
       setError(
-        `Message must be ${LIVE_CHAT_MAX_MESSAGE_CHARS} characters or fewer.`,
+        tx("live_chat.message_too_long", { count: LIVE_CHAT_MAX_MESSAGE_CHARS }),
       );
       return;
     }
@@ -458,7 +458,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           kind: "pending" as const,
           client_message_id: clientMessageId,
           user_id: currentActor?.user_id ?? null,
-          sender_display_name: currentActor?.display_name ?? "you",
+          sender_display_name: currentActor?.display_name ?? t("live_chat.you"),
           sender_country_flag: currentActor?.country_flag ?? null,
           user_profile_picture_url:
             currentActor?.user_profile_picture_url ?? null,
@@ -497,7 +497,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       setHasMore(response.data.has_more);
     } catch (err) {
       console.error("Failed to load older live chat messages:", err);
-      setError("Could not load older messages.");
+      setError(t("live_chat.load_older_failed"));
     } finally {
       setLoadingOlder(false);
     }

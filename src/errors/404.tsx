@@ -1,4 +1,5 @@
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 export default function NotFound() {
   return (
@@ -15,36 +16,46 @@ export default function NotFound() {
             </div>
 
             <div class="min-w-0">
-              <h1 class={`${pageStyles.titleSm} mb-1`}>Under Construction</h1>
-              <p class={pageStyles.muted}>I&apos;m working on it!</p>
+              <h1 class={`${pageStyles.titleSm} mb-1`}>
+                {t("not_found.title")}
+              </h1>
+              <p class={pageStyles.muted}>{t("not_found.message")}</p>
             </div>
           </div>
 
           <div class="mt-6 grid gap-4 sm:grid-cols-3">
             <div class={`${pageStyles.card} p-4`}>
-              <p class="text-sm font-semibold">Status</p>
-              <p class={`mt-1 ${pageStyles.muted}`}>In progress</p>
+              <p class="text-sm font-semibold">{t("not_found.status_label")}</p>
+              <p class={`mt-1 ${pageStyles.muted}`}>
+                {t("not_found.status_value")}
+              </p>
             </div>
             <div class={`${pageStyles.card} p-4`}>
-              <p class="text-sm font-semibold">ETA</p>
-              <p class={`mt-1 ${pageStyles.muted}`}>Soon™</p>
+              <p class="text-sm font-semibold">{t("not_found.eta_label")}</p>
+              <p class={`mt-1 ${pageStyles.muted}`}>
+                {t("not_found.eta_value")}
+              </p>
             </div>
             <div class={`${pageStyles.card} p-4`}>
-              <p class="text-sm font-semibold">Meanwhile</p>
-              <p class={`mt-1 ${pageStyles.muted}`}>Drink water.</p>
+              <p class="text-sm font-semibold">
+                {t("not_found.meanwhile_label")}
+              </p>
+              <p class={`mt-1 ${pageStyles.muted}`}>
+                {t("not_found.meanwhile_value")}
+              </p>
             </div>
           </div>
 
           <div class="mt-6 flex flex-wrap gap-3">
             <a href="/" class={pageStyles.buttonPrimary}>
-              Go to homepage
+              {t("common.go_home")}
             </a>
             <button
               type="button"
               onClick={() => history.back()}
               class={pageStyles.buttonSecondary}
             >
-              Go back
+              {t("common.go_back")}
             </button>
           </div>
         </div>

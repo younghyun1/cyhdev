@@ -2,6 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 function FindPasswordPage() {
   const [email, setEmail] = createSignal("");
@@ -21,15 +22,13 @@ function FindPasswordPage() {
         user_email: email(),
       });
 
-      setSuccessMessage(
-        "If an account with that email exists, a password reset link has been sent.",
-      );
+      setSuccessMessage(t("auth.find_password.success"));
       setEmail(""); // Clear the input on success
     } catch (e: unknown) {
       let msg =
         e instanceof Error
           ? e.message
-          : "An unexpected error occurred. Please try again.";
+          : t("auth.find_password.unexpected_error");
       try {
         const json = JSON.parse(msg);
         if (json.message) msg = json.message;
@@ -49,17 +48,19 @@ function FindPasswordPage() {
       <div
         class={`${pageStyles.card} w-full max-w-md p-8 flex flex-col items-center`}
       >
-        <h2 class={`${pageStyles.titleSm} mb-6`}>Find Password</h2>
+        <h2 class={`${pageStyles.titleSm} mb-6`}>
+          {t("page.find_password.title")}
+        </h2>
         <form
           onSubmit={handleFindPassword}
           class="w-full flex flex-col items-center"
         >
           <p class={`${pageStyles.muted} w-full mb-4 text-center`}>
-            Enter your email to receive a password reset link.
+            {t("auth.find_password.instructions")}
           </p>
           <input
             type="email"
-            placeholder="Email"
+            placeholder={t("common.email")}
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
             class={`${pageStyles.input} mb-4`}
@@ -84,14 +85,16 @@ function FindPasswordPage() {
             type="submit"
             disabled={loading() || !!successMessage()}
           >
-            {loading() ? "Sending..." : "Send Reset Link"}
+            {loading()
+              ? t("auth.find_password.sending")
+              : t("auth.find_password.send_link")}
           </button>
           <button
             class={`${pageStyles.buttonSecondary} w-full py-3`}
             type="button"
             onClick={() => navigate("/login")}
           >
-            Back to Login
+            {t("auth.signup.back_to_login")}
           </button>
         </form>
       </div>

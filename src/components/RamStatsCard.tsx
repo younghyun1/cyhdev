@@ -1,7 +1,13 @@
 import { Line } from "solid-chartjs";
-import type { ChartOptions, ChartData, ScriptableContext, TooltipItem } from "chart.js";
+import type {
+  ChartOptions,
+  ChartData,
+  ScriptableContext,
+  TooltipItem,
+} from "chart.js";
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
+import { t } from "../state/i18n";
 
 function formatMem(bytes: number): string {
   if (bytes < 1024) return `${bytes.toFixed(0)} B`;
@@ -118,7 +124,7 @@ export default function RamStatsCard(props: {
             class="text-sm font-bold uppercase tracking-wider opacity-80"
             style={{ color: C().font }}
           >
-            Memory Usage
+            {t("stats.memory_usage")}
           </h3>
         </div>
         <div

@@ -227,7 +227,7 @@ const TopBar = () => {
                             ?.user_profile_picture_link ||
                           "/default-profile.png"
                         }
-                        alt="User"
+                        alt={t("profile.picture_alt")}
                         class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white shadow-md object-cover transition ring-2 ring-transparent hover:ring-amber-500"
                       />
                     </button>

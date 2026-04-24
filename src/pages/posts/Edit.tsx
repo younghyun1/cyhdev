@@ -5,6 +5,7 @@ import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
+import { t } from "../../state/i18n";
 
 const htmlTagPattern = /<\/?[a-z][\s\S]*>/i;
 const turndownService = new TurndownService({
@@ -41,7 +42,7 @@ export default function EditPostPage() {
     void (async () => {
       const postId = params.post_id;
       if (!postId) {
-        setError("No post ID provided");
+        setError(t("blog.post.no_id"));
         setIsLoading(false);
         return;
       }
@@ -67,10 +68,10 @@ export default function EditPostPage() {
             setTags(res.data.post_tags.join(", "));
           }
         } else {
-          setError("Failed to load post.");
+          setError(t("blog.post.failed_load"));
         }
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Failed to load post.");
+        setError(e instanceof Error ? e.message : t("blog.post.failed_load"));
       } finally {
         setIsLoading(false);
       }
@@ -105,10 +106,10 @@ export default function EditPostPage() {
           },
         );
       } else {
-        setError("Failed to update post.");
+        setError(t("blog.post.failed_update"));
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to update post.");
+      setError(e instanceof Error ? e.message : t("blog.post.failed_update"));
     } finally {
       setIsSubmitting(false);
     }
@@ -118,17 +119,19 @@ export default function EditPostPage() {
     <main class={pageStyles.page}>
       <div class={`${pageStyles.pageInner} flex flex-row gap-8`}>
         <div class="flex-1">
-          <h2 class={`${pageStyles.titleSm} mb-4`}>Edit Post</h2>
+          <h2 class={`${pageStyles.titleSm} mb-4`}>
+            {t("page.blog.edit_title")}
+          </h2>
 
           <Show when={isLoading()}>
-            <div class={pageStyles.muted}>Loading post...</div>
+            <div class={pageStyles.muted}>{t("blog.loading_posts")}</div>
           </Show>
 
           <Show when={!isLoading()}>
             <form onSubmit={handleSubmit} class="flex flex-col gap-4">
               <input
                 type="text"
-                placeholder="Title"
+                placeholder={t("blog.post.title_placeholder")}
                 value={title()}
                 onInput={(e) => setTitle(e.currentTarget.value)}
                 required
@@ -136,7 +139,7 @@ export default function EditPostPage() {
               />
               <input
                 type="text"
-                placeholder="Tags (comma separated)"
+                placeholder={t("blog.post.tags_placeholder")}
                 value={tags()}
                 onInput={(e) => setTags(e.currentTarget.value)}
                 class={pageStyles.input}
@@ -148,16 +151,16 @@ export default function EditPostPage() {
                   onChange={(e) => setIsPublished(e.currentTarget.checked)}
                   class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
                 />
-                Published
+                {t("blog.post.published")}
               </label>
               {!isPublished() && (
                 <div class={pageStyles.muted}>
-                  This will remain a draft and only visible to superusers.
+                  {t("blog.post.draft_visibility_edit")}
                 </div>
               )}
               <div class="w-full min-w-0 mb-8 relative z-0">
                 <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
-                  Content (Markdown)
+                  {t("blog.post.content_markdown")}
                 </label>
                 <MarkdownEditor
                   value={body()}
@@ -174,20 +177,20 @@ export default function EditPostPage() {
                 >
                   {isSubmitting()
                     ? isPublished()
-                      ? "Updating..."
-                      : "Saving..."
+                      ? t("blog.post.updating")
+                      : t("common.saving")
                     : isPublished() && initialPublished() === false
-                      ? "Publish"
+                      ? t("blog.post.publish")
                       : isPublished()
-                        ? "Update"
-                        : "Save Draft"}
+                        ? t("blog.post.update")
+                        : t("blog.post.save_draft")}
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate(`/blog/${params.post_id}`)}
                   class={pageStyles.buttonSecondary}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>

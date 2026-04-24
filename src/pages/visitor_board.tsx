@@ -3,6 +3,7 @@ import { visitorBoardApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { t, tx } from "../state/i18n";
 
 const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
 const MARKER_EMOJI = "📍";
@@ -94,7 +95,7 @@ export default function VisitorBoard() {
 
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
-          const popupHtml = `Visitations from here: <b>${count}</b>`;
+          const popupHtml = tx("visitor.popup", { count });
           return L.marker([lat ?? 0, lng ?? 0], { icon: emojiIcon })
             .addTo(map!)
             .bindPopup(popupHtml);
@@ -107,7 +108,7 @@ export default function VisitorBoard() {
         if (map && map.remove) map.remove();
         map = null;
         if (mapDiv)
-          mapDiv.innerHTML = "<p>Could not load visitor board data.</p>";
+          mapDiv.innerHTML = t("visitor.load_failed");
       }
     }
     loadVisitorBoard();
@@ -139,14 +140,14 @@ export default function VisitorBoard() {
         </div>
       </div>
       <p class="pb-4 text-center text-xs text-slate-400 dark:text-slate-500">
-        This site uses the IP2Location LITE database for{" "}
+        {t("geo.attribution_prefix")}{" "}
         <a
           href="https://lite.ip2location.com"
           target="_blank"
           rel="noopener noreferrer"
           class="underline hover:text-slate-600 dark:hover:text-slate-300"
         >
-          IP geolocation
+          {t("geo.attribution_link")}
         </a>
         .
       </p>

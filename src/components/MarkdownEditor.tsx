@@ -6,6 +6,7 @@ import "@toast-ui/editor/dist/toastui-editor.css";
 import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
 import { theme } from "../state/theme";
 import { photographyApi } from "../services/all_api";
+import { t } from "../state/i18n";
 
 interface MarkdownEditorProps {
   value: string;
@@ -44,7 +45,7 @@ export default function MarkdownEditor(
           callback(resp.data.photograph_link, fileName);
         } catch (err) {
           console.error("Image upload failed:", err);
-          alert("Image upload failed. Please try again.");
+          alert(t("markdown.image_upload_failed"));
         }
       });
     editor = new Editor({

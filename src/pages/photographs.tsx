@@ -21,6 +21,7 @@ import type {
   PhotographItem,
   GetPhotographsResponse,
 } from "../dtos/responses/photography";
+import { t, tx } from "../state/i18n";
 
 // --- Styles ---
 const styles = `
@@ -230,7 +231,7 @@ export default function Photographs() {
     if (ids.length === 0) return;
     if (
       !confirm(
-        `Are you sure you want to delete ${ids.length} photos? This cannot be undone.`,
+        tx("photos.delete_confirm", { count: ids.length }),
       )
     )
       return;
@@ -244,7 +245,7 @@ export default function Photographs() {
       setIsSelectionMode(false);
       setSelectedForDeletion(new Set<string>());
     } catch (e) {
-      alert("Failed to delete photographs: " + e);
+      alert(tx("photos.delete_failed", { error: String(e) }));
     } finally {
       setLoading(false);
     }
@@ -291,7 +292,7 @@ export default function Photographs() {
       }
     } catch (err: unknown) {
       console.error("Failed to fetch photos:", err);
-      setError("Failed to load photographs.");
+      setError(t("photos.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -320,11 +321,11 @@ export default function Photographs() {
     e.preventDefault();
     if (!uploadFile()) return;
     if (uploadLat() === null || uploadLon() === null) {
-      alert("Please select a location on the map.");
+      alert(t("photos.select_location"));
       return;
     }
     if (!uploadComment()) {
-      alert("Please enter a comment.");
+      alert(t("photos.enter_comment"));
       return;
     }
 
@@ -358,7 +359,7 @@ export default function Photographs() {
       fetchPhotos();
     } catch (err: unknown) {
       console.error("Upload failed:", err);
-      alert("Failed to upload photo.");
+      alert(t("photos.upload_failed"));
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -554,13 +555,13 @@ export default function Photographs() {
         <div class="flex flex-col items-center w-full">
           {/* Header / Actions */}
           <div class="w-full max-w-400 px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
-            <h1 class={pageStyles.titleSm}>Photographs</h1>
+            <h1 class={pageStyles.titleSm}>{t("page.photographs.title")}</h1>
             <Show when={isSuperuser()}>
               <button
                 class={pageStyles.buttonPrimary}
                 onClick={() => setShowUpload(true)}
               >
-                Upload Photo
+                {t("photos.upload_photo")}
               </button>
             </Show>
 
@@ -573,7 +574,7 @@ export default function Photographs() {
                       class={pageStyles.buttonSecondary}
                       onClick={() => setIsSelectionMode(true)}
                     >
-                      Select
+                      {t("photos.select")}
                     </button>
                   }
                 >
@@ -582,7 +583,7 @@ export default function Photographs() {
                     disabled={selectedForDeletion().size === 0 || loading()}
                     onClick={handleDelete}
                   >
-                    Delete ({selectedForDeletion().size})
+                    {t("common.delete")} ({selectedForDeletion().size})
                   </button>
                   <button
                     class={pageStyles.buttonSecondary}
@@ -591,7 +592,7 @@ export default function Photographs() {
                       setSelectedForDeletion(new Set<string>());
                     }}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                 </Show>
               </Show>
@@ -669,10 +670,10 @@ export default function Photographs() {
           {/* Loading / Sentinel */}
           <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
             <Show when={loading()}>
-              <span class={pageStyles.muted}>Loading more...</span>
+              <span class={pageStyles.muted}>{t("photos.loading_more")}</span>
             </Show>
             <Show when={!hasMore() && photos().length > 0}>
-              <span class={pageStyles.muted}>No more photos</span>
+              <span class={pageStyles.muted}>{t("photos.no_more")}</span>
             </Show>
           </div>
         </div>
@@ -688,14 +689,14 @@ export default function Photographs() {
         >
           <div class="modal-content upload-modal p-6">
             <h2 class={`${pageStyles.sectionTitle} mb-4`}>
-              Upload New Photograph
+              {t("photos.upload_new")}
             </h2>
             <form onSubmit={handleUpload} class="flex flex-col gap-4">
               <div>
                 <label
                   class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
                 >
-                  Select Image
+                  {t("photos.select_image")}
                 </label>
                 <input
                   type="file"
@@ -712,7 +713,7 @@ export default function Photographs() {
                 <label
                   class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
                 >
-                  Comments
+                  {t("photos.comments")}
                 </label>
                 <textarea
                   value={uploadComment()}
@@ -720,7 +721,7 @@ export default function Photographs() {
                   required
                   rows={3}
                   class={pageStyles.textarea}
-                  placeholder="Describe your photo..."
+                  placeholder={t("photos.comment_placeholder")}
                 />
               </div>
 
@@ -728,12 +729,14 @@ export default function Photographs() {
                 <label
                   class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
                 >
-                  Location (Search or Click on map)
+                  {t("photos.location")}
                 </label>
                 <Show when={uploadLat() !== null}>
                   <p class="text-xs text-emerald-600 mb-1">
-                    Selected: {uploadLat()?.toFixed(5)},{" "}
-                    {uploadLon()?.toFixed(5)}
+                    {tx("photos.selected", {
+                      lat: uploadLat()?.toFixed(5) ?? "",
+                      lon: uploadLon()?.toFixed(5) ?? "",
+                    })}
                   </p>
                 </Show>
                 <UploadMap />
@@ -759,14 +762,14 @@ export default function Photographs() {
                   onClick={() => setShowUpload(false)}
                   class={pageStyles.buttonSecondary}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={uploading()}
                   class={pageStyles.buttonPrimary}
                 >
-                  {uploading() ? "Uploading..." : "Upload"}
+                  {uploading() ? t("common.uploading") : t("common.upload")}
                 </button>
               </div>
             </form>
@@ -805,7 +808,7 @@ export default function Photographs() {
                   }}
                   // ADDED: nav-btn class
                   class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
-                  title="Previous"
+                  title={t("photos.previous")}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -846,7 +849,7 @@ export default function Photographs() {
                   }}
                   // ADDED: nav-btn class
                   class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
-                  title="Next"
+                  title={t("photos.next")}
                 >
                   {/* Optional: Show spinner if loading next page while hovering next button */}
                   <Show
@@ -907,8 +910,8 @@ export default function Photographs() {
                 rel="noopener noreferrer"
                 // ADDED: nav-btn class (optional, if you want this to fade too)
                 class="nav-btn absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm transition-colors"
-                title="Open original"
-                aria-label="Open original image in a new tab"
+                title={t("photos.open_original")}
+                aria-label={t("photos.open_original_aria")}
               >
                 {/* External link icon */}
                 <svg
@@ -935,7 +938,7 @@ export default function Photographs() {
             <div class="details-info bg-white dark:bg-gray-800">
               <div>
                 <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  Comments
+                  {t("photos.comments")}
                 </h3>
                 <p class="text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap">
                   {selectedPhoto()!.photograph_comments}
@@ -944,20 +947,20 @@ export default function Photographs() {
 
               <div>
                 <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Taken At
+                  {t("photos.taken_at")}
                 </h3>
                 <p class="text-gray-900 dark:text-gray-100">
                   {selectedPhoto()!.photograph_shot_at
                     ? new Date(
                         selectedPhoto()!.photograph_shot_at!,
                       ).toLocaleString()
-                    : "Unknown date"}
+                    : t("common.unknown_date")}
                 </p>
               </div>
 
               <div>
                 <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                  Coordinates
+                  {t("geo.coordinates")}
                 </h3>
                 <p class="font-mono text-sm text-gray-900 dark:text-gray-100">
                   {selectedPhoto()!.photograph_lat.toFixed(6)},{" "}
@@ -968,13 +971,13 @@ export default function Photographs() {
               <div>
                 <div class="flex items-center justify-between">
                   <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    Location Map
+                    {t("photos.location_map")}
                   </h3>
                   <div class="relative">
                     <button
                       onClick={() => setShowMapLinks(!showMapLinks())}
                       class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                      title="Open in external map"
+                      title={t("photos.open_external_map")}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

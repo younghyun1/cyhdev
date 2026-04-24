@@ -4,6 +4,7 @@ import { authApi } from "../services/all_api";
 import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
 import { consumePostLoginRedirect } from "../services/api";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 function LoginPage() {
   const [email, setEmail] = createSignal("");
@@ -51,13 +52,13 @@ function LoginPage() {
         setAuthenticated(false);
         setUser(null);
         setSuperuser(false);
-        setError("Login failed");
+        setError(t("auth.login.failed"));
       }
     } catch (err: unknown) {
       setAuthenticated(false);
       setUser(null);
       setSuperuser(false);
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {
       setLoading(false);
     }
@@ -70,11 +71,11 @@ function LoginPage() {
       <div
         class={`${pageStyles.card} w-full max-w-md p-8 flex flex-col items-center`}
       >
-        <h2 class={`${pageStyles.titleSm} mb-6`}>Login</h2>
+        <h2 class={`${pageStyles.titleSm} mb-6`}>{t("page.login.title")}</h2>
         <form onSubmit={handleLogin} class="w-full flex flex-col items-center">
           <input
             type="email"
-            placeholder="Email"
+            placeholder={t("common.email")}
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
             class={`${pageStyles.input} mb-4`}
@@ -83,7 +84,7 @@ function LoginPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t("common.password")}
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
             class={`${pageStyles.input} mb-6`}
@@ -97,7 +98,7 @@ function LoginPage() {
               type="button"
               onClick={() => navigate("/find-password")}
             >
-              Find Password
+              {t("auth.login.find_password")}
             </button>
           </div>
           <Show when={error()}>
@@ -110,14 +111,14 @@ function LoginPage() {
             type="submit"
             disabled={loading()}
           >
-            {loading() ? "Logging in..." : "Login"}
+            {loading() ? t("auth.login.loading") : t("page.login.title")}
           </button>
           <button
             class={`${pageStyles.buttonSecondary} w-full py-3`}
             type="button"
             onClick={() => navigate("/register")}
           >
-            Register
+            {t("auth.login.register")}
           </button>
         </form>
       </div>

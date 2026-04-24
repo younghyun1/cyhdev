@@ -14,6 +14,7 @@ import type {
   IsoLanguage,
 } from "../dtos/responses/dropdown";
 import { pageStyles } from "../styles/pageStyles";
+import { t } from "../state/i18n";
 
 const MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES: string[] = [
@@ -110,7 +111,7 @@ function EditProfilePage() {
     return l.language_eng_name ?? String(code);
   };
   const formatSubdivision = (id: number | null | undefined) => {
-    if (id == null) return "No Subdivision / N/A";
+    if (id == null) return t("auth.signup.no_subdivision");
     const s = subdivisionMap()[Number(id)];
     if (!s) return String(id);
     return s.subdivision_name ?? String(id);
@@ -136,7 +137,7 @@ function EditProfilePage() {
         if (prev) URL.revokeObjectURL(prev);
         return null;
       });
-      setError("File is too big. Maximum size is 10MB.");
+      setError(t("profile.file_too_big"));
       return;
     }
 
@@ -146,7 +147,7 @@ function EditProfilePage() {
         if (prev) URL.revokeObjectURL(prev);
         return null;
       });
-      setError("Unsupported image type. Please choose a valid image.");
+      setError(t("profile.unsupported_image"));
       return;
     }
 
@@ -159,7 +160,7 @@ function EditProfilePage() {
 
   const handleUpload = async () => {
     if (!profileImage()) {
-      setError("Please select an image to upload.");
+      setError(t("profile.select_image"));
       return;
     }
     setUploading(true);
@@ -190,19 +191,19 @@ function EditProfilePage() {
               return null;
             });
           } else {
-            setError("Upload succeeded, but failed to refresh profile.");
+            setError(t("profile.refresh_failed"));
           }
         } catch (e: unknown) {
           setError(
-            e instanceof Error ? e.message : "Failed to refresh profile.",
+            e instanceof Error ? e.message : t("profile.refresh_failed"),
           );
         }
       } else {
-        setError("Upload failed. Please try again.");
+        setError(t("profile.upload_failed"));
       }
     } catch (err: unknown) {
       setError(
-        err instanceof Error ? err.message : "Unknown error during upload.",
+        err instanceof Error ? err.message : t("profile.upload_unknown_error"),
       );
     } finally {
       setUploading(false);
@@ -214,11 +215,13 @@ function EditProfilePage() {
   return (
     <main class={pageStyles.page}>
       <div class={pageStyles.pageInnerNarrow}>
-        <h1 class={`${pageStyles.title} mb-6`}>Edit Profile</h1>
+        <h1 class={`${pageStyles.title} mb-6`}>
+          {t("page.edit_profile.title")}
+        </h1>
 
         <div class="space-y-6">
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-semibold">Change Profile Picture</h2>
+            <h2 class="text-lg font-semibold">{t("profile.change_picture")}</h2>
             <hr class={`my-3 ${pageStyles.divider}`} />
             <div class="flex items-start gap-6">
               <div class="w-32 h-32 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 shadow">
@@ -229,7 +232,7 @@ function EditProfilePage() {
                     user()?.user_profile_picture?.user_profile_picture_link ||
                     "/default-profile.png"
                   }
-                  alt="Profile"
+                  alt={t("profile.picture_alt")}
                   class="w-full h-full object-cover"
                 />
               </div>
@@ -249,7 +252,7 @@ function EditProfilePage() {
                     disabled={uploading()}
                     class={`${pageStyles.buttonSecondary} disabled:opacity-60`}
                   >
-                    Choose Image
+                    {t("profile.choose_image")}
                   </button>
 
                   <button
@@ -257,12 +260,12 @@ function EditProfilePage() {
                     disabled={uploading() || !profileImage()}
                     class={`${pageStyles.buttonPrimary} disabled:opacity-60`}
                   >
-                    {uploading() ? "Uploading..." : "Upload"}
+                    {uploading() ? t("common.uploading") : t("common.upload")}
                   </button>
                 </div>
 
                 <div class={`${pageStyles.muted} mt-3`}>
-                  Common formats (PNG, JPG, GIF, WEBP). Max 10MB.
+                  {t("profile.image_help")}
                 </div>
 
                 <Show when={uploading()}>
@@ -292,11 +295,13 @@ function EditProfilePage() {
           </section>
 
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-semibold">Profile Info</h2>
+            <h2 class="text-lg font-semibold">{t("profile.info")}</h2>
             <hr class={`my-3 ${pageStyles.divider}`} />
             <div class="space-y-4">
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>Display name</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("profile.display_name")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled
@@ -306,7 +311,9 @@ function EditProfilePage() {
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>Email</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("common.email")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled
@@ -316,7 +323,9 @@ function EditProfilePage() {
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>User ID</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("profile.user_id")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled
@@ -327,20 +336,24 @@ function EditProfilePage() {
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
                 <div class={`col-span-4 ${pageStyles.muted}`}>
-                  Email Verified
+                  {t("profile.email_verified")}
                 </div>
                 <div class="col-span-8">
                   <input
                     disabled
                     value={
-                      user()?.user_info?.user_is_email_verified ? "Yes" : "No"
+                      user()?.user_info?.user_is_email_verified
+                        ? t("common.yes")
+                        : t("common.no")
                     }
                     class={readOnlyInputClass}
                   />
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>Country</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("common.country")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled
@@ -350,7 +363,9 @@ function EditProfilePage() {
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>Language</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("common.language")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled
@@ -360,7 +375,9 @@ function EditProfilePage() {
                 </div>
               </div>
               <div class="grid grid-cols-12 items-center gap-3">
-                <div class={`col-span-4 ${pageStyles.muted}`}>Subdivision</div>
+                <div class={`col-span-4 ${pageStyles.muted}`}>
+                  {t("common.subdivision")}
+                </div>
                 <div class="col-span-8">
                   <input
                     disabled

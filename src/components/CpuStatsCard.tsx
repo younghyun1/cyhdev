@@ -2,6 +2,7 @@ import { Line } from "solid-chartjs";
 import type { ChartOptions, ChartData, ScriptableContext } from "chart.js";
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
+import { t } from "../state/i18n";
 
 export default function CpuStatsCard(props: {
   data: HostStatPoint[];
@@ -101,7 +102,7 @@ export default function CpuStatsCard(props: {
             class="text-sm font-bold uppercase tracking-wider opacity-80"
             style={{ color: C().font }}
           >
-            CPU Usage
+            {t("stats.cpu_usage")}
           </h3>
         </div>
         <div
