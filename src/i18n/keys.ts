@@ -7,6 +7,7 @@ export const UI_TEXT_KEYS = [
   "top_bar.nav.about_blog",
   "top_bar.nav.blog",
   "top_bar.nav.photographs",
+  "top_bar.nav.live_chat",
   "top_bar.nav.projects",
   "top_bar.nav.visitor_board",
   "top_bar.nav.geo_ip",

@@ -97,145 +97,149 @@ export default function Home() {
       </header>
 
       {/* Main Content Grid */}
-      <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <aside class="lg:col-span-4 xl:col-span-3 flex flex-col h-full">
-          <LiveChatPanel mode="compact" />
-        </aside>
+      <div class="grow w-full px-6 py-12">
+        <div class="mx-auto grid max-w-[104rem] grid-cols-1 gap-8 xl:grid-cols-[20rem_minmax(0,80rem)]">
+          <aside class="flex flex-col h-full xl:sticky xl:top-24 xl:self-start">
+            <LiveChatPanel mode="compact" />
+          </aside>
 
-        {/* Latest Blog Posts - Spans 7 columns */}
-        <section class="lg:col-span-8 xl:col-span-5 flex flex-col h-full">
-          <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
-            <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-amber-600" /> Latest Posts
-            </h2>
-            <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
-              view blog posts &rarr;
-            </A>
-          </div>
+          <div class="grid w-full max-w-7xl grid-cols-1 gap-8 lg:grid-cols-12">
+            {/* Latest Blog Posts - Spans 7 columns */}
+            <section class="lg:col-span-7 flex flex-col h-full">
+              <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
+                <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
+                  <span class="w-3 h-3 bg-amber-600" /> Latest Posts
+                </h2>
+                <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
+                  view blog posts &rarr;
+                </A>
+              </div>
 
-          <div class="grow space-y-4">
-            <Suspense
-              fallback={
-                <div class="space-y-4">
-                  <For each={[1, 2, 3]}>
-                    {() => (
-                      <div class="h-24 bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
-                    )}
-                  </For>
-                </div>
-              }
-            >
-              <Show
-                when={posts()}
-                fallback={
-                  <div class="p-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-mono text-sm">
-                    No data found.
-                  </div>
-                }
-              >
-                <For each={posts()?.data?.posts}>
-                  {(post) => (
-                    <article class="group relative bg-white dark:bg-slate-900 p-5 border border-slate-200 dark:border-slate-800 hover:border-slate-900 dark:hover:border-slate-100 transition-colors duration-200">
-                      <div class="flex flex-col gap-1">
-                        <div class="flex justify-between items-center text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
-                          <div class="flex items-center gap-2">
-                            <span>
-                              {new Date(
-                                post.post_created_at,
-                              ).toLocaleDateString(undefined, {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              })}
-                            </span>
-                            <Show when={!post.post_is_published}>
-                              <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                                Draft
+              <div class="grow space-y-4">
+                <Suspense
+                  fallback={
+                    <div class="space-y-4">
+                      <For each={[1, 2, 3]}>
+                        {() => (
+                          <div class="h-24 bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
+                        )}
+                      </For>
+                    </div>
+                  }
+                >
+                  <Show
+                    when={posts()}
+                    fallback={
+                      <div class="p-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 font-mono text-sm">
+                        No data found.
+                      </div>
+                    }
+                  >
+                    <For each={posts()?.data?.posts}>
+                      {(post) => (
+                        <article class="group relative bg-white dark:bg-slate-900 p-5 border border-slate-200 dark:border-slate-800 hover:border-slate-900 dark:hover:border-slate-100 transition-colors duration-200">
+                          <div class="flex flex-col gap-1">
+                            <div class="flex justify-between items-center text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">
+                              <div class="flex items-center gap-2">
+                                <span>
+                                  {new Date(
+                                    post.post_created_at,
+                                  ).toLocaleDateString(undefined, {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                                <Show when={!post.post_is_published}>
+                                  <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                    Draft
+                                  </span>
+                                </Show>
+                              </div>
+                              <span class="opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 transition-opacity">
+                                &lt;READ&gt;
                               </span>
-                            </Show>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                              <A
+                                href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
+                              >
+                                <span class="absolute inset-0" />
+                                {post.post_title}
+                              </A>
+                            </h3>
                           </div>
-                          <span class="opacity-0 group-hover:opacity-100 text-amber-600 dark:text-amber-400 transition-opacity">
-                            &lt;READ&gt;
-                          </span>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                          <A
-                            href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
-                          >
-                            <span class="absolute inset-0" />
-                            {post.post_title}
-                          </A>
-                        </h3>
-                      </div>
-                    </article>
-                  )}
-                </For>
-              </Show>
-            </Suspense>
-          </div>
-        </section>
+                        </article>
+                      )}
+                    </For>
+                  </Show>
+                </Suspense>
+              </div>
+            </section>
 
-        {/* Recent Photographs - Spans 5 columns */}
-        <section class="lg:col-span-12 xl:col-span-4 flex flex-col h-full">
-          <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
-            <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
-              <span class="w-3 h-3 bg-amber-600" /> Photography
-            </h2>
-            <A
-              href="/photographs"
-              class={`${pageStyles.link} font-mono text-sm`}
-            >
-              view gallery &rarr;
-            </A>
-          </div>
+            {/* Recent Photographs - Spans 5 columns */}
+            <section class="lg:col-span-5 flex flex-col h-full">
+              <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
+                <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
+                  <span class="w-3 h-3 bg-amber-600" /> Photography
+                </h2>
+                <A
+                  href="/photographs"
+                  class={`${pageStyles.link} font-mono text-sm`}
+                >
+                  view gallery &rarr;
+                </A>
+              </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <Suspense
-              fallback={
-                <>
-                  <For each={[1, 2, 3, 4]}>
-                    {() => (
-                      <div class="aspect-square bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
-                    )}
-                  </For>
-                </>
-              }
-            >
-              <Show
-                when={getPhotoItems().length > 0}
-                fallback={
-                  <div class="col-span-2 p-6 border border-slate-200 dark:border-slate-800 font-mono text-sm text-center">
-                    /img/null
-                  </div>
-                }
-              >
-                <For each={getPhotoItems()}>
-                  {(photo) => (
-                    <A
-                      href="/photographs"
-                      class="group relative block aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                    >
-                      <img
-                        src={
-                          photo.photograph_thumbnail_link ||
-                          photo.photograph_link
-                        }
-                        alt={photo.photograph_comments || "Photograph"}
-                        class="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                      {/* Crosshair overlay effect */}
-                      <div class="absolute inset-0 border-2 border-transparent group-hover:border-amber-500/50 transition-colors pointer-events-none z-10" />
-                      <div class="absolute top-2 right-2 text-[10px] font-mono bg-black text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                        {photo.photograph_id}
+              <div class="grid grid-cols-2 gap-3">
+                <Suspense
+                  fallback={
+                    <>
+                      <For each={[1, 2, 3, 4]}>
+                        {() => (
+                          <div class="aspect-square bg-slate-200 dark:bg-slate-800 animate-pulse border border-slate-300 dark:border-slate-700" />
+                        )}
+                      </For>
+                    </>
+                  }
+                >
+                  <Show
+                    when={getPhotoItems().length > 0}
+                    fallback={
+                      <div class="col-span-2 p-6 border border-slate-200 dark:border-slate-800 font-mono text-sm text-center">
+                        /img/null
                       </div>
-                    </A>
-                  )}
-                </For>
-              </Show>
-            </Suspense>
+                    }
+                  >
+                    <For each={getPhotoItems()}>
+                      {(photo) => (
+                        <A
+                          href="/photographs"
+                          class="group relative block aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
+                        >
+                          <img
+                            src={
+                              photo.photograph_thumbnail_link ||
+                              photo.photograph_link
+                            }
+                            alt={photo.photograph_comments || "Photograph"}
+                            class="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
+                            loading="lazy"
+                          />
+                          {/* Crosshair overlay effect */}
+                          <div class="absolute inset-0 border-2 border-transparent group-hover:border-amber-500/50 transition-colors pointer-events-none z-10" />
+                          <div class="absolute top-2 right-2 text-[10px] font-mono bg-black text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                            {photo.photograph_id}
+                          </div>
+                        </A>
+                      )}
+                    </For>
+                  </Show>
+                </Suspense>
+              </div>
+            </section>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );

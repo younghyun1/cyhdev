@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import type { UiLocale, UiTextKey } from "../i18n/keys";
 import { UI_TEXT_KEYS } from "../i18n/keys";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
+import { KO_KR_DEFAULT_TEXTS } from "../i18n/defaults/ko-kr";
 import { i18nApi } from "../services/all_api";
 
 const UI_LOCALE_STORAGE_KEY = "ui_locale";
@@ -22,8 +23,17 @@ function initialLocale(): UiLocale {
   return isUiLocale(persisted) ? persisted : browserDefaultLocale();
 }
 
-function normalizeTexts(rawTexts: Record<string, string>): Record<UiTextKey, string> {
-  const next: Record<UiTextKey, string> = { ...EN_US_DEFAULT_TEXTS };
+function defaultTextsForLocale(nextLocale: UiLocale): Record<UiTextKey, string> {
+  return nextLocale === "ko-KR" ? KO_KR_DEFAULT_TEXTS : EN_US_DEFAULT_TEXTS;
+}
+
+function normalizeTexts(
+  nextLocale: UiLocale,
+  rawTexts: Record<string, string>,
+): Record<UiTextKey, string> {
+  const next: Record<UiTextKey, string> = {
+    ...defaultTextsForLocale(nextLocale),
+  };
   for (const key of UI_TEXT_KEYS) {
     const value = rawTexts[key];
     if (typeof value === "string" && value.length > 0) {
@@ -33,9 +43,11 @@ function normalizeTexts(rawTexts: Record<string, string>): Record<UiTextKey, str
   return next;
 }
 
-export const [locale, setLocaleSignal] = createSignal<UiLocale>(initialLocale());
+const INITIAL_LOCALE = initialLocale();
+
+export const [locale, setLocaleSignal] = createSignal<UiLocale>(INITIAL_LOCALE);
 export const [texts, setTexts] =
-  createSignal<Record<UiTextKey, string>>(EN_US_DEFAULT_TEXTS);
+  createSignal<Record<UiTextKey, string>>(defaultTextsForLocale(INITIAL_LOCALE));
 
 export function applyLocale(nextLocale: UiLocale) {
   if (typeof document === "undefined") return;
@@ -46,13 +58,13 @@ export async function loadUiTextBundle(nextLocale = locale()) {
   try {
     const response = await i18nApi.getUiTextBundle(nextLocale);
     if (response.success && response.data?.texts) {
-      setTexts(normalizeTexts(response.data.texts));
+      setTexts(normalizeTexts(nextLocale, response.data.texts));
       return;
     }
   } catch {
     // Keep the app renderable with the typed local default bundle.
   }
-  setTexts(EN_US_DEFAULT_TEXTS);
+  setTexts(defaultTextsForLocale(nextLocale));
 }
 
 export async function setLocale(nextLocale: UiLocale) {
@@ -65,5 +77,5 @@ export async function setLocale(nextLocale: UiLocale) {
 }
 
 export function t(key: UiTextKey): string {
-  return texts()[key] ?? EN_US_DEFAULT_TEXTS[key];
+  return texts()[key] ?? defaultTextsForLocale(locale())[key];
 }

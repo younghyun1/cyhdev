@@ -69,6 +69,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/about-blog", labelKey: "top_bar.nav.about_blog" },
   { href: "/blog", labelKey: "top_bar.nav.blog" },
   { href: "/photographs", labelKey: "top_bar.nav.photographs" },
+  { href: "/live-chat", labelKey: "top_bar.nav.live_chat" },
   { href: "/projects", labelKey: "top_bar.nav.projects" },
   { href: "/visitor-board", labelKey: "top_bar.nav.visitor_board" },
   { href: "/geo-ip-db", labelKey: "top_bar.nav.geo_ip" },
