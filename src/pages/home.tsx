@@ -96,14 +96,14 @@ export default function Home() {
         </div>
       </header>
 
-      <section class="max-w-7xl mx-auto w-full px-6 pt-8">
-        <LiveChatPanel mode="compact" />
-      </section>
-
       {/* Main Content Grid */}
-      <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <aside class="lg:col-span-4 xl:col-span-3 flex flex-col h-full">
+          <LiveChatPanel mode="compact" />
+        </aside>
+
         {/* Latest Blog Posts - Spans 7 columns */}
-        <section class="lg:col-span-7 flex flex-col h-full">
+        <section class="lg:col-span-8 xl:col-span-5 flex flex-col h-full">
           <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
               <span class="w-3 h-3 bg-amber-600" /> Latest Posts
@@ -176,7 +176,7 @@ export default function Home() {
         </section>
 
         {/* Recent Photographs - Spans 5 columns */}
-        <section class="lg:col-span-5 flex flex-col h-full">
+        <section class="lg:col-span-12 xl:col-span-4 flex flex-col h-full">
           <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-slate-200/80 dark:border-slate-800">
             <h2 class="text-2xl font-black uppercase font-mono tracking-tight flex items-center gap-2">
               <span class="w-3 h-3 bg-amber-600" /> Photography

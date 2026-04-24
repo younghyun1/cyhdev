@@ -297,9 +297,16 @@ import type {
   DeleteCommentResponse,
 } from "../dtos/responses/blog";
 
-import type { GetCountryLanguageBundleRequest } from "../dtos/requests/i18n";
-import type { GetCountryLanguageBundleResponse } from "../dtos/responses/i18n";
+import type {
+  GetCountryLanguageBundleRequest,
+  GetUiTextBundleRequest,
+} from "../dtos/requests/i18n";
+import type {
+  GetCountryLanguageBundleResponse,
+  UiTextBundleResponse,
+} from "../dtos/responses/i18n";
 import type { SyncI18nCacheResponse } from "../dtos/responses/admin";
+import type { PublicUserInfoResponse } from "../dtos/responses/user";
 
 /**
  * API Endpoints Grouped by Domain
@@ -430,6 +437,10 @@ export const authApi = {
 };
 
 export const userApi = {
+  getPublicUserInfo: async (user_name: string) =>
+    await get<ApiResponse<PublicUserInfoResponse>>("/api/users/{user_name}", {
+      params: { user_name },
+    }),
   uploadProfilePicture: async (body: FormData) =>
     await apiFetch("/api/user/upload-profile-picture", {
       method: "POST",
@@ -529,6 +540,12 @@ export const i18nApi = {
       "/api/i18n/country-language-bundle",
       { params: query ? { ...query } : undefined },
     ),
+  getUiTextBundle: async (locale: string) => {
+    const query: GetUiTextBundleRequest = { locale };
+    return await get<ApiResponse<UiTextBundleResponse>>("/api/i18n/ui-text", {
+      params: { ...query },
+    });
+  },
 };
 
 export const adminApi = {

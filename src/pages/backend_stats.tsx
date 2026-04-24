@@ -37,6 +37,7 @@ export default function BackendStats() {
               color: isDark() ? "#e2e8f0" : "#0f172a",
             }}
           >
+            {/* eslint-disable-next-line solid/no-innerhtml -- fastfetch HTML is generated server-side from local ANSI output. */}
             <pre class="m-auto whitespace-pre" innerHTML={fastfetch() ?? ""} />
           </div>
         </Show>

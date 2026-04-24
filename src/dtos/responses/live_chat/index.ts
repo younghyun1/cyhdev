@@ -14,6 +14,8 @@ export interface ChatActor {
   user_id: string | null;
   guest_ip: string | null;
   display_name: string;
+  country_flag: string | null;
+  user_profile_picture_url: string | null;
 }
 
 export interface LiveChatMessageItem {
@@ -23,6 +25,8 @@ export interface LiveChatMessageItem {
   guest_ip: string | null;
   sender_kind: number;
   sender_display_name: string;
+  sender_country_flag: string | null;
+  user_profile_picture_url: string | null;
   message_body: string;
   message_created_at: string;
   message_edited_at: string | null;
@@ -50,6 +54,7 @@ export type LiveChatServerEvent =
       type: "hello";
       actor: ChatActor;
       recent_messages: LiveChatMessageItem[];
+      connected_count: number;
     }
   | {
       type: "message";

@@ -1,10 +1,12 @@
 import { Show } from "solid-js";
+import { A } from "@solidjs/router";
 
 interface UserBadgeProps {
   userName: string;
   profilePictureUrl?: string;
-  countryFlag?: string;
+  countryFlag?: string | null;
   size?: "sm" | "md";
+  link?: boolean;
 }
 
 export function UserBadge(props: UserBadgeProps) {
@@ -22,14 +24,23 @@ export function UserBadge(props: UserBadgeProps) {
     };
   };
 
-  return (
-    <span class="inline-flex items-center gap-1">
+  const href = () => `/users/${encodeURIComponent(props.userName)}`;
+  const content = () => (
+    <>
       <Show when={props.profilePictureUrl}>
         <img
           src={props.profilePictureUrl}
           alt={props.userName}
           class={`${sizeClasses().img} rounded-full object-cover border border-slate-200 dark:border-slate-700`}
         />
+      </Show>
+      <Show when={!props.profilePictureUrl}>
+        <span
+          class={`${sizeClasses().img} inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 font-mono font-semibold uppercase text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${sizeClasses().text}`}
+          aria-hidden="true"
+        >
+          {props.userName.slice(0, 1)}
+        </span>
       </Show>
       <span
         class={`font-medium text-slate-900 dark:text-slate-300 ${sizeClasses().text}`}
@@ -39,6 +50,20 @@ export function UserBadge(props: UserBadgeProps) {
       <Show when={props.countryFlag}>
         <span class={sizeClasses().text}>{props.countryFlag}</span>
       </Show>
-    </span>
+    </>
+  );
+
+  return (
+    <Show
+      when={props.link !== false}
+      fallback={<span class="inline-flex items-center gap-1">{content()}</span>}
+    >
+      <A
+        href={href()}
+        class="relative z-10 inline-flex items-center gap-1 rounded-sm no-underline hover:underline"
+      >
+        {content()}
+      </A>
+    </Show>
   );
 }
