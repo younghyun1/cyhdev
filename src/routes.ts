@@ -50,6 +50,10 @@ export const routes: RouteDefinition[] = [
     component: lazy(() => import("./pages/visitor_board")),
   },
   {
+    path: "/live-chat",
+    component: lazy(() => import("./pages/live_chat")),
+  },
+  {
     path: "/photographs",
     component: lazy(() => import("./pages/photographs")),
   },

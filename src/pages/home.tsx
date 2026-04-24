@@ -2,6 +2,7 @@ import { createResource, For, Show, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import LiveChatPanel from "../components/LiveChatPanel";
 
 export default function Home() {
   const [posts] = createResource(() =>
@@ -94,6 +95,10 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      <section class="max-w-7xl mx-auto w-full px-6 pt-8">
+        <LiveChatPanel mode="compact" />
+      </section>
 
       {/* Main Content Grid */}
       <div class="grow max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
