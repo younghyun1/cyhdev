@@ -60,7 +60,7 @@ describe("live chat binary server frames", () => {
       0x84,
       ...i64(expiresAtMs),
       1,
-      ...guestActorBytes("203.0.113.9", "guest@203.0.113.9", "🇺🇸"),
+      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
     ];
 
     expect(decodeServerEventFrame(buffer(frame))).toEqual({
@@ -72,7 +72,7 @@ describe("live chat binary server frames", () => {
           sender_kind: 2,
           user_id: null,
           guest_ip: "203.0.113.9",
-          display_name: "guest@203.0.113.9",
+          display_name: "curious otter",
           country_flag: "🇺🇸",
           user_profile_picture_url: null,
         },
@@ -89,7 +89,6 @@ describe("live chat binary server frames", () => {
       ...uuidBytes(CLIENT_MESSAGE_ID),
       ...messageBytes({
         guestIpKind: "ipv6",
-        guestIpText: "2001:db8:0:0:0:0:0:1",
         guestIpBytes: [
           0x20,
           0x01,
@@ -123,7 +122,7 @@ describe("live chat binary server frames", () => {
         user_id: null,
         guest_ip: "2001:db8:0:0:0:0:0:1",
         sender_kind: 2,
-        sender_display_name: "guest@2001:db8:0:0:0:0:0:1",
+        sender_display_name: "merry raccoon",
         sender_country_flag: "🇺🇸",
         user_profile_picture_url: null,
         message_body: "hello",
@@ -143,7 +142,6 @@ describe("live chat binary server frames", () => {
 
 function messageBytes(input: {
   guestIpKind: "ipv4" | "ipv6";
-  guestIpText: string;
   guestIpBytes: number[];
   createdAtMs: number;
   editedAtMs: number;
@@ -156,7 +154,7 @@ function messageBytes(input: {
     input.guestIpKind === "ipv4" ? 0x04 : 0x06,
     ...input.guestIpBytes,
     2,
-    ...str(`guest@${input.guestIpText}`),
+    ...str("merry raccoon"),
     ...str("🇺🇸"),
     0xff,
     0xff,

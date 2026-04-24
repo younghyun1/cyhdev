@@ -3,7 +3,7 @@ import type { UiTextKey } from "../keys";
 export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "common.close": "닫기",
   "common.loading": "로딩 중",
-  "top_bar.site_title": "영현의 블로그",
+  "top_bar.site_title": "지영현 블로그",
   "top_bar.nav.home": "홈",
   "top_bar.nav.about": "소개",
   "top_bar.nav.about_blog": "블로그 소개",

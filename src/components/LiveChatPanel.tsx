@@ -620,7 +620,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       </Show>
 
       <form
-        class={`${pageStyles.cardFooter} flex items-end gap-2`}
+        class={`${pageStyles.cardFooter} flex items-start gap-2`}
         onSubmit={sendMessage}
       >
         <div class="min-w-0 flex-1">
