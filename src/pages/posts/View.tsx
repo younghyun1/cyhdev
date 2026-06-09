@@ -7,6 +7,7 @@ import {
   createEffect,
 } from "solid-js";
 import { createStore } from "solid-js/store";
+import { Key } from "@solid-primitives/keyed";
 import { useParams, useNavigate, A } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import type { CommentResponse } from "../../dtos/responses/blog";
@@ -430,18 +431,20 @@ export default function PostViewPage() {
     return copy;
   }
   function renderComments(comments: CommentTreeNode[], depth = 0) {
+    // Keyed by comment_id so a sort change reorders existing DOM nodes instead of
+    // tearing the whole tree down and rebuilding it.
     return (
-      <For each={comments}>
+      <Key each={comments} by={(c) => c.comment_id}>
         {(comment) => {
           const voteState = () =>
-            optimisticVotes.comments[comment.comment_id]?.vote_state ??
-            comment.vote_state;
+            optimisticVotes.comments[comment().comment_id]?.vote_state ??
+            comment().vote_state;
           const upvotes = () =>
-            optimisticVotes.comments[comment.comment_id]?.total_upvotes ??
-            comment.total_upvotes;
+            optimisticVotes.comments[comment().comment_id]?.total_upvotes ??
+            comment().total_upvotes;
           const downvotes = () =>
-            optimisticVotes.comments[comment.comment_id]?.total_downvotes ??
-            comment.total_downvotes;
+            optimisticVotes.comments[comment().comment_id]?.total_downvotes ??
+            comment().total_downvotes;
 
           return (
             <div
@@ -450,53 +453,53 @@ export default function PostViewPage() {
             >
               <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <UserBadge
-                  userName={comment.user_name ?? t("common.unknown")}
-                  profilePictureUrl={comment.user_profile_picture_url}
-                  countryFlag={comment.user_country_flag}
+                  userName={comment().user_name ?? t("common.unknown")}
+                  profilePictureUrl={comment().user_profile_picture_url}
+                  countryFlag={comment().user_country_flag}
                   size="sm"
                 />
                 <span class="ml-3 text-xs">
-                  {new Date(comment.comment_created_at).toLocaleString()}
+                  {new Date(comment().comment_created_at).toLocaleString()}
                 </span>
               </div>
               <Show
-                when={editOpen[comment.comment_id]}
+                when={editOpen[comment().comment_id]}
                 fallback={
                   <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                    {comment.comment_content}
+                    {comment().comment_content}
                   </div>
                 }
               >
                 <div class="mt-2">
                   <textarea
                     class={`${pageStyles.textarea} min-h-20`}
-                    value={editText[comment.comment_id] ?? ""}
+                    value={editText[comment().comment_id] ?? ""}
                     onInput={(e) =>
-                      setEditText(comment.comment_id, e.currentTarget.value)
+                      setEditText(comment().comment_id, e.currentTarget.value)
                     }
                   />
-                  <Show when={editError[comment.comment_id]}>
+                  <Show when={editError[comment().comment_id]}>
                     <div class="text-sm text-red-600">
-                      {editError[comment.comment_id]}
+                      {editError[comment().comment_id]}
                     </div>
                   </Show>
                   <div class="mt-2 flex items-center gap-2">
                     <button
                       class={`${pageStyles.buttonPrimary} px-3 py-1 text-sm`}
                       disabled={
-                        editLoading[comment.comment_id] ||
-                        !(editText[comment.comment_id] ?? "").trim()
+                        editLoading[comment().comment_id] ||
+                        !(editText[comment().comment_id] ?? "").trim()
                       }
-                      onClick={() => handleUpdateComment(comment.comment_id)}
+                      onClick={() => handleUpdateComment(comment().comment_id)}
                     >
-                      {editLoading[comment.comment_id]
+                      {editLoading[comment().comment_id]
                         ? t("common.saving")
                         : t("common.save")}
                     </button>
                     <button
                       type="button"
                       class={`${pageStyles.buttonSecondary} px-3 py-1 text-sm`}
-                      onClick={() => toggleEdit(comment)}
+                      onClick={() => toggleEdit(comment())}
                     >
                       {t("common.cancel")}
                     </button>
@@ -509,7 +512,7 @@ export default function PostViewPage() {
                   onClick={() =>
                     handleVote("comment", true, {
                       postId: postId(),
-                      commentId: comment.comment_id,
+                      commentId: comment().comment_id,
                     })
                   }
                   title={t("blog.vote.upvote")}
@@ -526,7 +529,7 @@ export default function PostViewPage() {
                   onClick={() =>
                     handleVote("comment", false, {
                       postId: postId(),
-                      commentId: comment.comment_id,
+                      commentId: comment().comment_id,
                     })
                   }
                   title={t("blog.vote.downvote")}
@@ -537,57 +540,57 @@ export default function PostViewPage() {
               <div class="mt-1 flex gap-3">
                 <button
                   class={`${pageStyles.link} text-xs`}
-                  onClick={() => toggleReply(comment.comment_id)}
+                  onClick={() => toggleReply(comment().comment_id)}
                 >
                   {t("blog.comments.reply")}
                 </button>
                 <Show
                   when={
                     user()?.user_info?.user_id &&
-                    (comment.user_id === user()?.user_info?.user_id ||
+                    (comment().user_id === user()?.user_info?.user_id ||
                       postResource()?.post?.user_id ===
                         user()?.user_info?.user_id)
                   }
                 >
                   <button
                     class={`${pageStyles.link} text-xs`}
-                    onClick={() => toggleEdit(comment)}
+                    onClick={() => toggleEdit(comment())}
                   >
                     {t("common.edit")}
                   </button>
                   <button
                     class="text-xs text-red-600 hover:underline dark:text-red-400"
-                    onClick={() => handleDeleteComment(comment.comment_id)}
+                    onClick={() => handleDeleteComment(comment().comment_id)}
                   >
                     {t("common.delete")}
                   </button>
                 </Show>
               </div>
-              <Show when={replyOpen[comment.comment_id]}>
+              <Show when={replyOpen[comment().comment_id]}>
                 <div class="mt-2">
                   <textarea
                     class={`${pageStyles.textarea} min-h-20`}
-                    value={replyText[comment.comment_id] ?? ""}
+                    value={replyText[comment().comment_id] ?? ""}
                     onInput={(e) =>
-                      setReplyText(comment.comment_id, e.currentTarget.value)
+                      setReplyText(comment().comment_id, e.currentTarget.value)
                     }
                     placeholder={t("blog.comments.reply_placeholder")}
                   />
-                  <Show when={replyError[comment.comment_id]}>
+                  <Show when={replyError[comment().comment_id]}>
                     <div class="text-sm text-red-600">
-                      {replyError[comment.comment_id]}
+                      {replyError[comment().comment_id]}
                     </div>
                   </Show>
                   <div class="mt-2 flex items-center gap-2">
                     <button
                       class={`${pageStyles.buttonPrimary} px-3 py-1 text-sm`}
                       disabled={
-                        replyLoading[comment.comment_id] ||
-                        !(replyText[comment.comment_id] ?? "").trim()
+                        replyLoading[comment().comment_id] ||
+                        !(replyText[comment().comment_id] ?? "").trim()
                       }
-                      onClick={() => handleSubmitReply(comment.comment_id)}
+                      onClick={() => handleSubmitReply(comment().comment_id)}
                     >
-                      {replyLoading[comment.comment_id]
+                      {replyLoading[comment().comment_id]
                         ? t("blog.comments.posting")
                         : t("blog.comments.submit_reply")}
                     </button>
@@ -595,9 +598,9 @@ export default function PostViewPage() {
                       type="button"
                       class={`${pageStyles.buttonSecondary} px-3 py-1 text-sm`}
                       onClick={() => {
-                        setReplyOpen(comment.comment_id, false);
-                        setReplyText(comment.comment_id, "");
-                        setReplyError(comment.comment_id, null);
+                        setReplyOpen(comment().comment_id, false);
+                        setReplyText(comment().comment_id, "");
+                        setReplyError(comment().comment_id, null);
                       }}
                     >
                       {t("common.cancel")}
@@ -605,13 +608,12 @@ export default function PostViewPage() {
                   </div>
                 </div>
               </Show>
-              {comment.children &&
-                comment.children.length > 0 &&
-                renderComments(comment.children, depth + 1)}
+              {comment().children.length > 0 &&
+                renderComments(comment().children, depth + 1)}
             </div>
           );
         }}
-      </For>
+      </Key>
     );
   }
 
@@ -646,8 +648,14 @@ export default function PostViewPage() {
               const postDownvotes = () =>
                 optimisticVotes.post?.total_downvotes ??
                 data().post.total_downvotes;
+              // Build the tree only when comments/local replies change; re-sort
+              // separately when the sort order changes, so toggling sort does not
+              // rebuild the whole tree.
+              const commentTree = createMemo(() =>
+                buildCommentTree(data().comments || []),
+              );
               const sortedComments = createMemo(() =>
-                sortCommentsTree(buildCommentTree(data().comments || [])),
+                sortCommentsTree(commentTree()),
               );
               const renderedPostHtml = createMemo(() => {
                 const post = data().post;

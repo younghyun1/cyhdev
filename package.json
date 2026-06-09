@@ -36,6 +36,7 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
+    "@solid-primitives/keyed": "^1.5.3",
     "@solidjs/router": "^0.16.1",
     "@toast-ui/editor": "^3.2.2",
     "chart.js": "^4.5.1",
