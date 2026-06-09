@@ -8,9 +8,7 @@ export default function LiveChatPage() {
       <div class={`${pageStyles.pageInner} max-w-5xl`}>
         <div class="mb-6">
           <h1 class={pageStyles.title}>{t("page.live_chat.title")}</h1>
-          <p class={pageStyles.subtitle}>
-            Text chat for signed-in users and guests.
-          </p>
+          <p class={pageStyles.subtitle}>{t("page.live_chat.subtitle")}</p>
         </div>
         <LiveChatPanel mode="full" />
       </div>

@@ -2,6 +2,7 @@ import { lazy } from "solid-js";
 import type { RouteDefinition } from "@solidjs/router";
 
 import Home from "./pages/home";
+import { withAuth } from "./components/RequireAuth";
 
 export const routes: RouteDefinition[] = [
   {
@@ -33,11 +34,11 @@ export const routes: RouteDefinition[] = [
       },
       {
         path: "/new",
-        component: lazy(() => import("./pages/posts/New")),
+        component: withAuth(lazy(() => import("./pages/posts/New"))),
       },
       {
         path: "/:post_id/edit",
-        component: lazy(() => import("./pages/posts/Edit")),
+        component: withAuth(lazy(() => import("./pages/posts/Edit"))),
       },
       {
         path: "/:post_id",
@@ -83,7 +84,7 @@ export const routes: RouteDefinition[] = [
   },
   {
     path: "/edit-profile",
-    component: lazy(() => import("./pages/edit_profile")),
+    component: withAuth(lazy(() => import("./pages/edit_profile"))),
   },
   {
     path: "/under-construction",

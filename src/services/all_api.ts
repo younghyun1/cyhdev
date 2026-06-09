@@ -1,4 +1,5 @@
 import { apiFetch, apiUrl } from "./api";
+import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
 
 // Helper to interpolate path params, e.g. /path/{id}
 function interpolate(
@@ -176,11 +177,28 @@ function postFormData<T>(
           resolve(undefined as unknown as T);
         }
       } else {
+        if (xhr.status === 401 || xhr.status === 403) {
+          setAuthenticated(false);
+          setUser(null);
+          setSuperuser(false);
+          if (!window.location.pathname.startsWith("/login")) {
+            const currentUrl =
+              window.location.pathname +
+              window.location.search +
+              window.location.hash;
+            try {
+              sessionStorage.setItem("post_login_redirect", currentUrl);
+            } catch {
+              /* ignore */
+            }
+            window.location.href = `/login?next=${encodeURIComponent(currentUrl)}`;
+          }
+        }
         reject(buildHttpError(xhr.status, xhr.responseText));
       }
     };
 
-    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.onerror = () => reject(buildHttpError(0, "Upload failed: network error"));
     xhr.send(formData);
   });
 }
@@ -378,13 +396,17 @@ export const dropdownApi = {
       },
     ),
   countryList: (function () {
-    let cache: ApiResponse<GetCountriesResponse> | null = null;
-    return async () => {
-      if (cache) return cache;
-      cache = await get<ApiResponse<GetCountriesResponse>>(
-        "/api/dropdown/country",
-      );
-      return cache;
+    let inflight: Promise<ApiResponse<GetCountriesResponse>> | null = null;
+    return () => {
+      if (!inflight) {
+        inflight = get<ApiResponse<GetCountriesResponse>>(
+          "/api/dropdown/country",
+        ).catch((e) => {
+          inflight = null;
+          throw e;
+        });
+      }
+      return inflight;
     };
   })(),
   country: async (country_id: string | number) =>
@@ -550,13 +572,15 @@ export const blogApi = {
     limit = 20,
     tags?: string[],
   ) =>
-    await get<ApiResponse<SearchPostsResponse>>(
-      `/api/blog/search?q=${encodeURIComponent(query)}&search_type=${searchType}&page=${page}&limit=${limit}${
-        tags && tags.length > 0
-          ? `&tags=${encodeURIComponent(tags.join(","))}`
-          : ""
-      }`,
-    ),
+    await get<ApiResponse<SearchPostsResponse>>("/api/blog/search", {
+      params: {
+        q: query,
+        search_type: searchType,
+        page,
+        limit,
+        ...(tags && tags.length > 0 ? { tags: tags.join(",") } : {}),
+      },
+    }),
 };
 
 export const i18nApi = {

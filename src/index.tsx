@@ -2,10 +2,14 @@
 import "./index.css";
 
 import { render } from "solid-js/web";
+import { Chart, Filler } from "chart.js";
 
 import App from "./app";
 import { Router } from "@solidjs/router";
 import { routes } from "./routes";
+
+// Register the Filler plugin once so CpuStatsCard/RamStatsCard area gradients (fill: true) render.
+Chart.register(Filler);
 
 const root = document.getElementById("root");
 

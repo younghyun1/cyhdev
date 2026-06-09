@@ -1,4 +1,4 @@
-import { createSignal, Show, onMount } from "solid-js";
+import { createSignal, Show, onMount, onCleanup } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
@@ -12,6 +12,10 @@ function ResetPasswordPage() {
   const [error, setError] = createSignal<string | null>(null);
   const [success, setSuccess] = createSignal(false);
   const navigate = useNavigate();
+  let redirectTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => {
+    if (redirectTimer !== undefined) clearTimeout(redirectTimer);
+  });
 
   onMount(() => {
     if (!searchParams.token) {
@@ -29,7 +33,13 @@ function ResetPasswordPage() {
       return;
     }
 
-    if (password().length < 8) {
+    const pw = password();
+    if (
+      pw.length < 8 ||
+      !/[a-z]/.test(pw) ||
+      !/[A-Z]/.test(pw) ||
+      !/[0-9]/.test(pw)
+    ) {
       setError(t("auth.reset_password.too_short"));
       return;
     }
@@ -49,7 +59,7 @@ function ResetPasswordPage() {
       });
       setSuccess(true);
       // Optional: Automatically redirect after a few seconds
-      setTimeout(() => navigate("/login"), 3000);
+      redirectTimer = setTimeout(() => navigate("/login"), 3000);
     } catch (e: unknown) {
       let msg =
         e instanceof Error

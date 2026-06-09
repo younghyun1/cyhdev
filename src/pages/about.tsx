@@ -109,102 +109,127 @@ export default function About() {
             <img
               src={badgeRust000000}
               alt="Rust"
+              class="h-7 w-auto"
             />
             <img
               src={badgeCA8B9CC}
               alt="C"
+              class="h-7 w-auto"
             />
             <img
               src={badgeTypeScript3178C6}
               alt="TypeScript"
+              class="h-7 w-auto"
             />
             <img
               src={badgePython3776AB}
               alt="Python"
+              class="h-7 w-auto"
             />
             <img
               src={badgeJava007396}
               alt="Java"
+              class="h-7 w-auto"
             />
             <img
               src={badgeAxum000000}
               alt="Axum"
+              class="h-7 w-auto"
             />
             <img
               src={badgeSpringBoot6DB33F}
               alt="Spring Boot"
+              class="h-7 w-auto"
             />
             <img
               src={badgeDjango092E20}
               alt="Django"
+              class="h-7 w-auto"
             />
             <img
               src={badgePostgreSQL316192}
               alt="PostgreSQL"
+              class="h-7 w-auto"
             />
             <img
               src={badgeMySQL4479A1}
               alt="MySQL"
+              class="h-7 w-auto"
             />
             <img
               src={badgeAWS232F3E}
               alt="AWS"
+              class="h-7 w-auto"
             />
             <img
               src={badgeGoogleCloud4285F4}
               alt="Google Cloud"
+              class="h-7 w-auto"
             />
             <img
               src={badgeDocker2496ED}
               alt="Docker"
+              class="h-7 w-auto"
             />
             <img
               src={badgeKubernetes326CE5}
               alt="Kubernetes"
+              class="h-7 w-auto"
             />
             <img
               src={badgeNGINX009639}
               alt="NGINX"
+              class="h-7 w-auto"
             />
             <img
               src={badgeLinuxFCC624}
               alt="Linux"
+              class="h-7 w-auto"
             />
             <img
               src={badgeArchLinux1793D1}
               alt="Arch Linux"
+              class="h-7 w-auto"
             />
             <img
               src={badgeUbuntuE95420}
               alt="Ubuntu"
+              class="h-7 w-auto"
             />
             <img
               src={badgeAmazonLinux232F3E}
               alt="Amazon Linux"
+              class="h-7 w-auto"
             />
             <img
               src={badgeWindows0078D6}
               alt="Windows"
+              class="h-7 w-auto"
             />
             <img
               src={badgemacOS000000}
               alt="macOS"
+              class="h-7 w-auto"
             />
             <img
               src={badgeProtocolBuffers3367D6}
               alt="Protocol Buffers"
+              class="h-7 w-auto"
             />
             <img
               src={badgeBACnet004B87}
               alt="BACnet"
+              class="h-7 w-auto"
             />
             <img
               src={badgeModbusFFCC00}
               alt="Modbus"
+              class="h-7 w-auto"
             />
             <img
               src={badgeWebSockets010101}
               alt="WebSockets"
+              class="h-7 w-auto"
             />
           </div>
           <p class="mb-4 leading-relaxed">

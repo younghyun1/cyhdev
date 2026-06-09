@@ -1,4 +1,5 @@
 import { Line } from "solid-chartjs";
+import { createMemo } from "solid-js";
 import type {
   ChartOptions,
   ChartData,
@@ -48,6 +49,13 @@ export default function RamStatsCard(props: {
 
   const latest = () => props.data[props.data.length - 1];
 
+  // Round the y-axis ceiling off mem_total; only changes when total RAM changes,
+  // so options identity stays stable across per-tick data updates.
+  const yMax = createMemo(() => {
+    const l = props.data[props.data.length - 1];
+    return l ? Math.ceil(l.memT / (1024 * 1024) / 100) * 100 : undefined;
+  });
+
   const labels = () => {
     const s = props.data;
     const blanks = Array(Math.max(0, props.limit - s.length)).fill("");
@@ -89,9 +97,7 @@ export default function RamStatsCard(props: {
         beginAtZero: true,
         grid: { color: C().border },
         ticks: { color: C().font },
-        max: latest()
-          ? Math.ceil(latest()!.memT / (1024 * 1024) / 100) * 100
-          : undefined,
+        max: yMax(),
       },
     },
     plugins: {

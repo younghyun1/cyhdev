@@ -57,26 +57,43 @@ export default function HostStatsDashboard(props: {
     return formatUptimeMs(totalMs);
   });
 
-  let ws: WebSocket;
-  onMount(() => {
-    const url =
-      props.wsUrl ||
-      (import.meta.env.VITE_API_URL || "")
-        .replace(/^http/, "ws")
-        .replace(/\/$/, "") + "/ws/host-stats";
+  let ws: WebSocket | null = null;
+  let retry = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
 
+  const wsUrl = () =>
+    props.wsUrl ||
+    (import.meta.env.VITE_API_URL || "")
+      .replace(/^http/, "ws")
+      .replace(/\/$/, "") + "/ws/host-stats";
+
+  const scheduleReconnect = () => {
+    if (disposed || reconnectTimer !== undefined) return;
+    const delay = Math.min(1000 * 2 ** retry, 15000);
+    retry += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, delay);
+  };
+
+  const connect = () => {
+    if (disposed) return;
     try {
-      ws = new WebSocket(url);
+      ws = new WebSocket(wsUrl());
       ws.binaryType = "arraybuffer";
     } catch (e: unknown) {
       setError(tx("stats.ws_open_failed", { error: String(e) }));
+      scheduleReconnect();
       return;
     }
 
     ws.onopen = () => {
+      retry = 0;
       setError(null);
       if (props.apiKey) {
-        ws.send(JSON.stringify({ apiKey: props.apiKey }));
+        ws?.send(JSON.stringify({ apiKey: props.apiKey }));
       }
     };
 
@@ -86,6 +103,7 @@ export default function HostStatsDashboard(props: {
         setError(t("stats.malformed_packet"));
         return;
       }
+      setError(null);
       setHistory((old) => {
         const next: HostStatPoint = {
           ts: Date.now(),
@@ -100,11 +118,21 @@ export default function HostStatsDashboard(props: {
     };
 
     ws.onerror = () => setError(t("stats.websocket_error"));
-    ws.onclose = () => setError((e) => e || t("stats.websocket_closed"));
+    ws.onclose = () => {
+      setError((e) => e || t("stats.websocket_closed"));
+      scheduleReconnect();
+    };
+  };
 
-    onCleanup(() => {
-      ws.close();
-    });
+  onMount(connect);
+
+  onCleanup(() => {
+    disposed = true;
+    if (reconnectTimer !== undefined) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
+    ws?.close();
   });
 
   return (

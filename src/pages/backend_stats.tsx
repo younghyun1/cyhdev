@@ -1,4 +1,5 @@
 import { createResource, Show } from "solid-js";
+import DOMPurify from "dompurify";
 import HostStatsDashboard from "../components/HostStatsDashboard";
 import { healthApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
@@ -16,6 +17,13 @@ export default function BackendStats() {
   });
 
   const isDark = () => theme() === "dark";
+
+  // fastfetch HTML is server-generated ANSI->HTML (color spans); sanitize to strip any script/handlers.
+  const cleanFastfetch = () =>
+    DOMPurify.sanitize(fastfetch() ?? "", {
+      ALLOWED_TAGS: ["span", "b", "i", "br", "pre"],
+      ALLOWED_ATTR: ["style", "class"],
+    });
 
   return (
     <main class={pageStyles.page}>
@@ -37,8 +45,8 @@ export default function BackendStats() {
               color: isDark() ? "#e2e8f0" : "#0f172a",
             }}
           >
-            {/* eslint-disable-next-line solid/no-innerhtml -- fastfetch HTML is generated server-side from local ANSI output. */}
-            <pre class="m-auto whitespace-pre" innerHTML={fastfetch() ?? ""} />
+            {/* eslint-disable-next-line solid/no-innerhtml -- value is DOMPurify-sanitized in cleanFastfetch(). */}
+            <pre class="m-auto whitespace-pre" innerHTML={cleanFastfetch()} />
           </div>
         </Show>
       </div>

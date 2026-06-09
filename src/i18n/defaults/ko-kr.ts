@@ -92,6 +92,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "page.blog.new_title": "새 글",
   "page.blog.edit_title": "글 수정",
   "page.live_chat.title": "라이브 채팅",
+  "page.live_chat.subtitle": "회원과 게스트를 위한 텍스트 채팅입니다.",
   "page.photographs.title": "사진",
   "page.projects.title": "프로젝트와 데모",
   "page.geo_ip.title": "Geo-IP 데이터베이스",
@@ -120,6 +121,8 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "auth.login.register": "회원가입",
   "auth.signup.required_fields": "필수 항목을 모두 입력하세요.",
   "auth.signup.password_mismatch": "비밀번호가 일치하지 않습니다.",
+  "auth.signup.password_rules":
+    "비밀번호는 8자 이상이며 대문자, 소문자, 숫자를 각각 하나 이상 포함해야 합니다.",
   "auth.signup.failed": "회원가입에 실패했습니다.",
   "auth.signup.success": "회원가입이 완료되었습니다. 이메일을 확인해 계정을 인증하세요.",
   "auth.signup.loading": "가입 중...",

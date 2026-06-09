@@ -40,6 +40,10 @@ function SignupPage() {
     confirmPassword() !== "" &&
     userPassword() !== confirmPassword();
 
+  // Mirror backend validate_password_form (validations.rs): len>=8 + upper + lower + digit.
+  const isPasswordValid = (pw: string) =>
+    pw.length >= 8 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
+
   // ––––– fetch countries & languages once on mount
   onMount(() => {
     dropdownApi
@@ -93,6 +97,11 @@ function SignupPage() {
       !userLanguage()
     ) {
       setError(t("auth.signup.required_fields"));
+      return;
+    }
+
+    if (!isPasswordValid(userPassword())) {
+      setError(t("auth.signup.password_rules"));
       return;
     }
 

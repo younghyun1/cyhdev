@@ -48,7 +48,7 @@ const BottomBar: Component = () => {
   });
 
   // Live ticking for uptime / age display
-  createEffect(() => {
+  onMount(() => {
     const interval = setInterval(() => {
       setClientNow(new Date());
     }, 1000);

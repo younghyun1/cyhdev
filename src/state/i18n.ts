@@ -57,6 +57,7 @@ export function applyLocale(nextLocale: UiLocale) {
 export async function loadUiTextBundle(nextLocale = locale()) {
   try {
     const response = await i18nApi.getUiTextBundle(nextLocale);
+    if (nextLocale !== locale()) return; // locale changed mid-flight; discard stale result
     if (response.success && response.data?.texts) {
       setTexts(normalizeTexts(nextLocale, response.data.texts));
       return;
@@ -64,7 +65,9 @@ export async function loadUiTextBundle(nextLocale = locale()) {
   } catch {
     // Keep the app renderable with the typed local default bundle.
   }
-  setTexts(defaultTextsForLocale(nextLocale));
+  if (nextLocale === locale()) {
+    setTexts(defaultTextsForLocale(nextLocale));
+  }
 }
 
 export async function setLocale(nextLocale: UiLocale) {

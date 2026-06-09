@@ -299,6 +299,7 @@ export default function Photographs() {
   };
 
   // Initial load
+  let sentinelEl: HTMLElement | null = null;
   onMount(() => {
     fetchPhotos();
     const observer = new IntersectionObserver(
@@ -310,10 +311,21 @@ export default function Photographs() {
       { threshold: 0.5 },
     );
 
-    const sentinel = document.getElementById("scroll-sentinel");
-    if (sentinel) observer.observe(sentinel);
+    sentinelEl = document.getElementById("scroll-sentinel");
+    if (sentinelEl) observer.observe(sentinelEl);
 
     onCleanup(() => observer.disconnect());
+  });
+
+  // Re-fetch when a page finishes loading but the sentinel is still on-screen
+  // (IntersectionObserver only fires on transitions, so a short first page would otherwise stall).
+  createEffect(() => {
+    // track reactivity: re-run after each fetch settles and after the list grows
+    photos();
+    if (loading() || !hasMore() || !sentinelEl) return;
+    const r = sentinelEl.getBoundingClientRect();
+    const visible = r.top < window.innerHeight && r.bottom > 0;
+    if (visible) fetchPhotos();
   });
 
   // Handle Upload

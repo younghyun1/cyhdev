@@ -1,9 +1,9 @@
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect, onCleanup, onMount } from "solid-js";
 import { visitorBoardApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { t, tx } from "../state/i18n";
+import { t, tx, locale, texts } from "../state/i18n";
 
 const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
 const MARKER_EMOJI = "📍";
@@ -55,8 +55,9 @@ export default function VisitorBoard() {
   let mapDiv: HTMLDivElement | undefined;
   let map: L.Map | null = null;
   let markers: L.Marker[] = [];
+  let markerCounts: number[] = [];
 
-  createEffect(() => {
+  onMount(() => {
     async function loadVisitorBoard() {
       try {
         const resp = await visitorBoardApi.getVisitorBoard();
@@ -93,6 +94,7 @@ export default function VisitorBoard() {
           popupAnchor: [0, -30],
         });
 
+        markerCounts = pairs.map((pair) => pair[1]);
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
           const popupHtml = tx("visitor.popup", { count });
@@ -118,6 +120,19 @@ export default function VisitorBoard() {
         map.remove();
       }
       markers = [];
+      markerCounts = [];
+    });
+  });
+
+  // Refresh popup text reactively when the locale/text bundle changes.
+  createEffect(() => {
+    // Track the reactive sources synchronously.
+    const _locale = locale();
+    const _texts = texts();
+    void _locale;
+    void _texts;
+    markers.forEach((marker, i) => {
+      marker.setPopupContent(tx("visitor.popup", { count: markerCounts[i] ?? 0 }));
     });
   });
 

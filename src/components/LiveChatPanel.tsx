@@ -188,6 +188,9 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   const [loadingOlder, setLoadingOlder] = createSignal(false);
 
   let ws: WebSocket | null = null;
+  let disposed = false;
+  let reconnectAttempts = 0;
+  let reconnectTimer: number | undefined;
   let typingStopTimer: number | undefined;
   let typingRefreshTimer: number | undefined;
   let typingExpiryTimer: number | undefined;
@@ -261,17 +264,42 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     restoreOrScrollAfterRender();
   });
 
+  const RECONNECT_BASE_MS = 1000;
+  const RECONNECT_MAX_MS = 15000;
+
+  const scheduleReconnect = () => {
+    if (disposed) return;
+    if (reconnectTimer !== undefined) return;
+    const delay = Math.min(
+      RECONNECT_BASE_MS * 2 ** reconnectAttempts,
+      RECONNECT_MAX_MS,
+    );
+    reconnectAttempts += 1;
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, delay);
+  };
+
   const connect = () => {
+    if (disposed) return;
     setConnectionState("connecting");
     setError(null);
     ws = new WebSocket(liveChatWebSocketUrl(), [LIVE_CHAT_BINARY_PROTOCOL]);
     ws.binaryType = "arraybuffer";
 
-    ws.onopen = () => setConnectionState("open");
-    ws.onclose = () => setConnectionState("closed");
+    ws.onopen = () => {
+      reconnectAttempts = 0;
+      setConnectionState("open");
+    };
+    ws.onclose = () => {
+      setConnectionState("closed");
+      scheduleReconnect();
+    };
     ws.onerror = () => {
       setConnectionState("error");
       setError(t("live_chat.connection_failed"));
+      // onclose fires after onerror and schedules the reconnect.
     };
     ws.onmessage = (event) => {
       const serverEvent = parseServerEventData(event.data);
@@ -506,6 +534,11 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   onMount(connect);
 
   onCleanup(() => {
+    disposed = true;
+    if (reconnectTimer !== undefined) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    }
     stopTyping();
     if (typingExpiryTimer !== undefined) {
       window.clearTimeout(typingExpiryTimer);

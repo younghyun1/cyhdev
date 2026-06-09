@@ -13,6 +13,9 @@ export type HealthState =
 export const [healthState, setHealthState] = createSignal<HealthState>(null);
 export const [clientNow, setClientNow] = createSignal<Date | null>(null);
 
+// Monotonic token to drop out-of-order health refreshes.
+let healthSeq = 0;
+
 export const parseUptimeToMs = (uptime: string | undefined): number | null => {
   if (!uptime) return null;
   let total = 0;
@@ -69,9 +72,11 @@ export const formatIsoAge = (
 };
 
 export async function refreshHealthState() {
+  const seq = ++healthSeq;
   const start = performance.now();
   try {
     const resp = await fetchHealthState();
+    if (seq !== healthSeq) return; // a newer refresh started; drop stale result
     const end = performance.now();
     const client_latency_ms = end - start;
 
@@ -90,6 +95,7 @@ export async function refreshHealthState() {
       console.warn("Health refresh returned an unsuccessful response");
     }
   } catch (e) {
+    if (seq !== healthSeq) return; // a newer refresh started; suppress stale error
     // Keep previous successful state to avoid UI flicker on transient failures.
     console.error("Health refresh failed", e);
   }

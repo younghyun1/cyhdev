@@ -92,6 +92,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "page.blog.new_title": "New Post",
   "page.blog.edit_title": "Edit Post",
   "page.live_chat.title": "Live Chat",
+  "page.live_chat.subtitle": "Text chat for signed-in users and guests.",
   "page.photographs.title": "Photographs",
   "page.projects.title": "Projects & Demos",
   "page.geo_ip.title": "Geo-IP Database",
@@ -120,6 +121,8 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "auth.login.register": "Register",
   "auth.signup.required_fields": "Please fill out all required fields.",
   "auth.signup.password_mismatch": "Passwords do not match.",
+  "auth.signup.password_rules":
+    "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a digit.",
   "auth.signup.failed": "Signup failed.",
   "auth.signup.success": "Signup successful! Check your email to verify your account.",
   "auth.signup.loading": "Signing Up...",

@@ -14,6 +14,7 @@ import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
 import { t, tx } from "../../state/i18n";
+import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
 import rust from "highlight.js/lib/languages/rust";
 import sql from "highlight.js/lib/languages/sql";
@@ -650,8 +651,10 @@ export default function PostViewPage() {
               );
               const renderedPostHtml = createMemo(() => {
                 const post = data().post;
+                const clean = (raw: string) =>
+                  DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
                 const content = (post.post_content ?? "").trim();
-                if (content) return content;
+                if (content) return clean(content);
                 const metadata = post.post_metadata as
                   | { markdown_content?: string }
                   | null
@@ -660,7 +663,7 @@ export default function PostViewPage() {
                   typeof metadata?.markdown_content === "string"
                     ? metadata.markdown_content.trim()
                     : "";
-                return markdown || "";
+                return markdown ? clean(markdown) : "";
               });
 
               return (
