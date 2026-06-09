@@ -37,6 +37,11 @@ export default function EditPostPage() {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
+  // Canonical post UUID from the loaded post. The route param may be a slug
+  // (read endpoint accepts both), but updatePost parses post_id as a UUID.
+  const [canonicalPostId, setCanonicalPostId] = createSignal<string | null>(
+    null,
+  );
 
   onMount(() => {
     void (async () => {
@@ -51,6 +56,7 @@ export default function EditPostPage() {
         const res = await blogApi.readPost(postId);
         if (res.success && res.data) {
           const post = res.data.post;
+          setCanonicalPostId(post.post_id);
           setTitle(post.post_title);
           setIsPublished(post.post_is_published);
           setInitialPublished(post.post_is_published);
@@ -96,7 +102,7 @@ export default function EditPostPage() {
           post_tags: postTags,
           post_is_published: isPublished(),
         },
-        params.post_id!,
+        canonicalPostId() ?? params.post_id!,
       );
       if (res.success) {
         navigate(

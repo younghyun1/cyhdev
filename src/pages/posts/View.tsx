@@ -42,7 +42,14 @@ type VoteState = 0 | 1 | 2;
 export default function PostViewPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const postId = () => params.post_id;
+  // Route param: either a slug or a UUID. Used only to fetch the post; the
+  // read endpoint resolves both. Do not use this for mutations.
+  const routeKey = () => params.post_id;
+  // Canonical post UUID, resolved from the loaded post. All mutations (votes,
+  // comments, delete) must use this: the comment/vote/delete endpoints parse
+  // post_id strictly as a UUID and reject slugs. Falls back to the route key
+  // before the post loads, but mutation UI is only reachable after load.
+  const postId = () => postResource()?.post.post_id ?? params.post_id;
   const [postLoadError, setPostLoadError] = createSignal<string | null>(null);
   const [commentValue, setCommentValue] = createSignal("");
   const [commentLoading, setCommentLoading] = createSignal(false);
@@ -51,7 +58,7 @@ export default function PostViewPage() {
     "best" | "top" | "new" | "old"
   >("best");
 
-  const [postResource, { refetch }] = createResource(postId, async (pid) => {
+  const [postResource, { refetch }] = createResource(routeKey, async (pid) => {
     if (!pid) return null;
     setPostLoadError(null);
 
