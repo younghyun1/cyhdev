@@ -2,7 +2,6 @@ import { createResource, For, Show, Suspense } from "solid-js";
 import { A } from "@solidjs/router";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
-import LiveChatPanel from "../components/LiveChatPanel";
 import { t } from "../state/i18n";
 
 export default function Home() {
@@ -98,12 +97,6 @@ export default function Home() {
       {/* Main Content Grid */}
       <div class="grow">
         <div class="relative mx-auto max-w-7xl px-6 py-12">
-          <aside
-            class="mx-auto mb-8 flex h-full w-full max-w-md flex-col 2xl:absolute 2xl:left-[calc((100vw-80rem)/-2+1.5rem)] 2xl:top-12 2xl:mb-0 2xl:max-w-none 2xl:w-[clamp(14rem,calc((100vw-80rem)/2-3rem),22rem)]"
-          >
-            <LiveChatPanel mode="compact" />
-          </aside>
-
           <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Latest Blog Posts - Spans 7 columns */}
             <section class="lg:col-span-7 flex flex-col h-full">
