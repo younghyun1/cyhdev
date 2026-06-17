@@ -13,6 +13,9 @@ export interface PhotographItem {
   photograph_lat: number;
   photograph_lon: number;
   photograph_thumbnail_link: string;
+  photograph_view_count: number;
+  photograph_total_upvotes: number;
+  photograph_total_downvotes: number;
 }
 
 export interface PaginationMeta {
@@ -123,9 +126,6 @@ export type PhotographVoteState = 0 | 1 | 2;
 /** The photograph row as returned by the detail endpoint (incl. counts). */
 export interface PhotographDetail extends PhotographItem {
   photograph_context?: string;
-  photograph_view_count: number;
-  photograph_total_upvotes: number;
-  photograph_total_downvotes: number;
 }
 
 export interface PhotographCommentResponse {

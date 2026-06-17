@@ -61,6 +61,14 @@ export const routes: RouteDefinition[] = [
   {
     path: "/photographs",
     component: lazy(() => import("./pages/photographs")),
+    // The detail view is a URL-synced modal: the param route keeps the gallery
+    // page mounted (no remount) while /photographs/:photograph_id is active, so
+    // infinite-scroll state and the open modal persist. The page reads the id
+    // from the location; the child renders nothing.
+    children: [
+      { path: "/", component: () => null },
+      { path: "/:photograph_id", component: () => null },
+    ],
   },
   {
     path: "/projects",

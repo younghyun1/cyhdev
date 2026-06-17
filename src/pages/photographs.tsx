@@ -6,7 +6,10 @@ import {
   Show,
   onMount,
   createMemo,
+  untrack,
 } from "solid-js";
+import { useNavigate, useLocation } from "@solidjs/router";
+import type { RouteSectionProps } from "@solidjs/router";
 import { photographyApi } from "../services/all_api";
 import { isSuperuser } from "../state/auth";
 import { pageStyles } from "../styles/pageStyles";
@@ -17,7 +20,7 @@ import type {
   PhotographItem,
   GetPhotographsResponse,
 } from "../dtos/responses/photography";
-import { t, tx } from "../state/i18n";
+import { t, tx, locale } from "../state/i18n";
 import BatchUploadFields from "../components/photographs/BatchUploadFields";
 import ProcessingModal from "../components/photographs/ProcessingModal";
 import PhotographSocial from "../components/photographs/PhotographSocial";
@@ -66,6 +69,38 @@ const styles = `
   width: 100%;
   height: auto;
   display: block;
+}
+/* Small view/vote summary rendered below the image, outside the picture. */
+.photo-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: #4b5563;
+}
+.dark .photo-meta {
+  color: #9ca3af;
+}
+.photo-meta .pm-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* Month-year section header above each masonry block. */
+.photo-section-title {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.25rem 1.75rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.dark .photo-section-title {
+  color: #f3f4f6;
 }
 
 /* Modals */
@@ -190,7 +225,7 @@ const styles = `
 }
 `;
 
-export default function Photographs() {
+export default function Photographs(props: RouteSectionProps) {
   // State
   const [photos, setPhotos] = createSignal<PhotographItem[]>([]);
   const [page, setPage] = createSignal(1);
@@ -218,18 +253,100 @@ export default function Photographs() {
   const [uploadProgress, setUploadProgress] = createSignal(0);
   const [showProcessing, setShowProcessing] = createSignal(false);
 
-  // --- Layout Logic: Distribute photos into columns ---
-  // This ensures Photo 1 is Col 1, Photo 2 is Col 2, etc. (LTR visual flow)
-  const columns = createMemo(() => {
-    const cols = Array.from(
-      { length: numColumns() },
-      () => [] as PhotographItem[],
+  // --- URL-synced detail modal ---
+  // The detail view is /photographs/:photograph_id rendered as a modal over the
+  // (persistent) gallery. The id is read from the location so the gallery is not
+  // remounted; opening/closing/navigating is just navigation.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const detailId = createMemo(() => {
+    const m = location.pathname.match(/^\/photographs\/([^/]+)\/?$/);
+    return m?.[1] ?? null;
+  });
+  const openPhoto = (id: string) => navigate(`/photographs/${id}`);
+  const closePhoto = () => navigate("/photographs");
+
+  // Resolve the route id to a photo: prefer the already-loaded list (so prev/next
+  // is instant), else fetch the detail for a cold deep-link. Tracks detailId only
+  // (photos read untracked) to avoid refetching on every infinite-scroll append.
+  createEffect(() => {
+    const id = detailId();
+    if (!id) {
+      setSelectedPhoto(null);
+      return;
+    }
+    const inList = untrack(() =>
+      photos().find((p) => p.photograph_id === id),
     );
-    photos().forEach((photo, i) => {
-      cols[i % numColumns()]!.push(photo);
+    if (inList) {
+      setSelectedPhoto(inList);
+      return;
+    }
+    setSelectedPhoto(null);
+    let cancelled = false;
+    photographyApi
+      .getPhotographDetail(id)
+      .then((resp) => {
+        if (!cancelled) setSelectedPhoto(resp.data.photograph);
+      })
+      .catch((err: unknown) => {
+        console.error("Failed to load photograph detail:", err);
+        if (!cancelled) navigate("/photographs", { replace: true });
+      });
+    onCleanup(() => {
+      cancelled = true;
+    });
+  });
+
+  // --- Layout Logic: month-year segments, each a masonry block ---
+  const photoDate = (p: PhotographItem) =>
+    new Date(p.photograph_shot_at ?? p.photograph_created_at);
+  // Sortable key (YYYY-MM, month 0-based but consistent, so string sort works).
+  const monthKey = (p: PhotographItem) => {
+    const d = photoDate(p);
+    return `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+  };
+  const monthLabel = (p: PhotographItem) =>
+    photoDate(p).toLocaleDateString(locale(), {
+      year: "numeric",
+      month: "long",
+    });
+
+  interface PhotoSegment {
+    key: string;
+    label: string;
+    photos: PhotographItem[];
+  }
+
+  const segments = createMemo<PhotoSegment[]>(() => {
+    const groups = new Map<string, PhotoSegment>();
+    for (const p of photos()) {
+      const key = monthKey(p);
+      let g = groups.get(key);
+      if (!g) {
+        g = { key, label: monthLabel(p), photos: [] };
+        groups.set(key, g);
+      }
+      g.photos.push(p);
+    }
+    // Newest month first. Photos within a segment keep fetch order (shot_at desc).
+    return Array.from(groups.values()).sort((a, b) =>
+      a.key < b.key ? 1 : a.key > b.key ? -1 : 0,
+    );
+  });
+
+  // Distribute a segment's photos LTR across the responsive column count.
+  const columnsFor = (list: PhotographItem[]) => {
+    const n = numColumns();
+    const cols = Array.from({ length: n }, () => [] as PhotographItem[]);
+    list.forEach((photo, i) => {
+      cols[i % n]!.push(photo);
     });
     return cols;
-  });
+  };
+
+  const netVotes = (p: PhotographItem) =>
+    p.photograph_total_upvotes - p.photograph_total_downvotes;
 
   const handleDelete = async () => {
     const ids = Array.from(selectedForDeletion());
@@ -425,36 +542,30 @@ export default function Photographs() {
   });
 
   // --- Navigation Logic ---
+  // Neighbours are resolved from the loaded list and navigated to by URL (the
+  // route effect then swaps the modal content). On a cold deep-link the photo is
+  // not in the list (idx === -1), so prev/next are unavailable.
   const navigatePhoto = async (direction: "prev" | "next") => {
     const current = selectedPhoto();
     if (!current) return;
 
-    // Get current list state
     const currentPhotos = photos();
     const idx = currentPhotos.findIndex(
       (p) => p.photograph_id === current.photograph_id,
     );
+    if (idx === -1) return;
 
     if (direction === "prev" && idx > 0) {
-      setSelectedPhoto(currentPhotos[idx - 1] ?? null);
+      const prev = currentPhotos[idx - 1];
+      if (prev) openPhoto(prev.photograph_id);
     } else if (direction === "next") {
-      // If we are not at the end of the loaded list
       if (idx < currentPhotos.length - 1) {
-        setSelectedPhoto(currentPhotos[idx + 1] ?? null);
-      }
-      // If we are at the end, but the API has more pages
-      else if (hasMore() && !loading()) {
-        // Trigger fetch
+        const next = currentPhotos[idx + 1];
+        if (next) openPhoto(next.photograph_id);
+      } else if (hasMore() && !loading()) {
         await fetchPhotos();
-
-        // Get the updated list (after fetch completes)
-        const updatedPhotos = photos();
-
-        // Select the next item (which is now at the index that used to be out of bounds)
-        const next = updatedPhotos[idx + 1];
-        if (next) {
-          setSelectedPhoto(next);
-        }
+        const next = photos()[idx + 1];
+        if (next) openPhoto(next.photograph_id);
       }
     }
   };
@@ -465,7 +576,7 @@ export default function Photographs() {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (selectedPhoto()) setSelectedPhoto(null);
+        if (selectedPhoto()) closePhoto();
         else if (isSelectionMode()) {
           setIsSelectionMode(false);
           setSelectedForDeletion(new Set<string>());
@@ -551,66 +662,94 @@ export default function Photographs() {
             </div>
           </Show>
 
-          {/* JS-Calculated Masonry Grid */}
-          <div class="masonry-grid mx-auto">
-            <For each={columns()}>
-              {(colPhotos) => (
-                <div class="masonry-column">
-                  <For each={colPhotos}>
-                    {(photo) => (
-                      <div
-                        class="photo-card"
-                        onClick={() => {
-                          if (isSelectionMode()) {
-                            toggleSelection(photo.photograph_id);
-                          } else {
-                            setSelectedPhoto(photo);
-                          }
-                        }}
-                        title={photo.photograph_comments}
-                      >
-                        <img
-                          src={
-                            photo.photograph_thumbnail_link ||
-                            photo.photograph_link
-                          }
-                          alt={photo.photograph_comments}
-                          loading="lazy"
-                        />
-                        <Show when={isSelectionMode()}>
-                          <div
-                            class={`absolute inset-0 transition-all z-10 ${
-                              selectedForDeletion().has(photo.photograph_id)
-                                ? "ring-4 ring-red-500 ring-inset bg-black/20"
-                                : "hover:bg-black/10"
-                            }`}
-                          >
+          {/* Month-year segmented masonry */}
+          <For each={segments()}>
+            {(seg) => (
+              <>
+                <h2 class="photo-section-title">{seg.label}</h2>
+                <div class="masonry-grid mx-auto">
+                  <For each={columnsFor(seg.photos)}>
+                    {(colPhotos) => (
+                      <div class="masonry-column">
+                        <For each={colPhotos}>
+                          {(photo) => (
                             <div
-                              class={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
-                                selectedForDeletion().has(photo.photograph_id)
-                                  ? "bg-red-500"
-                                  : "bg-black/40"
-                              }`}
+                              class="photo-card"
+                              onClick={() => {
+                                if (isSelectionMode()) {
+                                  toggleSelection(photo.photograph_id);
+                                } else {
+                                  openPhoto(photo.photograph_id);
+                                }
+                              }}
+                              title={photo.photograph_comments}
                             >
-                              <Show
-                                when={selectedForDeletion().has(
-                                  photo.photograph_id,
-                                )}
-                              >
-                                <span class="text-white text-xs font-bold">
-                                  ✓
-                                </span>
+                              <img
+                                src={
+                                  photo.photograph_thumbnail_link ||
+                                  photo.photograph_link
+                                }
+                                alt={photo.photograph_comments}
+                                loading="lazy"
+                              />
+                              <Show when={isSelectionMode()}>
+                                <div
+                                  class={`absolute inset-0 transition-all z-10 ${
+                                    selectedForDeletion().has(
+                                      photo.photograph_id,
+                                    )
+                                      ? "ring-4 ring-red-500 ring-inset bg-black/20"
+                                      : "hover:bg-black/10"
+                                  }`}
+                                >
+                                  <div
+                                    class={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
+                                      selectedForDeletion().has(
+                                        photo.photograph_id,
+                                      )
+                                        ? "bg-red-500"
+                                        : "bg-black/40"
+                                    }`}
+                                  >
+                                    <Show
+                                      when={selectedForDeletion().has(
+                                        photo.photograph_id,
+                                      )}
+                                    >
+                                      <span class="text-white text-xs font-bold">
+                                        ✓
+                                      </span>
+                                    </Show>
+                                  </div>
+                                </div>
                               </Show>
+                              {/* View / vote summary, bottom-left, outside the pic */}
+                              <div class="photo-meta">
+                                <span
+                                  class="pm-item"
+                                  title={t("common.views")}
+                                >
+                                  <span aria-hidden="true">👁</span>
+                                  {photo.photograph_view_count}
+                                </span>
+                                <span
+                                  class="pm-item"
+                                  title={t("blog.vote.upvote")}
+                                >
+                                  <span aria-hidden="true">▲</span>
+                                  {netVotes(photo)}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </Show>
+                          )}
+                        </For>
                       </div>
                     )}
                   </For>
                 </div>
-              )}
-            </For>
-          </div>
+              </>
+            )}
+          </For>
 
           {/* Loading / Sentinel */}
           <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
@@ -623,6 +762,11 @@ export default function Photographs() {
           </div>
         </div>
       </main>
+
+      {/* Param child route (/photographs/:photograph_id) renders nothing; it
+          only keeps this page mounted while the detail modal is open. */}
+      {props.children}
+
 
       {/* Upload Modal */}
       <Show when={showUpload()}>
@@ -653,12 +797,12 @@ export default function Photographs() {
         <div
           class="modal-overlay"
           onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedPhoto(null);
+            if (e.target === e.currentTarget) closePhoto();
           }}
         >
           <div class="modal-content details-modal">
             <button
-              onClick={() => setSelectedPhoto(null)}
+              onClick={() => closePhoto()}
               class="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
             >
               ✕
