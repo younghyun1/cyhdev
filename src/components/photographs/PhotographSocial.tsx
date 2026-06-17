@@ -16,6 +16,7 @@ import {
   createSignal,
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
+import { useNavigate } from "@solidjs/router";
 import { createStore } from "solid-js/store";
 import { photographyApi } from "../../services/all_api";
 import { isSuperuser, user } from "../../state/auth";
@@ -43,6 +44,8 @@ interface PhotographSocialProps {
 }
 
 export default function PhotographSocial(props: PhotographSocialProps) {
+  const navigate = useNavigate();
+
   // Fetched once per photographId (this GET increments the view count).
   const [detail] = createResource(
     () => props.photographId,
@@ -142,7 +145,10 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   };
 
   const votePhoto = async (isUpvote: boolean) => {
-    if (!meId()) return;
+    if (!meId()) {
+      navigate("/login");
+      return;
+    }
     const current = photoVote();
     const rescinding =
       (isUpvote && current.vs === 0) || (!isUpvote && current.vs === 1);
@@ -167,7 +173,10 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     comment: PhotographCommentResponse,
     isUpvote: boolean,
   ) => {
-    if (!meId()) return;
+    if (!meId()) {
+      navigate("/login");
+      return;
+    }
     const id = comment.photograph_comment_id;
     const current = commentVote(comment);
     const rescinding =
