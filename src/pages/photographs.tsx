@@ -13,15 +13,19 @@ import { pageStyles } from "../styles/pageStyles";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// --- New Imports for Search ---
-import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
-import "leaflet-geosearch/dist/geosearch.css";
-
 import type {
   PhotographItem,
   GetPhotographsResponse,
 } from "../dtos/responses/photography";
 import { t, tx } from "../state/i18n";
+import BatchUploadFields from "../components/photographs/BatchUploadFields";
+import ProcessingModal from "../components/photographs/ProcessingModal";
+import PhotographSocial from "../components/photographs/PhotographSocial";
+import {
+  trackFromUpload,
+  setBatchCompletionHandler,
+  activeBatchCount,
+} from "../state/photo_batches";
 
 // --- Styles ---
 const styles = `
@@ -180,6 +184,10 @@ const styles = `
   text-align: center;
   transform: translateY(-10%);
 }
+.processing-modal {
+  width: 720px;
+  max-width: 100%;
+}
 `;
 
 export default function Photographs() {
@@ -205,13 +213,10 @@ export default function Photographs() {
     Set<string>
   >(new Set());
 
-  // Upload Form State
-  const [uploadFile, setUploadFile] = createSignal<File | null>(null);
-  const [uploadComment, setUploadComment] = createSignal("");
-  const [uploadLat, setUploadLat] = createSignal<number | null>(null);
-  const [uploadLon, setUploadLon] = createSignal<number | null>(null);
+  // Upload Form State (batch)
   const [uploading, setUploading] = createSignal(false);
   const [uploadProgress, setUploadProgress] = createSignal(0);
+  const [showProcessing, setShowProcessing] = createSignal(false);
 
   // --- Layout Logic: Distribute photos into columns ---
   // This ensures Photo 1 is Col 1, Photo 2 is Col 2, etc. (LTR visual flow)
@@ -328,49 +333,22 @@ export default function Photographs() {
     if (visible) fetchPhotos();
   });
 
-  // Handle Upload
-  const handleUpload = async (e: Event) => {
-    e.preventDefault();
-    if (!uploadFile()) return;
-    if (uploadLat() === null || uploadLon() === null) {
-      alert(t("photos.select_location"));
-      return;
-    }
-    if (!uploadComment()) {
-      alert(t("photos.enter_comment"));
-      return;
-    }
-
+  // Handle batch upload: fire the request, start tracking, open Processing.
+  const handleBatchUpload = async (formData: FormData) => {
     setUploading(true);
     setUploadProgress(0);
-
     try {
-      const formData = new FormData();
-      formData.append("file", uploadFile()!);
-      formData.append("comments", uploadComment());
-      formData.append("lat", String(uploadLat()));
-      formData.append("lon", String(uploadLon()));
-      formData.append("context", "photography");
-
-      await photographyApi.uploadPhotograph(formData, {
+      const resp = await photographyApi.batchUpload(formData, {
         onUploadProgress: (percent) => {
           setUploadProgress((prev) => (percent > prev ? percent : prev));
         },
       });
-
       setUploadProgress(100);
-
+      trackFromUpload(resp.data);
       setShowUpload(false);
-      setUploadFile(null);
-      setUploadComment("");
-      setUploadLat(null);
-      setUploadLon(null);
-      setPhotos([]);
-      setPage(1);
-      setHasMore(true);
-      fetchPhotos();
+      setShowProcessing(true);
     } catch (err: unknown) {
-      console.error("Upload failed:", err);
+      console.error("Batch upload failed:", err);
       alert(t("photos.upload_failed"));
     } finally {
       setUploading(false);
@@ -378,75 +356,16 @@ export default function Photographs() {
     }
   };
 
-  // Map Component for Upload (With Search)
-  const UploadMap = () => {
-    let mapDiv: HTMLDivElement | undefined;
-    let map: L.Map | null = null;
-    let marker: L.Marker | null = null;
-
-    onMount(() => {
-      const initialPos: [number, number] = [20, 0];
-      const zoom = 2;
-
-      map = L.map(mapDiv!).setView(initialPos, zoom);
-
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(map);
-
-      const emojiIcon = L.divIcon({
-        className: "emoji-marker",
-        html: "📍",
-        iconSize: [30, 30],
-        iconAnchor: [15, 30],
-      });
-
-      const provider = new OpenStreetMapProvider();
-      // @ts-expect-error GeoSearchControl constructor types do not match runtime usage.
-      const searchControl = new GeoSearchControl({
-        provider: provider,
-        style: "bar",
-        autoClose: true,
-        keepResult: true,
-        showMarker: false,
-      });
-
-      map.addControl(searchControl);
-
-      map.on("geosearch/showlocation", ((result: {
-        location: { x: number; y: number };
-      }) => {
-        const { x, y } = result.location;
-        updateMarker(y, x);
-      }) as unknown as L.LeafletEventHandlerFn);
-
-      const updateMarker = (lat: number, lng: number) => {
-        setUploadLat(lat);
-        setUploadLon(lng);
-        if (marker) {
-          marker.setLatLng([lat, lng]);
-        } else {
-          marker = L.marker([lat, lng], { icon: emojiIcon }).addTo(map!);
-        }
-      };
-
-      map.on("click", (e) => {
-        updateMarker(e.latlng.lat, e.latlng.lng);
-      });
-
-      if (uploadLat() !== null && uploadLon() !== null) {
-        updateMarker(uploadLat()!, uploadLon()!);
-        map.setView([uploadLat()!, uploadLon()!], 10);
-      }
+  // When any tracked batch finishes processing, reload the grid from page 1.
+  onMount(() => {
+    setBatchCompletionHandler(() => {
+      setPhotos([]);
+      setPage(1);
+      setHasMore(true);
+      fetchPhotos();
     });
-
-    onCleanup(() => {
-      map?.remove();
-    });
-
-    return <div ref={(el) => (mapDiv = el)} class="map-container" />;
-  };
+  });
+  onCleanup(() => setBatchCompletionHandler(null));
 
   // State for external map links popup
   const [showMapLinks, setShowMapLinks] = createSignal(false);
@@ -577,6 +496,20 @@ export default function Photographs() {
               </button>
             </Show>
 
+            <Show when={isSuperuser()}>
+              <button
+                class={pageStyles.buttonSecondary}
+                onClick={() => setShowProcessing(true)}
+              >
+                {t("photos.processing")}
+                <Show when={activeBatchCount() > 0}>
+                  <span class="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold h-5 min-w-5 px-1">
+                    {activeBatchCount()}
+                  </span>
+                </Show>
+              </button>
+            </Show>
+
             <div class="flex gap-2 ml-4">
               <Show when={isSuperuser()}>
                 <Show
@@ -700,94 +633,20 @@ export default function Photographs() {
           }}
         >
           <div class="modal-content upload-modal p-6">
-            <h2 class={`${pageStyles.sectionTitle} mb-4`}>
-              {t("photos.upload_new")}
-            </h2>
-            <form onSubmit={handleUpload} class="flex flex-col gap-4">
-              <div>
-                <label
-                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
-                >
-                  {t("photos.select_image")}
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    setUploadFile(e.currentTarget.files?.[0] || null)
-                  }
-                  required
-                  class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200"
-                />
-              </div>
-
-              <div>
-                <label
-                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
-                >
-                  {t("photos.comments")}
-                </label>
-                <textarea
-                  value={uploadComment()}
-                  onInput={(e) => setUploadComment(e.currentTarget.value)}
-                  required
-                  rows={3}
-                  class={pageStyles.textarea}
-                  placeholder={t("photos.comment_placeholder")}
-                />
-              </div>
-
-              <div>
-                <label
-                  class={`block text-sm font-medium ${pageStyles.muted} mb-1`}
-                >
-                  {t("photos.location")}
-                </label>
-                <Show when={uploadLat() !== null}>
-                  <p class="text-xs text-emerald-600 mb-1">
-                    {tx("photos.selected", {
-                      lat: uploadLat()?.toFixed(5) ?? "",
-                      lon: uploadLon()?.toFixed(5) ?? "",
-                    })}
-                  </p>
-                </Show>
-                <UploadMap />
-              </div>
-
-              <Show when={uploading()}>
-                <div class="w-full mt-2">
-                  <div class="w-full bg-slate-200 dark:bg-slate-700 rounded h-2 overflow-hidden">
-                    <div
-                      class="bg-slate-900 dark:bg-slate-100 h-2 transition-all duration-150"
-                      style={{ width: `${uploadProgress()}%` }}
-                    />
-                  </div>
-                  <p class={`mt-1 text-xs ${pageStyles.muted} text-right`}>
-                    {uploadProgress()}%
-                  </p>
-                </div>
-              </Show>
-
-              <div class="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowUpload(false)}
-                  class={pageStyles.buttonSecondary}
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={uploading()}
-                  class={pageStyles.buttonPrimary}
-                >
-                  {uploading() ? t("common.uploading") : t("common.upload")}
-                </button>
-              </div>
-            </form>
+            <BatchUploadFields
+              submitting={uploading()}
+              progress={uploadProgress()}
+              onSubmit={handleBatchUpload}
+              onCancel={() => setShowUpload(false)}
+            />
           </div>
         </div>
       </Show>
+
+      <ProcessingModal
+        show={showProcessing()}
+        onClose={() => setShowProcessing(false)}
+      />
 
       {/* Details Modal */}
       <Show when={selectedPhoto()}>
@@ -1055,6 +914,10 @@ export default function Photographs() {
                   />
                 </div>
               </div>
+
+              <PhotographSocial
+                photographId={selectedPhoto()!.photograph_id}
+              />
             </div>
           </div>
         </div>

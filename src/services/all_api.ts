@@ -287,6 +287,13 @@ import type {
   GetPhotographsResponse,
   UploadPhotographResponse,
   DeletePhotographsResponse,
+  BatchUploadResponse,
+  BatchStatusResponse,
+  BatchListResponse,
+  ReadPhotographResponse,
+  VotePhotographResponse,
+  PhotographCommentResponse,
+  DeletePhotographCommentResponse,
 } from "../dtos/responses/photography";
 
 import type {
@@ -382,6 +389,78 @@ export const photographyApi = {
     await del<ApiResponse<DeletePhotographsResponse>>(
       "/api/photographs/delete",
       { body: { photograph_ids } },
+    ),
+  batchUpload: async (
+    formData: FormData,
+    opts?: { onUploadProgress?: (percent: number) => void },
+  ) =>
+    await postFormData<ApiResponse<BatchUploadResponse>>(
+      "/api/photographs/batch-upload",
+      formData,
+      {
+        onUploadProgress: opts?.onUploadProgress,
+      },
+    ),
+  getBatchStatus: async (batch_id: string) =>
+    await get<ApiResponse<BatchStatusResponse>>(
+      "/api/photographs/batch/{batch_id}",
+      { params: { batch_id } },
+    ),
+  getBatches: async () =>
+    await get<ApiResponse<BatchListResponse>>("/api/photographs/batches"),
+  getPhotographDetail: async (photograph_id: string) =>
+    await get<ApiResponse<ReadPhotographResponse>>(
+      "/api/photographs/{photograph_id}",
+      { params: { photograph_id } },
+    ),
+  votePhotograph: async (body: { is_upvote: boolean }, photograph_id: string) =>
+    await post<ApiResponse<VotePhotographResponse>>(
+      "/api/photographs/{photograph_id}/vote",
+      { body, params: { photograph_id } },
+    ),
+  rescindPhotographVote: async (photograph_id: string) =>
+    await del<ApiResponse<VotePhotographResponse>>(
+      "/api/photographs/{photograph_id}/vote",
+      { params: { photograph_id } },
+    ),
+  votePhotographComment: async (
+    body: { is_upvote: boolean },
+    photograph_id: string,
+    comment_id: string,
+  ) =>
+    await post<ApiResponse<VotePhotographResponse>>(
+      "/api/photographs/{photograph_id}/{comment_id}/vote",
+      { body, params: { photograph_id, comment_id } },
+    ),
+  rescindPhotographCommentVote: async (
+    photograph_id: string,
+    comment_id: string,
+  ) =>
+    await del<ApiResponse<VotePhotographResponse>>(
+      "/api/photographs/{photograph_id}/{comment_id}/vote",
+      { params: { photograph_id, comment_id } },
+    ),
+  submitPhotographComment: async (
+    body: { parent_comment_id: string | null; comment_content: string },
+    photograph_id: string,
+  ) =>
+    await post<ApiResponse<PhotographCommentResponse>>(
+      "/api/photographs/{photograph_id}/comment",
+      { body, params: { photograph_id } },
+    ),
+  updatePhotographComment: async (
+    body: { comment_content: string },
+    photograph_id: string,
+    comment_id: string,
+  ) =>
+    await patch<ApiResponse<PhotographCommentResponse>>(
+      "/api/photographs/{photograph_id}/{comment_id}",
+      { body, params: { photograph_id, comment_id } },
+    ),
+  deletePhotographComment: async (photograph_id: string, comment_id: string) =>
+    await del<ApiResponse<DeletePhotographCommentResponse>>(
+      "/api/photographs/{photograph_id}/{comment_id}",
+      { params: { photograph_id, comment_id } },
     ),
 };
 
