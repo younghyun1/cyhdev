@@ -8,10 +8,8 @@ import {
   onMount,
 } from "solid-js";
 import { A } from "@solidjs/router";
-import { liveChatApi, liveChatWebSocketUrl } from "../services/live_chat";
+import { liveChatApi } from "../services/live_chat";
 import {
-  LIVE_CHAT_BINARY_PROTOCOL,
-  decodeServerEventFrame,
   encodePingFrame,
   encodeSendMessageFrame,
   encodeTypingFrame,
@@ -24,11 +22,13 @@ import type {
 } from "../dtos/responses/live_chat";
 import { pageStyles } from "../styles/pageStyles";
 import { t, tx } from "../state/i18n";
+import { useLiveChatSocket } from "../state/live_chat_socket";
+import { useRtc } from "../state/rtc";
 import { UserBadge } from "./UserBadge";
+import { CallPanel } from "./call/CallPanel";
 
 export type LiveChatPanelMode = "compact" | "full";
 
-type ConnectionState = "connecting" | "open" | "closed" | "error";
 type PendingMessageStatus = "sending" | "failed";
 
 type LiveChatMessageView =
@@ -152,7 +152,9 @@ function replacePendingMessage(
   return [...next, { kind: "sent" as const, message }].slice(-300);
 }
 
-function markPendingMessagesFailed(list: LiveChatMessageView[]): LiveChatMessageView[] {
+function markPendingMessagesFailed(
+  list: LiveChatMessageView[],
+): LiveChatMessageView[] {
   return list.map((item) => {
     if (item.kind === "pending" && item.status === "sending") {
       return { ...item, status: "failed" };
@@ -161,36 +163,24 @@ function markPendingMessagesFailed(list: LiveChatMessageView[]): LiveChatMessage
   });
 }
 
-function parseJsonServerEvent(raw: string): LiveChatServerEvent | null {
-  try {
-    const parsed = JSON.parse(raw) as LiveChatServerEvent;
-    if (typeof parsed === "object" && parsed !== null && "type" in parsed) {
-      return parsed;
-    }
-  } catch (err) {
-    console.error("Failed to parse live chat event:", err);
-  }
-  return null;
-}
-
 export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
+  const socket = useLiveChatSocket();
+  const rtc = useRtc();
+
   const [messages, setMessages] = createSignal<LiveChatMessageView[]>([]);
   const [input, setInput] = createSignal("");
   const [actor, setActor] = createSignal<ChatActor | null>(null);
   const [typingActors, setTypingActors] = createSignal<ChatActor[]>([]);
-  const [connectionState, setConnectionState] =
-    createSignal<ConnectionState>("connecting");
   const [connectedCount, setConnectedCount] = createSignal(0);
   const [error, setError] = createSignal<string | null>(null);
-  const [nextBeforeMessageId, setNextBeforeMessageId] =
-    createSignal<string | null>(null);
+  const [nextBeforeMessageId, setNextBeforeMessageId] = createSignal<
+    string | null
+  >(null);
   const [hasMore, setHasMore] = createSignal(false);
   const [loadingOlder, setLoadingOlder] = createSignal(false);
 
-  let ws: WebSocket | null = null;
-  let disposed = false;
-  let reconnectAttempts = 0;
-  let reconnectTimer: number | undefined;
+  const connectionState = socket.connectionState;
+
   let typingStopTimer: number | undefined;
   let typingRefreshTimer: number | undefined;
   let typingExpiryTimer: number | undefined;
@@ -264,55 +254,15 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     restoreOrScrollAfterRender();
   });
 
-  const RECONNECT_BASE_MS = 1000;
-  const RECONNECT_MAX_MS = 15000;
-
-  const scheduleReconnect = () => {
-    if (disposed) return;
-    if (reconnectTimer !== undefined) return;
-    const delay = Math.min(
-      RECONNECT_BASE_MS * 2 ** reconnectAttempts,
-      RECONNECT_MAX_MS,
-    );
-    reconnectAttempts += 1;
-    reconnectTimer = window.setTimeout(() => {
-      reconnectTimer = undefined;
-      connect();
-    }, delay);
-  };
-
-  const connect = () => {
-    if (disposed) return;
-    setConnectionState("connecting");
-    setError(null);
-    ws = new WebSocket(liveChatWebSocketUrl(), [LIVE_CHAT_BINARY_PROTOCOL]);
-    ws.binaryType = "arraybuffer";
-
-    ws.onopen = () => {
-      reconnectAttempts = 0;
-      setConnectionState("open");
-    };
-    ws.onclose = () => {
-      setConnectionState("closed");
-      scheduleReconnect();
-    };
-    ws.onerror = () => {
-      setConnectionState("error");
+  // Surface transport errors from the shared socket and clear them on recovery.
+  createEffect(() => {
+    const state = connectionState();
+    if (state === "error") {
       setError(t("live_chat.connection_failed"));
-      // onclose fires after onerror and schedules the reconnect.
-    };
-    ws.onmessage = (event) => {
-      const serverEvent = parseServerEventData(event.data);
-      if (!serverEvent) return;
-      handleServerEvent(serverEvent);
-    };
-  };
-
-  const parseServerEventData = (data: unknown): LiveChatServerEvent | null => {
-    if (typeof data === "string") return parseJsonServerEvent(data);
-    if (data instanceof ArrayBuffer) return decodeServerEventFrame(data);
-    return null;
-  };
+    } else if (state === "open") {
+      setError(null);
+    }
+  });
 
   const handleServerEvent = (event: LiveChatServerEvent) => {
     switch (event.type) {
@@ -368,31 +318,31 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           setMessages(markPendingMessagesFailed);
         }
         break;
+      case "rtc":
+        // Handled by the RTC context; ignored here.
+        break;
     }
   };
 
   const sendEvent = (event: LiveChatClientEvent): boolean => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
+    if (connectionState() !== "open") {
       setError(t("live_chat.not_connected"));
       return false;
     }
     try {
-      if (ws.protocol === LIVE_CHAT_BINARY_PROTOCOL) {
+      if (socket.isBinary() && event.type !== "rtc") {
         switch (event.type) {
           case "send_message":
-            ws.send(encodeSendMessageFrame(event.client_message_id, event.body));
-            break;
+            return socket.send(
+              encodeSendMessageFrame(event.client_message_id, event.body),
+            );
           case "typing":
-            ws.send(encodeTypingFrame(event.is_typing));
-            break;
+            return socket.send(encodeTypingFrame(event.is_typing));
           case "heartbeat":
-            ws.send(encodePingFrame(parseHeartbeatNonce(event.nonce)));
-            break;
+            return socket.send(encodePingFrame(parseHeartbeatNonce(event.nonce)));
         }
-      } else {
-        ws.send(JSON.stringify(event));
       }
-      return true;
+      return socket.send(JSON.stringify(event));
     } catch (err) {
       console.error("Failed to send live chat event:", err);
       setError(t("live_chat.send_failed"));
@@ -531,19 +481,20 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     }
   };
 
-  onMount(connect);
+  onMount(() => {
+    const release = socket.acquire();
+    const unsubscribe = socket.onEvent(handleServerEvent);
+    onCleanup(() => {
+      unsubscribe();
+      release();
+    });
+  });
 
   onCleanup(() => {
-    disposed = true;
-    if (reconnectTimer !== undefined) {
-      window.clearTimeout(reconnectTimer);
-      reconnectTimer = undefined;
-    }
     stopTyping();
     if (typingExpiryTimer !== undefined) {
       window.clearTimeout(typingExpiryTimer);
     }
-    ws?.close();
   });
 
   return (
@@ -559,12 +510,23 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
             {connectionState()} · {connectedCount()} {t("live_chat.online")}
           </p>
         </div>
-        <Show when={!isFull()}>
-          <A href="/live-chat" class={pageStyles.buttonSecondary}>
-            {t("live_chat.open")}
-          </A>
-        </Show>
+        <div class="flex items-center gap-2">
+          <Show when={!isFull() && rtc.participantCount() > 0}>
+            <span class={pageStyles.callPill}>
+              {rtc.participantCount()} in call
+            </span>
+          </Show>
+          <Show when={!isFull()}>
+            <A href="/live-chat" class={pageStyles.buttonSecondary}>
+              {t("live_chat.open")}
+            </A>
+          </Show>
+        </div>
       </header>
+
+      <Show when={isFull()}>
+        <CallPanel />
+      </Show>
 
       <div
         ref={messagesScrollEl}

@@ -45,6 +45,24 @@ export const pageStyles = {
   chipCompleted:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   chipFailed: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+  callPanel:
+    "border-b border-slate-200/80 dark:border-slate-800 px-4 py-3 space-y-3",
+  callHeader: "flex items-center justify-between gap-2",
+  callGrid: "grid gap-2 grid-cols-2 sm:grid-cols-3",
+  callTile:
+    "relative aspect-video overflow-hidden rounded-md border border-slate-200 bg-slate-900 dark:border-slate-800",
+  callVideo: "h-full w-full object-cover",
+  callTileFallback:
+    "absolute inset-0 flex items-center justify-center bg-slate-800 text-slate-200",
+  callAvatar:
+    "flex h-12 w-12 items-center justify-center rounded-full bg-slate-700 object-cover text-lg font-semibold uppercase text-slate-100",
+  callTileOverlay:
+    "absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/50 px-2 py-1 text-xs text-white",
+  callControls: "flex flex-wrap items-center gap-2",
+  callError:
+    "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300",
+  callPill:
+    "inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
 };
 
 /**

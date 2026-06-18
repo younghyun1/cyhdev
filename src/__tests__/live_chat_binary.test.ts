@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   decodeServerEventFrame,
   encodePingFrame,
+  encodeRtcIceFrame,
+  encodeRtcJoinFrame,
+  encodeRtcLeaveFrame,
+  encodeRtcMediaStateFrame,
   encodeSendMessageFrame,
   encodeTypingFrame,
 } from "../services/live_chat_binary";
@@ -137,6 +141,144 @@ describe("live chat binary server frames", () => {
     expect(decodeServerEventFrame(buffer([0xff]))).toBeNull();
     expect(decodeServerEventFrame(buffer([0x85, 0, 0]))).toBeNull();
     expect(decodeServerEventFrame(buffer([0x85, 0, 0, 0, 1, 0]))).toBeNull();
+  });
+});
+
+describe("live chat RTC binary frames", () => {
+  it("encodes rtc join with media flags and sdp", () => {
+    const sdp = "v=0";
+    const frame = bytes(encodeRtcJoinFrame(sdp, true, false));
+    expect(frame.slice(0, 4)).toEqual([0x05, 0x01, 1, 0]);
+    expect(frame.slice(4, 6)).toEqual([0, sdp.length]);
+    expect(ascii(frame.slice(6))).toBe(sdp);
+  });
+
+  it("encodes rtc ice with present mid and absent mline", () => {
+    expect(bytes(encodeRtcIceFrame("cand", "0", null))).toEqual([
+      0x05,
+      0x03,
+      ...str("cand"),
+      1,
+      ...str("0"),
+      0,
+    ]);
+  });
+
+  it("encodes rtc ice with absent mid and present mline", () => {
+    expect(bytes(encodeRtcIceFrame("cand", null, 7))).toEqual([
+      0x05,
+      0x03,
+      ...str("cand"),
+      0,
+      1,
+      0,
+      7,
+    ]);
+  });
+
+  it("encodes leave and media_state frames", () => {
+    expect(bytes(encodeRtcLeaveFrame())).toEqual([0x05, 0x04]);
+    expect(bytes(encodeRtcMediaStateFrame(true, false))).toEqual([
+      0x05, 0x05, 1, 0,
+    ]);
+  });
+
+  it("decodes rtc answer and offer server frames", () => {
+    const sdp = "v=0";
+    expect(decodeServerEventFrame(buffer([0x90, 0x01, ...str(sdp)]))).toEqual({
+      type: "rtc",
+      kind: "answer",
+      sdp,
+    });
+    expect(decodeServerEventFrame(buffer([0x90, 0x02, ...str(sdp)]))).toEqual({
+      type: "rtc",
+      kind: "offer",
+      sdp,
+    });
+  });
+
+  it("decodes rtc ice server frame with optional fields", () => {
+    expect(
+      decodeServerEventFrame(
+        buffer([0x90, 0x03, ...str("cand"), 1, ...str("0"), 0]),
+      ),
+    ).toEqual({
+      type: "rtc",
+      kind: "ice",
+      candidate: "cand",
+      sdp_mid: "0",
+      sdp_mline_index: null,
+    });
+  });
+
+  it("decodes rtc peer_state with guest actor", () => {
+    const frame = [
+      0x90,
+      0x04,
+      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
+      1,
+      1,
+      0,
+    ];
+    expect(decodeServerEventFrame(buffer(frame))).toEqual({
+      type: "rtc",
+      kind: "peer_state",
+      actor: {
+        actor_key: { type: "guest", value: "203.0.113.9" },
+        sender_kind: 2,
+        user_id: null,
+        guest_ip: "203.0.113.9",
+        display_name: "curious otter",
+        country_flag: "🇺🇸",
+        user_profile_picture_url: null,
+      },
+      phase: "joined",
+      mic_on: true,
+      cam_on: false,
+    });
+  });
+
+  it("decodes rtc roster server frame", () => {
+    const frame = [
+      0x90,
+      0x05,
+      1,
+      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
+      0,
+      1,
+    ];
+    expect(decodeServerEventFrame(buffer(frame))).toEqual({
+      type: "rtc",
+      kind: "roster",
+      participants: [
+        {
+          actor: {
+            actor_key: { type: "guest", value: "203.0.113.9" },
+            sender_kind: 2,
+            user_id: null,
+            guest_ip: "203.0.113.9",
+            display_name: "curious otter",
+            country_flag: "🇺🇸",
+            user_profile_picture_url: null,
+          },
+          mic_on: false,
+          cam_on: true,
+        },
+      ],
+    });
+  });
+
+  it("decodes rtc error server frame", () => {
+    expect(
+      decodeServerEventFrame(
+        buffer([0x90, 0x06, ...str("room_full"), ...str("full")]),
+      ),
+    ).toEqual({
+      type: "rtc",
+      kind: "error",
+      code: "room_full",
+      message: "full",
+    });
   });
 });
 

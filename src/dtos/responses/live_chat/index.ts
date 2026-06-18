@@ -49,6 +49,37 @@ export interface LiveChatCacheStatsResponse {
   connected_count: number;
 }
 
+/// One participant in a call roster.
+export interface RtcParticipant {
+  actor: ChatActor;
+  mic_on: boolean;
+  cam_on: boolean;
+}
+
+export type RtcPeerPhase = "joined" | "left";
+
+/// WebRTC signaling sent from the SFU. Mirrors the Rust `RtcServerSignal`
+/// (serde internally tagged with "kind"). Over JSON these are flattened under
+/// the live-chat server event as `{ type: "rtc", kind, ... }`.
+export type RtcServerSignal =
+  | { kind: "answer"; sdp: string }
+  | { kind: "offer"; sdp: string }
+  | {
+      kind: "ice";
+      candidate: string;
+      sdp_mid: string | null;
+      sdp_mline_index: number | null;
+    }
+  | {
+      kind: "peer_state";
+      actor: ChatActor;
+      phase: RtcPeerPhase;
+      mic_on: boolean;
+      cam_on: boolean;
+    }
+  | { kind: "roster"; participants: RtcParticipant[] }
+  | { kind: "error"; code: string; message: string };
+
 export type LiveChatServerEvent =
   | {
       type: "hello";
@@ -88,4 +119,5 @@ export type LiveChatServerEvent =
       type: "error";
       code: string;
       message: string;
-    };
+    }
+  | ({ type: "rtc" } & RtcServerSignal);

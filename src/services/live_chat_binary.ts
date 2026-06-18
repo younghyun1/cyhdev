@@ -3,6 +3,8 @@ import type {
   ChatActorKey,
   LiveChatMessageItem,
   LiveChatServerEvent,
+  RtcParticipant,
+  RtcPeerPhase,
 } from "../dtos/responses/live_chat";
 
 export const LIVE_CHAT_BINARY_PROTOCOL = "livechat.bin.v1";
@@ -11,6 +13,7 @@ const CLIENT_SEND_MESSAGE = 0x01;
 const CLIENT_TYPING_START = 0x02;
 const CLIENT_TYPING_STOP = 0x03;
 const CLIENT_PING = 0x04;
+const CLIENT_RTC = 0x05;
 
 const SERVER_HELLO = 0x81;
 const SERVER_MESSAGE = 0x82;
@@ -19,6 +22,24 @@ const SERVER_TYPING_SET = 0x84;
 const SERVER_PRESENCE = 0x85;
 const SERVER_PONG = 0x86;
 const SERVER_ERROR = 0x87;
+const SERVER_RTC = 0x90;
+
+// RTC client sub-opcodes (second byte after CLIENT_RTC).
+const RTC_C_JOIN = 0x01;
+const RTC_C_ANSWER = 0x02;
+const RTC_C_ICE = 0x03;
+const RTC_C_LEAVE = 0x04;
+const RTC_C_MEDIA_STATE = 0x05;
+
+// RTC server sub-opcodes (second byte after SERVER_RTC).
+const RTC_S_ANSWER = 0x01;
+const RTC_S_OFFER = 0x02;
+const RTC_S_ICE = 0x03;
+const RTC_S_PEER_STATE = 0x04;
+const RTC_S_ROSTER = 0x05;
+const RTC_S_ERROR = 0x06;
+
+const RTC_PHASE_LEFT = 0x00;
 
 const ACTOR_USER = 0x01;
 const ACTOR_GUEST = 0x02;
@@ -55,6 +76,71 @@ export function encodePingFrame(nonce: bigint): ArrayBuffer {
   const writer = new BinaryWriter();
   writer.writeU8(CLIENT_PING);
   writer.writeU64(nonce);
+  return writer.finish();
+}
+
+export function encodeRtcJoinFrame(
+  sdp: string,
+  wantAudio: boolean,
+  wantVideo: boolean,
+): ArrayBuffer {
+  const writer = new BinaryWriter();
+  writer.writeU8(CLIENT_RTC);
+  writer.writeU8(RTC_C_JOIN);
+  writer.writeU8(wantAudio ? 1 : 0);
+  writer.writeU8(wantVideo ? 1 : 0);
+  writer.writeString(sdp);
+  return writer.finish();
+}
+
+export function encodeRtcAnswerFrame(sdp: string): ArrayBuffer {
+  const writer = new BinaryWriter();
+  writer.writeU8(CLIENT_RTC);
+  writer.writeU8(RTC_C_ANSWER);
+  writer.writeString(sdp);
+  return writer.finish();
+}
+
+export function encodeRtcIceFrame(
+  candidate: string,
+  sdpMid: string | null,
+  sdpMlineIndex: number | null,
+): ArrayBuffer {
+  const writer = new BinaryWriter();
+  writer.writeU8(CLIENT_RTC);
+  writer.writeU8(RTC_C_ICE);
+  writer.writeString(candidate);
+  if (sdpMid !== null) {
+    writer.writeU8(1);
+    writer.writeString(sdpMid);
+  } else {
+    writer.writeU8(0);
+  }
+  if (sdpMlineIndex !== null) {
+    writer.writeU8(1);
+    writer.writeU16(sdpMlineIndex);
+  } else {
+    writer.writeU8(0);
+  }
+  return writer.finish();
+}
+
+export function encodeRtcLeaveFrame(): ArrayBuffer {
+  const writer = new BinaryWriter();
+  writer.writeU8(CLIENT_RTC);
+  writer.writeU8(RTC_C_LEAVE);
+  return writer.finish();
+}
+
+export function encodeRtcMediaStateFrame(
+  micOn: boolean,
+  camOn: boolean,
+): ArrayBuffer {
+  const writer = new BinaryWriter();
+  writer.writeU8(CLIENT_RTC);
+  writer.writeU8(RTC_C_MEDIA_STATE);
+  writer.writeU8(micOn ? 1 : 0);
+  writer.writeU8(camOn ? 1 : 0);
   return writer.finish();
 }
 
@@ -119,6 +205,11 @@ export function decodeServerEventFrame(buffer: ArrayBuffer): LiveChatServerEvent
         const message = reader.readString();
         reader.finish();
         return { type: "error", code, message };
+      }
+      case SERVER_RTC: {
+        const event = reader.readRtcServerSignal();
+        reader.finish();
+        return event;
       }
       default:
         return null;
@@ -334,6 +425,61 @@ class BinaryReader {
       message_edited_at: messageEditedAt,
       message_deleted_at: messageDeletedAt,
     };
+  }
+
+  readRtcServerSignal(): LiveChatServerEvent {
+    const subOp = this.readU8();
+    switch (subOp) {
+      case RTC_S_ANSWER:
+        return { type: "rtc", kind: "answer", sdp: this.readString() };
+      case RTC_S_OFFER:
+        return { type: "rtc", kind: "offer", sdp: this.readString() };
+      case RTC_S_ICE: {
+        const candidate = this.readString();
+        const sdpMid = this.readU8() !== 0 ? this.readString() : null;
+        const sdpMlineIndex = this.readU8() !== 0 ? this.readU16() : null;
+        return {
+          type: "rtc",
+          kind: "ice",
+          candidate,
+          sdp_mid: sdpMid,
+          sdp_mline_index: sdpMlineIndex,
+        };
+      }
+      case RTC_S_PEER_STATE: {
+        const actor = this.readActor();
+        const phase: RtcPeerPhase =
+          this.readU8() === RTC_PHASE_LEFT ? "left" : "joined";
+        const micOn = this.readU8() !== 0;
+        const camOn = this.readU8() !== 0;
+        return {
+          type: "rtc",
+          kind: "peer_state",
+          actor,
+          phase,
+          mic_on: micOn,
+          cam_on: camOn,
+        };
+      }
+      case RTC_S_ROSTER: {
+        const count = this.readU8();
+        const participants: RtcParticipant[] = [];
+        for (let i = 0; i < count; i += 1) {
+          const actor = this.readActor();
+          const micOn = this.readU8() !== 0;
+          const camOn = this.readU8() !== 0;
+          participants.push({ actor, mic_on: micOn, cam_on: camOn });
+        }
+        return { type: "rtc", kind: "roster", participants };
+      }
+      case RTC_S_ERROR: {
+        const code = this.readString();
+        const message = this.readString();
+        return { type: "rtc", kind: "error", code, message };
+      }
+      default:
+        throw new Error("Unknown RTC server sub-opcode");
+    }
   }
 
   private readBytes(len: number): Uint8Array {

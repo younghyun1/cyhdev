@@ -13,6 +13,8 @@ import { fetchServerBuildInfo } from "./services/api";
 import { setAuthenticated, setSuperuser, setUser } from "./state/auth";
 import { updateServerBuildInfo } from "./state/server_info";
 import { applyLocale, loadUiTextBundle, locale, t } from "./state/i18n";
+import { LiveChatSocketProvider } from "./state/live_chat_socket";
+import { RtcProvider } from "./state/rtc";
 
 const App: ParentComponent = (props) => {
   onMount(async () => {
@@ -70,37 +72,41 @@ const App: ParentComponent = (props) => {
   });
 
   return (
-    <div
-      id="app-root"
-      class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-slate-100 overflow-x-hidden"
-    >
-      <TopBar />
-
-      <main class="flex-1 min-h-0 pb-10 pt-12 sm:pt-14">
-        <ErrorBoundary
-          fallback={(err, reset) => (
-            <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
-              <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
-                {t("app.error.title")}
-              </h2>
-              <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
-                {err instanceof Error ? err.message : t("app.error.unknown")}
-              </p>
-              <button
-                class="px-4 py-2 text-sm font-medium rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                onClick={reset}
-              >
-                {t("app.error.try_again")}
-              </button>
-            </div>
-          )}
+    <LiveChatSocketProvider>
+      <RtcProvider>
+        <div
+          id="app-root"
+          class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-slate-100 overflow-x-hidden"
         >
-          <Suspense>{props.children}</Suspense>
-        </ErrorBoundary>
-      </main>
+          <TopBar />
 
-      <BottomBar />
-    </div>
+          <main class="flex-1 min-h-0 pb-10 pt-12 sm:pt-14">
+            <ErrorBoundary
+              fallback={(err, reset) => (
+                <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
+                  <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
+                    {t("app.error.title")}
+                  </h2>
+                  <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
+                    {err instanceof Error ? err.message : t("app.error.unknown")}
+                  </p>
+                  <button
+                    class="px-4 py-2 text-sm font-medium rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onClick={reset}
+                  >
+                    {t("app.error.try_again")}
+                  </button>
+                </div>
+              )}
+            >
+              <Suspense>{props.children}</Suspense>
+            </ErrorBoundary>
+          </main>
+
+          <BottomBar />
+        </div>
+      </RtcProvider>
+    </LiveChatSocketProvider>
   );
 };
 
