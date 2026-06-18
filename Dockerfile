@@ -40,5 +40,8 @@ ENV DB_URL="postgres://be_admin:REDACTED@host.docker.internal/be_db"
 # Expose the application port
 EXPOSE 443
 
+# Expose the WebRTC SFU UDP mux port (set RTC_UDP_MUX_PORT to match when RTC is enabled)
+EXPOSE 3478/udp
+
 # Set the command to run the application
 CMD ["/bin/server"]
