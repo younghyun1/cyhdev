@@ -9,7 +9,7 @@ export default function NotFound() {
       >
         <div class={`${pageStyles.cardPadded} w-full`}>
           <div class="flex items-start gap-4">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-200/60 dark:ring-amber-500/30">
+            <div class="flex h-12 w-12 items-center justify-center rounded-sm bg-accent-soft text-accent ring-1 ring-accent/30">
               <span class="text-xl" aria-hidden="true">
                 🚧
               </span>

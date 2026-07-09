@@ -220,7 +220,7 @@ function SignupPage() {
             />
 
             <Show when={passwordsMismatch()}>
-              <div class="mb-2 -mt-2 text-sm text-red-600 dark:text-red-400">
+              <div class="mb-2 -mt-2 text-sm text-danger">
                 {t("auth.signup.password_mismatch")}
               </div>
             </Show>

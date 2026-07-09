@@ -210,7 +210,7 @@ function EditProfilePage() {
     }
   };
 
-  const readOnlyInputClass = `${pageStyles.input} bg-slate-100 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 disabled:opacity-70`;
+  const readOnlyInputClass = `${pageStyles.input} bg-surface-2 text-ink disabled:opacity-70`;
 
   return (
     <main class={pageStyles.page}>
@@ -224,7 +224,7 @@ function EditProfilePage() {
             <h2 class="text-lg font-semibold">{t("profile.change_picture")}</h2>
             <hr class={`my-3 ${pageStyles.divider}`} />
             <div class="flex items-start gap-6">
-              <div class="w-32 h-32 rounded-full overflow-hidden ring-2 ring-gray-200 dark:ring-gray-700 shadow">
+              <div class="w-32 h-32 rounded-full overflow-hidden ring-2 ring-line shadow">
                 <img
                   src={
                     selectedPreviewUrl() ||
@@ -270,13 +270,13 @@ function EditProfilePage() {
 
                 <Show when={uploading()}>
                   <div class="w-full mt-4">
-                    <div class="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-2 bg-surface-2 rounded-full overflow-hidden">
                       <div
-                        class="h-full bg-slate-900 dark:bg-slate-100 transition-all"
+                        class="h-full bg-ink transition-all"
                         style={{ width: `${progress()}%` }}
                       />
                     </div>
-                    <div class="text-xs mt-1 text-gray-600 dark:text-gray-300">
+                    <div class="text-xs mt-1 text-ink-muted">
                       {progress()}%
                     </div>
                   </div>

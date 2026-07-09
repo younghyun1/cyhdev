@@ -36,7 +36,7 @@ export default function UserInfoPage() {
                   <Show
                     when={publicUser().user_profile_picture_url}
                     fallback={
-                      <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 font-mono text-2xl font-bold uppercase text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono text-2xl font-bold uppercase text-ink-muted">
                         {publicUser().user_name.slice(0, 1)}
                       </div>
                     }
@@ -44,7 +44,7 @@ export default function UserInfoPage() {
                     <img
                       src={publicUser().user_profile_picture_url ?? undefined}
                       alt={publicUser().user_name}
-                      class="h-16 w-16 rounded-full border border-slate-200 object-cover dark:border-slate-700"
+                      class="h-16 w-16 rounded-full border border-line object-cover"
                     />
                   </Show>
                   <div>

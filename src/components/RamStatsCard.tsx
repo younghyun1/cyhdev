@@ -146,7 +146,7 @@ export default function RamStatsCard(props: {
       </div>
 
       <div
-        class="relative flex-1 border rounded-xl shadow-sm overflow-hidden min-h-62.5"
+        class="relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
         style={{
           border: `1px solid ${C().border}`,
           background: C().bg,

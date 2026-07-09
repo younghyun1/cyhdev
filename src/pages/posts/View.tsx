@@ -24,7 +24,8 @@ import toml from "highlight.js/lib/languages/ini";
 import html from "highlight.js/lib/languages/xml";
 import css from "highlight.js/lib/languages/css";
 import dockerfile from "highlight.js/lib/languages/dockerfile";
-import "highlight.js/styles/github-dark.css";
+// Code-block colors come from the site theme (src/styles/code.css),
+// imported globally via index.css.
 
 hljs.registerLanguage("rust", rust);
 hljs.registerLanguage("sql", sql);
@@ -448,10 +449,10 @@ export default function PostViewPage() {
 
           return (
             <div
-              class={`mt-2 pl-3 md:pl-4 border-l border-gray-200 dark:border-gray-700`}
+              class={`mt-2 pl-3 md:pl-4 border-l border-line`}
               style={{ "margin-left": `${depth * 16}px` }}
             >
-              <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                 <UserBadge
                   userName={comment().user_name ?? t("common.unknown")}
                   profilePictureUrl={comment().user_profile_picture_url}
@@ -465,7 +466,7 @@ export default function PostViewPage() {
               <Show
                 when={editOpen[comment().comment_id]}
                 fallback={
-                  <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                  <div class="text-ink whitespace-pre-wrap">
                     {comment().comment_content}
                   </div>
                 }
@@ -479,7 +480,7 @@ export default function PostViewPage() {
                     }
                   />
                   <Show when={editError[comment().comment_id]}>
-                    <div class="text-sm text-red-600">
+                    <div class="text-sm text-danger">
                       {editError[comment().comment_id]}
                     </div>
                   </Show>
@@ -508,7 +509,7 @@ export default function PostViewPage() {
               </Show>
               <div class="flex items-center gap-2 mt-2 mb-1">
                 <button
-                  class={`text-lg px-1 ${voteState() === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
+                  class={`text-lg px-1 ${voteState() === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
                   onClick={() =>
                     handleVote("comment", true, {
                       postId: postId(),
@@ -520,12 +521,12 @@ export default function PostViewPage() {
                   ▲
                 </button>
 
-                <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                <span class="text-xs font-semibold tabular-nums text-ink">
                   {upvotes() - downvotes()}
                 </span>
 
                 <button
-                  class={`text-lg px-1 ${voteState() === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
+                  class={`text-lg px-1 ${voteState() === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
                   onClick={() =>
                     handleVote("comment", false, {
                       postId: postId(),
@@ -559,7 +560,7 @@ export default function PostViewPage() {
                     {t("common.edit")}
                   </button>
                   <button
-                    class="text-xs text-red-600 hover:underline dark:text-red-400"
+                    class="text-xs text-danger hover:underline"
                     onClick={() => handleDeleteComment(comment().comment_id)}
                   >
                     {t("common.delete")}
@@ -577,7 +578,7 @@ export default function PostViewPage() {
                     placeholder={t("blog.comments.reply_placeholder")}
                   />
                   <Show when={replyError[comment().comment_id]}>
-                    <div class="text-sm text-red-600">
+                    <div class="text-sm text-danger">
                       {replyError[comment().comment_id]}
                     </div>
                   </Show>
@@ -677,9 +678,9 @@ export default function PostViewPage() {
               return (
                 <>
                   <div class="mb-4 flex flex-row items-start gap-4">
-                    <div class="flex flex-col items-center pr-4 select-none border-r border-slate-200 dark:border-slate-800 mr-2">
+                    <div class="flex flex-col items-center pr-4 select-none border-r border-line mr-2">
                       <button
-                        class={`text-2xl transition ${postVoteState() === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
+                        class={`text-2xl transition ${postVoteState() === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
                         onClick={() =>
                           handleVote("post", true, {
                             postId: data().post.post_id,
@@ -690,12 +691,12 @@ export default function PostViewPage() {
                         ▲
                       </button>
 
-                      <span class="text-sm font-semibold text-center my-1 text-gray-800 dark:text-gray-100">
+                      <span class="text-sm font-semibold text-center my-1 tabular-nums text-ink">
                         {postUpvotes() - postDownvotes()}
                       </span>
 
                       <button
-                        class={`text-2xl transition ${postVoteState() === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
+                        class={`text-2xl transition ${postVoteState() === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
                         onClick={() =>
                           handleVote("post", false, {
                             postId: data().post.post_id,
@@ -713,7 +714,7 @@ export default function PostViewPage() {
                             {data().post.post_title}
                           </h1>
                           <Show when={!data().post.post_is_published}>
-                            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            <span class="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-accent">
                               {t("common.draft")}
                             </span>
                           </Show>
@@ -742,7 +743,7 @@ export default function PostViewPage() {
                           </div>
                         </Show>
                       </div>
-                      <div class="flex items-center text-sm text-gray-400 mb-2 flex-wrap gap-y-1">
+                      <div class="flex items-center text-sm text-ink-muted mb-2 flex-wrap gap-y-1">
                         <UserBadge
                           userName={
                             data().user_badge_info?.user_name ??
@@ -761,12 +762,12 @@ export default function PostViewPage() {
                             data().post.post_created_at,
                           ).toLocaleString()}
                         </span>
-                        <span class="ml-3 text-gray-500">•</span>
+                        <span class="ml-3 text-ink-faint">•</span>
                         <span>
                           {data().post.post_view_count ?? 0}{" "}
                           {t("common.views")}
                         </span>
-                        <span class="ml-3 text-gray-500">•</span>
+                        <span class="ml-3 text-ink-faint">•</span>
                         <span>
                           {data().post.post_share_count ?? 0}{" "}
                           {t("common.shares")}
@@ -781,7 +782,7 @@ export default function PostViewPage() {
                             {(tag) => (
                               <A
                                 href={`/blog?q=${encodeURIComponent(tag)}&type=tag`}
-                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors"
+                                class="inline-flex items-center px-2.5 py-1 rounded-full font-mono text-xs font-medium bg-accent-soft text-accent hover:opacity-80 transition-opacity"
                               >
                                 #{tag}
                               </A>
@@ -790,7 +791,7 @@ export default function PostViewPage() {
                         </div>
                       </Show>
                       <div
-                        class="prose dark:prose-invert max-w-none mb-3"
+                        class="prose mb-3"
                         // eslint-disable-next-line solid/no-innerhtml
                         innerHTML={renderedPostHtml()}
                         ref={(el) => {
@@ -810,7 +811,7 @@ export default function PostViewPage() {
                       <h2 class="text-xl font-semibold">
                         {t("blog.comments.title")}
                       </h2>
-                      <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                      <label class="text-sm text-ink-muted flex items-center gap-2">
                         <span>{t("blog.comments.sort_by")}</span>
                         <select
                           class={pageStyles.select}
@@ -850,7 +851,7 @@ export default function PostViewPage() {
                         placeholder={t("blog.comments.placeholder")}
                       />
                       <Show when={commentError()}>
-                        <span class="text-red-600">{commentError()}</span>
+                        <span class="text-danger">{commentError()}</span>
                       </Show>
                       <button
                         class={`${pageStyles.buttonPrimary} self-end`}

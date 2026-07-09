@@ -549,20 +549,20 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           <For each={visibleMessages()}>
             {(message) => (
               <article
-                class={`rounded-md border px-3 py-2 text-sm ${
+                class={`rounded-sm border px-3 py-2 text-sm ${
                   message.kind === "pending"
                     ? message.status === "failed"
-                      ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
-                      : "border-slate-200 bg-slate-100 text-slate-500 opacity-70 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
-                    : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950"
+                      ? "border-danger/30 bg-danger/10 text-danger"
+                      : "border-line bg-surface-2 text-ink-muted opacity-70"
+                    : "border-line bg-surface"
                 }`}
               >
-                <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
                   <span
                     class={`font-mono font-semibold ${
                       message.kind === "pending"
                         ? ""
-                        : "text-slate-700 dark:text-slate-200"
+                        : "text-ink"
                     }`}
                   >
                     <Show
@@ -590,7 +590,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                   class={`whitespace-pre-wrap break-words ${
                     message.kind === "pending"
                       ? ""
-                      : "text-slate-900 dark:text-slate-100"
+                      : "text-ink"
                   }`}
                 >
                   {messageBody(message)}
@@ -603,13 +603,13 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       </div>
 
       <Show when={typingText()}>
-        <div class="px-4 pb-2 text-xs text-slate-500 dark:text-slate-400">
+        <div class="px-4 pb-2 text-xs text-ink-muted">
           {typingText()}
         </div>
       </Show>
 
       <Show when={error()}>
-        <div class="mx-4 mb-2 text-xs text-red-600 dark:text-red-300">
+        <div class="mx-4 mb-2 text-xs text-danger">
           {error()}
         </div>
       </Show>
@@ -626,7 +626,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
             onInput={(event) => handleInput(event.currentTarget.value)}
             placeholder={t("live_chat.message_placeholder")}
           />
-          <div class="mt-1 text-right font-mono text-[0.65rem] text-slate-500 dark:text-slate-400">
+          <div class="mt-1 text-right font-mono text-[0.65rem] text-ink-muted">
             {inputCharCount()}/{LIVE_CHAT_MAX_MESSAGE_CHARS}
           </div>
         </div>

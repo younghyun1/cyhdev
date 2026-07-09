@@ -30,17 +30,17 @@ export default function About() {
   return (
     <main class={pageStyles.page}>
       <section
-        class={`${pageStyles.pageInnerNarrow} text-slate-700 dark:text-slate-100`}
+        class={`${pageStyles.pageInnerNarrow} text-ink`}
       >
-        <div class="border-l-4 border-slate-300 dark:border-slate-700 pl-3 mb-8">
+        <div class="border-l-4 border-line-strong pl-3 mb-8">
           <h1 class="text-2xl font-bold mb-1 tracking-tight">About</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
+          <p class="text-xs text-ink-muted">
             Last updated: 2025-12-08
           </p>
         </div>
 
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-4 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-4 border-b border-line pb-2">
             1. Introduction
           </h2>
 
@@ -50,13 +50,13 @@ export default function About() {
                 Young Hyun Chi / 지영현 / 池營賢 / 池营贤
               </h3>
 
-              <p class="text-gray-600 dark:text-gray-400">
+              <p class="text-ink-muted">
                 Backend Software Engineer · Rust / Infrastructure / Data
                 Pipelines / SolidJS
               </p>
             </div>
 
-            <figure class="flex flex-col items-center sm:items-end text-sm text-gray-500 dark:text-gray-400">
+            <figure class="flex flex-col items-center sm:items-end text-sm text-ink-muted">
               <a
                 href="https://cyhdev-img.s3.us-west-1.amazonaws.com/images/05da63f0-0a8e-4d96-807f-280ded45a6d5.avif"
                 target="_blank"
@@ -65,18 +65,18 @@ export default function About() {
                 <img
                   src="https://cyhdev-img.s3.us-west-1.amazonaws.com/thumbnails/05da63f0-0a8e-4d96-807f-280ded45a6d5.avif"
                   alt="Portrait"
-                  class="h-28 w-28 rounded-full object-cover shadow-sm ring-2 ring-white/70 dark:ring-gray-800"
+                  class="h-28 w-28 rounded-full object-cover shadow-sm ring-2 ring-line"
                   loading="lazy"
                 />
               </a>
-              <figcaption class="mt-1 text-xs text-gray-500 dark:text-gray-500 text-center sm:text-right max-w-44" />
+              <figcaption class="mt-1 text-xs text-ink-muted text-center sm:text-right max-w-44" />
             </figure>
           </div>
           <div>
             <h3 class="font-bold mb-2">Contact</h3>
             <ul class="list-none space-y-2 text-sm">
               <li>
-                <span class="w-20 inline-block font-medium text-gray-500">
+                <span class="w-20 inline-block font-medium text-ink-muted">
                   Email:
                 </span>
                 <a href="mailto:younghyun1@gmail.com" class={pageStyles.link}>
@@ -84,7 +84,7 @@ export default function About() {
                 </a>
               </li>
               <li>
-                <span class="w-20 inline-block font-medium text-gray-500">
+                <span class="w-20 inline-block font-medium text-ink-muted">
                   GitHub:
                 </span>
                 <a href="https://github.com/younghyun1" class={pageStyles.link}>
@@ -92,7 +92,7 @@ export default function About() {
                 </a>
               </li>
               <li>
-                <span class="w-20 inline-block font-medium text-gray-500">
+                <span class="w-20 inline-block font-medium text-ink-muted">
                   LinkedIn:
                 </span>
                 <a
@@ -268,7 +268,7 @@ export default function About() {
 
         {/* 2) Professional Career */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             2. Developer Career
           </h2>
 
@@ -277,14 +277,14 @@ export default function About() {
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
                 <h3 class="text-lg font-bold">GenesisNest</h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   Seongnam, South Korea | Jan 2025 - Jul 2025
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Software Engineer
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Developed infrastructure management tools for in-house
                   services and a K‑Pop group official app. Became familiar with
@@ -313,14 +313,14 @@ export default function About() {
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
                 <h3 class="text-lg font-bold">pampam Inc</h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   Seoul, South Korea | Nov 2024 - Dec 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Contract Software Engineer
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Designed PostgreSQL schema and Rust backend for an AI-based
                   YouTube analytics platform, and led deployment efforts on AWS
@@ -341,14 +341,14 @@ export default function About() {
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
                 <h3 class="text-lg font-bold">EAN Technology Co. Ltd</h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   Seoul, South Korea | Aug 2023 - Aug 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Backend Software Engineer (Lead)
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   <b>Samsung C&T Digital Twin Project:</b> Decommissioned a
                   dysfunctional microservice architecture, replacing it with a
@@ -389,14 +389,14 @@ export default function About() {
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
                 <h3 class="text-lg font-bold">Artifyc Inc</h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   Austin, TX (Remote) | Aug 2022 - Mar 2023
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Intern Software Engineer
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Implemented a Discord bot in Python using Reddit API to scrape
                   and post art commission requests.
@@ -415,7 +415,7 @@ export default function About() {
 
         {/* 3) Non-IT Career */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             3. Non-IT Career
           </h2>
 
@@ -425,14 +425,14 @@ export default function About() {
                 <h3 class="text-lg font-bold">
                   Korea Institute of Maritime Science and Technology
                 </h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   Seoul, South Korea | Jun-Jul 2023, Aug 2024
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Translator/Interpreter
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Interpreted (English, Korean, Norwegian) for high-level
                   conferences involving the Norwegian Ambassador and Dongwon
@@ -480,7 +480,7 @@ export default function About() {
                     ROK Army
                   </a>
                 </h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   <a
                     href="https://en.wikipedia.org/wiki/Dongducheon"
                     class={pageStyles.link}
@@ -492,7 +492,7 @@ export default function About() {
                   , South Korea | Mar 2016 - Dec 2017
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 <a
                   href="https://en.wikipedia.org/wiki/Korean_Augmentation_to_the_United_States_Army"
                   class={pageStyles.link}
@@ -503,7 +503,7 @@ export default function About() {
                 </a>{" "}
                 | Instructor | Sergeant
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Served as a liaison soldier and instructor. Educated and
                   administratively in-processed ~6,000 American and Korean
@@ -531,14 +531,14 @@ export default function About() {
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
                 <h3 class="text-lg font-bold">Coupang Inc</h3>
-                <span class="text-sm font-mono text-gray-500">
+                <span class="text-sm font-mono text-ink-muted">
                   South Korea | 2020 - 2022
                 </span>
               </div>
-              <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+              <p class="text-sm font-medium mb-2 text-ink-muted">
                 Loader
               </p>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   Intensive manual labor in logistics warehouses during night
                   shifts.
@@ -550,21 +550,21 @@ export default function About() {
 
         {/* 4) Academics */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             4. Academics
           </h2>
 
           <div class="mb-6">
             <div class="flex flex-wrap justify-between items-baseline mb-2">
               <h3 class="text-lg font-bold">Sungkyunkwan University</h3>
-              <span class="text-sm font-mono text-gray-500">
+              <span class="text-sm font-mono text-ink-muted">
                 Suwon, South Korea | Mar 2015 - Aug 2023
               </span>
             </div>
-            <p class="text-sm font-medium mb-2 text-slate-600 dark:text-slate-400">
+            <p class="text-sm font-medium mb-2 text-ink-muted">
               B. Eng in Software Engineering
             </p>
-            <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <div class="space-y-2 text-sm text-ink">
               <p>
                 Completed a comprehensive course blending computer science, web
                 and embedded software engineering, and electronics engineering.
@@ -584,7 +584,7 @@ export default function About() {
 
           <div>
             <h4 class="font-bold mb-2 text-md">Publications</h4>
-            <ul class="list-disc list-inside text-sm space-y-2 text-gray-700 dark:text-gray-300">
+            <ul class="list-disc list-inside text-sm space-y-2 text-ink">
               <li>
                 <b>
                   Korean Language NLP Model Based Emotional Analysis of Social
@@ -592,7 +592,7 @@ export default function About() {
                 </b>{" "}
                 (IMCOM 2023, IEEE Xplore).
                 <br />
-                <span class="ml-5 block text-xs text-gray-500 mt-1">
+                <span class="ml-5 block text-xs text-ink-muted mt-1">
                   Utilized KoBERT to perform sentiment analysis on social media
                   data during the early COVID pandemic. Awarded Bronze Prize in
                   Graduation Projects.
@@ -604,14 +604,14 @@ export default function About() {
 
         {/* 5) Volunteer work and interests */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             5. Volunteer work & Interests
           </h2>
 
           <div class="grid md:grid-cols-2 gap-8">
             <div>
               <h3 class="font-bold mb-3 text-lg">Personal Projects</h3>
-              <ul class="list-disc list-inside text-sm space-y-2 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-2 text-ink">
                 <li>
                   <b>oohid:</b> A CLI UUIDv4 generator in Rust. ~3x faster than
                   libuuid. Features duplicate checking and Python/JSON
@@ -626,7 +626,7 @@ export default function About() {
 
             <div>
               <h3 class="font-bold mb-3 text-lg">Volunteer Work</h3>
-              <ul class="list-disc list-inside text-sm space-y-2 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-2 text-ink">
                 <li>Taught English at a community center.</li>
                 <li>Volunteered at a disabled people run thrift store.</li>
                 <li>
@@ -640,14 +640,14 @@ export default function About() {
 
         {/* 6) Hobbies */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             6. Hobbies
           </h2>
 
           <div class="space-y-4">
             <div>
               <h3 class="font-bold inline mr-2">Photography</h3>
-              <span class="text-sm text-gray-600 dark:text-gray-400">
+              <span class="text-sm text-ink-muted">
                 Amateur landscape and portrait photographer since 2010. ~30,000
                 photographs archived.
               </span>
@@ -663,7 +663,7 @@ export default function About() {
 
             <div>
               <h3 class="font-bold inline mr-2">Journalism</h3>
-              <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
+              <p class="text-sm text-ink mt-1">
                 Interested in security and human rights issues (West Papua,
                 Ethiopia, Korean Peninsula). Former student journalist for the
                 Sungkyun Times.
@@ -674,14 +674,14 @@ export default function About() {
 
         {/* 7) Qualifications and Other Skills */}
         <section class="mb-12">
-          <h2 class="text-xl font-bold mb-6 border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
             7. Qualifications and Other Skills
           </h2>
 
           <div class="grid md:grid-cols-2 gap-8 mb-8">
             <div>
               <h3 class="font-bold mb-2">Qualifications & Awards</h3>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>
                   <b>TOEFL:</b> 117/120 (CEFR C2)
                 </li>
@@ -699,7 +699,7 @@ export default function About() {
 
             <div>
               <h3 class="font-bold mb-2">Languages</h3>
-              <ul class="list-disc list-inside text-sm space-y-1 text-gray-700 dark:text-gray-300">
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
                 <li>Korean (Native)</li>
                 <li>English (C2)</li>
                 <li>Rudimentary French, German, Spanish, Mandarin</li>

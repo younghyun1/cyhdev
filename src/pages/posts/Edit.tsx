@@ -150,12 +150,12 @@ export default function EditPostPage() {
                 onInput={(e) => setTags(e.currentTarget.value)}
                 class={pageStyles.input}
               />
-              <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <label class="flex items-center gap-2 text-sm text-ink-muted">
                 <input
                   type="checkbox"
                   checked={isPublished()}
                   onChange={(e) => setIsPublished(e.currentTarget.checked)}
-                  class="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                  class="h-4 w-4 rounded-sm border-line text-ink"
                 />
                 {t("blog.post.published")}
               </label>
@@ -165,7 +165,7 @@ export default function EditPostPage() {
                 </div>
               )}
               <div class="w-full min-w-0 mb-8 relative z-0">
-                <label class="font-medium text-slate-700 dark:text-slate-200 mb-2 block">
+                <label class="font-medium text-ink mb-2 block">
                   {t("blog.post.content_markdown")}
                 </label>
                 <MarkdownEditor

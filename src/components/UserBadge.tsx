@@ -31,19 +31,19 @@ export function UserBadge(props: UserBadgeProps) {
         <img
           src={props.profilePictureUrl}
           alt={props.userName}
-          class={`${sizeClasses().img} rounded-full object-cover border border-slate-200 dark:border-slate-700`}
+          class={`${sizeClasses().img} rounded-full object-cover border border-line`}
         />
       </Show>
       <Show when={!props.profilePictureUrl}>
         <span
-          class={`${sizeClasses().img} inline-flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 font-mono font-semibold uppercase text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 ${sizeClasses().text}`}
+          class={`${sizeClasses().img} inline-flex shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono font-semibold uppercase text-ink-muted ${sizeClasses().text}`}
           aria-hidden="true"
         >
           {props.userName.slice(0, 1)}
         </span>
       </Show>
       <span
-        class={`font-medium text-slate-900 dark:text-slate-300 ${sizeClasses().text}`}
+        class={`font-medium text-ink ${sizeClasses().text}`}
       >
         {props.userName}
       </span>

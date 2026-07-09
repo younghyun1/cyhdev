@@ -221,7 +221,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
       <Show
         when={entries().length > 0}
         fallback={
-          <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 px-6 py-12 cursor-pointer hover:border-slate-400 dark:hover:border-slate-500 transition">
+          <label class="flex flex-col items-center justify-center gap-2 rounded-sm border-2 border-dashed border-line px-6 py-12 cursor-pointer hover:border-line-strong transition">
             <span class={`text-sm font-medium ${pageStyles.muted}`}>
               {t("photos.select_images")}
             </span>
@@ -266,10 +266,10 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
                   title={e.file.name}
                   class={`h-2.5 w-2.5 shrink-0 rounded-full transition ${
                     i() === index()
-                      ? "bg-slate-900 dark:bg-slate-100 ring-2 ring-offset-1 ring-slate-400"
+                      ? "bg-ink ring-2 ring-offset-1 ring-line-strong"
                       : entryComplete(e)
-                        ? "bg-emerald-500"
-                        : "bg-slate-300 dark:bg-slate-600"
+                        ? "bg-ok"
+                        : "bg-line-strong"
                   }`}
                 />
               )}
@@ -279,7 +279,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
 
         {/* Swipeable image */}
         <div
-          class="relative flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden select-none"
+          class="relative flex items-center justify-center bg-surface-2 rounded-sm overflow-hidden select-none"
           style={{ height: "260px" }}
           onTouchStart={(e) => (touchStartX = e.touches[0]?.clientX ?? 0)}
           onTouchEnd={(e) => {
@@ -333,7 +333,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
             {t("photos.location")}
           </label>
           <div ref={(el) => initMap(el)} class="map-container" />
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p class="mt-1 text-xs text-ink-muted">
             <Show
               when={current()!.lat !== null && current()!.lon !== null}
               fallback={t("photos.select_location")}
@@ -375,7 +375,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
         </div>
 
         <Show when={incompleteCount() > 0}>
-          <p class="text-xs text-amber-600 dark:text-amber-400">
+          <p class="text-xs text-accent">
             {tx("photos.batch_incomplete", { count: incompleteCount() })}
           </p>
         </Show>
@@ -383,9 +383,9 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
 
       <Show when={props.submitting}>
         <div class="w-full mt-2">
-          <div class="w-full bg-slate-200 dark:bg-slate-700 rounded h-2 overflow-hidden">
+          <div class="w-full bg-surface-2 rounded-sm h-2 overflow-hidden">
             <div
-              class="bg-slate-900 dark:bg-slate-100 h-2 transition-all duration-150"
+              class="bg-ink h-2 transition-all duration-150"
               style={{ width: `${props.progress}%` }}
             />
           </div>

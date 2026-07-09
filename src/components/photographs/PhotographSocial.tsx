@@ -311,10 +311,10 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         const id = () => comment().photograph_comment_id;
         return (
           <div
-            class="mt-2 pl-3 border-l border-gray-200 dark:border-gray-700"
+            class="mt-2 pl-3 border-l border-line"
             style={{ "margin-left": `${depth * COMMENT_INDENT_PX}px` }}
           >
-            <div class="mb-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div class="mb-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <UserBadge
                 userName={comment().user_name || t("common.unknown")}
                 profilePictureUrl={comment().user_profile_picture_url}
@@ -331,7 +331,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
             <Show
               when={editOpen[id()]}
               fallback={
-                <div class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap text-sm">
+                <div class="text-ink whitespace-pre-wrap text-sm">
                   {comment().photograph_comment_content}
                 </div>
               }
@@ -362,17 +362,17 @@ export default function PhotographSocial(props: PhotographSocialProps) {
 
             <div class="flex items-center gap-2 mt-1">
               <button
-                class={`text-lg px-1 ${cv().vs === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
+                class={`text-lg px-1 ${cv().vs === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
                 onClick={() => voteComment(comment(), true)}
                 title={t("blog.vote.upvote")}
               >
                 ▲
               </button>
-              <span class="text-xs font-semibold text-gray-700 dark:text-gray-200">
+              <span class="text-xs font-semibold text-ink">
                 {cv().up - cv().down}
               </span>
               <button
-                class={`text-lg px-1 ${cv().vs === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
+                class={`text-lg px-1 ${cv().vs === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
                 onClick={() => voteComment(comment(), false)}
                 title={t("blog.vote.downvote")}
               >
@@ -400,7 +400,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
                   {t("common.edit")}
                 </button>
                 <button
-                  class="text-xs text-red-600 hover:underline dark:text-red-400"
+                  class="text-xs text-danger hover:underline"
                   onClick={() => removeComment(id())}
                 >
                   {t("common.delete")}
@@ -451,24 +451,24 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <button
-              class={`text-2xl transition ${photoVote().vs === 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400"}`}
+              class={`text-2xl transition ${photoVote().vs === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
               onClick={() => votePhoto(true)}
               aria-label={t("blog.vote.upvote")}
             >
               ▲
             </button>
-            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+            <span class="text-sm font-semibold text-ink">
               {photoVote().up - photoVote().down}
             </span>
             <button
-              class={`text-2xl transition ${photoVote().vs === 1 ? "text-rose-600 dark:text-rose-400 font-bold" : "text-gray-500 hover:text-rose-600 dark:hover:text-rose-400"}`}
+              class={`text-2xl transition ${photoVote().vs === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
               onClick={() => votePhoto(false)}
               aria-label={t("blog.vote.downvote")}
             >
               ▼
             </button>
           </div>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
+          <span class="text-sm text-ink-muted">
             {detail()!.photograph.photograph_view_count} {t("common.views")}
           </span>
         </div>
@@ -476,7 +476,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         {/* Comment composer */}
         <Show when={meId()}>
           <form onSubmit={submitTopComment} class="flex flex-col gap-2">
-            <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            <h3 class="text-sm font-bold text-ink-muted uppercase tracking-wide">
               {t("blog.comments.add")}
             </h3>
             <textarea
@@ -502,7 +502,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
           <Show
             when={commentTree().length > 0}
             fallback={
-              <p class="text-sm text-gray-500 dark:text-gray-400">
+              <p class="text-sm text-ink-muted">
                 {t("photos.no_comments")}
               </p>
             }

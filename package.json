@@ -36,6 +36,9 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/ibm-plex-sans-kr": "^5.2.8",
     "@solid-primitives/keyed": "^1.5.3",
     "@solidjs/router": "^0.16.1",
     "@toast-ui/editor": "^3.2.2",

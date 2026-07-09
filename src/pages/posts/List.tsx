@@ -202,7 +202,7 @@ export default function PostsList() {
               placeholder={t("blog.search_placeholder")}
               value={searchQuery()}
               onInput={(e) => setSearchQuery(e.currentTarget.value)}
-              class="w-full px-3 py-2 pr-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class={`${pageStyles.input} pr-10`}
             />
             <Show when={searchQuery()}>
               <button
@@ -211,7 +211,7 @@ export default function PostsList() {
                   setDebouncedQuery("");
                   setSearchParams({ q: undefined, type: undefined });
                 }}
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-muted"
               >
                 <svg
                   class="w-5 h-5"
@@ -229,23 +229,23 @@ export default function PostsList() {
               </button>
             </Show>
           </div>
-          <div class="flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden">
+          <div class="flex rounded-sm border border-line overflow-hidden">
             <button
               onClick={() => setSearchType("title")}
               class={`px-4 py-2 text-sm font-medium transition-colors ${
                 searchType() === "title"
-                  ? "bg-blue-500 text-white"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-accent text-paper"
+                  : "bg-surface text-ink-muted hover:bg-surface-2"
               }`}
             >
               {t("blog.search_title")}
             </button>
             <button
               onClick={() => setSearchType("tag")}
-              class={`px-4 py-2 text-sm font-medium transition-colors border-l border-slate-300 dark:border-slate-600 ${
+              class={`px-4 py-2 text-sm font-medium transition-colors border-l border-line ${
                 searchType() === "tag"
-                  ? "bg-blue-500 text-white"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-accent text-paper"
+                  : "bg-surface text-ink-muted hover:bg-surface-2"
               }`}
             >
               {t("blog.search_tag")}
@@ -269,11 +269,11 @@ export default function PostsList() {
                       addTag(tagInput());
                     }
                   }}
-                  class="w-full px-3 py-2 pr-20 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class={`${pageStyles.input} pr-20`}
                 />
                 <button
                   onClick={() => addTag(tagInput())}
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded-sm bg-surface-2 text-ink-muted hover:text-ink"
                 >
                   {t("blog.add_tag")}
                 </button>
@@ -281,7 +281,7 @@ export default function PostsList() {
               <Show when={selectedTags().length > 0}>
                 <button
                   onClick={clearTags}
-                  class="text-xs px-2 py-1 rounded border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  class="text-xs px-2 py-1 rounded-sm border border-line text-ink-muted hover:bg-surface-2"
                 >
                   {t("blog.clear_tags")}
                 </button>
@@ -293,7 +293,7 @@ export default function PostsList() {
                   {(tag) => (
                     <button
                       onClick={() => removeTag(tag)}
-                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors cursor-pointer"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-xs font-medium bg-accent-soft text-accent hover:opacity-80 transition-opacity cursor-pointer"
                     >
                       #{tag}
                       <span class="text-[0.6rem]">×</span>
@@ -306,7 +306,7 @@ export default function PostsList() {
         </div>
 
         <Show when={debouncedQuery()}>
-          <div class="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          <div class="mb-4 text-sm text-ink-muted">
             {tx("blog.showing_results", {
               query: debouncedQuery(),
               type:
@@ -337,7 +337,7 @@ export default function PostsList() {
 
         <Show when={!posts.loading && !posts.error && postItems().length === 0}>
           <div class={`${pageStyles.cardPadded} text-center`}>
-            <div class="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <div class="text-base font-semibold text-ink">
               {t("blog.no_posts_title")}
             </div>
             <p class={`${pageStyles.muted} mt-1`}>
@@ -347,90 +347,84 @@ export default function PostsList() {
         </Show>
 
         <Show when={postItems().length > 0}>
-          <ul class="flex flex-col gap-4">
+          <ul class="flex flex-col">
             <For each={postItems()}>
-              {(post) => (
-                <li
-                  class={`${pageStyles.card} overflow-hidden transition hover:shadow-md`}
-                >
-                  <div class="flex">
-                    <div class="flex flex-col items-center justify-center w-16 bg-slate-50 dark:bg-slate-800/60 border-r border-slate-200/80 dark:border-slate-800 rounded-l">
-                      <span class="text-sm font-bold text-slate-700 dark:text-slate-200">
-                        {(post.total_upvotes ?? 0) -
-                          (post.total_downvotes ?? 0)}
+              {(post) => {
+                const score = () =>
+                  (post.total_upvotes ?? 0) - (post.total_downvotes ?? 0);
+                return (
+                  <li class="group border-b border-line py-4 first:border-t">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono tabular-nums text-xs text-ink-muted">
+                      <UserBadge
+                        userName={post.user_name ?? t("common.unknown")}
+                        profilePictureUrl={post.user_profile_picture_url}
+                        countryFlag={post.user_country_flag}
+                        size="sm"
+                      />
+                      <span class="text-ink-faint">·</span>
+                      <span>
+                        {new Date(post.post_created_at).toLocaleDateString()}
                       </span>
-                    </div>
-
-                    {/* Content Column */}
-                    <div class="flex-1 px-4 py-3">
-                      <div class="text-xs text-slate-500 mb-1 flex items-center gap-1">
-                        <UserBadge
-                          userName={post.user_name ?? t("common.unknown")}
-                          profilePictureUrl={post.user_profile_picture_url}
-                          countryFlag={post.user_country_flag}
-                          size="sm"
-                        />
-                        <span class="text-slate-400">•</span>
-                        <span>
-                          {new Date(post.post_created_at).toLocaleDateString()}
+                      <span class="text-ink-faint">·</span>
+                      <span>
+                        {score() > 0 ? `+${score()}` : score()}
+                      </span>
+                      <span class="text-ink-faint">·</span>
+                      <span>
+                        {post.post_view_count ?? 0} {t("common.views")}
+                      </span>
+                      <span class="text-ink-faint">·</span>
+                      <span>
+                        {post.post_share_count ?? 0} {t("common.shares")}
+                      </span>
+                      <Show when={!post.post_is_published}>
+                        <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-accent">
+                          {t("common.draft")}
                         </span>
-                        <span class="text-slate-400">•</span>
-                        <span>
-                          {post.post_view_count ?? 0} {t("common.views")}
-                        </span>
-                        <span class="text-slate-400">•</span>
-                        <span>
-                          {post.post_share_count ?? 0} {t("common.shares")}
-                        </span>
-                        <Show when={!post.post_is_published}>
-                          <span class="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                            {t("common.draft")}
-                          </span>
-                        </Show>
-                        <Show
-                          when={
-                            user()?.user_info?.user_id &&
-                            post.user_id === user()?.user_info?.user_id
-                          }
-                        >
-                          <button
-                            class={`${pageStyles.buttonGhost} ml-auto text-rose-600 dark:text-rose-400`}
-                            onClick={(e) => handleDeletePost(e, post.post_id)}
-                          >
-                            {t("common.delete")}
-                          </button>
-                        </Show>
-                      </div>
-
-                      <A
-                        href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
-                        class="block text-lg font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 decoration-2 hover:underline underline-offset-2"
+                      </Show>
+                      <Show
+                        when={
+                          user()?.user_info?.user_id &&
+                          post.user_id === user()?.user_info?.user_id
+                        }
                       >
-                        {post.post_title}
-                      </A>
-
-                      {/* Tag badges */}
-                      <Show when={post.post_tags && post.post_tags.length > 0}>
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                          <For each={post.post_tags}>
-                            {(tag) => (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  searchByTag(tag);
-                                }}
-                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/60 transition-colors cursor-pointer"
-                              >
-                                #{tag}
-                              </button>
-                            )}
-                          </For>
-                        </div>
+                        <button
+                          class={`${pageStyles.buttonGhost} ml-auto py-0.5 text-danger`}
+                          onClick={(e) => handleDeletePost(e, post.post_id)}
+                        >
+                          {t("common.delete")}
+                        </button>
                       </Show>
                     </div>
-                  </div>
-                </li>
-              )}
+
+                    <A
+                      href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
+                      class="mt-1 block text-lg font-semibold text-ink group-hover:text-accent decoration-accent/40 underline-offset-4 hover:underline transition-colors"
+                    >
+                      {post.post_title}
+                    </A>
+
+                    {/* Tags: inline mono links, no pills */}
+                    <Show when={post.post_tags && post.post_tags.length > 0}>
+                      <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 font-mono text-xs">
+                        <For each={post.post_tags}>
+                          {(tag) => (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                searchByTag(tag);
+                              }}
+                              class="text-accent/80 hover:text-accent hover:underline underline-offset-4 transition-colors cursor-pointer"
+                            >
+                              #{tag}
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+                  </li>
+                );
+              }}
             </For>
           </ul>
         </Show>
@@ -444,7 +438,7 @@ export default function PostsList() {
             >
               {t("blog.prev")}
             </button>
-            <div class="text-sm text-slate-600 dark:text-slate-300">
+            <div class="font-mono tabular-nums text-sm text-ink-muted">
               {tx("blog.page_of", { page: page(), pages: availablePages() })}
             </div>
             <button

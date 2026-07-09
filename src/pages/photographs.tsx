@@ -54,11 +54,8 @@ const styles = `
   cursor: pointer;
   position: relative;
   transition: transform 0.2s, box-shadow 0.2s;
-  background-color: #f3f4f6;
+  background-color: var(--surface-2);
   width: 100%;
-}
-.dark .photo-card {
-  background-color: #374151;
 }
 .photo-card:hover {
   transform: scale(1.02);
@@ -78,10 +75,7 @@ const styles = `
   padding: 0.4rem 0.6rem;
   font-size: 0.72rem;
   line-height: 1;
-  color: #4b5563;
-}
-.dark .photo-meta {
-  color: #9ca3af;
+  color: var(--ink-muted);
 }
 .photo-meta .pm-item {
   display: inline-flex;
@@ -97,10 +91,7 @@ const styles = `
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #111827;
-}
-.dark .photo-section-title {
-  color: #f3f4f6;
+  color: var(--ink);
 }
 
 /* Modals */
@@ -115,7 +106,7 @@ const styles = `
   padding: 1rem;
 }
 .modal-content {
-  background-color: white;
+  background-color: var(--surface);
   border-radius: 0.5rem;
   max-width: 90vw;
   max-height: 90vh;
@@ -123,10 +114,6 @@ const styles = `
   position: relative;
   display: flex;
   flex-direction: column;
-}
-.dark .modal-content {
-  background-color: #1f2937;
-  color: #f3f4f6;
 }
 .upload-modal {
   width: 700px;
@@ -206,12 +193,12 @@ const styles = `
 }
 /* Leaflet Geosearch Customization */
 .leaflet-control-geosearch form {
-  background: white;
+  background: var(--surface);
   border-radius: 4px;
   padding: 2px;
 }
 .leaflet-control-geosearch input {
-  color: black;
+  color: var(--ink);
 }
 .emoji-marker {
   font-size: 2rem;
@@ -614,7 +601,7 @@ export default function Photographs(props: RouteSectionProps) {
               >
                 {t("photos.processing")}
                 <Show when={activeBatchCount() > 0}>
-                  <span class="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-xs font-bold h-5 min-w-5 px-1">
+                  <span class="ml-2 inline-flex items-center justify-center rounded-full bg-accent text-paper text-xs font-bold h-5 min-w-5 px-1">
                     {activeBatchCount()}
                   </span>
                 </Show>
@@ -698,7 +685,7 @@ export default function Photographs(props: RouteSectionProps) {
                                     selectedForDeletion().has(
                                       photo.photograph_id,
                                     )
-                                      ? "ring-4 ring-red-500 ring-inset bg-black/20"
+                                      ? "ring-4 ring-danger ring-inset bg-black/20"
                                       : "hover:bg-black/10"
                                   }`}
                                 >
@@ -707,7 +694,7 @@ export default function Photographs(props: RouteSectionProps) {
                                       selectedForDeletion().has(
                                         photo.photograph_id,
                                       )
-                                        ? "bg-red-500"
+                                        ? "bg-danger"
                                         : "bg-black/40"
                                     }`}
                                   >
@@ -950,21 +937,21 @@ export default function Photographs(props: RouteSectionProps) {
                 </svg>
               </a>
             </div>
-            <div class="details-info bg-white dark:bg-gray-800">
+            <div class="details-info bg-surface">
               <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">
+                <h3 class="text-lg font-bold text-ink">
                   {t("photos.comments")}
                 </h3>
-                <p class="text-gray-700 dark:text-gray-300 mt-1 whitespace-pre-wrap">
+                <p class="text-ink-muted mt-1 whitespace-pre-wrap">
                   {selectedPhoto()!.photograph_comments}
                 </p>
               </div>
 
               <div>
-                <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <h3 class="text-sm font-bold text-ink-muted uppercase tracking-wide">
                   {t("photos.taken_at")}
                 </h3>
-                <p class="text-gray-900 dark:text-gray-100">
+                <p class="text-ink">
                   {selectedPhoto()!.photograph_shot_at
                     ? new Date(
                         selectedPhoto()!.photograph_shot_at!,
@@ -974,10 +961,10 @@ export default function Photographs(props: RouteSectionProps) {
               </div>
 
               <div>
-                <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                <h3 class="text-sm font-bold text-ink-muted uppercase tracking-wide">
                   {t("geo.coordinates")}
                 </h3>
-                <p class="font-mono text-sm text-gray-900 dark:text-gray-100">
+                <p class="font-mono text-sm text-ink">
                   {selectedPhoto()!.photograph_lat.toFixed(6)},{" "}
                   {selectedPhoto()!.photograph_lon.toFixed(6)}
                 </p>
@@ -985,13 +972,13 @@ export default function Photographs(props: RouteSectionProps) {
 
               <div>
                 <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                  <h3 class="text-sm font-bold text-ink-muted uppercase tracking-wide">
                     {t("photos.location_map")}
                   </h3>
                   <div class="relative">
                     <button
                       onClick={() => setShowMapLinks(!showMapLinks())}
-                      class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      class="p-1.5 text-ink-muted hover:text-ink hover:bg-surface-2 rounded-sm transition-colors"
                       title={t("photos.open_external_map")}
                     >
                       <svg
@@ -1010,7 +997,7 @@ export default function Photographs(props: RouteSectionProps) {
                       </svg>
                     </button>
                     <Show when={showMapLinks()}>
-                      <div class="absolute right-0 top-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-40 py-1">
+                      <div class="absolute right-0 top-full mt-1 bg-surface border border-line rounded-sm shadow-lg z-50 min-w-40 py-1">
                         <a
                           href={getGoogleMapsUrl(
                             selectedPhoto()!.photograph_lat,
@@ -1018,7 +1005,7 @@ export default function Photographs(props: RouteSectionProps) {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-2 transition-colors"
                           onClick={() => setShowMapLinks(false)}
                         >
                           <span>Google Maps</span>
@@ -1030,7 +1017,7 @@ export default function Photographs(props: RouteSectionProps) {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-2 transition-colors"
                           onClick={() => setShowMapLinks(false)}
                         >
                           <span>Google Earth</span>
@@ -1042,7 +1029,7 @@ export default function Photographs(props: RouteSectionProps) {
                           )}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          class="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-surface-2 transition-colors"
                           onClick={() => setShowMapLinks(false)}
                         >
                           <span>OpenStreetMap</span>
@@ -1051,7 +1038,7 @@ export default function Photographs(props: RouteSectionProps) {
                     </Show>
                   </div>
                 </div>
-                <div class="mt-2 h-50 rounded overflow-hidden relative">
+                <div class="mt-2 h-50 rounded-sm overflow-hidden relative">
                   <DetailsMap
                     lat={selectedPhoto()!.photograph_lat}
                     lon={selectedPhoto()!.photograph_lon}

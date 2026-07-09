@@ -106,9 +106,9 @@ export default function ProcessingModal(props: ProcessingModalProps) {
                         failed: entry().status?.failed ?? 0,
                       })}
                     </p>
-                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded h-2 overflow-hidden mb-3">
+                    <div class="w-full bg-surface-2 rounded-sm h-2 overflow-hidden mb-3">
                       <div
-                        class="bg-slate-900 dark:bg-slate-100 h-2 transition-all duration-200"
+                        class="bg-ink h-2 transition-all duration-200"
                         style={{ width: `${progressPercent(entry())}%` }}
                       />
                     </div>

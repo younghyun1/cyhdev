@@ -43,9 +43,9 @@ const style = `
   aspect-ratio: 4/2.5;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #dedede;
+  border: 1px solid var(--line);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  background: #fff;
+  background: var(--surface);
   margin: 0 auto;
   display: block;
 }
@@ -154,13 +154,13 @@ export default function VisitorBoard() {
           <div ref={(el) => (mapDiv = el)} id="map" class="visitor-board-map" />
         </div>
       </div>
-      <p class="pb-4 text-center text-xs text-slate-400 dark:text-slate-500">
+      <p class="pb-4 text-center text-xs text-ink-faint">
         {t("geo.attribution_prefix")}{" "}
         <a
           href="https://lite.ip2location.com"
           target="_blank"
           rel="noopener noreferrer"
-          class="underline hover:text-slate-600 dark:hover:text-slate-300"
+          class="underline hover:text-ink-muted"
         >
           {t("geo.attribution_link")}
         </a>

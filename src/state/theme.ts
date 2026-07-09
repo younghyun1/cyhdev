@@ -19,6 +19,12 @@ export function applyTheme(t: "light" | "dark") {
   const html = document.documentElement;
   html.classList.remove("light", "dark");
   html.classList.add(t);
+  // Keep the browser chrome color in sync with the canvas; the same values
+  // are set pre-paint by the inline script in index.html.
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute("content", t === "dark" ? "#000000" : "#f6f1e8");
+  }
 }
 
 export function toggleTheme() {

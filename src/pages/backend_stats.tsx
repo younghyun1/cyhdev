@@ -36,7 +36,7 @@ export default function BackendStats() {
 
         <Show when={fastfetch()}>
           <div
-            class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-xl shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
+            class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-sm shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
             style={{
               background: isDark()
                 ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"

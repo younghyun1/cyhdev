@@ -100,14 +100,14 @@ const BottomBar: Component = () => {
           }}
         >
           <div class="absolute inset-0 bg-black/60" />
-          <div class="relative w-full max-h-[75vh] overflow-y-auto rounded-t-xl bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 p-4 shadow-2xl">
+          <div class="relative w-full max-h-[75vh] overflow-y-auto rounded-t-sm bg-surface border-t border-line p-4 shadow-2xl">
             <div class="flex items-center justify-between gap-3">
-              <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <div class="text-sm font-semibold text-ink">
                 {t("bottom_bar.site_status")}
               </div>
               <button
                 type="button"
-                class="px-3 py-1.5 text-xs rounded border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
+                class="px-3 py-1.5 text-xs rounded-sm border border-line text-ink hover:bg-surface-2"
                 onClick={closeDetails}
                 aria-label={t("common.close")}
               >
@@ -115,10 +115,7 @@ const BottomBar: Component = () => {
               </button>
             </div>
 
-            <div
-              class="mt-3 space-y-3 text-[11px] text-gray-900 dark:text-gray-100"
-              style={{ "font-family": "monospace" }}
-            >
+            <div class="mt-3 space-y-3 font-mono tabular-nums text-[11px] text-ink">
               <div class="space-y-1">
                 <div>
                   {t("bottom_bar.fe")}: {t("bottom_bar.built")}{" "}
@@ -172,7 +169,7 @@ const BottomBar: Component = () => {
       </Show>
 
       <footer
-        class="fixed bottom-0 left-0 w-full transition-colors duration-90 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-[9px] sm:text-[11px]"
+        class="fixed bottom-0 left-0 w-full transition-colors duration-90 border-t border-line bg-paper/90 backdrop-blur text-[9px] sm:text-[11px]"
         style={{
           "z-index": 50,
         }}
@@ -189,14 +186,9 @@ const BottomBar: Component = () => {
           if (e.key === "Escape") closeDetails();
         }}
       >
-        <div
-          class="w-full px-2 sm:px-3 py-0.5 sm:py-1.5 flex flex-row justify-between items-start gap-2 sm:gap-3"
-          style={{
-            "font-family": "monospace",
-          }}
-        >
+        <div class="w-full px-2 sm:px-3 py-0.5 sm:py-1.5 flex flex-row justify-between items-start gap-2 sm:gap-3 font-mono tabular-nums">
           {/* Desktop/tablet: keep full content */}
-          <div class="hidden sm:block text-gray-900 dark:text-white leading-tight space-y-0.5 max-w-[55%]">
+          <div class="hidden sm:block text-ink-muted leading-tight space-y-0.5 max-w-[55%]">
             <div>
               {t("bottom_bar.fe")}: {t("bottom_bar.built")}{" "}
               {__BUILD_TIMESTAMP__} {t("bottom_bar.with_solid")}{" "}
@@ -213,7 +205,7 @@ const BottomBar: Component = () => {
             </div>
           </div>
 
-          <div class="hidden sm:block text-gray-900 dark:text-white leading-tight text-right space-y-0.5 max-w-[45%]">
+          <div class="hidden sm:block text-ink-muted leading-tight text-right space-y-0.5 max-w-[45%]">
             {healthState() ? (
               (() => {
                 const hs = healthState()!;
@@ -247,7 +239,7 @@ const BottomBar: Component = () => {
           </div>
 
           {/* Mobile: compact summary + hint */}
-          <div class="sm:hidden w-full flex items-center justify-between gap-2 text-gray-900 dark:text-white leading-tight">
+          <div class="sm:hidden w-full flex items-center justify-between gap-2 text-ink-muted leading-tight">
             <div class="truncate">{mobileSummary()}</div>
             <div class="shrink-0 text-[10px] opacity-70">
               {t("bottom_bar.tap")}

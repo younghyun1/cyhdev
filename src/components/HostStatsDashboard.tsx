@@ -136,10 +136,10 @@ export default function HostStatsDashboard(props: {
   });
 
   return (
-    <div class={`${isDark() ? "text-gray-100" : "text-gray-700"}`}>
+    <div class="text-ink">
       <Show when={error()}>
         <div
-          class="p-2 mb-2 rounded text-xs font-mono max-w-xs"
+          class="p-2 mb-2 rounded-sm text-xs font-mono max-w-xs"
           style={{
             background: isDark() ? "#7f1d1d" : "#fee2e2",
             color: isDark() ? "#fee2e2" : "#b91c1c",
@@ -152,7 +152,7 @@ export default function HostStatsDashboard(props: {
       <div class="w-full max-w-7xl mx-auto space-y-6">
         {/* Backend Health Stats Panel */}
         <div
-          class="p-6 rounded-xl shadow-lg border-2"
+          class="p-6 rounded-sm shadow-lg border-2"
           style={{
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
@@ -172,7 +172,7 @@ export default function HostStatsDashboard(props: {
                 {t("stats.server_stats")}
               </h2>
               <button
-                class="px-3 py-1 text-xs font-semibold rounded hover:opacity-80 transition-opacity"
+                class="px-3 py-1 text-xs font-semibold rounded-sm hover:opacity-80 transition-opacity"
                 style={{
                   background: C().cardBg,
                   color: C().font,
@@ -195,7 +195,7 @@ export default function HostStatsDashboard(props: {
               {(hs) => (
                 <>
                   <div
-                    class="p-4 rounded-lg bg-opacity-50"
+                    class="p-4 rounded-sm bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">
@@ -206,7 +206,7 @@ export default function HostStatsDashboard(props: {
                     </div>
                   </div>
                   <div
-                    class="p-4 rounded-lg bg-opacity-50"
+                    class="p-4 rounded-sm bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">
@@ -217,7 +217,7 @@ export default function HostStatsDashboard(props: {
                     </div>
                   </div>
                   <div
-                    class="p-4 rounded-lg bg-opacity-50"
+                    class="p-4 rounded-sm bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">
@@ -228,7 +228,7 @@ export default function HostStatsDashboard(props: {
                     </div>
                   </div>
                   <div
-                    class="p-4 rounded-lg bg-opacity-50"
+                    class="p-4 rounded-sm bg-opacity-50"
                     style={{ background: C().cardBg }}
                   >
                     <div class="text-xs opacity-70 mb-1">
@@ -246,7 +246,7 @@ export default function HostStatsDashboard(props: {
 
         {/* Live Host Stats Panel */}
         <div
-          class="p-6 rounded-xl shadow-lg border-2"
+          class="p-6 rounded-sm shadow-lg border-2"
           style={{
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"

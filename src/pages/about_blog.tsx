@@ -4,13 +4,13 @@ export default function AboutBlog() {
   return (
     <main class={pageStyles.page}>
       <section
-        class={`${pageStyles.pageInnerNarrow} text-slate-700 dark:text-slate-100`}
+        class={`${pageStyles.pageInnerNarrow} text-ink`}
       >
-        <div class="border-l-4 border-slate-300 dark:border-slate-700 pl-3 mb-8">
+        <div class="border-l-4 border-line-strong pl-3 mb-8">
           <h1 class="text-2xl font-bold mb-1 tracking-tight">
             Blog Tech Stack
           </h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
+          <p class="text-xs text-ink-muted">
             Last updated: 2026-03-06
             <br />
           </p>
@@ -19,10 +19,10 @@ export default function AboutBlog() {
         <section class="space-y-8">
           {/* 0) On-Prem */}
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+            <h2 class="text-lg font-bold mb-2 text-ink">
               0) Host Machine, OS, filesystem, and network configuration
             </h2>
-            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="text-sm leading-6 text-ink-muted">
               The site is hosted on a miniserver at my residence behind a 1Gbps
               wired Xfinity connection. The{" "}
               <a
@@ -42,10 +42,10 @@ export default function AboutBlog() {
               Minecraft server. If you'd like to play, shoot me an email.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               0-1) Gentoo
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               Not exactly the OS of choice for an enterprise server; if I were
               working somewhere, I would have just done Debian Stable with an
               ext4 filesystem with any old database engine. However, I
@@ -63,10 +63,10 @@ export default function AboutBlog() {
               project.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               0-2) Using btrfs on a database-BE/FE-Minecraft host
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               <a
                 href="https://en.wikipedia.org/wiki/Btrfs"
                 class={pageStyles.link}
@@ -94,10 +94,10 @@ export default function AboutBlog() {
               benchmark.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               0-3) Internal and external network configuration
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               When signing up for Xfinity's 2Gbps television cable Internet
               service, I hadn't realized that they would be cheap enough to
               provide a modem-router that in fact does <em>not</em> support
@@ -140,13 +140,13 @@ export default function AboutBlog() {
 
           {/* 1) PostgreSQL */}
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+            <h2 class="text-lg font-bold mb-2 text-ink">
               1) Data
             </h2>
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               1-1) PostgreSQL 18
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               Throughout my startup and corporate career in Korea, I've noticed
               a culture that considers MySQL or MariaDB the only worthwhile
               RDBMS and I've yet to figure out why. Some of my older bosses have
@@ -158,10 +158,10 @@ export default function AboutBlog() {
               encoding of JSON data.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               1-2) Schema highlights (blog + auth)
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               The schema is intentionally boring in the good way: users,
               sessions-in-memory, email verification tokens, password reset
               tokens, posts, comments, vote tables, tags, profile pictures, and
@@ -183,10 +183,10 @@ export default function AboutBlog() {
               overloading the hot user record with unrelated concerns.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               1-3) UUIDv7
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               Pretty much everything user-facing is keyed by UUIDs, and that was
               not an accident. I do not enjoy exposing sequential IDs that let
               anybody infer row counts or enumerate resources like it's 2009.
@@ -198,10 +198,10 @@ export default function AboutBlog() {
               avoidable housekeeping.
             </p>
 
-            <h3 class="mt-5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 class="mt-5 text-sm font-semibold text-ink">
               1-4) Diagram (request + data path)
             </h3>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="mt-2 text-sm leading-6 text-ink-muted">
               Very glamorous enterprise architecture diagram, reproduced here in
               text form because I have not yet bothered to draw boxes:
               <br />
@@ -223,10 +223,10 @@ export default function AboutBlog() {
 
           {/* 2) Backend */}
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+            <h2 class="text-lg font-bold mb-2 text-ink">
               2) Backend (Rust)
             </h2>
-            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="text-sm leading-6 text-ink-muted">
               The backend is a Rust service built on Axum, Tokio, Diesel, and
               PostgreSQL, with mimalloc as the global allocator because if one
               is going to self-host on a machine with actual cores, one may as
@@ -257,10 +257,10 @@ export default function AboutBlog() {
 
           {/* 3) Frontend */}
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+            <h2 class="text-lg font-bold mb-2 text-ink">
               3) Frontend
             </h2>
-            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="text-sm leading-6 text-ink-muted">
               The frontend is a client-side SolidJS SPA built with Vite and
               TypeScript. Routes are lazy-loaded, state is kept fairly
               straightforward, and the whole thing is compiled into static
@@ -286,10 +286,10 @@ export default function AboutBlog() {
 
           {/* 4) Network & HTTPS */}
           <section class={pageStyles.cardPadded}>
-            <h2 class="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
+            <h2 class="text-lg font-bold mb-2 text-ink">
               4) HTTPS, routing, and safety rails
             </h2>
-            <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+            <p class="text-sm leading-6 text-ink-muted">
               HTTPS is handled directly by the Rust server with rustls. Plain
               HTTP requests get bounced to HTTPS, cookies are marked secure and
               HTTP-only, and the production cookie domain is locked to the site

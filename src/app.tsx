@@ -76,7 +76,7 @@ const App: ParentComponent = (props) => {
       <RtcProvider>
         <div
           id="app-root"
-          class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-slate-900 dark:text-slate-100 overflow-x-hidden"
+          class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-ink overflow-x-hidden"
         >
           <TopBar />
 
@@ -84,14 +84,14 @@ const App: ParentComponent = (props) => {
             <ErrorBoundary
               fallback={(err, reset) => (
                 <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
-                  <h2 class="text-2xl font-bold text-red-600 dark:text-red-400 mb-2">
+                  <h2 class="text-2xl font-bold text-danger mb-2">
                     {t("app.error.title")}
                   </h2>
-                  <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 max-w-md">
+                  <p class="text-sm text-ink-muted mb-4 max-w-md">
                     {err instanceof Error ? err.message : t("app.error.unknown")}
                   </p>
                   <button
-                    class="px-4 py-2 text-sm font-medium rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    class="px-4 py-2 text-sm font-medium rounded-sm border border-line hover:bg-surface-2 transition-colors"
                     onClick={reset}
                   >
                     {t("app.error.try_again")}

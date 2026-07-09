@@ -7,10 +7,10 @@ import {
   setAuthenticated,
   setUser,
 } from "../state/auth";
-import { theme, toggleTheme } from "../state/theme";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import LanguageSelect from "./LanguageSelect";
+import ThemeToggle from "./ThemeToggle";
 import type { UiTextKey } from "../i18n/keys";
 import { t } from "../state/i18n";
 
@@ -81,6 +81,15 @@ const TopBar = () => {
 
   onCleanup(() => removeClickOutsideHandler());
 
+  // Active-route check for nav links; exact match for "/", segment-prefix
+  // match elsewhere so /blog/:id still highlights Blog but /about-blog does
+  // not highlight /about.
+  const isActive = (href: string) => {
+    const pathname = location.pathname || "/";
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   const titleFromPath = () => {
     const pathname = location.pathname || "/";
     if (pathname === "/") return t("top_bar.nav.home");
@@ -99,13 +108,13 @@ const TopBar = () => {
 
   return (
     <>
-      <header class="fixed top-0 left-0 right-0 z-40 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/70 text-slate-900 dark:text-slate-100 backdrop-blur transition-colors duration-90">
+      <header class="fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper/85 text-ink backdrop-blur transition-colors duration-90">
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="flex items-center justify-between gap-2 py-2 sm:py-3">
             <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
               {/* Hamburger Button (Mobile Only) */}
               <button
-                class="md:hidden p-1 text-slate-700 dark:text-slate-200 focus:outline-none hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+                class="md:hidden p-1 text-ink-muted hover:text-ink hover:bg-surface-2 rounded-sm"
                 onClick={() => setSidebarOpen(true)}
                 aria-label={t("top_bar.aria.open_sidebar")}
               >
@@ -127,7 +136,7 @@ const TopBar = () => {
               {/* Logo: Emoji on mobile, Text on desktop */}
               <a
                 href="/"
-                class="shrink-0 text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
+                class="shrink-0 font-mono text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
               >
                 <span class="block md:hidden text-2xl">{titleFromPath()}</span>
                 <span class="hidden md:block">{t("top_bar.site_title")}</span>
@@ -135,13 +144,17 @@ const TopBar = () => {
 
               {/* Nav: Hidden on mobile, inline on md+ */}
               <nav class="hidden md:block flex-1 overflow-x-auto md:overflow-visible ml-2">
-                <ul class="flex items-center text-xs sm:text-sm md:text-base min-w-max md:min-w-0">
+                <ul class="flex items-center font-mono text-sm min-w-max md:min-w-0">
                   <For each={NAV_LINKS}>
                     {(link) => (
                       <li class="py-1 px-2 md:px-3">
                         <a
                           href={link.href}
-                          class="whitespace-nowrap no-underline text-slate-600 dark:text-slate-300 hover:text-amber-700 dark:hover:text-amber-300 hover:underline transition-colors duration-90"
+                          class={`whitespace-nowrap transition-colors duration-90 ${
+                            isActive(link.href)
+                              ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
+                              : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8"
+                          }`}
                         >
                           {t(link.labelKey)}
                         </a>
@@ -158,21 +171,12 @@ const TopBar = () => {
                 when={isAuthenticated()}
                 fallback={
                   <div class="flex items-center gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
-                      aria-label={t("top_bar.aria.toggle_theme")}
-                      onClick={toggleTheme}
-                    >
-                      <span class="inline-block transition-colors duration-90">
-                        {theme() === "dark" ? "🌙" : "☀️"}
-                      </span>
-                    </button>
+                    <ThemeToggle />
 
                     <LanguageSelect />
 
                     <span class="relative">
-                      <span class="inline-block w-3 h-3 rounded-full bg-rose-500 shadow-[0_0_8px_2px_rgb(244,63,94,0.6)] mr-1 sm:mr-2" />
+                      <span class="inline-block w-3 h-3 rounded-full bg-danger shadow-[0_0_8px_2px_var(--glow-danger)] mr-1 sm:mr-2" />
                     </span>
 
                     <a
@@ -185,21 +189,12 @@ const TopBar = () => {
                 }
               >
                 <div class="flex items-center gap-2 sm:gap-4">
-                  <button
-                    type="button"
-                    class="text-xs border rounded border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/70 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-90 flex items-center justify-center gap-1 w-8 h-8 p-0"
-                    aria-label={t("top_bar.aria.toggle_theme")}
-                    onClick={toggleTheme}
-                  >
-                    <span class="inline-block transition-colors duration-90">
-                      {theme() === "dark" ? "🌙" : "☀️"}
-                    </span>
-                  </button>
+                  <ThemeToggle />
 
                   <LanguageSelect />
 
                   <span class="relative flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_8px_2px_rgb(52,211,153,0.7)] mr-1 sm:mr-2" />
+                    <span class="inline-block w-3 h-3 rounded-full bg-ok shadow-[0_0_8px_2px_var(--glow-ok)] mr-1 sm:mr-2" />
                   </span>
 
                   <div class="hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
@@ -207,14 +202,14 @@ const TopBar = () => {
                       {user()?.user_info?.user_name}
                     </span>
 
-                    <span class="text-[10px] sm:text-xs text-slate-400">
+                    <span class="text-[10px] sm:text-xs text-ink-faint">
                       {user()?.user_info?.user_email}
                     </span>
                   </div>
 
                   <div class="relative">
                     <button
-                      class="menu-toggle profile-picture focus:outline-none"
+                      class="menu-toggle profile-picture"
                       aria-label={t("top_bar.aria.open_user_menu")}
                       aria-haspopup="menu"
                       aria-expanded={menuOpen() ? "true" : "false"}
@@ -228,15 +223,15 @@ const TopBar = () => {
                           "/default-profile.png"
                         }
                         alt={t("profile.picture_alt")}
-                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-white shadow-md object-cover transition ring-2 ring-transparent hover:ring-amber-500"
+                        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-line object-cover transition ring-2 ring-transparent hover:ring-accent"
                       />
                     </button>
 
                     <Show when={menuOpen()}>
-                      <div class="profile-menu absolute right-0 mt-2 w-40 sm:w-48 bg-white/95 text-slate-900 rounded shadow-lg py-1 z-50 dark:bg-slate-950/95 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800 transition-colors duration-90">
+                      <div class="profile-menu absolute right-0 mt-2 w-40 sm:w-48 bg-surface/95 text-ink rounded-sm shadow-lg py-1 z-50 border border-line transition-colors duration-90">
                         <a
                           href="/edit-profile"
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-slate-100 hover:dark:bg-slate-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                         >
                           <svg
                             width="18"
@@ -254,7 +249,7 @@ const TopBar = () => {
                         </a>
 
                         <button
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-slate-100 hover:dark:bg-slate-800 rounded flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                           onClick={handleLogout}
                         >
                           <svg
@@ -289,14 +284,14 @@ const TopBar = () => {
           />
 
           {/* Sidebar */}
-          <aside class="relative z-50 w-64 bg-white/95 dark:bg-slate-950/95 h-full shadow-xl flex flex-col transition-transform">
-            <div class="p-4 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
-              <span class="font-bold text-lg text-slate-900 dark:text-slate-100">
+          <aside class="relative z-50 w-64 bg-surface/95 h-full shadow-xl flex flex-col transition-transform">
+            <div class="p-4 border-b border-line flex items-center justify-between">
+              <span class="font-mono font-bold text-lg text-ink">
                 {t("top_bar.menu.title")}
               </span>
               <button
                 onClick={() => setSidebarOpen(false)}
-                class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none"
+                class="text-ink-muted hover:text-ink"
                 aria-label={t("common.close")}
               >
                 <svg
@@ -321,7 +316,11 @@ const TopBar = () => {
                     <li>
                       <a
                         href={link.href}
-                        class="block px-4 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
+                        class={`block px-4 py-2 font-mono text-sm rounded-sm transition-colors ${
+                          isActive(link.href)
+                            ? "text-ink bg-surface-2 border-l-2 border-accent"
+                            : "text-ink-muted hover:text-ink hover:bg-surface-2"
+                        }`}
                         onClick={() => setSidebarOpen(false)}
                       >
                         {t(link.labelKey)}
