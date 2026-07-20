@@ -94,7 +94,7 @@ function LoginPage() {
           <div class="flex justify-end w-full mb-6">
             <button
               class={pageStyles.buttonGhost}
-              tabIndex={-1}
+              tabindex={-1}
               type="button"
               onClick={() => navigate("/find-password")}
             >

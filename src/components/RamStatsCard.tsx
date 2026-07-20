@@ -1,4 +1,4 @@
-import { Line } from "solid-chartjs";
+import LineChart from "./LineChart";
 import { createMemo } from "solid-js";
 import type {
   ChartOptions,
@@ -153,7 +153,7 @@ export default function RamStatsCard(props: {
         }}
       >
         <div class="absolute inset-0 p-4">
-          <Line data={chartData()} options={chartOptions()} />
+          <LineChart data={chartData()} options={chartOptions()} />
         </div>
       </div>
     </div>

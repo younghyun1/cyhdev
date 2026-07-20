@@ -3,8 +3,7 @@ import {
   createEffect,
   For,
   Show,
-  onMount,
-  onCleanup,
+  onSettled,
 } from "solid-js";
 import { UserBadge } from "../components/UserBadge";
 import { isSuperuser, user } from "../state/auth";
@@ -298,12 +297,12 @@ export default function Projects() {
   };
 
   // Fetch modules on mount
-  onMount(async () => {
-    await loadModules();
+  onSettled(() => {
+    void loadModules();
   });
 
   // Close modal on Escape key
-  createEffect(() => {
+  onSettled(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && selectedModule()) {
         setSelectedModule(null);
@@ -316,30 +315,34 @@ export default function Projects() {
       }
     };
     window.addEventListener("keydown", handleKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
+    return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
-  createEffect(() => {
-    const current = editingModule();
-    if (current) {
-      setEditTitle(current.wasm_module_title);
-      setEditDescription(current.wasm_module_description);
-      setEditBundle(null);
-      setEditThumbnail(null);
-    }
-  });
+  createEffect(
+    () => editingModule(),
+    (current) => {
+      if (current) {
+        setEditTitle(current.wasm_module_title);
+        setEditDescription(current.wasm_module_description);
+        setEditBundle(null);
+        setEditThumbnail(null);
+      }
+    },
+  );
 
-  createEffect(() => {
-    const countryId = user()?.user_info?.user_country;
-    if (!countryId) {
-      setUserCountryFlag(undefined);
-      return;
-    }
-    dropdownApi
-      .country(countryId)
-      .then((response) => setUserCountryFlag(response.data.country_flag))
-      .catch(() => setUserCountryFlag(undefined));
-  });
+  createEffect(
+    () => user()?.user_info?.user_country,
+    (countryId) => {
+      if (!countryId) {
+        setUserCountryFlag(undefined);
+        return;
+      }
+      dropdownApi
+        .country(countryId)
+        .then((response) => setUserCountryFlag(response.data.country_flag))
+        .catch(() => setUserCountryFlag(undefined));
+    },
+  );
 
   const handleUpload = async (e: Event) => {
     e.preventDefault();
@@ -538,7 +541,7 @@ export default function Projects() {
                   class="project-card"
                   onClick={() => setSelectedModule(module)}
                   role="button"
-                  tabIndex={0}
+                  tabindex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();

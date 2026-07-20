@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import MarkdownEditor from "../../components/MarkdownEditor";
@@ -43,7 +43,7 @@ export default function EditPostPage() {
     null,
   );
 
-  onMount(() => {
+  onSettled(() => {
     void (async () => {
       const postId = params.post_id;
       if (!postId) {

@@ -4,8 +4,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
-  onCleanup,
-  onMount,
+  onSettled,
 } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
@@ -30,30 +29,31 @@ const BottomBar: Component = () => {
   const [detailsOpen, setDetailsOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(false);
 
-  onMount(() => {
+  onSettled(() => {
     const update = () =>
       setIsMobile(window.matchMedia("(max-width: 639px)").matches);
     update();
     window.addEventListener("resize", update);
-    onCleanup(() => window.removeEventListener("resize", update));
+    return () => window.removeEventListener("resize", update);
   });
 
   const closeDetails = () => setDetailsOpen(false);
 
   // Refresh health state on route changes
-  createEffect(() => {
-    // depend on pathname so this re-runs on each navigation
-    void location.pathname; // depend on pathname so this re-runs on each navigation
-    refreshHealthState();
-  });
+  createEffect(
+    () => location.pathname,
+    () => {
+      void refreshHealthState();
+    },
+  );
 
   // Live ticking for uptime / age display
-  onMount(() => {
+  onSettled(() => {
     const interval = setInterval(() => {
       setClientNow(new Date());
     }, 1000);
 
-    onCleanup(() => clearInterval(interval));
+    return () => clearInterval(interval);
   });
 
   const liveUptime = createMemo(() => {
@@ -176,7 +176,7 @@ const BottomBar: Component = () => {
         onClick={handleFooterClick}
         role={isMobile() ? "button" : undefined}
         aria-label={isMobile() ? t("bottom_bar.open_details") : undefined}
-        tabIndex={isMobile() ? 0 : undefined}
+        tabindex={isMobile() ? 0 : undefined}
         onKeyDown={(e) => {
           if (!isMobile()) return;
           if (e.key === "Enter" || e.key === " ") {

@@ -107,12 +107,14 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
   const removeCurrent = () => {
     const id = current()?.id;
     if (!id) return;
-    setEntries((prev) => {
-      const target = prev.find((e) => e.id === id);
-      if (target) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((e) => e.id !== id);
-    });
-    setIndex((i) => Math.max(0, Math.min(i, entries().length - 1)));
+    // Compute the next list eagerly: signal reads do not observe queued
+    // writes until the microtask flush, so clamp against the new length.
+    const prev = entries();
+    const target = prev.find((e) => e.id === id);
+    if (target) URL.revokeObjectURL(target.previewUrl);
+    const next = prev.filter((e) => e.id !== id);
+    setEntries(next);
+    setIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
   };
 
   const go = (delta: number) => {
@@ -122,33 +124,40 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
   };
 
   // Keep currentIndex in range as the list shrinks.
-  createEffect(() => {
-    const len = entries().length;
-    if (len > 0 && index() > len - 1) setIndex(len - 1);
-  });
+  createEffect(
+    () => ({ len: entries().length, i: index() }),
+    ({ len, i }) => {
+      if (len > 0 && i > len - 1) setIndex(len - 1);
+    },
+  );
 
   // Sync the marker + recenter to the currently-visible photo.
-  createEffect(() => {
-    const e = current();
-    if (!map) return;
-    if (e && e.lat !== null && e.lon !== null) {
-      if (marker) marker.setLatLng([e.lat, e.lon]);
-      else marker = L.marker([e.lat, e.lon], { icon: emojiIcon }).addTo(map);
-      map.setView([e.lat, e.lon], Math.max(map.getZoom() ?? 2, 6));
-    } else if (marker) {
-      marker.remove();
-      marker = null;
-    }
-  });
+  createEffect(
+    () => current(),
+    (e) => {
+      if (!map) return;
+      if (e && e.lat !== null && e.lon !== null) {
+        if (marker) marker.setLatLng([e.lat, e.lon]);
+        else marker = L.marker([e.lat, e.lon], { icon: emojiIcon }).addTo(map);
+        map.setView([e.lat, e.lon], Math.max(map.getZoom() ?? 2, 6));
+      } else if (marker) {
+        marker.remove();
+        marker = null;
+      }
+    },
+  );
 
   // Tear the map down when all files are removed so a fresh div re-inits cleanly.
-  createEffect(() => {
-    if (entries().length === 0 && map) {
-      map.remove();
-      map = null;
-      marker = null;
-    }
-  });
+  createEffect(
+    () => entries().length === 0,
+    (empty) => {
+      if (empty && map) {
+        map.remove();
+        map = null;
+        marker = null;
+      }
+    },
+  );
 
   const initMap = (el: HTMLDivElement) => {
     if (map) return;

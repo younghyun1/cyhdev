@@ -297,15 +297,14 @@ export const RtcProvider: ParentComponent = (props) => {
 
   // If the socket drops while in a call, the SFU has torn the peer down; reset
   // local call state so the UI returns to idle.
-  createEffect(() => {
-    const state = socket.connectionState();
-    if (
-      (state === "closed" || state === "error") &&
-      callState() !== "idle"
-    ) {
-      resetCall();
-    }
-  });
+  createEffect(
+    () => ({ state: socket.connectionState(), inCall: callState() !== "idle" }),
+    ({ state, inCall }) => {
+      if ((state === "closed" || state === "error") && inCall) {
+        resetCall();
+      }
+    },
+  );
 
   onCleanup(() => {
     if (callState() !== "idle") resetCall();
@@ -326,13 +325,10 @@ export const RtcProvider: ParentComponent = (props) => {
     toggleCamera,
   };
 
-  return <RtcContext.Provider value={value}>{props.children}</RtcContext.Provider>;
+  return <RtcContext value={value}>{props.children}</RtcContext>;
 };
 
 export function useRtc(): RtcContextValue {
-  const ctx = useContext(RtcContext);
-  if (!ctx) {
-    throw new Error("useRtc must be used within an RtcProvider");
-  }
-  return ctx;
+  // Throws ContextNotFoundError when used outside RtcProvider.
+  return useContext(RtcContext);
 }

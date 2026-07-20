@@ -10,6 +10,10 @@ export default tseslint.config(
     ...solid,
     rules: {
       ...solid.rules,
+      // Inverted under Solid 2.0: solid-js/store and solid-js/web no longer
+      // exist (stores live in solid-js, DOM runtime in @solidjs/web). Drop
+      // once eslint-plugin-solid ships 2.0-aware rules.
+      "solid/imports": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },

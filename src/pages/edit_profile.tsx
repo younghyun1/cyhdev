@@ -2,7 +2,8 @@ import {
   createSignal,
   Show,
   onCleanup,
-  createResource,
+  onSettled,
+  createEffect,
   createMemo,
 } from "solid-js";
 import { uploadWithProgress } from "../services/upload_with_progress";
@@ -50,22 +51,46 @@ function EditProfilePage() {
 
   const userCountryId = () => user()?.user_info?.user_country;
 
-  // Load dropdown caches/resources
-  const [countries] = createResource(
-    async () => await dropdownApi.countryList(),
+  // Load dropdown data as plain signals: the page renders immediately and the
+  // lookup maps fill in as responses arrive (no Loading boundary involved).
+  type CountryListResult = Awaited<ReturnType<typeof dropdownApi.countryList>>;
+  type LanguageListResult = Awaited<
+    ReturnType<typeof dropdownApi.languageList>
+  >;
+  const [countries, setCountries] = createSignal<CountryListResult | null>(
+    null,
   );
-  const [languages] = createResource(
-    async () => await dropdownApi.languageList(),
+  const [languages, setLanguages] = createSignal<LanguageListResult | null>(
+    null,
   );
-  const [subdivisions] = createResource(userCountryId, async (cid) => {
-    if (cid === null || cid === undefined) return [];
-    try {
-      const res = await dropdownApi.countrySubdivisions(Number(cid));
-      return Array.isArray(res?.data) ? res.data : [];
-    } catch {
-      return [];
-    }
+  const [subdivisions, setSubdivisions] = createSignal<
+    IsoCountrySubdivision[]
+  >([]);
+  onSettled(() => {
+    dropdownApi
+      .countryList()
+      .then((res) => setCountries(res))
+      .catch(() => {});
+    dropdownApi
+      .languageList()
+      .then((res) => setLanguages(res))
+      .catch(() => {});
   });
+  createEffect(
+    () => userCountryId(),
+    (cid) => {
+      if (cid === null || cid === undefined) {
+        setSubdivisions([]);
+        return;
+      }
+      dropdownApi
+        .countrySubdivisions(Number(cid))
+        .then((res) =>
+          setSubdivisions(Array.isArray(res?.data) ? res.data : []),
+        )
+        .catch(() => setSubdivisions([]));
+    },
+  );
 
   // Build lookup maps
   const countryMap = createMemo(() => {

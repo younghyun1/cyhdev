@@ -1,5 +1,5 @@
 import { A, useParams } from "@solidjs/router";
-import { Show, createResource } from "solid-js";
+import { Loading, Show, createMemo } from "solid-js";
 import { userApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { UserBadge } from "../components/UserBadge";
@@ -7,10 +7,15 @@ import { t, tx } from "../state/i18n";
 
 export default function UserInfoPage() {
   const params = useParams<{ userName: string }>();
-  const [userInfo] = createResource(
-    () => params.userName,
-    async (userName) => await userApi.getPublicUserInfo(userName),
-  );
+  const userInfo = createMemo(async () => {
+    const userName = params.userName;
+    try {
+      return await userApi.getPublicUserInfo(userName);
+    } catch {
+      // Renders the not-found card below instead of the route error boundary.
+      return null;
+    }
+  });
 
   return (
     <main class={pageStyles.page}>
@@ -19,13 +24,18 @@ export default function UserInfoPage() {
           {t("user.back_to_blog")}
         </A>
 
+        <Loading
+          fallback={
+            <section class={`${pageStyles.card} mt-6 p-6`}>
+              <p class={pageStyles.subtitle}>{t("user.loading")}</p>
+            </section>
+          }
+        >
         <Show
           when={userInfo()?.data}
           fallback={
             <section class={`${pageStyles.card} mt-6 p-6`}>
-              <p class={pageStyles.subtitle}>
-                {userInfo.loading ? t("user.loading") : t("user.not_found")}
-              </p>
+              <p class={pageStyles.subtitle}>{t("user.not_found")}</p>
             </section>
           }
         >
@@ -74,6 +84,7 @@ export default function UserInfoPage() {
             </section>
           )}
         </Show>
+        </Loading>
       </section>
     </main>
   );

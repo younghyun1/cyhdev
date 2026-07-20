@@ -5,7 +5,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
-  onMount,
+  onSettled,
 } from "solid-js";
 import { A } from "@solidjs/router";
 import { liveChatApi } from "../services/live_chat";
@@ -248,21 +248,24 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     });
   };
 
-  createEffect(() => {
-    const visibleMessageCount = visibleMessages().length;
-    if (visibleMessageCount < 0) return;
-    restoreOrScrollAfterRender();
-  });
+  createEffect(
+    () => visibleMessages().length,
+    () => {
+      restoreOrScrollAfterRender();
+    },
+  );
 
   // Surface transport errors from the shared socket and clear them on recovery.
-  createEffect(() => {
-    const state = connectionState();
-    if (state === "error") {
-      setError(t("live_chat.connection_failed"));
-    } else if (state === "open") {
-      setError(null);
-    }
-  });
+  createEffect(
+    () => connectionState(),
+    (state) => {
+      if (state === "error") {
+        setError(t("live_chat.connection_failed"));
+      } else if (state === "open") {
+        setError(null);
+      }
+    },
+  );
 
   const handleServerEvent = (event: LiveChatServerEvent) => {
     switch (event.type) {
@@ -481,13 +484,13 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     }
   };
 
-  onMount(() => {
+  onSettled(() => {
     const release = socket.acquire();
     const unsubscribe = socket.onEvent(handleServerEvent);
-    onCleanup(() => {
+    return () => {
       unsubscribe();
       release();
-    });
+    };
   });
 
   onCleanup(() => {
@@ -621,7 +624,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         <div class="min-w-0 flex-1">
           <input
             class={pageStyles.input}
-            maxLength={LIVE_CHAT_MAX_MESSAGE_CHARS}
+            maxlength={LIVE_CHAT_MAX_MESSAGE_CHARS}
             value={input()}
             onInput={(event) => handleInput(event.currentTarget.value)}
             placeholder={t("live_chat.message_placeholder")}

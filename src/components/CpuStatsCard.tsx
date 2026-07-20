@@ -1,4 +1,4 @@
-import { Line } from "solid-chartjs";
+import LineChart from "./LineChart";
 import type { ChartOptions, ChartData, ScriptableContext } from "chart.js";
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
@@ -121,7 +121,7 @@ export default function CpuStatsCard(props: {
         }}
       >
         <div class="absolute inset-0 p-4">
-          <Line data={chartData()} options={chartOptions()} />
+          <LineChart data={chartData()} options={chartOptions()} />
         </div>
       </div>
     </div>

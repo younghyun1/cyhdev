@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { theme, toggleTheme } from "../state/theme";
 import { t } from "../state/i18n";
 

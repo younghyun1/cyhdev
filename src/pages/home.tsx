@@ -1,14 +1,14 @@
-import { createResource, For, Show, Suspense } from "solid-js";
+import { createMemo, For, Loading, Show } from "solid-js";
 import { A } from "@solidjs/router";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
 export default function Home() {
-  const [posts] = createResource(() =>
+  const posts = createMemo(() =>
     blogApi.getPosts({ page: 1, posts_per_page: 3 }),
   );
-  const [photos] = createResource(() => photographyApi.getPhotographs(1, 4));
+  const photos = createMemo(() => photographyApi.getPhotographs(1, 4));
 
   const getPhotoItems = () => {
     const res = photos();
@@ -110,7 +110,7 @@ export default function Home() {
               </div>
 
               <div class="grow space-y-4">
-                <Suspense
+                <Loading
                   fallback={
                     <div class="space-y-4">
                       <For each={[1, 2, 3]}>
@@ -167,7 +167,7 @@ export default function Home() {
                       )}
                     </For>
                   </Show>
-                </Suspense>
+                </Loading>
               </div>
             </section>
 
@@ -186,7 +186,7 @@ export default function Home() {
               </div>
 
               <div class="grid grid-cols-2 gap-3">
-                <Suspense
+                <Loading
                   fallback={
                     <>
                       <For each={[1, 2, 3, 4]}>
@@ -229,7 +229,7 @@ export default function Home() {
                       )}
                     </For>
                   </Show>
-                </Suspense>
+                </Loading>
               </div>
             </section>
           </div>

@@ -213,7 +213,7 @@ const TopBar = () => {
                       aria-label={t("top_bar.aria.open_user_menu")}
                       aria-haspopup="menu"
                       aria-expanded={menuOpen() ? "true" : "false"}
-                      tabIndex={0}
+                      tabindex={0}
                       onClick={handleMenuToggle}
                     >
                       <img

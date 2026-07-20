@@ -1,11 +1,13 @@
 import { A, useNavigate, useSearchParams } from "@solidjs/router";
 import {
-  createResource,
   Show,
   For,
+  createMemo,
   createSignal,
   createEffect,
+  isPending,
   onCleanup,
+  refresh,
 } from "solid-js";
 import { blogApi } from "../../services/all_api";
 import type { PostInfo } from "../../dtos/responses/blog";
@@ -55,50 +57,55 @@ export default function PostsList() {
   // Debounce search input
   let debounceTimer: ReturnType<typeof setTimeout>;
   onCleanup(() => clearTimeout(debounceTimer));
-  createEffect(() => {
-    const query = searchQuery();
-    const type = searchType();
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      setDebouncedQuery(query);
-      if (query) {
-        setSearchParams({ q: query, type });
+  createEffect(
+    () => ({ query: searchQuery(), type: searchType() }),
+    ({ query, type }) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        setDebouncedQuery(query);
+        if (query) {
+          setSearchParams({ q: query, type });
+        } else {
+          setSearchParams({ q: undefined, type: undefined });
+        }
+      }, 300);
+    },
+  );
+
+  createEffect(
+    () => selectedTags(),
+    (tags) => {
+      if (tags.length > 0) {
+        setSearchParams({ tags: tags.join(",") });
       } else {
-        setSearchParams({ q: undefined, type: undefined });
+        setSearchParams({ tags: undefined });
       }
-    }, 300);
-  });
+    },
+  );
 
-  createEffect(() => {
-    const tags = selectedTags();
-    if (tags.length > 0) {
-      setSearchParams({ tags: tags.join(",") });
-    } else {
-      setSearchParams({ tags: undefined });
-    }
-  });
-
-  createEffect(() => {
-    const currentPage = page();
-    if (currentPage > 1) {
-      setSearchParams({ page: String(currentPage) });
-    } else {
-      setSearchParams({ page: undefined });
-    }
-  });
+  createEffect(
+    () => page(),
+    (currentPage) => {
+      if (currentPage > 1) {
+        setSearchParams({ page: String(currentPage) });
+      } else {
+        setSearchParams({ page: undefined });
+      }
+    },
+  );
 
   let initializedFilters = false;
-  createEffect(() => {
-    debouncedQuery();
-    searchType();
-    selectedTags();
-    if (initializedFilters) {
-      setPage(1);
-      setSearchParams({ page: undefined });
-    } else {
-      initializedFilters = true;
-    }
-  });
+  createEffect(
+    () => [debouncedQuery(), searchType(), selectedTags()] as const,
+    () => {
+      if (initializedFilters) {
+        setPage(1);
+        setSearchParams({ page: undefined });
+      } else {
+        initializedFilters = true;
+      }
+    },
+  );
 
   const addTag = (tag: string) => {
     const normalized = normalizeTag(tag);
@@ -115,49 +122,67 @@ export default function PostsList() {
 
   const clearTags = () => setSelectedTags([]);
 
-  // Fetch posts or search results based on query
-  const [posts, { refetch }] = createResource(
-    () => ({
-      query: debouncedQuery(),
-      type: searchType(),
-      tags: selectedTags(),
-      page: page(),
-    }),
-    async ({ query, type, tags, page }) => {
-      const trimmedQuery = query.trim();
-      const activeTags = tags.map(normalizeTag).filter(Boolean);
+  // Fetch posts or search results based on query. Errors resolve to a marker
+  // object (rather than an Errored boundary) so the list UI can keep showing
+  // the previous results alongside an inline error message.
+  const posts = createMemo(async () => {
+    const query = debouncedQuery();
+    const type = searchType();
+    const tags = selectedTags();
+    const currentPage = page();
 
-      if (trimmedQuery || activeTags.length > 0) {
-        return blogApi.searchPosts(
-          trimmedQuery,
-          type,
-          page,
-          PAGE_SIZE,
-          activeTags,
-        );
-      }
+    const trimmedQuery = query.trim();
+    const activeTags = tags.map(normalizeTag).filter(Boolean);
 
-      return blogApi.getPosts({ page, posts_per_page: PAGE_SIZE });
-    },
-  );
+    try {
+      const res =
+        trimmedQuery || activeTags.length > 0
+          ? await blogApi.searchPosts(
+              trimmedQuery,
+              type,
+              currentPage,
+              PAGE_SIZE,
+              activeTags,
+            )
+          : await blogApi.getPosts({
+              page: currentPage,
+              posts_per_page: PAGE_SIZE,
+            });
+      return { ok: true as const, res };
+    } catch (err) {
+      return { ok: false as const, error: String(err) };
+    }
+  });
+  const postsPending = () => isPending(() => posts());
 
   const navigate = useNavigate();
   const [displayPosts, setDisplayPosts] = createSignal<PostInfo[]>([]);
-  createEffect(() => {
-    const data = posts()?.data;
-    if (data?.posts !== undefined) {
-      setDisplayPosts(data.posts);
-    }
-    if (data && "available_pages" in data) {
-      setAvailablePages(data.available_pages ?? 1);
-    }
-  });
-  createEffect(() => {
-    const totalPages = availablePages();
-    if (totalPages > 0 && page() > totalPages) {
-      setPage(totalPages);
-    }
-  });
+  const [loadError, setLoadError] = createSignal<string | null>(null);
+  createEffect(
+    () => posts(),
+    (result) => {
+      if (!result.ok) {
+        setLoadError(result.error);
+        return;
+      }
+      setLoadError(null);
+      const data = result.res.data;
+      if (data?.posts !== undefined) {
+        setDisplayPosts(data.posts);
+      }
+      if (data && "available_pages" in data) {
+        setAvailablePages(data.available_pages ?? 1);
+      }
+    },
+  );
+  createEffect(
+    () => ({ totalPages: availablePages(), current: page() }),
+    ({ totalPages, current }) => {
+      if (totalPages > 0 && current > totalPages) {
+        setPage(totalPages);
+      }
+    },
+  );
   const postItems = () => displayPosts();
 
   // Search by tag when clicking a tag badge
@@ -170,7 +195,7 @@ export default function PostsList() {
     if (!confirm(t("blog.delete_post_confirm"))) return;
     try {
       await blogApi.deletePost(postId);
-      refetch();
+      refresh(posts);
     } catch (e) {
       alert(tx("blog.delete_post_failed", { error: String(e) }));
     }
@@ -317,25 +342,25 @@ export default function PostsList() {
           </div>
         </Show>
 
-        <Show when={posts.loading && postItems().length === 0}>
+        <Show when={postsPending() && postItems().length === 0}>
           <div class={`${pageStyles.muted} p-4 text-center`}>
             {t("blog.loading_posts")}
           </div>
         </Show>
 
-        <Show when={posts.loading && postItems().length > 0}>
+        <Show when={postsPending() && postItems().length > 0}>
           <div class={`${pageStyles.muted} mb-2 text-xs`}>
             {t("blog.updating_results")}
           </div>
         </Show>
 
-        <Show when={posts.error}>
+        <Show when={loadError()}>
           <div class={pageStyles.alertError}>
-            {tx("blog.error_loading_posts", { error: String(posts.error) })}
+            {tx("blog.error_loading_posts", { error: loadError() ?? "" })}
           </div>
         </Show>
 
-        <Show when={!posts.loading && !posts.error && postItems().length === 0}>
+        <Show when={!postsPending() && !loadError() && postItems().length === 0}>
           <div class={`${pageStyles.cardPadded} text-center`}>
             <div class="text-base font-semibold text-ink">
               {t("blog.no_posts_title")}

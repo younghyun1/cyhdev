@@ -1,4 +1,4 @@
-import { onMount, onCleanup, createMemo, createSignal, Show } from "solid-js";
+import { onSettled, onCleanup, createMemo, createSignal, Show } from "solid-js";
 import { theme } from "../state/theme";
 import {
   healthState,
@@ -124,7 +124,7 @@ export default function HostStatsDashboard(props: {
     };
   };
 
-  onMount(connect);
+  onSettled(connect);
 
   onCleanup(() => {
     disposed = true;

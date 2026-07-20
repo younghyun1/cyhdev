@@ -17,12 +17,14 @@ interface VideoTileProps {
 export function VideoTile(props: VideoTileProps) {
   let videoEl: HTMLVideoElement | undefined;
 
-  createEffect(() => {
-    const stream = props.stream;
-    if (videoEl) {
-      videoEl.srcObject = stream;
-    }
-  });
+  createEffect(
+    () => props.stream,
+    (stream) => {
+      if (videoEl) {
+        videoEl.srcObject = stream;
+      }
+    },
+  );
 
   const showAvatar = () => !props.stream || !props.camOn;
 

@@ -9,16 +9,17 @@
 // view count.
 
 import {
+  Loading,
   Show,
   createEffect,
   createMemo,
-  createResource,
   createSignal,
+  createStore,
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import { useNavigate } from "@solidjs/router";
-import { createStore } from "solid-js/store";
 import { photographyApi } from "../../services/all_api";
+import { createKeyedStore } from "../../state/keyed_store";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { t } from "../../state/i18n";
@@ -47,18 +48,20 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   const navigate = useNavigate();
 
   // Fetched once per photographId (this GET increments the view count).
-  const [detail] = createResource(
-    () => props.photographId,
-    async (id) => (await photographyApi.getPhotographDetail(id)).data,
-  );
+  const detail = createMemo(async () => {
+    const id = props.photographId;
+    return (await photographyApi.getPhotographDetail(id)).data;
+  });
 
   // Local, mutable comment list seeded from the detail load. Comment mutations
   // edit this list directly so we never refetch (which would re-count a view).
   const [comments, setComments] = createSignal<PhotographCommentResponse[]>([]);
-  createEffect(() => {
-    const d = detail();
-    if (d) setComments(d.comments);
-  });
+  createEffect(
+    () => detail(),
+    (d) => {
+      setComments(d.comments);
+    },
+  );
 
   const [optimistic, setOptimistic] = createStore<{
     photo?: OptimisticVote;
@@ -68,11 +71,11 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   const [commentValue, setCommentValue] = createSignal("");
   const [commentBusy, setCommentBusy] = createSignal(false);
 
-  const [replyOpen, setReplyOpen] = createStore<Record<string, boolean>>({});
-  const [replyText, setReplyText] = createStore<Record<string, string>>({});
-  const [editOpen, setEditOpen] = createStore<Record<string, boolean>>({});
-  const [editText, setEditText] = createStore<Record<string, string>>({});
-  const [rowBusy, setRowBusy] = createStore<Record<string, boolean>>({});
+  const [replyOpen, setReplyOpen] = createKeyedStore<boolean>();
+  const [replyText, setReplyText] = createKeyedStore<string>();
+  const [editOpen, setEditOpen] = createKeyedStore<boolean>();
+  const [editText, setEditText] = createKeyedStore<string>();
+  const [rowBusy, setRowBusy] = createKeyedStore<boolean>();
 
   const meId = () => user()?.user_info?.user_id;
   const canModify = (authorId: string) =>
@@ -106,11 +109,11 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   // --- Voting (optimistic, with rollback) ---
   const photoVote = createMemo<OptimisticVote>(() => {
     if (optimistic.photo) return optimistic.photo;
-    const p = detail()?.photograph;
+    const d = detail();
     return {
-      up: p?.photograph_total_upvotes ?? 0,
-      down: p?.photograph_total_downvotes ?? 0,
-      vs: detail()?.vote_state ?? 2,
+      up: d.photograph.photograph_total_upvotes,
+      down: d.photograph.photograph_total_downvotes,
+      vs: d.vote_state,
     };
   });
 
@@ -153,7 +156,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     const rescinding =
       (isUpvote && current.vs === 0) || (!isUpvote && current.vs === 1);
     const next = applyVote(current, isUpvote);
-    setOptimistic("photo", next);
+    setOptimistic((s) => {
+      s.photo = next;
+    });
     try {
       if (rescinding) {
         await photographyApi.rescindPhotographVote(props.photographId);
@@ -165,7 +170,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
       }
     } catch (err) {
       console.error("Photo vote failed:", err);
-      setOptimistic("photo", current);
+      setOptimistic((s) => {
+        s.photo = current;
+      });
     }
   };
 
@@ -182,7 +189,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     const rescinding =
       (isUpvote && current.vs === 0) || (!isUpvote && current.vs === 1);
     const next = applyVote(current, isUpvote);
-    setOptimistic("comments", id, next);
+    setOptimistic((s) => {
+      s.comments[id] = next;
+    });
     try {
       if (rescinding) {
         await photographyApi.rescindPhotographCommentVote(
@@ -198,7 +207,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
       }
     } catch (err) {
       console.error("Comment vote failed:", err);
-      setOptimistic("comments", id, current);
+      setOptimistic((s) => {
+        s.comments[id] = current;
+      });
     }
   };
 
@@ -446,7 +457,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
 
   return (
     <div class="flex flex-col gap-4">
-      <Show when={detail()}>
+      <Loading>
         {/* Views + photograph vote */}
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
@@ -469,7 +480,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
             </button>
           </div>
           <span class="text-sm text-ink-muted">
-            {detail()!.photograph.photograph_view_count} {t("common.views")}
+            {detail().photograph.photograph_view_count} {t("common.views")}
           </span>
         </div>
 
@@ -510,7 +521,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
             {renderComments(commentTree())}
           </Show>
         </div>
-      </Show>
+      </Loading>
     </div>
   );
 }

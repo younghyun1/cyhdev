@@ -1,5 +1,5 @@
-import { onCleanup, onMount, createEffect, untrack } from "solid-js";
-import type { JSX } from "solid-js";
+import { onSettled, createEffect, untrack } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import Editor from "@toast-ui/editor";
 import type { EditorOptions } from "@toast-ui/editor";
 import "@toast-ui/editor/dist/toastui-editor.css";
@@ -21,7 +21,7 @@ export default function MarkdownEditor(
   let containerRef: HTMLDivElement | undefined;
   let editor: Editor | undefined;
 
-  onMount(() => {
+  onSettled(() => {
     const { minHeight, hooks, ...restOptions } = props.options ?? {};
     const addImageBlobHook =
       hooks?.addImageBlobHook ??
@@ -66,26 +66,31 @@ export default function MarkdownEditor(
       const onEditorChange = untrack(() => props.onChange);
       onEditorChange(editor.getMarkdown());
     });
+
+    return () => {
+      editor?.destroy();
+      editor = undefined;
+    };
   });
 
-  onCleanup(() => {
-    editor?.destroy();
-    editor = undefined;
-  });
+  createEffect(
+    () => theme() === "dark",
+    (dark) => {
+      if (containerRef) {
+        containerRef.classList.toggle("toastui-editor-dark", dark);
+      }
+    },
+  );
 
-  createEffect(() => {
-    if (containerRef) {
-      containerRef.classList.toggle("toastui-editor-dark", theme() === "dark");
-    }
-  });
-
-  createEffect(() => {
-    if (!editor) return;
-    const next = props.value ?? "";
-    if (next !== editor.getMarkdown()) {
-      editor.setMarkdown(next, false);
-    }
-  });
+  createEffect(
+    () => props.value ?? "",
+    (next) => {
+      if (!editor) return;
+      if (next !== editor.getMarkdown()) {
+        editor.setMarkdown(next, false);
+      }
+    },
+  );
 
   return <div ref={containerRef} class={props.class ?? "w-full h-full"} />;
 }

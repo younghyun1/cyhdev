@@ -218,18 +218,13 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
   };
 
   return (
-    <LiveChatSocketContext.Provider value={value}>
+    <LiveChatSocketContext value={value}>
       {props.children}
-    </LiveChatSocketContext.Provider>
+    </LiveChatSocketContext>
   );
 };
 
 export function useLiveChatSocket(): LiveChatSocketContextValue {
-  const ctx = useContext(LiveChatSocketContext);
-  if (!ctx) {
-    throw new Error(
-      "useLiveChatSocket must be used within a LiveChatSocketProvider",
-    );
-  }
-  return ctx;
+  // Throws ContextNotFoundError when used outside LiveChatSocketProvider.
+  return useContext(LiveChatSocketContext);
 }

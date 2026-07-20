@@ -1,8 +1,8 @@
 import {
-  ErrorBoundary,
-  Suspense,
+  Errored,
+  Loading,
   type ParentComponent,
-  onMount,
+  onSettled,
   createEffect,
 } from "solid-js";
 import TopBar from "./components/TopBar";
@@ -17,7 +17,7 @@ import { LiveChatSocketProvider } from "./state/live_chat_socket";
 import { RtcProvider } from "./state/rtc";
 
 const App: ParentComponent = (props) => {
-  onMount(async () => {
+  const bootstrap = async () => {
     applyLocale(locale());
     void loadUiTextBundle(locale());
 
@@ -66,10 +66,14 @@ const App: ParentComponent = (props) => {
       setUser(null);
       setSuperuser(false);
     }
+  };
+  onSettled(() => {
+    void bootstrap();
   });
-  createEffect(() => {
-    applyTheme(theme());
-  });
+  createEffect(
+    () => theme(),
+    (mode) => applyTheme(mode),
+  );
 
   return (
     <LiveChatSocketProvider>
@@ -81,26 +85,32 @@ const App: ParentComponent = (props) => {
           <TopBar />
 
           <main class="flex-1 min-h-0 pb-10 pt-12 sm:pt-14">
-            <ErrorBoundary
-              fallback={(err, reset) => (
-                <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
-                  <h2 class="text-2xl font-bold text-danger mb-2">
-                    {t("app.error.title")}
-                  </h2>
-                  <p class="text-sm text-ink-muted mb-4 max-w-md">
-                    {err instanceof Error ? err.message : t("app.error.unknown")}
-                  </p>
-                  <button
-                    class="px-4 py-2 text-sm font-medium rounded-sm border border-line hover:bg-surface-2 transition-colors"
-                    onClick={reset}
-                  >
-                    {t("app.error.try_again")}
-                  </button>
-                </div>
-              )}
+            <Errored
+              fallback={(err, reset) => {
+                const message = () => {
+                  const e = err();
+                  return e instanceof Error ? e.message : t("app.error.unknown");
+                };
+                return (
+                  <div class="flex flex-col items-center justify-center min-h-[40vh] px-4 text-center">
+                    <h2 class="text-2xl font-bold text-danger mb-2">
+                      {t("app.error.title")}
+                    </h2>
+                    <p class="text-sm text-ink-muted mb-4 max-w-md">
+                      {message()}
+                    </p>
+                    <button
+                      class="px-4 py-2 text-sm font-medium rounded-sm border border-line hover:bg-surface-2 transition-colors"
+                      onClick={reset}
+                    >
+                      {t("app.error.try_again")}
+                    </button>
+                  </div>
+                );
+              }}
             >
-              <Suspense>{props.children}</Suspense>
-            </ErrorBoundary>
+              <Loading>{props.children}</Loading>
+            </Errored>
           </main>
 
           <BottomBar />

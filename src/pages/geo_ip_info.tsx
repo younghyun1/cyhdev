@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, Suspense } from "solid-js";
+import { createSignal, createMemo, Loading, Show } from "solid-js";
 import { geoIpApi, type IpInfo } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t, tx } from "../state/i18n";
@@ -9,7 +9,7 @@ export default function GeoIpInfo() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  const [myIpInfo] = createResource(async () => {
+  const myIpInfo = createMemo(async () => {
     try {
       const response = await geoIpApi.getMyIpInfo();
       return response.data;
@@ -121,7 +121,7 @@ export default function GeoIpInfo() {
           <h2 class={`${pageStyles.sectionTitle} mb-4`}>
             {t("geo.your_ip_info")}
           </h2>
-          <Suspense
+          <Loading
             fallback={
               <div class={`${pageStyles.cardPadded} animate-pulse`}>
                 <div class="h-6 bg-surface-2 rounded-sm w-1/3 mb-4" />
@@ -146,7 +146,7 @@ export default function GeoIpInfo() {
             >
               <IpInfoDisplay info={myIpInfo()!} title={t("geo.your_connection")} />
             </Show>
-          </Suspense>
+          </Loading>
         </section>
 
         {/* IP Lookup Section */}

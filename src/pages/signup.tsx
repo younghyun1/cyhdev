@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount, Show, For } from "solid-js";
+import { createSignal, createEffect, onSettled, Show, For } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi, dropdownApi } from "../services/all_api";
 import type {
@@ -45,7 +45,7 @@ function SignupPage() {
     pw.length >= 8 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
 
   // ––––– fetch countries & languages once on mount
-  onMount(() => {
+  onSettled(() => {
     dropdownApi
       .countryList()
       .then((res) => {
@@ -66,22 +66,24 @@ function SignupPage() {
   });
 
   // ––––– whenever userCountry changes, fetch subdivisions
-  createEffect(() => {
-    const cc = userCountry();
-    if (cc) {
-      dropdownApi
-        .countrySubdivisions(Number(cc))
-        .then((res) => {
-          const arr = Array.isArray(res.data) ? res.data : [];
-          setSubdivisions(arr);
-        })
-        .catch(() => {
-          setSubdivisions([]);
-        });
-    } else {
-      setSubdivisions([]);
-    }
-  });
+  createEffect(
+    () => userCountry(),
+    (cc) => {
+      if (cc) {
+        dropdownApi
+          .countrySubdivisions(Number(cc))
+          .then((res) => {
+            const arr = Array.isArray(res.data) ? res.data : [];
+            setSubdivisions(arr);
+          })
+          .catch(() => {
+            setSubdivisions([]);
+          });
+      } else {
+        setSubdivisions([]);
+      }
+    },
+  );
 
   // ––––– on form submit
   const handleSubmit = async (e: Event) => {

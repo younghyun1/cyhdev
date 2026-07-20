@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, flush } from "solid-js";
 
 function getInitialTheme(): "light" | "dark" {
   if (typeof window !== "undefined") {
@@ -30,5 +30,8 @@ export function applyTheme(t: "light" | "dark") {
 export function toggleTheme() {
   const next = theme() === "dark" ? "light" : "dark";
   setTheme(next);
+  // Writes land on the microtask flush; force the write through so a second
+  // toggle in the same tick (or a synchronous read) sees the new value.
+  flush();
   localStorage.setItem("theme", next);
 }

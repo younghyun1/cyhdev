@@ -1,13 +1,15 @@
 import {
   Show,
   createSignal,
-  createResource,
   For,
   createMemo,
   createEffect,
+  createStore,
+  isPending,
+  refresh,
 } from "solid-js";
-import { createStore } from "solid-js/store";
 import { Key } from "@solid-primitives/keyed";
+import { createKeyedStore } from "../../state/keyed_store";
 import { useParams, useNavigate, A } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import type { CommentResponse } from "../../dtos/responses/blog";
@@ -61,13 +63,21 @@ export default function PostViewPage() {
     "best" | "top" | "new" | "old"
   >("best");
 
-  const [postResource, { refetch }] = createResource(routeKey, async (pid) => {
-    if (!pid) return null;
-    setPostLoadError(null);
+  type PostViewData = NonNullable<
+    Awaited<ReturnType<typeof blogApi.readPost>>["data"]
+  >;
 
+  // Async fetch resolves to a discriminated result; side effects (error signal,
+  // 404 redirect) live in the seeding effect below, not in the computation.
+  const postLoad = createMemo(async () => {
+    const pid = routeKey();
+    if (!pid) return { ok: true as const, data: null };
     try {
       const res = await blogApi.readPost(pid);
-      return res?.data ?? null;
+      return {
+        ok: true as const,
+        data: (res?.data ?? null) as PostViewData | null,
+      };
     } catch (err: unknown) {
       const status =
         typeof err === "object" &&
@@ -78,16 +88,31 @@ export default function PostViewPage() {
           : undefined;
       const message =
         err instanceof Error ? err.message : t("blog.post.failed_load");
-
-      if (status === 400 || status === 404) {
-        navigate("/under-construction", { replace: true });
-        return null;
-      }
-
-      setPostLoadError(message || t("blog.post.failed_load"));
-      return null;
+      return { ok: false as const, status, message };
     }
   });
+  const postLoading = () => isPending(() => postLoad());
+
+  const [postResource, setPostResource] = createSignal<PostViewData | null>(
+    null,
+  );
+  createEffect(
+    () => postLoad(),
+    (result) => {
+      if (result.ok) {
+        setPostLoadError(null);
+        setPostResource(result.data);
+        return;
+      }
+      if (result.status === 400 || result.status === 404) {
+        navigate("/under-construction", { replace: true });
+        setPostResource(null);
+        return;
+      }
+      setPostLoadError(result.message || t("blog.post.failed_load"));
+      setPostResource(null);
+    },
+  );
 
   // Store for optimistic vote states (Post + Comments)
   const [optimisticVotes, setOptimisticVotes] = createStore<{
@@ -107,28 +132,19 @@ export default function PostViewPage() {
   }>({ comments: {} });
 
   // Store for locally added comments (optimistic replies)
-  const [localComments, setLocalComments] = createStore<
-    Record<string, CommentResponse>
-  >({});
+  const [localComments, setLocalComments] =
+    createKeyedStore<CommentResponse>();
 
   // Per-comment reply state
-  const [replyOpen, setReplyOpen] = createStore<Record<string, boolean>>({});
-  const [replyText, setReplyText] = createStore<Record<string, string>>({});
-  const [replyLoading, setReplyLoading] = createStore<Record<string, boolean>>(
-    {},
-  );
-  const [replyError, setReplyError] = createStore<
-    Record<string, string | null>
-  >({});
+  const [replyOpen, setReplyOpen] = createKeyedStore<boolean>();
+  const [replyText, setReplyText] = createKeyedStore<string>();
+  const [replyLoading, setReplyLoading] = createKeyedStore<boolean>();
+  const [replyError, setReplyError] = createKeyedStore<string | null>();
 
-  const [editOpen, setEditOpen] = createStore<Record<string, boolean>>({});
-  const [editText, setEditText] = createStore<Record<string, string>>({});
-  const [editLoading, setEditLoading] = createStore<Record<string, boolean>>(
-    {},
-  );
-  const [editError, setEditError] = createStore<Record<string, string | null>>(
-    {},
-  );
+  const [editOpen, setEditOpen] = createKeyedStore<boolean>();
+  const [editText, setEditText] = createKeyedStore<string>();
+  const [editLoading, setEditLoading] = createKeyedStore<boolean>();
+  const [editError, setEditError] = createKeyedStore<string | null>();
 
   const handleDeletePost = async () => {
     if (!confirm(t("blog.delete_post_confirm"))) return;
@@ -144,7 +160,7 @@ export default function PostViewPage() {
     if (!confirm(t("blog.comments.delete_confirm"))) return;
     try {
       await blogApi.deleteComment(postId()!, commentId);
-      refetch();
+      refresh(postLoad);
     } catch (e) {
       alert(tx("blog.comments.delete_failed", { error: String(e) }));
     }
@@ -212,9 +228,14 @@ export default function PostViewPage() {
       vote_state: newVoteState,
     };
     if (type === "post") {
-      setOptimisticVotes("post", optimisticUpdate);
+      setOptimisticVotes((s) => {
+        s.post = optimisticUpdate;
+      });
     } else {
-      setOptimisticVotes("comments", ids.commentId!, optimisticUpdate);
+      const commentId = ids.commentId!;
+      setOptimisticVotes((s) => {
+        s.comments[commentId] = optimisticUpdate;
+      });
     }
 
     // --- API Call ---
@@ -243,9 +264,14 @@ export default function PostViewPage() {
         vote_state: currentState as VoteState,
       };
       if (type === "post") {
-        setOptimisticVotes("post", rollback);
+        setOptimisticVotes((s) => {
+          s.post = rollback;
+        });
       } else if (ids.commentId) {
-        setOptimisticVotes("comments", ids.commentId, rollback);
+        const commentId = ids.commentId;
+        setOptimisticVotes((s) => {
+          s.comments[commentId] = rollback;
+        });
       }
     }
   };
@@ -266,7 +292,7 @@ export default function PostViewPage() {
         postId()!,
       );
       setCommentValue("");
-      refetch();
+      refresh(postLoad);
     } catch (err: unknown) {
       setCommentError(
         err instanceof Error ? err.message : t("blog.comments.failed_submit"),
@@ -346,7 +372,7 @@ export default function PostViewPage() {
         postId()!,
         commentId,
       );
-      refetch();
+      refresh(postLoad);
       setEditOpen(commentId, false);
     } catch (err: unknown) {
       setEditError(
@@ -622,7 +648,7 @@ export default function PostViewPage() {
     <main class={pageStyles.page}>
       <div class={`${pageStyles.pageInner} max-w-5xl flex flex-row gap-8`}>
         <div class="flex-1">
-          <Show when={postResource.loading}>
+          <Show when={postLoading()}>
             <div class={pageStyles.muted}>{t("blog.loading_posts")}</div>
           </Show>
           <Show when={postLoadError()}>
@@ -795,12 +821,16 @@ export default function PostViewPage() {
                         // eslint-disable-next-line solid/no-innerhtml
                         innerHTML={renderedPostHtml()}
                         ref={(el) => {
-                          createEffect(() => {
-                            renderedPostHtml();
-                            el.querySelectorAll("pre code").forEach((block) => {
-                              hljs.highlightElement(block as HTMLElement);
-                            });
-                          });
+                          createEffect(
+                            () => renderedPostHtml(),
+                            () => {
+                              el.querySelectorAll("pre code").forEach(
+                                (block) => {
+                                  hljs.highlightElement(block as HTMLElement);
+                                },
+                              );
+                            },
+                          );
                         }}
                       />
                     </div>

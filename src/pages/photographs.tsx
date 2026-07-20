@@ -1,12 +1,11 @@
 import {
   createSignal,
   createEffect,
-  onCleanup,
+  flush,
   For,
   Show,
-  onMount,
+  onSettled,
   createMemo,
-  untrack,
 } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import type { RouteSectionProps } from "@solidjs/router";
@@ -255,35 +254,36 @@ export default function Photographs(props: RouteSectionProps) {
 
   // Resolve the route id to a photo: prefer the already-loaded list (so prev/next
   // is instant), else fetch the detail for a cold deep-link. Tracks detailId only
-  // (photos read untracked) to avoid refetching on every infinite-scroll append.
-  createEffect(() => {
-    const id = detailId();
-    if (!id) {
+  // (photos read in the untracked apply phase) to avoid refetching on every
+  // infinite-scroll append.
+  createEffect(
+    () => detailId(),
+    (id) => {
+      if (!id) {
+        setSelectedPhoto(null);
+        return;
+      }
+      const inList = photos().find((p) => p.photograph_id === id);
+      if (inList) {
+        setSelectedPhoto(inList);
+        return;
+      }
       setSelectedPhoto(null);
-      return;
-    }
-    const inList = untrack(() =>
-      photos().find((p) => p.photograph_id === id),
-    );
-    if (inList) {
-      setSelectedPhoto(inList);
-      return;
-    }
-    setSelectedPhoto(null);
-    let cancelled = false;
-    photographyApi
-      .getPhotographDetail(id)
-      .then((resp) => {
-        if (!cancelled) setSelectedPhoto(resp.data.photograph);
-      })
-      .catch((err: unknown) => {
-        console.error("Failed to load photograph detail:", err);
-        if (!cancelled) navigate("/photographs", { replace: true });
-      });
-    onCleanup(() => {
-      cancelled = true;
-    });
-  });
+      let cancelled = false;
+      photographyApi
+        .getPhotographDetail(id)
+        .then((resp) => {
+          if (!cancelled) setSelectedPhoto(resp.data.photograph);
+        })
+        .catch((err: unknown) => {
+          console.error("Failed to load photograph detail:", err);
+          if (!cancelled) navigate("/photographs", { replace: true });
+        });
+      return () => {
+        cancelled = true;
+      };
+    },
+  );
 
   // --- Layout Logic: month-year segments, each a masonry block ---
   const photoDate = (p: PhotographItem) =>
@@ -370,7 +370,7 @@ export default function Photographs(props: RouteSectionProps) {
   };
 
   // Calculate columns based on window width
-  onMount(() => {
+  onSettled(() => {
     const updateColumns = () => {
       const w = window.innerWidth;
       if (w >= 1280) setNumColumns(4);
@@ -381,12 +381,15 @@ export default function Photographs(props: RouteSectionProps) {
 
     updateColumns();
     window.addEventListener("resize", updateColumns);
-    onCleanup(() => window.removeEventListener("resize", updateColumns));
+    return () => window.removeEventListener("resize", updateColumns);
   });
 
-  // Load photos
+  // Load photos. The plain flag guards re-entrancy: loading() alone is not
+  // enough under microtask batching (a second sync call would still read false).
+  let fetchInFlight = false;
   const fetchPhotos = async () => {
-    if (loading() || !hasMore()) return;
+    if (fetchInFlight || loading() || !hasMore()) return;
+    fetchInFlight = true;
     setLoading(true);
     try {
       const resp = await photographyApi.getPhotographs(page(), 24);
@@ -403,18 +406,19 @@ export default function Photographs(props: RouteSectionProps) {
       console.error("Failed to fetch photos:", err);
       setError(t("photos.load_failed"));
     } finally {
+      fetchInFlight = false;
       setLoading(false);
     }
   };
 
   // Initial load
   let sentinelEl: HTMLElement | null = null;
-  onMount(() => {
-    fetchPhotos();
+  onSettled(() => {
+    void fetchPhotos();
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && hasMore() && !loading()) {
-          fetchPhotos();
+          void fetchPhotos();
         }
       },
       { threshold: 0.5 },
@@ -423,19 +427,24 @@ export default function Photographs(props: RouteSectionProps) {
     sentinelEl = document.getElementById("scroll-sentinel");
     if (sentinelEl) observer.observe(sentinelEl);
 
-    onCleanup(() => observer.disconnect());
+    return () => observer.disconnect();
   });
 
   // Re-fetch when a page finishes loading but the sentinel is still on-screen
   // (IntersectionObserver only fires on transitions, so a short first page would otherwise stall).
-  createEffect(() => {
-    // track reactivity: re-run after each fetch settles and after the list grows
-    photos();
-    if (loading() || !hasMore() || !sentinelEl) return;
-    const r = sentinelEl.getBoundingClientRect();
-    const visible = r.top < window.innerHeight && r.bottom > 0;
-    if (visible) fetchPhotos();
-  });
+  createEffect(
+    () => {
+      // track: re-run after each fetch settles and after the list grows
+      photos();
+      return { busy: loading(), more: hasMore() };
+    },
+    ({ busy, more }) => {
+      if (busy || !more || !sentinelEl) return;
+      const r = sentinelEl.getBoundingClientRect();
+      const visible = r.top < window.innerHeight && r.bottom > 0;
+      if (visible) void fetchPhotos();
+    },
+  );
 
   // Handle batch upload: fire the request, start tracking, open Processing.
   const handleBatchUpload = async (formData: FormData) => {
@@ -461,15 +470,18 @@ export default function Photographs(props: RouteSectionProps) {
   };
 
   // When any tracked batch finishes processing, reload the grid from page 1.
-  onMount(() => {
+  onSettled(() => {
     setBatchCompletionHandler(() => {
       setPhotos([]);
       setPage(1);
       setHasMore(true);
-      fetchPhotos();
+      // The resets above land on the microtask flush; force them through so
+      // fetchPhotos' loading()/hasMore()/page() guards see the reset state.
+      flush();
+      void fetchPhotos();
     });
+    return () => setBatchCompletionHandler(null);
   });
-  onCleanup(() => setBatchCompletionHandler(null));
 
   // State for external map links popup
   const [showMapLinks, setShowMapLinks] = createSignal(false);
@@ -487,7 +499,7 @@ export default function Photographs(props: RouteSectionProps) {
       iconAnchor: [15, 30],
     });
 
-    onMount(() => {
+    onSettled(() => {
       map = L.map(mapDiv!).setView([props.lat, props.lon], 13);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution:
@@ -495,21 +507,22 @@ export default function Photographs(props: RouteSectionProps) {
       }).addTo(map);
 
       marker = L.marker([props.lat, props.lon], { icon: emojiIcon }).addTo(map);
+
+      return () => {
+        map?.remove();
+      };
     });
 
     // React to prop changes
-    createEffect(() => {
-      const lat = props.lat;
-      const lon = props.lon;
-      if (map && marker) {
-        map.setView([lat, lon], 13);
-        marker.setLatLng([lat, lon]);
-      }
-    });
-
-    onCleanup(() => {
-      map?.remove();
-    });
+    createEffect(
+      () => [props.lat, props.lon] as const,
+      ([lat, lon]) => {
+        if (map && marker) {
+          map.setView([lat, lon], 13);
+          marker.setLatLng([lat, lon]);
+        }
+      },
+    );
 
     return <div ref={(el) => (mapDiv = el)} class="map-container" />;
   };
@@ -523,10 +536,12 @@ export default function Photographs(props: RouteSectionProps) {
     `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=15`;
 
   // Close map links popup when photo changes
-  createEffect(() => {
-    selectedPhoto(); // track changes
-    setShowMapLinks(false);
-  });
+  createEffect(
+    () => selectedPhoto(),
+    () => {
+      setShowMapLinks(false);
+    },
+  );
 
   // --- Navigation Logic ---
   // Neighbours are resolved from the loaded list and navigated to by URL (the
@@ -557,25 +572,28 @@ export default function Photographs(props: RouteSectionProps) {
     }
   };
 
-  createEffect(() => {
+  createEffect(
     // Only listen when a photo is selected
-    if (!selectedPhoto()) return;
+    () => !!selectedPhoto(),
+    (open) => {
+      if (!open) return;
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (selectedPhoto()) closePhoto();
-        else if (isSelectionMode()) {
-          setIsSelectionMode(false);
-          setSelectedForDeletion(new Set<string>());
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          if (selectedPhoto()) closePhoto();
+          else if (isSelectionMode()) {
+            setIsSelectionMode(false);
+            setSelectedForDeletion(new Set<string>());
+          }
         }
-      }
-      if (e.key === "ArrowLeft") navigatePhoto("prev");
-      if (e.key === "ArrowRight") navigatePhoto("next");
-    };
+        if (e.key === "ArrowLeft") navigatePhoto("prev");
+        if (e.key === "ArrowRight") navigatePhoto("next");
+      };
 
-    window.addEventListener("keydown", handleKeyDown);
-    onCleanup(() => window.removeEventListener("keydown", handleKeyDown));
-  });
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    },
+  );
 
   return (
     <>

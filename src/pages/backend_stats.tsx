@@ -1,4 +1,4 @@
-import { createResource, Show } from "solid-js";
+import { Loading, Show, createMemo } from "solid-js";
 import DOMPurify from "dompurify";
 import HostStatsDashboard from "../components/HostStatsDashboard";
 import { healthApi } from "../services/all_api";
@@ -6,7 +6,7 @@ import { pageStyles } from "../styles/pageStyles";
 import { theme } from "../state/theme";
 
 export default function BackendStats() {
-  const [fastfetch] = createResource(async () => {
+  const fastfetch = createMemo(async () => {
     try {
       const res = await healthApi.fastfetch();
       return res.data;
@@ -34,21 +34,23 @@ export default function BackendStats() {
           <HostStatsDashboard />
         </div>
 
-        <Show when={fastfetch()}>
-          <div
-            class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-sm shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
-            style={{
-              background: isDark()
-                ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
-                : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-              "border-color": isDark() ? "#f59e0b" : "#b45309",
-              color: isDark() ? "#e2e8f0" : "#0f172a",
-            }}
-          >
-            {/* eslint-disable-next-line solid/no-innerhtml -- value is DOMPurify-sanitized in cleanFastfetch(). */}
-            <pre class="m-auto whitespace-pre" innerHTML={cleanFastfetch()} />
-          </div>
-        </Show>
+        <Loading>
+          <Show when={fastfetch()}>
+            <div
+              class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-sm shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
+              style={{
+                background: isDark()
+                  ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
+                  : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                "border-color": isDark() ? "#f59e0b" : "#b45309",
+                color: isDark() ? "#e2e8f0" : "#0f172a",
+              }}
+            >
+              {/* eslint-disable-next-line solid/no-innerhtml -- value is DOMPurify-sanitized in cleanFastfetch(). */}
+              <pre class="m-auto whitespace-pre" innerHTML={cleanFastfetch()} />
+            </div>
+          </Show>
+        </Loading>
       </div>
     </main>
   );

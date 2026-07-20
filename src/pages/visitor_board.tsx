@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, onSettled } from "solid-js";
 import { visitorBoardApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
@@ -57,7 +57,7 @@ export default function VisitorBoard() {
   let markers: L.Marker[] = [];
   let markerCounts: number[] = [];
 
-  onMount(() => {
+  onSettled(() => {
     async function loadVisitorBoard() {
       try {
         const resp = await visitorBoardApi.getVisitorBoard();
@@ -115,26 +115,26 @@ export default function VisitorBoard() {
     }
     loadVisitorBoard();
 
-    onCleanup(() => {
+    return () => {
       if (map && map.remove) {
         map.remove();
       }
       markers = [];
       markerCounts = [];
-    });
+    };
   });
 
   // Refresh popup text reactively when the locale/text bundle changes.
-  createEffect(() => {
-    // Track the reactive sources synchronously.
-    const _locale = locale();
-    const _texts = texts();
-    void _locale;
-    void _texts;
-    markers.forEach((marker, i) => {
-      marker.setPopupContent(tx("visitor.popup", { count: markerCounts[i] ?? 0 }));
-    });
-  });
+  createEffect(
+    () => [locale(), texts()] as const,
+    () => {
+      markers.forEach((marker, i) => {
+        marker.setPopupContent(
+          tx("visitor.popup", { count: markerCounts[i] ?? 0 }),
+        );
+      });
+    },
+  );
 
   return (
     <main class={`${pageStyles.page} flex`}>

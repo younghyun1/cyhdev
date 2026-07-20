@@ -6,7 +6,7 @@
 // a batch _missing (after a short grace) rather than triggering logout, because
 // the status endpoint returns 404 (never 403) for absent/not-owned batches.
 
-import { createStore, produce } from "solid-js/store";
+import { createStore, flush } from "solid-js";
 import { photographyApi } from "../services/all_api";
 import type {
   BatchStatusResponse,
@@ -56,12 +56,14 @@ function isActive(entry: BatchEntry): boolean {
 
 /** Begin tracking a batch from an existing status snapshot. */
 export function trackBatch(initial: BatchStatusResponse): void {
-  setBatches(initial.batch_id, {
-    batch_id: initial.batch_id,
-    status: initial,
-    _missing: false,
-    _firstSeen: Date.now(),
-    _gridRefreshed: false,
+  setBatches((state) => {
+    state[initial.batch_id] = {
+      batch_id: initial.batch_id,
+      status: initial,
+      _missing: false,
+      _firstSeen: Date.now(),
+      _gridRefreshed: false,
+    };
   });
   ensurePolling();
 }
@@ -91,16 +93,17 @@ export function trackFromUpload(resp: BatchUploadResponse): void {
 
 /** Drop finished (done) and missing batches from the tracker. */
 export function clearFinishedBatches(): void {
-  setBatches(
-    produce((state) => {
-      for (const id of Object.keys(state)) {
-        const entry = state[id];
-        if (entry && (entry._missing || entry.status?.done)) {
-          delete state[id];
-        }
+  setBatches((state) => {
+    for (const id of Object.keys(state)) {
+      const entry = state[id];
+      if (entry && (entry._missing || entry.status?.done)) {
+        delete state[id];
       }
-    }),
-  );
+    }
+  });
+  // Writes land on the microtask flush; force them through so the
+  // active-batch scan below sees the post-clear state.
+  flush();
   maybeStopPolling();
 }
 
@@ -154,19 +157,26 @@ async function pollAll(): Promise<void> {
 
       if (result.status === "fulfilled") {
         const status = result.value.data;
-        setBatches(id, "status", status);
-        setBatches(id, "_missing", false);
-        if (status.done && !existing._gridRefreshed) {
-          setBatches(id, "_gridRefreshed", true);
-          completedNow = true;
-        }
+        setBatches((state) => {
+          const entry = state[id];
+          if (!entry) return;
+          entry.status = status;
+          entry._missing = false;
+          if (status.done && !entry._gridRefreshed) {
+            entry._gridRefreshed = true;
+            completedNow = true;
+          }
+        });
       } else {
         const reason = result.reason as { status?: number } | undefined;
         if (
           reason?.status === 404 &&
           Date.now() - existing._firstSeen > MISSING_GRACE_MS
         ) {
-          setBatches(id, "_missing", true);
+          setBatches((state) => {
+            const entry = state[id];
+            if (entry) entry._missing = true;
+          });
         }
         // Other errors: leave state untouched and retry next tick.
       }
@@ -177,6 +187,7 @@ async function pollAll(): Promise<void> {
     }
   } finally {
     inFlight = false;
+    flush();
     maybeStopPolling();
   }
 }

@@ -4,7 +4,7 @@
 // module-scoped batch store directly. Reuses the page's `.modal-overlay` /
 // `.modal-content` shell plus a `.processing-modal` rule in the inline <style>.
 
-import { Show, createMemo, onCleanup, onMount } from "solid-js";
+import { Show, createMemo, onSettled } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import {
   batches,
@@ -46,8 +46,10 @@ export default function ProcessingModal(props: ProcessingModalProps) {
     if (e.key === "Escape") props.onClose();
   };
 
-  onMount(() => window.addEventListener("keydown", onKeyDown));
-  onCleanup(() => window.removeEventListener("keydown", onKeyDown));
+  onSettled(() => {
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   const progressPercent = (entry: BatchEntry): number => {
     const status = entry.status;
