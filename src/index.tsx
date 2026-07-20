@@ -3,6 +3,20 @@
 // Prerelease semantics apply: writes flush on a microtask (use flush() for
 // sync read-after-write), effects are (compute, apply) pairs, async reads
 // suspend to the nearest <Loading>. See README "SolidJS 2.0 beta".
+// IBM Plex: self-hosted, woff2, font-display swap, unicode-range subset.
+// KR package is sliced Google-style; only chunks containing rendered glyphs
+// (hero name hangul/hanja) are downloaded. Imported here instead of
+// index.css because @tailwindcss/postcss inlines CSS @imports without
+// rebasing their relative font URLs (see note in index.css).
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/400-italic.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
+import "@fontsource/ibm-plex-sans/700.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource/ibm-plex-mono/700.css";
+import "@fontsource/ibm-plex-sans-kr/700.css";
 import "./index.css";
 
 import { render } from "@solidjs/web";

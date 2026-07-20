@@ -1,17 +1,9 @@
 @import "tailwindcss";
 
-/* IBM Plex: self-hosted, woff2, font-display swap, unicode-range subset.
-   KR package is sliced Google-style; only chunks containing rendered
-   glyphs (hero name hangul/hanja) are downloaded. */
-@import "@fontsource/ibm-plex-sans/400.css";
-@import "@fontsource/ibm-plex-sans/400-italic.css";
-@import "@fontsource/ibm-plex-sans/500.css";
-@import "@fontsource/ibm-plex-sans/600.css";
-@import "@fontsource/ibm-plex-sans/700.css";
-@import "@fontsource/ibm-plex-mono/400.css";
-@import "@fontsource/ibm-plex-mono/500.css";
-@import "@fontsource/ibm-plex-mono/700.css";
-@import "@fontsource/ibm-plex-sans-kr/700.css";
+/* IBM Plex fontsource CSS is imported in src/index.tsx, NOT here:
+   @tailwindcss/postcss inlines @imports without rebasing their relative
+   url(./files/*.woff2) references, which 404s every font in production.
+   Importing from JS lets Vite rebase and emit the font assets. */
 
 @import "./styles/prose.css";
 @import "./styles/code.css";
