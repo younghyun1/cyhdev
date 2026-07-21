@@ -8,6 +8,7 @@ import {
   encodeRtcMediaStateFrame,
   encodeSendMessageFrame,
   encodeTypingFrame,
+  formatIpv6Canonical,
 } from "../services/live_chat_binary";
 
 const CLIENT_MESSAGE_ID = "018f3f7d-5a76-7d8f-8123-456789abcdef";
@@ -124,7 +125,7 @@ describe("live chat binary server frames", () => {
         live_chat_message_id: MESSAGE_ID,
         room_key: "main",
         user_id: null,
-        guest_ip: "2001:db8:0:0:0:0:0:1",
+        guest_ip: "2001:db8::1",
         sender_kind: 2,
         sender_display_name: "merry raccoon",
         sender_country_flag: "🇺🇸",
@@ -278,6 +279,74 @@ describe("live chat RTC binary frames", () => {
       kind: "error",
       code: "room_full",
       message: "full",
+    });
+  });
+});
+
+describe("IPv6 canonical formatting (must match Rust Ipv6Addr Display)", () => {
+  it("compresses the longest zero run", () => {
+    expect(
+      formatIpv6Canonical([0x2001, 0xdb8, 0, 0, 0, 0, 0, 1]),
+    ).toBe("2001:db8::1");
+  });
+
+  it("prefers the leftmost run on ties", () => {
+    expect(
+      formatIpv6Canonical([0x2001, 0xdb8, 0, 0, 1, 0, 0, 1]),
+    ).toBe("2001:db8::1:0:0:1");
+  });
+
+  it("leaves single zeros uncompressed", () => {
+    expect(
+      formatIpv6Canonical([0x2001, 0xdb8, 0, 1, 1, 0, 1, 1]),
+    ).toBe("2001:db8:0:1:1:0:1:1");
+  });
+
+  it("formats unspecified and loopback", () => {
+    expect(formatIpv6Canonical([0, 0, 0, 0, 0, 0, 0, 0])).toBe("::");
+    expect(formatIpv6Canonical([0, 0, 0, 0, 0, 0, 0, 1])).toBe("::1");
+  });
+
+  it("formats IPv4-mapped addresses in dotted form", () => {
+    expect(
+      formatIpv6Canonical([0, 0, 0, 0, 0, 0xffff, 0xc000, 0x0221]),
+    ).toBe("::ffff:192.0.2.33");
+  });
+
+  it("decodes an IPv6 guest actor with the canonical guest_ip", () => {
+    const ipBytes = [
+      0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+    ];
+    const frame = [
+      0x90,
+      0x04,
+      0x02,
+      0x06,
+      ...ipBytes,
+      2,
+      ...str("curious otter"),
+      ...str("🇺🇸"),
+      0xff,
+      0xff,
+      1,
+      1,
+      0,
+    ];
+    expect(decodeServerEventFrame(buffer(frame))).toEqual({
+      type: "rtc",
+      kind: "peer_state",
+      actor: {
+        actor_key: { type: "guest", value: "2001:db8::1" },
+        sender_kind: 2,
+        user_id: null,
+        guest_ip: "2001:db8::1",
+        display_name: "curious otter",
+        country_flag: "🇺🇸",
+        user_profile_picture_url: null,
+      },
+      phase: "joined",
+      mic_on: true,
+      cam_on: false,
     });
   });
 });

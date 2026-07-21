@@ -55,6 +55,55 @@ const MESSAGE_FLAG_DELETED_AT = 0x02;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+/// Format an IPv6 address the way Rust's `Ipv6Addr` Display does: IPv4-mapped
+/// addresses as `::ffff:a.b.c.d`, otherwise the longest run (>= 2) of zero
+/// hextets compressed to `::` (leftmost on ties), hextets in lowercase hex
+/// without leading zeros. The SFU stamps MediaStream ids with that exact form
+/// (`actor_stream_id`), so any deviation breaks actor-to-stream mapping and
+/// the participant's tile never binds its stream.
+export function formatIpv6Canonical(hextets: readonly number[]): string {
+  const seg = (i: number): number => hextets[i] ?? 0;
+  const isV4Mapped =
+    seg(0) === 0 &&
+    seg(1) === 0 &&
+    seg(2) === 0 &&
+    seg(3) === 0 &&
+    seg(4) === 0 &&
+    seg(5) === 0xffff;
+  if (isV4Mapped) {
+    const g = seg(6);
+    const h = seg(7);
+    return `::ffff:${(g >> 8) & 0xff}.${g & 0xff}.${(h >> 8) & 0xff}.${h & 0xff}`;
+  }
+  let bestStart = -1;
+  let bestLen = 0;
+  let runStart = -1;
+  let runLen = 0;
+  for (let i = 0; i < 8; i += 1) {
+    if (seg(i) === 0) {
+      if (runStart === -1) runStart = i;
+      runLen += 1;
+      if (runLen > bestLen) {
+        bestLen = runLen;
+        bestStart = runStart;
+      }
+    } else {
+      runStart = -1;
+      runLen = 0;
+    }
+  }
+  const hex = (i: number): string => seg(i).toString(16);
+  if (bestLen < 2) {
+    return Array.from({ length: 8 }, (_, i) => hex(i)).join(":");
+  }
+  const head = Array.from({ length: bestStart }, (_, i) => hex(i)).join(":");
+  const tailStart = bestStart + bestLen;
+  const tail = Array.from({ length: 8 - tailStart }, (_, i) =>
+    hex(tailStart + i),
+  ).join(":");
+  return `${head}::${tail}`;
+}
+
 export function encodeSendMessageFrame(
   clientMessageId: string,
   body: string,
@@ -344,13 +393,11 @@ class BinaryReader {
     }
     if (family === IP_V6) {
       const bytes = this.readBytes(16);
-      const parts: string[] = [];
+      const hextets: number[] = [];
       for (let i = 0; i < bytes.length; i += 2) {
-        const high = bytes[i] ?? 0;
-        const low = bytes[i + 1] ?? 0;
-        parts.push(((high << 8) | low).toString(16));
+        hextets.push(((bytes[i] ?? 0) << 8) | (bytes[i + 1] ?? 0));
       }
-      return parts.join(":");
+      return formatIpv6Canonical(hextets);
     }
     throw new Error("Unknown IP family in live chat binary frame");
   }
