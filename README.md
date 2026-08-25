@@ -1,12 +1,12 @@
-## SolidJS 2.0 beta
+## SolidJS 2.0 release candidate
 
-This project runs on the SolidJS 2.0 beta (`solid-js@2.0.0-beta.x` + `@solidjs/web`), with the matching prerelease ecosystem: `@solidjs/router@0.17.0-next`, `vite-plugin-solid@3.0.0-next`, `@solid-primitives/keyed@3.0.0-next`, `@solidjs/testing-library@1.0.0-beta`. Expect churn until 2.0 stable; pin exact versions when bumping.
+This project runs on the SolidJS 2.0 release candidate (`solid-js@2.0.0-rc.x` + `@solidjs/web`), with the matching prerelease ecosystem: `@solidjs/router@2.0.0-next`, `vite-plugin-solid@3.0.0-next`, `@solid-primitives/keyed@3.0.0-next`, `@solidjs/testing-library@1.0.0-beta`. Expect churn until 2.0 stable; pin exact versions when bumping.
 
-Beta-era workarounds to revisit at 2.0 stable:
+Prerelease workarounds to revisit at 2.0 stable:
 - `.npmrc` sets `legacy-peer-deps`: strict `>=2.0.0` peer ranges reject prerelease versions.
 - `@solid-primitives/utils` is a direct dependency only because `@solid-primitives/keyed`'s next build forgets to declare it.
-- `eslint-plugin-solid` has no 2.0-aware release; `solid/imports` is disabled in `eslint.config.js` and `solid/reactivity` emits false-positive warnings on 2.0 idioms (async memos, two-arg `createEffect`).
-- eslint is held at 9.x (`eslint-plugin-solid` peer caps `^9`) and TypeScript at 6.0.x (`typescript-eslint` caps `<6.1`).
+- `eslint-plugin-solid` 0.16 supports Solid 2, but its `solid/imports` rule still maps `JSX` to `solid-js`; the RC exports that type from `@solidjs/web`, so the rule remains disabled.
+- TypeScript is held at 6.0.x because `typescript-eslint` caps support below 6.1.
 - `src/components/LineChart.tsx` replaces `solid-chartjs`, which pins solid-js 1.x.
 
 ## Usage

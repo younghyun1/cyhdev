@@ -1,4 +1,3 @@
-import { A } from "@solidjs/router";
 import { pageStyles } from "../styles/pageStyles";
 import badgeAWS232F3E from "../assets/badges/AWS-232F3E.svg";
 import badgeAmazonLinux232F3E from "../assets/badges/Amazon_Linux-232F3E.svg";
@@ -652,12 +651,12 @@ export default function About() {
                 photographs archived.
               </span>
               <div class="mt-2">
-                <A
+                <a
                   href="/photographs"
                   class={`inline-flex items-center ${pageStyles.link} font-medium`}
                 >
                   View Photography Portfolio &rarr;
-                </A>
+                </a>
               </div>
             </div>
 

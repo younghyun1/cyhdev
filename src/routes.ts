@@ -1,10 +1,10 @@
 import { lazy } from "solid-js";
-import type { RouteDefinition } from "@solidjs/router";
+import { defineRoutes } from "@solidjs/router";
 
 import Home from "./pages/home";
 import { withAuth } from "./components/RequireAuth";
 
-export const routes: RouteDefinition[] = [
+export const routes = defineRoutes([
   {
     path: "/",
     component: Home,
@@ -103,7 +103,7 @@ export const routes: RouteDefinition[] = [
     component: lazy(() => import("./errors/404")),
   },
   {
-    path: "**",
+    path: "*404",
     component: lazy(() => import("./errors/404")),
   },
-];
+]);

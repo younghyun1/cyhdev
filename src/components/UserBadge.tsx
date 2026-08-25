@@ -1,5 +1,4 @@
 import { Show } from "solid-js";
-import { A } from "@solidjs/router";
 
 interface UserBadgeProps {
   userName: string;
@@ -58,12 +57,12 @@ export function UserBadge(props: UserBadgeProps) {
       when={props.link !== false}
       fallback={<span class="inline-flex items-center gap-1">{content()}</span>}
     >
-      <A
+      <a
         href={href()}
         class="relative z-10 inline-flex items-center gap-1 rounded-sm no-underline hover:underline"
       >
         {content()}
-      </A>
+      </a>
     </Show>
   );
 }

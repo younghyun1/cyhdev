@@ -1,4 +1,4 @@
-import { A, useParams } from "@solidjs/router";
+import { useParams } from "@solidjs/router";
 import { Loading, Show, createMemo } from "solid-js";
 import { userApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
@@ -20,9 +20,9 @@ export default function UserInfoPage() {
   return (
     <main class={pageStyles.page}>
       <section class={pageStyles.pageInner}>
-        <A href="/blog" class={pageStyles.link}>
+        <a href="/blog" class={pageStyles.link}>
           {t("user.back_to_blog")}
-        </A>
+        </a>
 
         <Loading
           fallback={

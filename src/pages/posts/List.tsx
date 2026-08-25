@@ -1,4 +1,4 @@
-import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import { useNavigate, useSearchParams } from "@solidjs/router";
 import {
   Show,
   For,
@@ -422,12 +422,12 @@ export default function PostsList() {
                       </Show>
                     </div>
 
-                    <A
+                    <a
                       href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
                       class="mt-1 block text-lg font-semibold text-ink group-hover:text-accent decoration-accent/40 underline-offset-4 hover:underline transition-colors"
                     >
                       {post.post_title}
-                    </A>
+                    </a>
 
                     {/* Tags: inline mono links, no pills */}
                     <Show when={post.post_tags && post.post_tags.length > 0}>

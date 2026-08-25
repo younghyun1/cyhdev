@@ -10,7 +10,7 @@ import {
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import { createKeyedStore } from "../../state/keyed_store";
-import { useParams, useNavigate, A } from "@solidjs/router";
+import { useParams, useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import type { CommentResponse } from "../../dtos/responses/blog";
 import { isAuthenticated, user } from "../../state/auth";
@@ -806,12 +806,12 @@ export default function PostViewPage() {
                         <div class="flex flex-wrap gap-1.5 mb-3">
                           <For each={data().post_tags}>
                             {(tag) => (
-                              <A
+                              <a
                                 href={`/blog?q=${encodeURIComponent(tag)}&type=tag`}
                                 class="inline-flex items-center px-2.5 py-1 rounded-full font-mono text-xs font-medium bg-accent-soft text-accent hover:opacity-80 transition-opacity"
                               >
                                 #{tag}
-                              </A>
+                              </a>
                             )}
                           </For>
                         </div>

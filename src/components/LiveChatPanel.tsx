@@ -7,7 +7,6 @@ import {
   onCleanup,
   onSettled,
 } from "solid-js";
-import { A } from "@solidjs/router";
 import { liveChatApi } from "../services/live_chat";
 import {
   encodePingFrame,
@@ -520,9 +519,9 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
             </span>
           </Show>
           <Show when={!isFull()}>
-            <A href="/live-chat" class={pageStyles.buttonSecondary}>
+            <a href="/live-chat" class={pageStyles.buttonSecondary}>
               {t("live_chat.open")}
-            </A>
+            </a>
           </Show>
         </div>
       </header>

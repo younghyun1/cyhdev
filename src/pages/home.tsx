@@ -1,5 +1,4 @@
 import { createMemo, For, Loading, Show } from "solid-js";
-import { A } from "@solidjs/router";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
@@ -78,18 +77,18 @@ export default function Home() {
 
           {/* Action Bar */}
           <div class="mt-8 flex gap-4">
-            <A
+            <a
               href="/blog"
               class={`${pageStyles.buttonPrimary} px-6 py-3 text-base font-mono`}
             >
               {t("home.cta.blog")}
-            </A>
-            <A
+            </a>
+            <a
               href="/photographs"
               class={`${pageStyles.buttonSecondary} px-6 py-3 text-base font-mono`}
             >
               {t("home.cta.photography")}
-            </A>
+            </a>
           </div>
         </div>
       </header>
@@ -104,9 +103,9 @@ export default function Home() {
                 <h2 class="text-2xl font-bold uppercase font-mono tracking-tight flex items-center gap-2">
                   <span class="w-3 h-3 bg-accent" /> {t("home.latest_posts")}
                 </h2>
-                <A href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
+                <a href="/blog" class={`${pageStyles.link} font-mono text-sm`}>
                   {t("home.view_blog_posts")}
-                </A>
+                </a>
               </div>
 
               <div class="grow space-y-4">
@@ -155,12 +154,12 @@ export default function Home() {
                               </span>
                             </div>
                             <h3 class="text-xl font-bold text-ink group-hover:text-accent transition-colors">
-                              <A
+                              <a
                                 href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
                               >
                                 <span class="absolute inset-0" />
                                 {post.post_title}
-                              </A>
+                              </a>
                             </h3>
                           </div>
                         </article>
@@ -177,12 +176,12 @@ export default function Home() {
                 <h2 class="text-2xl font-bold uppercase font-mono tracking-tight flex items-center gap-2">
                   <span class="w-3 h-3 bg-accent" /> {t("home.photography")}
                 </h2>
-                <A
+                <a
                   href="/photographs"
                   class={`${pageStyles.link} font-mono text-sm`}
                 >
                   {t("home.view_gallery")}
-                </A>
+                </a>
               </div>
 
               <div class="grid grid-cols-2 gap-3">
@@ -207,7 +206,7 @@ export default function Home() {
                   >
                     <For each={getPhotoItems()}>
                       {(photo) => (
-                        <A
+                        <a
                           href="/photographs"
                           class="group relative block aspect-square overflow-hidden bg-surface-2 border border-line"
                         >
@@ -225,7 +224,7 @@ export default function Home() {
                           <div class="absolute top-2 right-2 text-[10px] font-mono bg-black text-white px-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             {photo.photograph_id}
                           </div>
-                        </A>
+                        </a>
                       )}
                     </For>
                   </Show>
