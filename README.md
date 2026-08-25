@@ -6,7 +6,7 @@ Prerelease workarounds to revisit at 2.0 stable:
 - `.npmrc` sets `legacy-peer-deps`: strict `>=2.0.0` peer ranges reject prerelease versions.
 - `@solid-primitives/utils` is a direct dependency only because `@solid-primitives/keyed`'s next build forgets to declare it.
 - `eslint-plugin-solid` 0.16 supports Solid 2, but its `solid/imports` rule still maps `JSX` to `solid-js`; the RC exports that type from `@solidjs/web`, so the rule remains disabled.
-- TypeScript is held at 6.0.x because `typescript-eslint` caps support below 6.1.
+- TypeScript 7 supplies `tsc` through the `@typescript/native` npm alias; the root `typescript` alias exposes the TypeScript 6 API and `tsc6` for tools such as `typescript-eslint` that still require programmatic compiler access.
 - `src/components/LineChart.tsx` replaces `solid-chartjs`, which pins solid-js 1.x.
 
 ## Usage
