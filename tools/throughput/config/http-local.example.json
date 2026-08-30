@@ -12,7 +12,7 @@
     "geo_ipv4_digest": "sha256:REPLACE_WITH_EXACT_IPV4_FILE_DIGEST",
     "geo_ipv6_digest": "sha256:REPLACE_WITH_EXACT_IPV6_FILE_DIGEST",
     "harness_transport": "HTTP/1.1; one loopback connection per request; Connection: close",
-    "loopback_bridge": "socat TCP-LISTEN:3000,bind=127.0.0.1,reuseaddr,fork OPENSSL:127.0.0.1:8443,verify=0",
+    "loopback_bridge": "socat TCP-LISTEN:3000,bind=127.0.0.1,reuseaddr,fork OPENSSL:127.0.0.1:8443,verify=0,snihost=localhost",
     "openssl_version": "replace with openssl version output",
     "process_placement": "default scheduler; no CPU affinity; otherwise idle host",
     "socat_version": "replace with socat -V output",
