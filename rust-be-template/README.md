@@ -75,7 +75,8 @@ src/
 ## ⚙️ Setup
 
 ### Prerequisites
-- Rust 1.70+
+- The rolling nightly toolchain declared by the monorepo root
+- Node.js 24 or newer and npm for local frontend builds
 - PostgreSQL
 - OpenSSL/SSL certificates
 
@@ -122,11 +123,10 @@ diesel migration run
 ### Running
 ```bash
 # Development
-cargo run
+cargo xtask backend
 
-# Production
-cargo build --release
-./target/release/rust-be-template
+# Development image with embedded frontend assets
+cargo xtask image
 ```
 
 ## 📡 API Endpoints
