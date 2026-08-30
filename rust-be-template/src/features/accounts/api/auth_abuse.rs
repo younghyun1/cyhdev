@@ -44,10 +44,7 @@ pub async fn enforce_auth_ip_throttle(
 }
 
 /// Apply sensitive response policy to successes, extractor failures, and throttles.
-pub async fn sensitive_auth_response_headers(
-    request: Request<Body>,
-    next: Next,
-) -> Response<Body> {
+pub async fn sensitive_auth_response_headers(request: Request<Body>, next: Next) -> Response<Body> {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CACHE_CONTROL,

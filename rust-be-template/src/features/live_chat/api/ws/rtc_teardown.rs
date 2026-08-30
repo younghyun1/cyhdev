@@ -10,20 +10,31 @@ use crate::features::live_chat::{
     },
 };
 
-use super::{protocol::{encode_event, send_event}, rtc::RtcSession};
+use super::{
+    protocol::{encode_event, send_event},
+    rtc::RtcSession,
+};
 
 impl RtcSession {
     pub(super) async fn leave(&self) {
         let (room, _peer, participant_id) = {
             let mut inner = self.inner.lock().await;
-            (inner.room.take(), inner.peer.take(), inner.participant_id.take())
+            (
+                inner.room.take(),
+                inner.peer.take(),
+                inner.participant_id.take(),
+            )
         };
         if let Some(room) = room.as_ref() {
-            let deleted_user_id = self.actor.user_id.filter(|user_id| {
-                self.service.cache.is_connected_user_disabled(*user_id)
-            });
+            let deleted_user_id = self
+                .actor
+                .user_id
+                .filter(|user_id| self.service.cache.is_connected_user_disabled(*user_id));
             match deleted_user_id {
-                Some(user_id) => room.teardown_deleted_user_peer(self.connection_id, user_id).await,
+                Some(user_id) => {
+                    room.teardown_deleted_user_peer(self.connection_id, user_id)
+                        .await
+                }
                 None => room.teardown_peer(self.connection_id).await,
             }
         }
@@ -63,7 +74,8 @@ impl RtcSession {
 
     pub(super) async fn send_error(&self, code: &str, message: &str) {
         let event = LiveChatServerEvent::Rtc(RtcServerSignal::Error {
-            code: code.to_owned(), message: message.to_owned(),
+            code: code.to_owned(),
+            message: message.to_owned(),
         });
         send_event(&self.out, &event, self.wire_protocol).await;
     }

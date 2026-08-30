@@ -64,10 +64,7 @@ fn role_and_permission_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             receipt.previous_role == RoleType::User && receipt.role_type == RoleType::Moderator,
             "role receipt did not preserve old and new authority",
         )?;
-        let session = context
-            .sessions
-            .lookup(login.session_token.expose())
-            .await;
+        let session = context.sessions.lookup(login.session_token.expose()).await;
         require(
             matches!(session, Some(session) if session.role_type == RoleType::Moderator),
             "committed role was not refreshed into the target RAM session",
@@ -152,22 +149,26 @@ async fn assert_audit_guards(
 ) -> TestResult {
     let mut connection = context.pool.get().await?;
     let update_result = diesel::update(
-        authorization_audit_events::table.filter(
-            authorization_audit_events::authorization_audit_event_id.eq(audit_event_id),
-        ),
+        authorization_audit_events::table
+            .filter(authorization_audit_events::authorization_audit_event_id.eq(audit_event_id)),
     )
     .set(authorization_audit_events::authorization_audit_event_reason.eq("Rewrite audit record"))
     .execute(&mut connection)
     .await;
-    require(update_result.is_err(), "audit update trigger allowed mutation")?;
+    require(
+        update_result.is_err(),
+        "audit update trigger allowed mutation",
+    )?;
     let delete_result = diesel::delete(
-        authorization_audit_events::table.filter(
-            authorization_audit_events::authorization_audit_event_id.eq(audit_event_id),
-        ),
+        authorization_audit_events::table
+            .filter(authorization_audit_events::authorization_audit_event_id.eq(audit_event_id)),
     )
     .execute(&mut connection)
     .await;
-    require(delete_result.is_err(), "audit delete trigger allowed mutation")?;
+    require(
+        delete_result.is_err(),
+        "audit delete trigger allowed mutation",
+    )?;
     // Diesel has no TRUNCATE query-builder node; this test-only DDL verifies the
     // separate statement-level guard rather than interpolating any input.
     let truncate_result = diesel::sql_query("TRUNCATE TABLE authorization_audit_events")
@@ -249,6 +250,9 @@ fn owner_invariant_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .count()
             .get_result::<i64>(&mut connection)
             .await?;
-        require(owner_count == 1, "owner race left an invalid Younghyun count")
+        require(
+            owner_count == 1,
+            "owner race left an invalid Younghyun count",
+        )
     })
 }

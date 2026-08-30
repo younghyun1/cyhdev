@@ -160,8 +160,7 @@ mod tests {
     };
     use super::*;
     use crate::features::live_chat::{
-        domain::actor::ChatActor,
-        service::cache::LiveChatServerEvent,
+        domain::actor::ChatActor, service::cache::LiveChatServerEvent,
     };
 
     fn ip(value: &str) -> IpAddr {

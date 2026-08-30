@@ -9,26 +9,48 @@ use crate::features::{
 
 #[derive(Clone, Copy, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ForumContentStateResponse { Visible, Hidden, Deleted }
+pub enum ForumContentStateResponse {
+    Visible,
+    Hidden,
+    Deleted,
+}
 
 impl From<ForumContentState> for ForumContentStateResponse {
-    fn from(value: ForumContentState) -> Self { match value { ForumContentState::Visible => Self::Visible, ForumContentState::Hidden => Self::Hidden, ForumContentState::Deleted => Self::Deleted } }
+    fn from(value: ForumContentState) -> Self {
+        match value {
+            ForumContentState::Visible => Self::Visible,
+            ForumContentState::Hidden => Self::Hidden,
+            ForumContentState::Deleted => Self::Deleted,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ForumTopicAccessStateResponse { Open, Locked }
+pub enum ForumTopicAccessStateResponse {
+    Open,
+    Locked,
+}
 
 impl From<ForumTopicAccessState> for ForumTopicAccessStateResponse {
-    fn from(value: ForumTopicAccessState) -> Self { match value { ForumTopicAccessState::Open => Self::Open, ForumTopicAccessState::Locked => Self::Locked } }
+    fn from(value: ForumTopicAccessState) -> Self {
+        match value {
+            ForumTopicAccessState::Open => Self::Open,
+            ForumTopicAccessState::Locked => Self::Locked,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ForumNotificationKindResponse { TopicReply }
+pub enum ForumNotificationKindResponse {
+    TopicReply,
+}
 
 impl From<ForumNotificationKind> for ForumNotificationKindResponse {
-    fn from(_: ForumNotificationKind) -> Self { Self::TopicReply }
+    fn from(_: ForumNotificationKind) -> Self {
+        Self::TopicReply
+    }
 }
 
 #[derive(Serialize, ToSchema)]

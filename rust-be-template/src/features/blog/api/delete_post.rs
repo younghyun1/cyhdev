@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -33,7 +37,16 @@ pub async fn delete_post(
     Path(post_id): Path<Uuid>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    state.blog_service().delete_post(requester_id, post_id).await
+    state
+        .blog_service()
+        .delete_post(requester_id, post_id)
+        .await
         .map_err(|error| map_blog_error(error, BlogOperation::Delete))?;
-    Ok(http_resp(DeletePostResponse { deleted_post_id: post_id }, (), start))
+    Ok(http_resp(
+        DeletePostResponse {
+            deleted_post_id: post_id,
+        },
+        (),
+        start,
+    ))
 }

@@ -200,15 +200,9 @@ fn dependency_metadata(manifest_path: &Path) -> Result<DependencyMetadata, Strin
             .cmp(&right.name)
             .then_with(|| left.version.cmp(&right.version))
     });
-    dependencies.dedup_by(|left, right| {
-        left.name == right.name && left.version == right.version
-    });
+    dependencies.dedup_by(|left, right| left.name == right.name && left.version == right.version);
 
-    let workspace_root = PathBuf::from(json_string(
-        &metadata,
-        "workspace_root",
-        "cargo metadata",
-    )?);
+    let workspace_root = PathBuf::from(json_string(&metadata, "workspace_root", "cargo metadata")?);
     Ok(DependencyMetadata {
         dependencies,
         workspace_root,

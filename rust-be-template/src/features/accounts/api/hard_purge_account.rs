@@ -17,9 +17,7 @@ use crate::{
         response_data::http_resp,
     },
     errors::code_error::{CodeErrorResp, HandlerResponse},
-    features::accounts::{
-        api::account_error::{AccountMutation, map_account_error},
-    },
+    features::accounts::api::account_error::{AccountMutation, map_account_error},
     init::state::ServerState,
     util::time::now::tokio_now,
 };

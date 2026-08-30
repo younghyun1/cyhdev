@@ -41,7 +41,11 @@ impl GeoService {
         country_flags: Arc<dyn GeoCountryFlagPort>,
         repository: Arc<GeoRepository>,
     ) -> Self {
-        Self { databases, country_flags, repository }
+        Self {
+            databases,
+            country_flags,
+            repository,
+        }
     }
 
     pub fn lookup(&self, ip: IpAddr) -> Option<IpInfo> {

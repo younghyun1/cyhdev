@@ -9,16 +9,11 @@ use crate::{
     features::accounts::{
         domain::account::{ProfilePicture, ProfilePictureDeletion},
         error::AccountError,
-        repository::{
-            account_repository::AccountRepository,
-            records::ProfilePictureRecord,
-        },
+        repository::{account_repository::AccountRepository, records::ProfilePictureRecord},
     },
     persistence::media_cleanup::enqueue_media_cleanup,
     schema::{user_profile_pictures, users},
-    util::media::cleanup::{
-        MediaCleanupRequest, REASON_PROFILE_PICTURE_DELETED,
-    },
+    util::media::cleanup::{MediaCleanupRequest, REASON_PROFILE_PICTURE_DELETED},
 };
 
 use super::profile_pictures::PROFILE_PICTURE_HISTORY_LIMIT;
@@ -56,45 +51,37 @@ impl AccountRepository {
     ) -> Result<Option<ProfilePicture>, AccountError> {
         let mut connection = self.connection().await?;
         connection
-            .transaction::<Option<ProfilePicture>, diesel::result::Error, _>(
-                async |connection| {
-                    lock_active_account(connection, user_id).await?;
-                    let target = user_profile_pictures::table
-                        .filter(user_profile_pictures::user_id.eq(user_id))
-                        .filter(
-                            user_profile_pictures::user_profile_picture_id
-                                .eq(profile_picture_id),
-                        )
-                        .filter(
-                            user_profile_pictures::user_profile_picture_is_on_cloud.eq(true),
-                        )
-                        .filter(user_profile_pictures::user_profile_picture_link.is_not_null())
-                        .select(ProfilePictureRecord::as_select())
-                        .first::<ProfilePictureRecord>(&mut *connection)
-                        .await
-                        .optional()?;
-                    let Some(target) = target else {
-                        return Ok(None);
-                    };
-                    let target: ProfilePicture = target.into();
-                    if target.is_active {
-                        return Ok(Some(target));
-                    }
+            .transaction::<Option<ProfilePicture>, diesel::result::Error, _>(async |connection| {
+                lock_active_account(connection, user_id).await?;
+                let target = user_profile_pictures::table
+                    .filter(user_profile_pictures::user_id.eq(user_id))
+                    .filter(user_profile_pictures::user_profile_picture_id.eq(profile_picture_id))
+                    .filter(user_profile_pictures::user_profile_picture_is_on_cloud.eq(true))
+                    .filter(user_profile_pictures::user_profile_picture_link.is_not_null())
+                    .select(ProfilePictureRecord::as_select())
+                    .first::<ProfilePictureRecord>(&mut *connection)
+                    .await
+                    .optional()?;
+                let Some(target) = target else {
+                    return Ok(None);
+                };
+                let target: ProfilePicture = target.into();
+                if target.is_active {
+                    return Ok(Some(target));
+                }
 
-                    diesel::update(
-                        user_profile_pictures::table
-                            .filter(user_profile_pictures::user_id.eq(user_id))
-                            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true)),
-                    )
-                    .set(user_profile_pictures::user_profile_picture_is_active.eq(false))
-                    .execute(&mut *connection)
-                    .await?;
-                    let selected = diesel::update(
-                        user_profile_pictures::table.filter(
-                            user_profile_pictures::user_profile_picture_id
-                                .eq(profile_picture_id),
-                        ),
-                    )
+                diesel::update(
+                    user_profile_pictures::table
+                        .filter(user_profile_pictures::user_id.eq(user_id))
+                        .filter(user_profile_pictures::user_profile_picture_is_active.eq(true)),
+                )
+                .set(user_profile_pictures::user_profile_picture_is_active.eq(false))
+                .execute(&mut *connection)
+                .await?;
+                let selected =
+                    diesel::update(user_profile_pictures::table.filter(
+                        user_profile_pictures::user_profile_picture_id.eq(profile_picture_id),
+                    ))
                     .set((
                         user_profile_pictures::user_profile_picture_is_active.eq(true),
                         user_profile_pictures::user_profile_picture_updated_at.eq(Utc::now()),
@@ -102,9 +89,8 @@ impl AccountRepository {
                     .returning(ProfilePictureRecord::as_returning())
                     .get_result::<ProfilePictureRecord>(&mut *connection)
                     .await?;
-                    Ok(Some(selected.into()))
-                },
-            )
+                Ok(Some(selected.into()))
+            })
             .await
             .map_err(AccountError::Mutation)
     }
@@ -123,8 +109,7 @@ impl AccountRepository {
                     let target = user_profile_pictures::table
                         .filter(user_profile_pictures::user_id.eq(user_id))
                         .filter(
-                            user_profile_pictures::user_profile_picture_id
-                                .eq(profile_picture_id),
+                            user_profile_pictures::user_profile_picture_id.eq(profile_picture_id),
                         )
                         .select((
                             user_profile_pictures::user_profile_picture_is_active,
@@ -150,12 +135,9 @@ impl AccountRepository {
                             .unwrap_or_default(),
                     )
                     .await?;
-                    diesel::delete(
-                        user_profile_pictures::table.filter(
-                            user_profile_pictures::user_profile_picture_id
-                                .eq(profile_picture_id),
-                        ),
-                    )
+                    diesel::delete(user_profile_pictures::table.filter(
+                        user_profile_pictures::user_profile_picture_id.eq(profile_picture_id),
+                    ))
                     .execute(&mut *connection)
                     .await?;
 

@@ -1,9 +1,7 @@
 //! Database-authoritative superuser status and retry controls.
 
 use chrono::{DateTime, Utc};
-use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, OptionalExtension, QueryDsl,
-};
+use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, OptionalExtension, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
@@ -15,8 +13,7 @@ use crate::{
         },
         error::AccountError,
         repository::{
-            account_repository::AccountRepository,
-            hard_purge::lock_hard_purge_requester,
+            account_repository::AccountRepository, hard_purge::lock_hard_purge_requester,
             sql_enums::StoredRetentionNotificationStage,
         },
     },

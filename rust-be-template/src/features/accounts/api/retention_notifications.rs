@@ -2,7 +2,11 @@
 
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, Query, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, Query, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -52,9 +56,9 @@ pub async fn retention_notification_status(
         .retention_notification_status(requester_id, cursor, request.requested_limit())
         .await
         .map_err(|error| map_account_error(error, AccountMutation::Update))?;
-    let next_cursor = statuses.last().map(|status| {
-        (status.next_attempt_at, status.notification_id)
-    });
+    let next_cursor = statuses
+        .last()
+        .map(|status| (status.next_attempt_at, status.notification_id));
     let notifications = statuses
         .into_iter()
         .map(|status| RetentionNotificationStatusItem {
@@ -71,9 +75,7 @@ pub async fn retention_notification_status(
         })
         .collect();
     let (next_after_next_attempt_at, next_after_notification_id) = match next_cursor {
-        Some((next_attempt_at, notification_id)) => {
-            (Some(next_attempt_at), Some(notification_id))
-        }
+        Some((next_attempt_at, notification_id)) => (Some(next_attempt_at), Some(notification_id)),
         None => (None, None),
     };
     Ok(http_resp_sensitive(

@@ -1,4 +1,7 @@
-use crate::{errors::code_error::{CodeError, CodeErrorResp, code_err}, features::photography::error::PhotographyError};
+use crate::{
+    errors::code_error::{CodeError, CodeErrorResp, code_err},
+    features::photography::error::PhotographyError,
+};
 
 pub(super) fn map_photography_error(error: PhotographyError) -> CodeErrorResp {
     map_with_database_code(error, CodeError::DB_QUERY_ERROR)
@@ -20,7 +23,9 @@ fn map_with_database_code(error: PhotographyError, database_code: CodeError) -> 
     let code = match &error {
         PhotographyError::Pool(_) => CodeError::POOL_ERROR,
         PhotographyError::Query(_) => database_code,
-        PhotographyError::InactiveAccount | PhotographyError::Forbidden => CodeError::UNAUTHORIZED_ACCESS,
+        PhotographyError::InactiveAccount | PhotographyError::Forbidden => {
+            CodeError::UNAUTHORIZED_ACCESS
+        }
         PhotographyError::PhotographNotFound => CodeError::PHOTOGRAPH_NOT_FOUND,
         PhotographyError::CommentNotFound => CodeError::COMMENT_NOT_FOUND,
         PhotographyError::VoteNotFound => CodeError::UPVOTE_DOES_NOT_EXIST,

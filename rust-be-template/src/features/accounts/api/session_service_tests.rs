@@ -1,11 +1,6 @@
 use std::{error::Error, sync::Arc};
 
-use axum::{
-    Extension, Router,
-    http::StatusCode,
-    middleware::from_fn_with_state,
-    routing::get,
-};
+use axum::{Extension, Router, http::StatusCode, middleware::from_fn_with_state, routing::get};
 use reqwest::header::COOKIE;
 use uuid::Uuid;
 
@@ -72,7 +67,8 @@ async fn capacity_is_strict_and_expired_entries_are_reclaimed() -> Result<(), Ac
 }
 
 #[tokio::test]
-async fn rotation_preserves_other_devices_and_user_mutations_propagate() -> Result<(), AccountError> {
+async fn rotation_preserves_other_devices_and_user_mutations_propagate() -> Result<(), AccountError>
+{
     let sessions = SessionService::with_max_sessions(4);
     let user_id = Uuid::new_v4();
     let account = login_account(user_id, false);

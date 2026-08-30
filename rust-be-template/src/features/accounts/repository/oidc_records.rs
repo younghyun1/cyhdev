@@ -4,10 +4,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::domain::{
-        account::SessionPrincipal,
-        oidc::OidcAccount,
-    },
+    features::accounts::domain::{account::SessionPrincipal, oidc::OidcAccount},
     schema::{account_oidc_identities, users},
 };
 

@@ -42,7 +42,9 @@ impl CountryAndSubdivisionsTable {
             })
             .collect::<Vec<_>>();
         rows.sort_by(|left, right| {
-            left.country.country_eng_name.cmp(&right.country.country_eng_name)
+            left.country
+                .country_eng_name
+                .cmp(&right.country.country_eng_name)
         });
         let mut by_id = HashMap::with_capacity(rows.len());
         let mut by_country_alpha2 = HashMap::with_capacity(rows.len());
@@ -55,7 +57,13 @@ impl CountryAndSubdivisionsTable {
         let serialized_country_list = Arc::new(serde_json::json!({
             "countries": rows.iter().map(|combined| &combined.country).collect::<Vec<_>>()
         }));
-        Self { rows, by_id, by_country_alpha2, by_country_alpha3, serialized_country_list }
+        Self {
+            rows,
+            by_id,
+            by_country_alpha2,
+            by_country_alpha3,
+            serialized_country_list,
+        }
     }
 
     pub fn new_empty() -> Self {
@@ -107,9 +115,7 @@ impl CountryFlagLookup for CountryAndSubdivisionsTable {
 #[cfg(test)]
 mod tests {
     use super::{CountryAndSubdivisionsTable, CountryFlagLookup};
-    use crate::features::reference_data::domain::country::{
-        IsoCountry, IsoCountrySubdivision,
-    };
+    use crate::features::reference_data::domain::country::{IsoCountry, IsoCountrySubdivision};
 
     #[test]
     fn flag_port_and_country_indexes_are_safe() {
@@ -136,7 +142,9 @@ mod tests {
         assert_eq!(catalog.flag_for_country_code(840), Some("🇺🇸"));
         assert_eq!(catalog.flag_for_country_code(999), None);
         assert_eq!(
-            catalog.country(840).map(|country| country.subdivisions.len()),
+            catalog
+                .country(840)
+                .map(|country| country.subdivisions.len()),
             Some(1)
         );
     }

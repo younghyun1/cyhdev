@@ -8,8 +8,8 @@ use crate::{
         authorization_error::AuthorizationError,
         domain::{
             authorization::{
-                AuthorizationAuditKind, AuthorizationReason, PermissionName,
-                RoleAssignmentReceipt, RolePermissionReceipt,
+                AuthorizationAuditKind, AuthorizationReason, PermissionName, RoleAssignmentReceipt,
+                RolePermissionReceipt,
             },
             role::RoleType,
         },
@@ -50,19 +50,17 @@ impl AccountRepository {
                     }
                 }
 
-                diesel::update(
-                    user_roles::table.filter(user_roles::user_id.eq(target_user_id)),
-                )
-                .set(user_roles::role_id.eq(role_type.id()))
-                .execute(&mut *connection)
-                .await?;
+                diesel::update(user_roles::table.filter(user_roles::user_id.eq(target_user_id)))
+                    .set(user_roles::role_id.eq(role_type.id()))
+                    .execute(&mut *connection)
+                    .await?;
 
                 let audit_event_id = insert_audit_event(
                     connection,
                     NewAuthorizationAuditEventRecord {
                         authorization_audit_event_actor_user_id: actor.user_id,
-                        authorization_audit_event_kind:
-                            AuthorizationAuditKind::UserRoleAssigned.into(),
+                        authorization_audit_event_kind: AuthorizationAuditKind::UserRoleAssigned
+                            .into(),
                         authorization_audit_event_target_user_id: Some(target_user_id),
                         authorization_audit_event_role_id: role_type.id(),
                         authorization_audit_event_role_name: role_type.name(),
@@ -98,8 +96,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         connection
             .transaction::<RolePermissionReceipt, AuthorizationError, _>(async move |connection| {
-                let (actor, _) =
-                    lock_active_younghyun_authority(connection, actor_user_id).await?;
+                let (actor, _) = lock_active_younghyun_authority(connection, actor_user_id).await?;
                 lock_known_role(connection, role_type).await?;
                 let permission_name = lock_permission(connection, permission_id).await?;
                 if role_type == RoleType::Younghyun && !enabled {

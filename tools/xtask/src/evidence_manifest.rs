@@ -36,7 +36,11 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
     let mut runtime_evidence = 0usize;
     for entry in &entries {
         match entry {
-            Entry::Registration { label, path, marker } => {
+            Entry::Registration {
+                label,
+                path,
+                marker,
+            } => {
                 validate_registration(root, label, path, marker)?;
                 registrations = registrations.saturating_add(1);
             }
@@ -110,7 +114,9 @@ fn parse_manifest(contents: &str) -> TaskResult<Vec<Entry>> {
         }
     }
     if !schema_seen {
-        return Err(TaskError("evidence manifest schema 1 is missing".to_owned()));
+        return Err(TaskError(
+            "evidence manifest schema 1 is missing".to_owned(),
+        ));
     }
     Ok(entries)
 }
@@ -186,9 +192,8 @@ fn write_receipt(
     runtime_evidence: usize,
 ) -> TaskResult<()> {
     let directory = root.join("target/final-review");
-    fs::create_dir_all(&directory).map_err(|error| {
-        TaskError(format!("failed to create {}: {error}", directory.display()))
-    })?;
+    fs::create_dir_all(&directory)
+        .map_err(|error| TaskError(format!("failed to create {}: {error}", directory.display())))?;
     let digest = fnv1a64(manifest.as_bytes());
     let receipt = format!(
         "{{\n  \"schema_version\": 1,\n  \"manifest_digest\": \"fnv1a64:{digest:016x}\",\n  \"registrations\": {registrations},\n  \"source_evidence\": {source_evidence},\n  \"runtime_evidence\": {runtime_evidence}\n}}\n"
@@ -207,7 +212,10 @@ fn safe_relative_path(value: &str, index: usize) -> TaskResult<PathBuf> {
     if safe {
         Ok(path)
     } else {
-        Err(line_error(index, "evidence path is not a safe relative path"))
+        Err(line_error(
+            index,
+            "evidence path is not a safe relative path",
+        ))
     }
 }
 

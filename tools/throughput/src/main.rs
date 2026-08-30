@@ -6,8 +6,8 @@ mod config;
 mod config_validation;
 #[cfg(test)]
 mod config_validation_tests;
-mod error;
 mod environment_evidence;
+mod error;
 mod executor;
 mod hardware;
 mod implementation;

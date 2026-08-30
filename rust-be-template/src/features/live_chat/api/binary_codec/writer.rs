@@ -8,11 +8,11 @@ use crate::features::live_chat::{
     service::cache::CachedChatMessage,
 };
 
+use super::saturating::saturating_u8;
 use super::{
     ACTOR_GUEST, ACTOR_USER, IP_NONE, IP_V4, IP_V6, MESSAGE_FLAG_DELETED_AT,
     MESSAGE_FLAG_EDITED_AT, NONE_STRING_LEN,
 };
-use super::saturating::saturating_u8;
 
 #[derive(Default)]
 pub(super) struct BinaryWriter {

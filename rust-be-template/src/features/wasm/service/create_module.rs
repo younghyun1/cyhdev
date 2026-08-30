@@ -4,16 +4,17 @@ use chrono::Utc;
 use tracing::info;
 use uuid::Uuid;
 
-use crate::util::media::persistence::{
-    MediaWriteError, PersistedMedia, persist_media_objects,
-};
+use crate::util::media::persistence::{MediaWriteError, PersistedMedia, persist_media_objects};
 
+use super::super::{
+    domain::module::{NewWasmModule, WasmModule},
+    error::WasmError,
+};
 use super::{
     asset_inputs::StagedWasmAssets,
     assets::{prepare_bundle, prepare_thumbnail},
     wasm_service::WasmService,
 };
-use super::super::{domain::module::{NewWasmModule, WasmModule}, error::WasmError};
 
 impl WasmService {
     pub async fn create_module(
@@ -34,12 +35,8 @@ impl WasmService {
         let normalized = prepare_bundle(bundle).await?;
         let bundle_kind = normalized.kind;
         let module_id = Uuid::now_v7();
-        let prepared_thumbnail = prepare_thumbnail(
-            module_id,
-            thumbnail,
-            self.object_store_region.as_ref(),
-        )
-        .await?;
+        let prepared_thumbnail =
+            prepare_thumbnail(module_id, thumbnail, self.object_store_region.as_ref()).await?;
         let pending = [prepared_thumbnail.pending.clone()];
         let thumbnail_url = prepared_thumbnail.url.clone();
         let repository = self.repository.clone();
@@ -89,12 +86,8 @@ impl WasmService {
                 return Err(source);
             }
         };
-        self.cache_bundle(
-            module_id,
-            module.wasm_module_bundle_gz.clone(),
-            bundle_kind,
-        )
-        .await;
+        self.cache_bundle(module_id, module.wasm_module_bundle_gz.clone(), bundle_kind)
+            .await;
         info!(wasm_module_id = %module_id, user_id = %actor_user_id, "WebAssembly module uploaded");
         Ok(module)
     }

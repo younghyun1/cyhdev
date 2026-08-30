@@ -12,7 +12,9 @@ pub fn rewind_to_migration(connection: &mut PgConnection, target: &str) -> TestR
         let applied = connection.applied_migrations()?;
         let target_is_applied = applied.iter().any(|version| version.to_string() == target);
         require(target_is_applied, "target migration is not applied")?;
-        let latest = applied.into_iter().max_by_key(|version| version.to_string());
+        let latest = applied
+            .into_iter()
+            .max_by_key(|version| version.to_string());
         let latest = match latest {
             Some(latest) => latest,
             None => return require(false, "migration chain is unexpectedly empty"),

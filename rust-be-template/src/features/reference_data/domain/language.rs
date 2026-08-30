@@ -56,7 +56,13 @@ impl From<Vec<IsoLanguage>> for IsoLanguageTable {
                 serde_json::Value::Null
             }
         };
-        Self { rows, by_code, by_alpha2, by_alpha3, serialized_map }
+        Self {
+            rows,
+            by_code,
+            by_alpha2,
+            by_alpha3,
+            serialized_map,
+        }
     }
 }
 

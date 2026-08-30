@@ -8,12 +8,25 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ProcessingStatus {
-    Queued, Encoding, Uploading, Persisting,
-    Completed { photograph_id: Uuid, photograph_link: String, thumbnail_link: String },
-    Failed { reason: String },
+    Queued,
+    Encoding,
+    Uploading,
+    Persisting,
+    Completed {
+        photograph_id: Uuid,
+        photograph_link: String,
+        thumbnail_link: String,
+    },
+    Failed {
+        reason: String,
+    },
 }
 
-impl ProcessingStatus { pub fn is_terminal(&self) -> bool { matches!(self, Self::Completed { .. } | Self::Failed { .. }) } }
+impl ProcessingStatus {
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Completed { .. } | Self::Failed { .. })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct BatchItem {
@@ -34,5 +47,12 @@ pub struct BatchPipelineItem {
     pub longitude: f64,
 }
 
-pub struct BatchAcceptedItem { pub item_id: Uuid, pub file_name: Option<String> }
-pub struct BatchAccepted { pub batch_id: Uuid, pub total: usize, pub items: Vec<BatchAcceptedItem> }
+pub struct BatchAcceptedItem {
+    pub item_id: Uuid,
+    pub file_name: Option<String>,
+}
+pub struct BatchAccepted {
+    pub batch_id: Uuid,
+    pub total: usize,
+    pub items: Vec<BatchAcceptedItem>,
+}

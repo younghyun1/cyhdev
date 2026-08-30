@@ -1,12 +1,5 @@
 use std::sync::Arc;
 
-use axum::{
-    body::Body,
-    extract::{Request, State},
-    middleware::Next,
-    response::IntoResponse,
-};
-use axum_extra::extract::CookieJar;
 use crate::{
     errors::code_error::{CodeError, HandlerResponse, code_err},
     features::accounts::{
@@ -14,6 +7,13 @@ use crate::{
         service::session_service::SessionService,
     },
 };
+use axum::{
+    body::Body,
+    extract::{Request, State},
+    middleware::Next,
+    response::IntoResponse,
+};
+use axum_extra::extract::CookieJar;
 
 pub async fn auth_middleware(
     State(sessions): State<Arc<SessionService>>,

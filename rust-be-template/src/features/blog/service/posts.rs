@@ -5,18 +5,20 @@ use uuid::Uuid;
 
 use crate::util::string::generate_slug::generate_slug;
 
-use super::blog_service::BlogService;
 use super::super::{
     domain::{
         cache::CachedPostInfo,
         comment::CommentResponse,
-        post::{MAX_BLOG_POST_MARKDOWN_CHARS, MAX_BLOG_POST_TAG_CHARS, MAX_BLOG_POST_TAGS,
+        post::{
+            MAX_BLOG_POST_MARKDOWN_CHARS, MAX_BLOG_POST_TAG_CHARS, MAX_BLOG_POST_TAGS,
             MAX_BLOG_POST_TITLE_CHARS, PostInfo, PostLookup, ReadPostResult, SavePostCommand,
-            SavePostInput, UserBadgeInfo},
+            SavePostInput, UserBadgeInfo,
+        },
         vote::VoteState,
     },
     error::BlogError,
 };
+use super::blog_service::BlogService;
 
 impl BlogService {
     pub async fn save_post(
@@ -60,10 +62,8 @@ impl BlogService {
         if post_use_case.is_none() {
             post_use_case = Some(self.lock_post_use_case(post.post_id).await);
         }
-        let cached = CachedPostInfo::from_post_info_with_tags(
-            PostInfo::from(post.clone()),
-            requested_tags,
-        );
+        let cached =
+            CachedPostInfo::from_post_info_with_tags(PostInfo::from(post.clone()), requested_tags);
         self.insert_cache(&cached).await;
         drop(post_use_case);
         Ok(post)
@@ -100,10 +100,7 @@ impl BlogService {
         let post_use_case = self.lock_post_use_case(post_id).await;
         let cached = self.cached_post(&post_id).await;
         let was_cached = cached.is_some();
-        let mut post = self
-            .repository
-            .read_post(post_id, viewer_id)
-            .await?;
+        let mut post = self.repository.read_post(post_id, viewer_id).await?;
         // `post_content` is rendered at write time and remains authoritative.
         let post_tags = match cached {
             Some(post) => post.post_tags,
@@ -131,12 +128,18 @@ impl BlogService {
         }
         let comments = comment_list.comments;
         let owner_user_id = post.user_id;
-        let mut user_ids = comments.iter().map(|comment| comment.user_id).collect::<Vec<_>>();
+        let mut user_ids = comments
+            .iter()
+            .map(|comment| comment.user_id)
+            .collect::<Vec<_>>();
         user_ids.push(owner_user_id);
         user_ids.sort_unstable();
         user_ids.dedup();
         let authors = self.repository.authors_by_ids(&user_ids).await?;
-        let comment_ids = comments.iter().map(|comment| comment.comment_id).collect::<Vec<_>>();
+        let comment_ids = comments
+            .iter()
+            .map(|comment| comment.comment_id)
+            .collect::<Vec<_>>();
         let comment_votes = self
             .repository
             .comment_vote_states(&comment_ids, viewer_id)
@@ -154,11 +157,16 @@ impl BlogService {
                         let flag = author
                             .country_code()
                             .and_then(|code| country_flags.get(&code).cloned());
-                        (author.public_user_id(), UserBadgeInfo::from_public_author(author, flag))
+                        (
+                            author.public_user_id(),
+                            UserBadgeInfo::from_public_author(author, flag),
+                        )
                     }
                     None => (Uuid::nil(), UserBadgeInfo::deleted()),
                 };
-                CommentResponse::from_comment_votestate_and_badge_info(comment, vote, public_id, badge)
+                CommentResponse::from_comment_votestate_and_badge_info(
+                    comment, vote, public_id, badge,
+                )
             })
             .collect();
         let post_badge = match authors.get(&owner_user_id) {
@@ -170,7 +178,10 @@ impl BlogService {
             }
             None => UserBadgeInfo::deleted(),
         };
-        if authors.get(&owner_user_id).is_none_or(|author| author.is_deleted()) {
+        if authors
+            .get(&owner_user_id)
+            .is_none_or(|author| author.is_deleted())
+        {
             post.user_id = Uuid::nil();
         }
         let vote_state = self.repository.post_vote_state(post_id, viewer_id).await?;
@@ -208,12 +219,15 @@ fn validate_post_text(title: &str, markdown: &str) -> Result<(), BlogError> {
 
 fn normalize_tags(tags: Vec<String>) -> Result<Vec<String>, BlogError> {
     if tags.len() > MAX_BLOG_POST_TAGS
-        || tags.iter().any(|tag| tag.trim().chars().count() > MAX_BLOG_POST_TAG_CHARS)
+        || tags
+            .iter()
+            .any(|tag| tag.trim().chars().count() > MAX_BLOG_POST_TAG_CHARS)
     {
         return Err(BlogError::InvalidInput);
     }
     let mut seen = HashSet::new();
-    Ok(tags.into_iter()
+    Ok(tags
+        .into_iter()
         .map(|tag| tag.trim().to_lowercase())
         .filter(|tag| !tag.is_empty())
         .filter(|tag| seen.insert(tag.clone()))

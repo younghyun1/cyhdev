@@ -95,9 +95,9 @@ fn render_by_type(
     if let Some(types) = schema.get("type").and_then(Value::as_array) {
         let mut rendered = Vec::new();
         for value in types {
-            let value = value.as_str().ok_or_else(|| {
-                CodegenError::new("schema type arrays may only contain strings")
-            })?;
+            let value = value
+                .as_str()
+                .ok_or_else(|| CodegenError::new("schema type arrays may only contain strings"))?;
             let value = render_primitive(value, schema, indent)?;
             if !rendered.contains(&value) {
                 rendered.push(value);

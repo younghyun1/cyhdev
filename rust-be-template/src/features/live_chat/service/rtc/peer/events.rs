@@ -14,7 +14,10 @@ use webrtc::peer_connection::{
 use super::{RtcPeer, actor_stream_id};
 use crate::features::live_chat::{
     domain::rtc::{MediaKind, RtcIceCandidate, RtcServerSignal},
-    service::rtc::{publication::{RtcPublication, spawn_rtp_publish}, room::RtcRoom},
+    service::rtc::{
+        publication::{RtcPublication, spawn_rtp_publish},
+        room::RtcRoom,
+    },
 };
 
 #[derive(Clone)]

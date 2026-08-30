@@ -38,8 +38,7 @@ impl BlogCacheMetrics {
     }
 
     pub fn record_database_read_through(&self) {
-        self.database_read_throughs
-            .fetch_add(1, Ordering::Relaxed);
+        self.database_read_throughs.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn snapshot(&self) -> BlogCacheMetricSnapshot {

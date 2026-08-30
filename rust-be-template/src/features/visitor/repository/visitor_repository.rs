@@ -29,7 +29,11 @@ impl VisitorRepository {
         let mut connection = self.pool.get().await?;
         Ok(visitation_data::table
             .group_by((visitation_data::latitude, visitation_data::longitude))
-            .select((visitation_data::latitude, visitation_data::longitude, count_star()))
+            .select((
+                visitation_data::latitude,
+                visitation_data::longitude,
+                count_star(),
+            ))
             .order((
                 count_star().desc(),
                 visitation_data::latitude.asc(),

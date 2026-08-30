@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, Json, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{

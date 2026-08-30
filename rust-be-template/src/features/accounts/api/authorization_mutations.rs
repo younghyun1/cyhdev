@@ -2,16 +2,18 @@
 
 use std::sync::Arc;
 
-use axum::{Extension, Json, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
     dto::{
         requests::admin::authorization_request::{AssignRoleRequest, SetRolePermissionRequest},
         responses::{
-            admin::authorization_response::{
-                RoleAssignmentResponse, RolePermissionChangeResponse,
-            },
+            admin::authorization_response::{RoleAssignmentResponse, RolePermissionChangeResponse},
             response_data::http_resp,
         },
     },

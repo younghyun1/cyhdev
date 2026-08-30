@@ -2,16 +2,15 @@
 
 use std::io::Write;
 
-use diesel::{AsExpression, FromSqlRow};
 use diesel::deserialize::{FromSql, Result as DeserializeResult};
 use diesel::pg::{Pg, PgValue};
 use diesel::query_builder::QueryId;
 use diesel::serialize::{IsNull, Output, ToSql};
+use diesel::{AsExpression, FromSqlRow};
 
 use crate::{
     features::accounts::domain::{
-        authorization::AuthorizationAuditKind,
-        retention_notifications::RetentionNotificationStage,
+        authorization::AuthorizationAuditKind, retention_notifications::RetentionNotificationStage,
     },
     schema::sql_types::{
         AccountRetentionNotificationStage as RetentionStageSql,

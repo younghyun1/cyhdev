@@ -154,9 +154,8 @@ mod tests {
 
     #[test]
     fn link_completion_credential_is_placed_only_in_fragment() {
-        let response = hardened_redirect(
-            "https://app.example.test/edit-profile#oidc_link_token=secret",
-        );
+        let response =
+            hardened_redirect("https://app.example.test/edit-profile#oidc_link_token=secret");
         let location = response.headers().get(header::LOCATION);
         assert_eq!(
             location.and_then(|value| value.to_str().ok()),

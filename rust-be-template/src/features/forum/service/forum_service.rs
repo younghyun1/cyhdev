@@ -15,6 +15,10 @@ pub struct ForumService {
 
 impl ForumService {
     pub fn new(repository: Arc<ForumRepository>, accounts: Arc<AccountService>) -> Self {
-        Self { repository, accounts, write_limiter: super::write_limiter::ForumWriteLimiter::new() }
+        Self {
+            repository,
+            accounts,
+            write_limiter: super::write_limiter::ForumWriteLimiter::new(),
+        }
     }
 }

@@ -1,4 +1,10 @@
-use std::{env, error::Error, fmt::Write, fs, path::{Path, PathBuf}};
+use std::{
+    env,
+    error::Error,
+    fmt::Write,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use sha2::{Digest, Sha256};
 

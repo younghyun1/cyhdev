@@ -56,7 +56,11 @@ pub async fn unresolved_media_cleanup(
             created_at: record.created_at,
         })
         .collect();
-    Ok(http_resp(UnresolvedMediaCleanupResponse { records }, (), start))
+    Ok(http_resp(
+        UnresolvedMediaCleanupResponse { records },
+        (),
+        start,
+    ))
 }
 
 #[utoipa::path(

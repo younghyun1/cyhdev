@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use openidconnect::{
-    AuthorizationCode, CsrfToken, EndpointMaybeSet, EndpointNotSet,
-    EndpointSet, Nonce, PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
+    AuthorizationCode, CsrfToken, EndpointMaybeSet, EndpointNotSet, EndpointSet, Nonce,
+    PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
     core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
 };
 use zeroize::Zeroizing;
@@ -64,12 +64,10 @@ impl OidcService {
             None => return Ok(Self { enabled: None }),
         };
         let http_client = OidcHttpClient::new(config.allow_loopback_http)?;
-        let provider_metadata = CoreProviderMetadata::discover_async(
-            config.issuer.clone(),
-            &http_client,
-        )
-        .await
-        .map_err(|error| anyhow::anyhow!("OIDC discovery failed: {error}"))?;
+        let provider_metadata =
+            CoreProviderMetadata::discover_async(config.issuer.clone(), &http_client)
+                .await
+                .map_err(|error| anyhow::anyhow!("OIDC discovery failed: {error}"))?;
         if provider_metadata.token_endpoint().is_none() {
             return Err(anyhow::anyhow!(
                 "OIDC provider metadata omitted the token endpoint required by Authorization Code flow"
@@ -105,9 +103,7 @@ impl OidcService {
     }
 
     pub(crate) fn issuer(&self) -> Option<&str> {
-        self.enabled
-            .as_ref()
-            .map(|enabled| enabled.issuer.as_ref())
+        self.enabled.as_ref().map(|enabled| enabled.issuer.as_ref())
     }
 
     pub(crate) async fn start_authorization(
@@ -166,20 +162,16 @@ impl OidcService {
         let token_response = enabled
             .client
             .exchange_code(AuthorizationCode::new(code.to_owned()))
-            .map_err(|error| {
-                AccountError::OidcTokenExchange(anyhow::Error::new(error))
-            })?
+            .map_err(|error| AccountError::OidcTokenExchange(anyhow::Error::new(error)))?
             .set_pkce_verifier(PkceCodeVerifier::new(
                 pending.pkce_verifier.as_str().to_owned(),
             ))
             .request_async(&enabled.http_client)
             .await
-            .map_err(|error| {
-                AccountError::OidcTokenExchange(anyhow::Error::new(error))
-            })?;
-        let id_token = token_response
-            .id_token()
-            .ok_or_else(|| AccountError::OidcTokenValidation(anyhow::anyhow!("missing ID token")))?;
+            .map_err(|error| AccountError::OidcTokenExchange(anyhow::Error::new(error)))?;
+        let id_token = token_response.id_token().ok_or_else(|| {
+            AccountError::OidcTokenValidation(anyhow::anyhow!("missing ID token"))
+        })?;
         let verifier = enabled
             .client
             .id_token_verifier()
@@ -187,13 +179,12 @@ impl OidcService {
             .require_audience_match(true);
         let claims = id_token
             .claims(&verifier, &Nonce::new(pending.nonce.as_str().to_owned()))
-            .map_err(|error| {
-                AccountError::OidcTokenValidation(anyhow::Error::new(error))
-            })?;
+            .map_err(|error| AccountError::OidcTokenValidation(anyhow::Error::new(error)))?;
         if claims.issuer().as_str() != enabled.issuer.as_ref()
-            || !claims.audiences().iter().any(|audience| {
-                audience.as_str() == enabled.client.client_id().as_str()
-            })
+            || !claims
+                .audiences()
+                .iter()
+                .any(|audience| audience.as_str() == enabled.client.client_id().as_str())
         {
             return Err(AccountError::OidcTokenValidation(anyhow::anyhow!(
                 "issuer or audience mismatch"

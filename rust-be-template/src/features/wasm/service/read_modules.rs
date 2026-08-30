@@ -5,14 +5,14 @@ use std::sync::Arc;
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::{
-    bundle_processing::sniff_kind_from_gzip_bytes,
-    wasm_service::WasmService,
-};
 use super::super::{
-    domain::{bundle::{CachedWasmBundle, ServedWasmBundle}, module::WasmModuleMetadata},
+    domain::{
+        bundle::{CachedWasmBundle, ServedWasmBundle},
+        module::WasmModuleMetadata,
+    },
     error::WasmError,
 };
+use super::{bundle_processing::sniff_kind_from_gzip_bytes, wasm_service::WasmService};
 
 const CACHE_SYNC_MAX_INSPECTED_ROWS: usize = 4_096;
 
@@ -41,7 +41,13 @@ impl WasmService {
                 );
                 break;
             }
-            let item = match self.repository.bundle_page(cursor).await?.into_iter().next() {
+            let item = match self
+                .repository
+                .bundle_page(cursor)
+                .await?
+                .into_iter()
+                .next()
+            {
                 Some(item) => item,
                 None => break,
             };

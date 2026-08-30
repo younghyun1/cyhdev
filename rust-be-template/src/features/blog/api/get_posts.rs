@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Query, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Query, State},
+    response::IntoResponse,
+};
 
 use crate::{
     dto::{
@@ -46,5 +50,12 @@ pub async fn get_posts(
         .present_posts(posts, viewer_id)
         .await
         .map_err(|error| map_blog_error(error, BlogOperation::Query))?;
-    Ok(http_resp(GetPostsResponse { posts, available_pages }, (), start))
+    Ok(http_resp(
+        GetPostsResponse {
+            posts,
+            available_pages,
+        },
+        (),
+        start,
+    ))
 }

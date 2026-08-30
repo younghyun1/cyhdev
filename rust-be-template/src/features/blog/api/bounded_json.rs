@@ -29,12 +29,12 @@ where
 {
     type Rejection = CodeErrorResp;
 
-    async fn from_request(
-        request: Request,
-        _state: &S,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request(request: Request, _state: &S) -> Result<Self, Self::Rejection> {
         if !is_json_content_type(request.headers().get(CONTENT_TYPE)) {
-            return Err(code_err(CodeError::INVALID_REQUEST, "Content-Type must be application/json"));
+            return Err(code_err(
+                CodeError::INVALID_REQUEST,
+                "Content-Type must be application/json",
+            ));
         }
         let bytes = to_bytes(request.into_body(), BLOG_JSON_BODY_MAX_BYTES)
             .await
@@ -46,7 +46,9 @@ where
 }
 
 fn is_json_content_type(value: Option<&axum::http::HeaderValue>) -> bool {
-    let Some(value) = value.and_then(|value| value.to_str().ok()) else { return false };
+    let Some(value) = value.and_then(|value| value.to_str().ok()) else {
+        return false;
+    };
     let media_type = value.split(';').next().map(str::trim).unwrap_or_default();
     media_type == "application/json" || media_type.ends_with("+json")
 }
@@ -59,8 +61,14 @@ mod tests {
 
     #[test]
     fn json_content_type_accepts_parameters_and_suffixes() {
-        assert!(is_json_content_type(Some(&HeaderValue::from_static("application/json; charset=utf-8"))));
-        assert!(is_json_content_type(Some(&HeaderValue::from_static("application/problem+json"))));
-        assert!(!is_json_content_type(Some(&HeaderValue::from_static("text/plain"))));
+        assert!(is_json_content_type(Some(&HeaderValue::from_static(
+            "application/json; charset=utf-8"
+        ))));
+        assert!(is_json_content_type(Some(&HeaderValue::from_static(
+            "application/problem+json"
+        ))));
+        assert!(!is_json_content_type(Some(&HeaderValue::from_static(
+            "text/plain"
+        ))));
     }
 }

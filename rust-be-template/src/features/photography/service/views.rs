@@ -64,7 +64,12 @@ impl PhotographViewBuffer {
     }
 
     async fn pending(&self, photograph_id: Uuid) -> i64 {
-        self.buffer.read().await.get(&photograph_id).copied().unwrap_or(0)
+        self.buffer
+            .read()
+            .await
+            .get(&photograph_id)
+            .copied()
+            .unwrap_or(0)
     }
 
     async fn stable_epoch(&self) -> u64 {
@@ -79,10 +84,16 @@ impl PhotographViewBuffer {
     }
 
     fn record_saturation(&self) {
-        let count = self.saturation_events.fetch_add(1, Ordering::Relaxed).saturating_add(1);
+        let count = self
+            .saturation_events
+            .fetch_add(1, Ordering::Relaxed)
+            .saturating_add(1);
         if count.is_power_of_two() {
-            warn!(saturation_events = count, max_entries = PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES,
-                "Photograph view buffer is full; using synchronous persistence");
+            warn!(
+                saturation_events = count,
+                max_entries = PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES,
+                "Photograph view buffer is full; using synchronous persistence"
+            );
         }
     }
 }
@@ -111,17 +122,25 @@ impl PhotographyService {
         let mut recorded = false;
         for _ in 0..VIEW_DETAIL_OPTIMISTIC_RETRIES {
             let epoch_before = self.views.stable_epoch().await;
-            let mut detail = self.repository.photograph_detail(photograph_id, viewer).await?;
+            let mut detail = self
+                .repository
+                .photograph_detail(photograph_id, viewer)
+                .await?;
             let persisted = if recorded {
                 false
             } else {
                 recorded = true;
-                matches!(self.record_view_lossless(photograph_id).await?, RecordOutcome::Persisted)
+                matches!(
+                    self.record_view_lossless(photograph_id).await?,
+                    RecordOutcome::Persisted
+                )
             };
             let pending = self.views.pending(photograph_id).await;
             let epoch_after = self.views.flush_epoch.load(Ordering::Acquire);
             if !persisted && epoch_before == epoch_after && epoch_after.is_multiple_of(2) {
-                detail.photograph.photograph_view_count = detail.photograph.photograph_view_count
+                detail.photograph.photograph_view_count = detail
+                    .photograph
+                    .photograph_view_count
                     .checked_add(pending)
                     .ok_or(PhotographyError::ViewCounterSaturated)?;
                 return Ok(detail);
@@ -131,15 +150,23 @@ impl PhotographyService {
         // A hot flush loop falls back to one serialized snapshot. Ordinary
         // buffered increments may continue because they do not change the DB.
         let _gate = self.views.flush_gate.lock().await;
-        let mut detail = self.repository.photograph_detail(photograph_id, viewer).await?;
+        let mut detail = self
+            .repository
+            .photograph_detail(photograph_id, viewer)
+            .await?;
         let pending = self.views.pending(photograph_id).await;
-        detail.photograph.photograph_view_count = detail.photograph.photograph_view_count
+        detail.photograph.photograph_view_count = detail
+            .photograph
+            .photograph_view_count
             .checked_add(pending)
             .ok_or(PhotographyError::ViewCounterSaturated)?;
         Ok(detail)
     }
 
-    async fn record_view_lossless(&self, photograph_id: Uuid) -> Result<RecordOutcome, PhotographyError> {
+    async fn record_view_lossless(
+        &self,
+        photograph_id: Uuid,
+    ) -> Result<RecordOutcome, PhotographyError> {
         match self.views.try_record(photograph_id).await {
             Admission::Recorded => return Ok(RecordOutcome::Buffered),
             Admission::CounterSaturated => return Err(PhotographyError::ViewCounterSaturated),
@@ -172,7 +199,14 @@ impl PhotographyService {
         let _epoch = FlushEpochGuard::begin(&self.views.flush_epoch);
         // Snapshot without draining. Entries retain their admission slots while
         // persistence runs, so failed chunks remain queued without growth.
-        let pending = self.views.buffer.read().await.iter().map(|(id, delta)| (*id, *delta)).collect::<Vec<_>>();
+        let pending = self
+            .views
+            .buffer
+            .read()
+            .await
+            .iter()
+            .map(|(id, delta)| (*id, *delta))
+            .collect::<Vec<_>>();
         let applied = self.repository.apply_view_deltas(&pending).await?;
         let mut flushed = 0_u64;
         let mut buffer = self.views.buffer.write().await;

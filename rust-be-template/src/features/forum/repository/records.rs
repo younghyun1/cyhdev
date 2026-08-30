@@ -7,9 +7,14 @@ use uuid::Uuid;
 use crate::{
     features::forum::{
         domain::models::{ForumModerationAuditEvent, ForumNotification, ForumReply, ForumTopic},
-        repository::enums::{DbForumContentState, DbForumModerationAction, DbForumNotificationKind, DbForumTopicAccessState},
+        repository::enums::{
+            DbForumContentState, DbForumModerationAction, DbForumNotificationKind,
+            DbForumTopicAccessState,
+        },
     },
-    schema::{forum_moderation_audit_events, forum_replies, forum_topic_subscriptions, forum_topics},
+    schema::{
+        forum_moderation_audit_events, forum_replies, forum_topic_subscriptions, forum_topics,
+    },
 };
 
 #[derive(Queryable, Selectable)]
@@ -126,28 +131,54 @@ pub(super) struct NewForumModerationAuditRecord<'a> {
 }
 
 pub(super) type ForumNotificationRow = (
-    Uuid, Uuid, Uuid, Uuid, Uuid, DbForumNotificationKind,
-    DateTime<Utc>, DateTime<Utc>, Option<DateTime<Utc>>, String, DbForumContentState,
+    Uuid,
+    Uuid,
+    Uuid,
+    Uuid,
+    Uuid,
+    DbForumNotificationKind,
+    DateTime<Utc>,
+    DateTime<Utc>,
+    Option<DateTime<Utc>>,
+    String,
+    DbForumContentState,
 );
 
 pub(super) fn notification_from_row(row: ForumNotificationRow) -> ForumNotification {
     ForumNotification {
-        notification_id: row.0, recipient_user_id: row.1, actor_user_id: row.2,
-        topic_id: row.3, reply_id: row.4, kind: row.5.into(),
-        created_at: row.6, expires_at: row.7, read_at: row.8,
+        notification_id: row.0,
+        recipient_user_id: row.1,
+        actor_user_id: row.2,
+        topic_id: row.3,
+        reply_id: row.4,
+        kind: row.5.into(),
+        created_at: row.6,
+        expires_at: row.7,
+        read_at: row.8,
         topic_title: (row.10 == DbForumContentState::Visible).then_some(row.9),
     }
 }
 
 pub(super) type ForumAuditRow = (
-    Uuid, Uuid, Option<Uuid>, Option<Uuid>, DbForumModerationAction,
-    String, Option<Uuid>, DateTime<Utc>,
+    Uuid,
+    Uuid,
+    Option<Uuid>,
+    Option<Uuid>,
+    DbForumModerationAction,
+    String,
+    Option<Uuid>,
+    DateTime<Utc>,
 );
 
 pub(super) fn audit_from_row(row: ForumAuditRow) -> ForumModerationAuditEvent {
     ForumModerationAuditEvent {
-        audit_event_id: row.0, actor_user_id: row.1, topic_id: row.2,
-        reply_id: row.3, action: row.4.into(), reason: row.5,
-        request_id: row.6, created_at: row.7,
+        audit_event_id: row.0,
+        actor_user_id: row.1,
+        topic_id: row.2,
+        reply_id: row.3,
+        action: row.4.into(),
+        reason: row.5,
+        request_id: row.6,
+        created_at: row.7,
     }
 }

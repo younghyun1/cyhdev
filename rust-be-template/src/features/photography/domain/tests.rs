@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use super::{
     photograph::{Photograph, PhotographContext},
-    social::{MAX_PHOTOGRAPH_COMMENT_CHARS, PhotographComment, PhotographCommentBody, PhotographCommentBodyError, PhotographCommentResponse},
+    social::{
+        MAX_PHOTOGRAPH_COMMENT_CHARS, PhotographComment, PhotographCommentBody,
+        PhotographCommentBodyError, PhotographCommentResponse,
+    },
 };
 use crate::features::blog::domain::{post::UserBadgeInfo, vote::VoteState};
 

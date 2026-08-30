@@ -2,7 +2,10 @@
 
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Multipart, State}};
+use axum::{
+    Extension,
+    extract::{Multipart, State},
+};
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -10,8 +13,7 @@ use crate::{
     dto::responses::response_data::{Response as ApiResponse, http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     features::accounts::{
-        error::AccountError,
-        service::profile_picture_upload::ProfilePictureUploadError,
+        error::AccountError, service::profile_picture_upload::ProfilePictureUploadError,
     },
     init::state::ServerState,
     util::{
@@ -92,7 +94,10 @@ fn validate_file_metadata(
     let content_type = content_type
         .ok_or_else(|| code_err(CodeError::FILE_UPLOAD_ERROR, "Content type is required"))?;
     if !is_allowed_image_mime(content_type) {
-        return Err(code_err(CodeError::FILE_UPLOAD_ERROR, "Unsupported image type"));
+        return Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "Unsupported image type",
+        ));
     }
     Ok(())
 }
@@ -111,9 +116,7 @@ fn map_upload_error(error: ProfilePictureUploadError) -> CodeErrorResp {
         ProfilePictureUploadError::Processing(source) => {
             code_err(CodeError::COULD_NOT_PROCESS_IMAGE, source)
         }
-        ProfilePictureUploadError::Upload(source) => {
-            code_err(CodeError::FILE_UPLOAD_ERROR, source)
-        }
+        ProfilePictureUploadError::Upload(source) => code_err(CodeError::FILE_UPLOAD_ERROR, source),
         ProfilePictureUploadError::Persistence(source) => {
             let code = match &source {
                 AccountError::Pool(_) => CodeError::POOL_ERROR,

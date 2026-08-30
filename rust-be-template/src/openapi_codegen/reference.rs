@@ -17,7 +17,9 @@ pub fn collect_components(
             continue;
         }
         let schema = schemas.get(&name).cloned().ok_or_else(|| {
-            CodegenError::new(format!("operation references missing component schema {name}"))
+            CodegenError::new(format!(
+                "operation references missing component schema {name}"
+            ))
         })?;
         let mut dependencies = BTreeSet::new();
         collect_schema_refs(&schema, &mut dependencies);

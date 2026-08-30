@@ -9,9 +9,7 @@ use crate::{
     features::accounts::{
         domain::account::{AccountProfile, ProfileUpdateCommand},
         error::AccountError,
-        repository::{
-            account_repository::AccountRepository, records::AccountProfileRecord,
-        },
+        repository::{account_repository::AccountRepository, records::AccountProfileRecord},
     },
     schema::{iso_country, iso_country_subdivision, iso_language, users},
 };

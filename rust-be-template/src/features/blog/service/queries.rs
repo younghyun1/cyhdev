@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use tracing::error;
 use uuid::Uuid;
 
-use super::blog_service::BlogService;
 use super::super::{
     domain::{
         cache::CachedPostInfo,
@@ -12,6 +11,7 @@ use super::super::{
     },
     error::BlogError,
 };
+use super::blog_service::BlogService;
 
 pub const BLOG_SEARCH_MAX_LIMIT: usize = 100;
 pub const BLOG_SEARCH_MAX_OFFSET: usize = 10_000;
@@ -21,9 +21,7 @@ pub const BLOG_SEARCH_MAX_TAG_CHARS: usize = 64;
 const BLOG_LIST_MAX_PAGE: usize = 10_000;
 
 impl BlogService {
-    pub async fn recent_posts_for_compatibility(
-        &self,
-    ) -> Result<Vec<CachedPostInfo>, BlogError> {
+    pub async fn recent_posts_for_compatibility(&self) -> Result<Vec<CachedPostInfo>, BlogError> {
         self.repository
             .recent_posts(super::cache_policy::BLOG_POST_CACHE_MAX_ENTRIES as i64)
             .await
@@ -38,18 +36,13 @@ impl BlogService {
         let page = page.clamp(1, BLOG_LIST_MAX_PAGE);
         let page_size = page_size.clamp(1, 100);
         self.metrics.record_database_read_through();
-        match self
-            .repository
-            .list_posts(page, page_size, viewer_id)
-            .await
-        {
+        match self.repository.list_posts(page, page_size, viewer_id).await {
             Ok(page) => (page.posts, page.available_pages),
             Err(error_value) => {
                 error!(error = %error_value, "PostgreSQL listing failed; using bounded metadata cache");
                 // Authority lookup failed with the database query, so the cache
                 // fallback must fail closed to published posts.
-                self.bounded_cache_page(page, page_size, false)
-                    .await
+                self.bounded_cache_page(page, page_size, false).await
             }
         }
     }
@@ -67,7 +60,9 @@ impl BlogService {
         let mut posts = Vec::with_capacity(page_size);
         let mut visible = 0usize;
         for post_id in ordered_ids {
-            let Some(post) = self.cached_post(&post_id).await else { continue };
+            let Some(post) = self.cached_post(&post_id).await else {
+                continue;
+            };
             if !include_unpublished && !post.post_is_published {
                 continue;
             }
@@ -126,7 +121,9 @@ impl BlogService {
         let mut missing = Vec::new();
         for post_id in &post_ids {
             match self.cached_post(post_id).await {
-                Some(post) => { by_id.insert(*post_id, post); }
+                Some(post) => {
+                    by_id.insert(*post_id, post);
+                }
                 None => missing.push(*post_id),
             }
         }
@@ -171,7 +168,8 @@ impl BlogService {
         let query = query.to_owned();
         let result = super::search::tasks::run_search_task(move || {
             index.search_by_title_paged(&query, offset, limit)
-        }).await;
+        })
+        .await;
         drop(search_query);
         self.hydrate_search(result, "title").await
     }
@@ -190,7 +188,8 @@ impl BlogService {
         let tags = tags.to_vec();
         let result = super::search::tasks::run_search_task(move || {
             index.search_by_title_and_tags_paged(&query, &tags, offset, limit)
-        }).await;
+        })
+        .await;
         drop(search_query);
         self.hydrate_search(result, "title_and_tags").await
     }
@@ -207,7 +206,8 @@ impl BlogService {
         let tags = tags.to_vec();
         let result = super::search::tasks::run_search_task(move || {
             index.search_by_tags_paged(&tags, offset, limit)
-        }).await;
+        })
+        .await;
         drop(search_query);
         self.hydrate_search(result, "tags").await
     }
@@ -224,7 +224,8 @@ impl BlogService {
         let tag = tag.to_owned();
         let result = super::search::tasks::run_search_task(move || {
             index.search_by_tag_paged(&tag, offset, limit)
-        }).await;
+        })
+        .await;
         drop(search_query);
         self.hydrate_search(result, "tag").await
     }
@@ -238,11 +239,16 @@ fn validate_search_input(
 ) -> Result<(usize, usize), BlogError> {
     if query.is_some_and(|query| query.chars().count() > BLOG_SEARCH_MAX_QUERY_CHARS)
         || tags.len() > BLOG_SEARCH_MAX_TAGS
-        || tags.iter().any(|tag| tag.chars().count() > BLOG_SEARCH_MAX_TAG_CHARS)
+        || tags
+            .iter()
+            .any(|tag| tag.chars().count() > BLOG_SEARCH_MAX_TAG_CHARS)
     {
         return Err(BlogError::InvalidInput);
     }
-    Ok((offset.min(BLOG_SEARCH_MAX_OFFSET), limit.clamp(1, BLOG_SEARCH_MAX_LIMIT)))
+    Ok((
+        offset.min(BLOG_SEARCH_MAX_OFFSET),
+        limit.clamp(1, BLOG_SEARCH_MAX_LIMIT),
+    ))
 }
 
 #[cfg(test)]
@@ -252,6 +258,9 @@ mod tests {
     #[test]
     fn search_window_is_bounded_before_index_work() {
         let window = validate_search_input(Some("rust"), &[], usize::MAX, usize::MAX);
-        assert!(matches!(window, Ok((BLOG_SEARCH_MAX_OFFSET, BLOG_SEARCH_MAX_LIMIT))));
+        assert!(matches!(
+            window,
+            Ok((BLOG_SEARCH_MAX_OFFSET, BLOG_SEARCH_MAX_LIMIT))
+        ));
     }
 }

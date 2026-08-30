@@ -11,11 +11,11 @@ use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use rust_be_template::{
+    features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
     features::live_chat::{
         domain::message::LIVE_CHAT_SENDER_KIND_USER,
         repository::compatibility::LiveChatMessageInsertable,
     },
-    features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
     persistence::active_user::{ActiveUserWriteError, lock_active_user},
     schema::live_chat_messages,
 };
@@ -50,9 +50,7 @@ fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFutu
                 .transaction::<(), ActiveUserWriteError, _>(async |connection| {
                     lock_active_user(&mut *connection, user_id).await?;
                     let _ = locked_tx.send(());
-                    release_rx
-                        .await
-                        .map_err(|_| ActiveUserWriteError::Denied)?;
+                    release_rx.await.map_err(|_| ActiveUserWriteError::Denied)?;
                     diesel::insert_into(live_chat_messages::table)
                         .values(LiveChatMessageInsertable {
                             live_chat_message_id: message_id,

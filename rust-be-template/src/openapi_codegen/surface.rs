@@ -20,8 +20,16 @@ macro_rules! operation {
 pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("authorization", "GET", "/api/admin/authorization/users"),
     operation!("authorization", "GET", "/api/admin/authorization/roles"),
-    operation!("authorization", "GET", "/api/admin/authorization/permissions"),
-    operation!("authorization", "GET", "/api/admin/authorization/role-permissions"),
+    operation!(
+        "authorization",
+        "GET",
+        "/api/admin/authorization/permissions"
+    ),
+    operation!(
+        "authorization",
+        "GET",
+        "/api/admin/authorization/role-permissions"
+    ),
     operation!("authorization", "GET", "/api/admin/authorization/audit"),
     operation!(
         "authorization",
@@ -55,11 +63,7 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
         "POST",
         "/api/admin/media-cleanup/{cleanup_id}/resolve"
     ),
-    operation!(
-        "account",
-        "POST",
-        "/api/admin/users/{user_id}/hard-purge"
-    ),
+    operation!("account", "POST", "/api/admin/users/{user_id}/hard-purge"),
     operation!("account", "POST", "/api/user/upload-profile-picture"),
     operation!("account", "GET", "/api/user/profile-pictures"),
     operation!(
@@ -79,7 +83,11 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("reference", "GET", "/api/dropdown/language/{language_id}"),
     operation!("reference", "GET", "/api/dropdown/country"),
     operation!("reference", "GET", "/api/dropdown/country/{country_id}"),
-    operation!("reference", "GET", "/api/dropdown/country/{country_id}/subdivision"),
+    operation!(
+        "reference",
+        "GET",
+        "/api/dropdown/country/{country_id}/subdivision"
+    ),
     operation!("reference", "GET", "/api/geolocate/{ip_address}"),
     operation!("reference", "GET", "/api/geo-ip-info/{ip_address}"),
     operation!("reference", "GET", "/api/geo-ip-info/me"),
@@ -92,8 +100,16 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("blog-posts", "DELETE", "/api/blog/{post_id}"),
     operation!("blog-social", "POST", "/api/blog/{post_id}/vote"),
     operation!("blog-social", "DELETE", "/api/blog/{post_id}/vote"),
-    operation!("blog-social", "POST", "/api/blog/{post_id}/{comment_id}/vote"),
-    operation!("blog-social", "DELETE", "/api/blog/{post_id}/{comment_id}/vote"),
+    operation!(
+        "blog-social",
+        "POST",
+        "/api/blog/{post_id}/{comment_id}/vote"
+    ),
+    operation!(
+        "blog-social",
+        "DELETE",
+        "/api/blog/{post_id}/{comment_id}/vote"
+    ),
     operation!("blog-social", "POST", "/api/blog/{post_id}/comment"),
     operation!("blog-social", "PATCH", "/api/blog/{post_id}/{comment_id}"),
     operation!("blog-social", "DELETE", "/api/blog/{post_id}/{comment_id}"),
@@ -101,16 +117,52 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("photography-media", "POST", "/api/photographs/upload"),
     operation!("photography-media", "DELETE", "/api/photographs/delete"),
     operation!("photography-media", "POST", "/api/photographs/batch-upload"),
-    operation!("photography-media", "GET", "/api/photographs/batch/{batch_id}"),
+    operation!(
+        "photography-media",
+        "GET",
+        "/api/photographs/batch/{batch_id}"
+    ),
     operation!("photography-media", "GET", "/api/photographs/batches"),
-    operation!("photography-media", "GET", "/api/photographs/{photograph_id}"),
-    operation!("photography-social", "POST", "/api/photographs/{photograph_id}/vote"),
-    operation!("photography-social", "DELETE", "/api/photographs/{photograph_id}/vote"),
-    operation!("photography-social", "POST", "/api/photographs/{photograph_id}/{comment_id}/vote"),
-    operation!("photography-social", "DELETE", "/api/photographs/{photograph_id}/{comment_id}/vote"),
-    operation!("photography-social", "POST", "/api/photographs/{photograph_id}/comment"),
-    operation!("photography-social", "PATCH", "/api/photographs/{photograph_id}/{comment_id}"),
-    operation!("photography-social", "DELETE", "/api/photographs/{photograph_id}/{comment_id}"),
+    operation!(
+        "photography-media",
+        "GET",
+        "/api/photographs/{photograph_id}"
+    ),
+    operation!(
+        "photography-social",
+        "POST",
+        "/api/photographs/{photograph_id}/vote"
+    ),
+    operation!(
+        "photography-social",
+        "DELETE",
+        "/api/photographs/{photograph_id}/vote"
+    ),
+    operation!(
+        "photography-social",
+        "POST",
+        "/api/photographs/{photograph_id}/{comment_id}/vote"
+    ),
+    operation!(
+        "photography-social",
+        "DELETE",
+        "/api/photographs/{photograph_id}/{comment_id}/vote"
+    ),
+    operation!(
+        "photography-social",
+        "POST",
+        "/api/photographs/{photograph_id}/comment"
+    ),
+    operation!(
+        "photography-social",
+        "PATCH",
+        "/api/photographs/{photograph_id}/{comment_id}"
+    ),
+    operation!(
+        "photography-social",
+        "DELETE",
+        "/api/photographs/{photograph_id}/{comment_id}"
+    ),
     operation!("i18n", "GET", "/api/i18n/ui-text"),
     operation!("i18n", "POST", "/api/admin/sync-i18n-cache"),
     operation!("live-chat", "GET", "/api/live-chat/messages"),
@@ -125,12 +177,20 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("forum", "PATCH", "/api/forum/replies/{reply_id}"),
     operation!("forum", "DELETE", "/api/forum/replies/{reply_id}"),
     operation!("forum", "POST", "/api/forum/topics/{topic_id}/subscription"),
-    operation!("forum", "DELETE", "/api/forum/topics/{topic_id}/subscription"),
+    operation!(
+        "forum",
+        "DELETE",
+        "/api/forum/topics/{topic_id}/subscription"
+    ),
     operation!("forum", "POST", "/api/forum/topics/{topic_id}/moderation"),
     operation!("forum", "POST", "/api/forum/replies/{reply_id}/moderation"),
     operation!("forum", "GET", "/api/forum/moderation/audit"),
     operation!("forum", "GET", "/api/forum/notifications"),
-    operation!("forum", "POST", "/api/forum/notifications/{notification_id}/read"),
+    operation!(
+        "forum",
+        "POST",
+        "/api/forum/notifications/{notification_id}/read"
+    ),
     operation!("wasm", "GET", "/api/wasm-modules"),
     operation!("wasm", "POST", "/api/wasm-modules"),
     operation!("wasm", "PATCH", "/api/wasm-modules/{wasm_module_id}"),

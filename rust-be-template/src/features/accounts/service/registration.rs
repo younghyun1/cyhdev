@@ -12,14 +12,11 @@ use crate::{
         error::AccountError,
         service::{
             account_service::AccountService,
-            authentication::{
-                MAX_USER_NAME_BYTES, validate_auth_password, validate_email,
-            },
+            authentication::{MAX_USER_NAME_BYTES, validate_auth_password, validate_email},
         },
     },
     util::{
-        crypto::hash_pw::hash_pw,
-        email::emails::ValidateEmailEmail,
+        crypto::hash_pw::hash_pw, email::emails::ValidateEmailEmail,
         string::validations::validate_username,
     },
 };
@@ -28,9 +25,7 @@ const EMAIL_VERIFICATION_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Durat
 
 impl AccountService {
     pub async fn signup(&self, command: SignupCommand) -> Result<SignupReceipt, AccountError> {
-        if command.user_name.len() > MAX_USER_NAME_BYTES
-            || !validate_username(&command.user_name)
-        {
+        if command.user_name.len() > MAX_USER_NAME_BYTES || !validate_username(&command.user_name) {
             return Err(AccountError::InvalidUserName);
         }
         if !validate_auth_password(&command.password) {

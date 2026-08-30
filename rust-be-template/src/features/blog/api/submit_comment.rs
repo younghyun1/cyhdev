@@ -1,19 +1,25 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
-    features::blog::domain::comment::CommentResponse,
-    dto::{requests::blog::submit_comment::SubmitCommentRequest, responses::response_data::http_resp},
+    dto::{
+        requests::blog::submit_comment::SubmitCommentRequest, responses::response_data::http_resp,
+    },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse},
+    features::blog::domain::comment::CommentResponse,
     init::state::ServerState,
     routers::middleware::is_logged_in::AuthSession,
     util::time::now::tokio_now,
 };
 
-use super::error::{BlogOperation, map_blog_error};
 use super::bounded_json::BlogJson;
+use super::error::{BlogOperation, map_blog_error};
 
 #[utoipa::path(
     post,
@@ -44,11 +50,15 @@ pub async fn submit_comment(
         Some(session) => session.user_id,
         None => return Err(CodeError::UNAUTHORIZED_ACCESS.into()),
     };
-    let comment = state.blog_service().submit_comment(
-        user_id,
-        post_id,
-        request.parent_comment_id,
-        request.comment_content,
-    ).await.map_err(|error| map_blog_error(error, BlogOperation::Insert))?;
+    let comment = state
+        .blog_service()
+        .submit_comment(
+            user_id,
+            post_id,
+            request.parent_comment_id,
+            request.comment_content,
+        )
+        .await
+        .map_err(|error| map_blog_error(error, BlogOperation::Insert))?;
     Ok(http_resp(comment, (), start))
 }

@@ -2,7 +2,10 @@ use std::net::IpAddr;
 
 use uuid::Uuid;
 
-use super::{live_chat_service::LiveChatService, super::{domain::actor::ChatActor, error::LiveChatError}};
+use super::{
+    super::{domain::actor::ChatActor, error::LiveChatError},
+    live_chat_service::LiveChatService,
+};
 
 impl LiveChatService {
     pub async fn user_actor(

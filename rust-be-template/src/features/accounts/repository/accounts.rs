@@ -26,9 +26,9 @@ impl AccountRepository {
                 .filter(users::user_email.eq(email))
                 .filter(users::user_deleted_at.is_null()),
         ))
-            .get_result(&mut connection)
-            .await
-            .map_err(AccountError::Query)
+        .get_result(&mut connection)
+        .await
+        .map_err(AccountError::Query)
     }
 
     pub async fn login_account_by_email(

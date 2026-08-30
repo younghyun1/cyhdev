@@ -10,8 +10,8 @@ use tokio::time::Instant;
 use tracing::{error, warn};
 use webrtc::peer_connection::RTCSessionDescription;
 
-use crate::features::live_chat::domain::rtc::RtcServerSignal;
 use super::RtcPeer;
+use crate::features::live_chat::domain::rtc::RtcServerSignal;
 
 /// How long an unanswered SFU offer stays authoritative. Past this the offer is
 /// treated as stale and replaced on the next renegotiation, so a client that

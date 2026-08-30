@@ -9,22 +9,24 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use rust_be_template::{
-    features::live_chat::service::cache::LiveChatCache,
     features::accounts::{
         domain::account::SignupCommand,
         repository::account_repository::AccountRepository,
-        service::{account_service::{AccountService, AccountServiceDependencies}, session_service::SessionService},
+        service::{
+            account_service::{AccountService, AccountServiceDependencies},
+            session_service::SessionService,
+        },
     },
+    features::live_chat::service::cache::LiveChatCache,
     schema::{email_verification_tokens, iso_country},
-    util::media::object_store::{
-        MediaObjectStore, MediaObjectStoreFuture, ObjectLocation,
-    },
+    util::media::object_store::{MediaObjectStore, MediaObjectStoreFuture, ObjectLocation},
 };
 
 use super::database::{HarnessError, TestDatabase, TestResult};
 
 pub const VALID_PASSWORD: &str = "ValidPass123";
-const TEST_DUMMY_PASSWORD_HASH: &str = "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4";
+const TEST_DUMMY_PASSWORD_HASH: &str =
+    "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4";
 
 struct TestMediaObjectStore;
 

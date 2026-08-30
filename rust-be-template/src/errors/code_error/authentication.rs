@@ -215,4 +215,3 @@ impl CodeError {
         log_level: Level::INFO,
     };
 }
-

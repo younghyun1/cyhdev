@@ -8,11 +8,11 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
+    features::accounts::domain::session::SESSION_COOKIE_NAME,
     features::live_chat::{
         domain::{actor::ChatActor, message::DEFAULT_LIVE_CHAT_ROOM},
         service::cache::{ChatConnectionState, LIVE_CHAT_MAX_CONNECTIONS},
     },
-    features::accounts::domain::session::SESSION_COOKIE_NAME,
     features::{
         accounts::service::session_service::SessionService,
         live_chat::service::live_chat_service::LiveChatService,
@@ -38,7 +38,8 @@ pub(super) async fn register_connection(
 ) -> Result<RegisteredLiveChatConnection, LiveChatRegistrationError> {
     let connection_id = Uuid::now_v7();
     let (disconnect_tx, disconnect_rx) = tokio::sync::watch::channel(false);
-    if !service.cache
+    if !service
+        .cache
         .register_connection(
             connection_id,
             ChatConnectionState {

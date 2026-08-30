@@ -26,5 +26,9 @@ pub async fn get_live_chat_cache_stats(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let stats = state.live_chat_service().cache.stats().await;
-    Ok(http_resp(LiveChatCacheStatsResponse::from(stats), (), start))
+    Ok(http_resp(
+        LiveChatCacheStatsResponse::from(stats),
+        (),
+        start,
+    ))
 }

@@ -51,7 +51,10 @@ pub enum ForumError {
     #[error("forum count exceeded the supported platform range")]
     CountOverflow,
     #[error("forum write budget exhausted")]
-    WriteThrottled { retry_after: std::time::Duration, saturated: bool },
+    WriteThrottled {
+        retry_after: std::time::Duration,
+        saturated: bool,
+    },
 }
 
 impl ForumError {

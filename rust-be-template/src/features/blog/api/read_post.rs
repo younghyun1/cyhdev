@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use serde::{Deserialize, Deserializer, de::Error as DeError};
 use uuid::Uuid;
 
@@ -13,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    error::{BlogOperation, map_blog_error},
     super::domain::post::PostLookup,
+    error::{BlogOperation, map_blog_error},
 };
 
 pub struct PostLookupKey(pub PostLookup);
@@ -62,11 +66,15 @@ pub async fn read_post(
         .read_post(lookup.0, viewer_id)
         .await
         .map_err(|error| map_blog_error(error, BlogOperation::Query))?;
-    Ok(http_resp(ReadPostResponse {
-        post: result.post,
-        post_tags: result.post_tags,
-        comments: result.comments,
-        vote_state: result.vote_state,
-        user_badge_info: result.user_badge_info,
-    }, (), start))
+    Ok(http_resp(
+        ReadPostResponse {
+            post: result.post,
+            post_tags: result.post_tags,
+            comments: result.comments,
+            vote_state: result.vote_state,
+            user_badge_info: result.user_badge_info,
+        },
+        (),
+        start,
+    ))
 }

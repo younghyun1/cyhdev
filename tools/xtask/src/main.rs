@@ -109,9 +109,7 @@ fn run_command(command: &mut Command) -> TaskResult<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(TaskError(format!(
-            "{rendered} exited with status {status}"
-        )))
+        Err(TaskError(format!("{rendered} exited with status {status}")))
     }
 }
 

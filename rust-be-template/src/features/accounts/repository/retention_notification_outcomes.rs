@@ -6,9 +6,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::{
-        error::AccountError, repository::account_repository::AccountRepository,
-    },
+    features::accounts::{error::AccountError, repository::account_repository::AccountRepository},
     schema::account_retention_notifications,
 };
 
@@ -39,22 +37,20 @@ impl AccountRepository {
                         .is_null(),
                 ),
         )
-            .set((
-                account_retention_notifications::account_retention_notification_sent_at
-                    .eq(sent_at),
-                account_retention_notifications::account_retention_notification_claim_token
-                    .eq(Option::<Uuid>::None),
-                account_retention_notifications::account_retention_notification_claimed_at
-                    .eq(Option::<DateTime<Utc>>::None),
-                account_retention_notifications::account_retention_notification_claim_expires_at
-                    .eq(Option::<DateTime<Utc>>::None),
-                account_retention_notifications::account_retention_notification_last_error
-                    .eq(Option::<String>::None),
-                account_retention_notifications::account_retention_notification_updated_at
-                    .eq(sent_at),
-            ))
-            .execute(&mut connection)
-            .await?;
+        .set((
+            account_retention_notifications::account_retention_notification_sent_at.eq(sent_at),
+            account_retention_notifications::account_retention_notification_claim_token
+                .eq(Option::<Uuid>::None),
+            account_retention_notifications::account_retention_notification_claimed_at
+                .eq(Option::<DateTime<Utc>>::None),
+            account_retention_notifications::account_retention_notification_claim_expires_at
+                .eq(Option::<DateTime<Utc>>::None),
+            account_retention_notifications::account_retention_notification_last_error
+                .eq(Option::<String>::None),
+            account_retention_notifications::account_retention_notification_updated_at.eq(sent_at),
+        ))
+        .execute(&mut connection)
+        .await?;
         Ok(affected == 1)
     }
 
@@ -86,22 +82,21 @@ impl AccountRepository {
                         .is_null(),
                 ),
         )
-            .set((
-                account_retention_notifications::account_retention_notification_next_attempt_at
-                    .eq(next_attempt_at),
-                account_retention_notifications::account_retention_notification_claim_token
-                    .eq(Option::<Uuid>::None),
-                account_retention_notifications::account_retention_notification_claimed_at
-                    .eq(Option::<DateTime<Utc>>::None),
-                account_retention_notifications::account_retention_notification_claim_expires_at
-                    .eq(Option::<DateTime<Utc>>::None),
-                account_retention_notifications::account_retention_notification_last_error
-                    .eq(error),
-                account_retention_notifications::account_retention_notification_updated_at
-                    .eq(failed_at),
-            ))
-            .execute(&mut connection)
-            .await?;
+        .set((
+            account_retention_notifications::account_retention_notification_next_attempt_at
+                .eq(next_attempt_at),
+            account_retention_notifications::account_retention_notification_claim_token
+                .eq(Option::<Uuid>::None),
+            account_retention_notifications::account_retention_notification_claimed_at
+                .eq(Option::<DateTime<Utc>>::None),
+            account_retention_notifications::account_retention_notification_claim_expires_at
+                .eq(Option::<DateTime<Utc>>::None),
+            account_retention_notifications::account_retention_notification_last_error.eq(error),
+            account_retention_notifications::account_retention_notification_updated_at
+                .eq(failed_at),
+        ))
+        .execute(&mut connection)
+        .await?;
         Ok(affected == 1)
     }
 }
@@ -114,8 +109,7 @@ pub(super) async fn cancel_retention_notifications_for_hard_purge(
     diesel::update(
         account_retention_notifications::table
             .filter(
-                account_retention_notifications::account_retention_notification_user_id
-                    .eq(user_id),
+                account_retention_notifications::account_retention_notification_user_id.eq(user_id),
             )
             .filter(
                 account_retention_notifications::account_retention_notification_sent_at.is_null(),
@@ -134,8 +128,7 @@ pub(super) async fn cancel_retention_notifications_for_hard_purge(
             .eq(Option::<DateTime<Utc>>::None),
         account_retention_notifications::account_retention_notification_claim_expires_at
             .eq(Option::<DateTime<Utc>>::None),
-        account_retention_notifications::account_retention_notification_updated_at
-            .eq(cancelled_at),
+        account_retention_notifications::account_retention_notification_updated_at.eq(cancelled_at),
     ))
     .execute(&mut *connection)
     .await?;

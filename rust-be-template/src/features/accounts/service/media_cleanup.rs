@@ -13,8 +13,7 @@ use crate::features::accounts::{
 };
 use crate::util::media::{
     cleanup::{
-        MEDIA_CLEANUP_ENQUEUE_LIMIT, MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT,
-        MediaCleanupEnqueueReport,
+        MEDIA_CLEANUP_ENQUEUE_LIMIT, MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT, MediaCleanupEnqueueReport,
         MediaCleanupFailureRegistration, MediaCleanupFailureUpdate, MediaCleanupRetryReport,
         is_supported_media_cleanup_reason, settle_durable_cleanup,
     },
@@ -163,10 +162,7 @@ impl AccountService {
         requester_id: Uuid,
     ) -> Result<Vec<UnresolvedMediaCleanup>, AccountError> {
         let session_consistency = self.session_consistency.read().await;
-        let records = self
-            .repository
-            .unresolved_media_cleanup(requester_id)
-            .await;
+        let records = self.repository.unresolved_media_cleanup(requester_id).await;
         drop(session_consistency);
         records
     }
@@ -183,13 +179,7 @@ impl AccountService {
         let session_consistency = self.session_consistency.read().await;
         let resolution = self
             .repository
-            .resolve_media_cleanup(
-                requester_id,
-                cleanup_id,
-                expected_original_url,
-                bucket,
-                key,
-            )
+            .resolve_media_cleanup(requester_id, cleanup_id, expected_original_url, bucket, key)
             .await;
         drop(session_consistency);
         resolution
@@ -225,8 +215,7 @@ fn retry_is_due(
 fn retry_backoff(attempt_count: i32) -> Duration {
     let exponent = attempt_count.saturating_sub(1).clamp(0, 7);
     let exponent: u32 = u32::try_from(exponent).unwrap_or_default();
-    let seconds = (CLEANUP_RETRY_BASE_SECONDS * 2_i64.pow(exponent))
-        .min(CLEANUP_RETRY_MAX_SECONDS);
+    let seconds = (CLEANUP_RETRY_BASE_SECONDS * 2_i64.pow(exponent)).min(CLEANUP_RETRY_MAX_SECONDS);
     Duration::seconds(seconds)
 }
 
@@ -267,6 +256,9 @@ mod tests {
     #[test]
     fn failure_messages_are_nonempty_and_character_bounded() {
         assert_eq!(bounded_failure_message(""), "object-store cleanup failed");
-        assert_eq!(bounded_failure_message(&"🙂".repeat(3_000)).chars().count(), 2_048);
+        assert_eq!(
+            bounded_failure_message(&"🙂".repeat(3_000)).chars().count(),
+            2_048
+        );
     }
 }

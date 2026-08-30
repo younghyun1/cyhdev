@@ -13,7 +13,9 @@ pub struct ForumRepository {
 }
 
 impl ForumRepository {
-    pub fn new(pool: Pool<AsyncPgConnection>) -> Self { Self { pool } }
+    pub fn new(pool: Pool<AsyncPgConnection>) -> Self {
+        Self { pool }
+    }
 
     pub(super) async fn connection(
         &self,

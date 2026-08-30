@@ -3,7 +3,9 @@ use diesel::{Insertable, Queryable, Selectable};
 use ipnet::IpNet;
 use uuid::Uuid;
 
-use crate::schema::{live_chat_bans, live_chat_call_participants, live_chat_calls, live_chat_messages};
+use crate::schema::{
+    live_chat_bans, live_chat_call_participants, live_chat_calls, live_chat_messages,
+};
 
 use super::super::domain::{ban::LiveChatBan, message::LiveChatMessage};
 

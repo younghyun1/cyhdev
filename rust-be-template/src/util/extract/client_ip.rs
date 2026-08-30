@@ -74,7 +74,10 @@ fn resolve_client_ip(
             return fallback.ip();
         }
     }
-    match right_to_left.next().and_then(|value| value.parse::<IpAddr>().ok()) {
+    match right_to_left
+        .next()
+        .and_then(|value| value.parse::<IpAddr>().ok())
+    {
         Some(client_ip) => client_ip,
         None => fallback.ip(),
     }
@@ -82,7 +85,11 @@ fn resolve_client_ip(
 
 fn parse_trusted_networks(raw: &str) -> Vec<IpNet> {
     let mut networks = Vec::new();
-    for value in raw.split(',').map(str::trim).filter(|value| !value.is_empty()) {
+    for value in raw
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         match value.parse::<IpNet>() {
             Ok(network) => networks.push(network),
             Err(error) => {

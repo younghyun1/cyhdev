@@ -6,8 +6,7 @@ use uuid::Uuid;
 use crate::features::accounts::domain::public_author::PublicAuthor;
 
 use super::enums::{
-    ForumContentState, ForumModerationAction, ForumNotificationKind,
-    ForumTopicAccessState,
+    ForumContentState, ForumModerationAction, ForumNotificationKind, ForumTopicAccessState,
 };
 
 pub struct ForumTopic {

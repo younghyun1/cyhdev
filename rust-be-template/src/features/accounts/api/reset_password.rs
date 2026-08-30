@@ -13,10 +13,7 @@ use crate::{
     },
     errors::code_error::{CodeErrorResp, HandlerResponse},
     features::accounts::{
-        api::{
-            account_error::map_password_reset_error,
-            auth_abuse::map_auth_throttle_rejection,
-        },
+        api::{account_error::map_password_reset_error, auth_abuse::map_auth_throttle_rejection},
         domain::auth_abuse::{AuthEndpoint, AuthIdentity},
     },
     init::state::ServerState,

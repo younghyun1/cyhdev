@@ -62,9 +62,7 @@ impl ReferenceDataRepository {
         Self { pool }
     }
 
-    pub async fn countries(
-        &self,
-    ) -> anyhow::Result<(Vec<IsoCountry>, Vec<IsoCountrySubdivision>)> {
+    pub async fn countries(&self) -> anyhow::Result<(Vec<IsoCountry>, Vec<IsoCountrySubdivision>)> {
         let mut connection = self.pool.get().await?;
         let countries = iso_country::table
             .select(CountryRecord::as_select())

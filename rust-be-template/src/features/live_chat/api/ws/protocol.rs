@@ -4,9 +4,7 @@ use tracing::{error, warn};
 use crate::{
     dto::requests::live_chat::live_chat_client_event::LiveChatClientEvent,
     features::live_chat::{
-        api::binary_codec::{
-            LiveChatBinaryClientEvent, decode_client_event, encode_server_event,
-        },
+        api::binary_codec::{LiveChatBinaryClientEvent, decode_client_event, encode_server_event},
         domain::rtc::RtcClientSignal,
         service::cache::LiveChatServerEvent,
     },

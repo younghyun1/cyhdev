@@ -6,8 +6,8 @@ use uuid::Uuid;
 
 use crate::schema::{post_tags, posts, tags};
 
-use super::blog_repository::BlogRepository;
 use super::super::error::BlogError;
+use super::blog_repository::BlogRepository;
 
 pub const POST_SEARCH_REBUILD_PAGE_SIZE: i64 = 512;
 
@@ -38,7 +38,10 @@ impl BlogRepository {
         if posts.is_empty() {
             return Ok(Vec::new());
         }
-        let post_ids = posts.iter().map(|(post_id, _)| *post_id).collect::<Vec<_>>();
+        let post_ids = posts
+            .iter()
+            .map(|(post_id, _)| *post_id)
+            .collect::<Vec<_>>();
         let tag_rows = post_tags::table
             .inner_join(tags::table)
             .filter(post_tags::post_id.eq_any(post_ids))

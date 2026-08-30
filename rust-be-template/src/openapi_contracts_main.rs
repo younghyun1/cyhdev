@@ -41,8 +41,8 @@ fn run() -> Result<(), CodegenError> {
 
 fn frontend_output_directory() -> Result<std::path::PathBuf, CodegenError> {
     let backend = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let root = backend.parent().ok_or_else(|| {
-        CodegenError::new("backend manifest has no monorepo parent directory")
-    })?;
+    let root = backend
+        .parent()
+        .ok_or_else(|| CodegenError::new("backend manifest has no monorepo parent directory"))?;
     Ok(root.join("solid-csr-spa-template/src/generated"))
 }

@@ -92,7 +92,9 @@ impl IntoResponse for CodeErrorResp {
         if let Some(seconds) = self.retry_after_seconds {
             match axum::http::HeaderValue::from_str(&seconds.to_string()) {
                 Ok(value) => {
-                    response.headers_mut().insert(axum::http::header::RETRY_AFTER, value);
+                    response
+                        .headers_mut()
+                        .insert(axum::http::header::RETRY_AFTER, value);
                 }
                 Err(error) => {
                     tracing::warn!(error = %error, "Failed to encode Retry-After header");

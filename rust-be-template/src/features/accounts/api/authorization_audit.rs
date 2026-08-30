@@ -2,7 +2,11 @@
 
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Query, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Query, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -48,7 +52,11 @@ pub async fn list_authorization_audit(
         .map_err(map_authorization_error)?;
     Ok(http_resp(
         AuthorizationAuditResponse {
-            events: page.items.into_iter().map(AuthorizationAuditItem::from).collect(),
+            events: page
+                .items
+                .into_iter()
+                .map(AuthorizationAuditItem::from)
+                .collect(),
             next_cursor: page.next_cursor.map(AuthorizationAuditCursorItem::from),
         },
         (),

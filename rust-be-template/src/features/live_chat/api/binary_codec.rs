@@ -98,8 +98,7 @@ mod tests {
     use super::*;
     use crate::features::live_chat::{
         domain::{
-            actor::ChatActor,
-            guest_nickname::guest_nickname_for_ip,
+            actor::ChatActor, guest_nickname::guest_nickname_for_ip,
             message::LIVE_CHAT_SENDER_KIND_GUEST,
         },
         service::cache::{CachedChatMessage, LiveChatServerEvent},

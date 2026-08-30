@@ -7,10 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     features::accounts::{error::AccountError, service::account_service::AccountService},
-    util::media::{
-        cleanup::settle_durable_cleanup,
-        persistence::cleanup_committed_objects,
-    },
+    util::media::{cleanup::settle_durable_cleanup, persistence::cleanup_committed_objects},
 };
 
 const PROFILE_CLEANUP_CONCURRENCY: usize = 4;
@@ -61,13 +58,8 @@ impl AccountService {
                 "Profile-picture object cleanup remains pending"
             );
         }
-        let settlement = settle_durable_cleanup(
-            self,
-            deletion.cleanup_objects,
-            &cleaned,
-            &failures,
-        )
-        .await;
+        let settlement =
+            settle_durable_cleanup(self, deletion.cleanup_objects, &cleaned, &failures).await;
         Ok(Some(ProfilePictureCleanupReceipt {
             deleted_profile_picture_id: deletion.deleted_profile_picture_id,
             active_profile_picture_id: deletion.active_profile_picture_id,

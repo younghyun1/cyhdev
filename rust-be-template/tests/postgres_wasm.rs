@@ -8,8 +8,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use rust_be_template::{
-    features::wasm::repository::wasm_repository::WasmRepository,
-    schema::wasm_module,
+    features::wasm::repository::wasm_repository::WasmRepository, schema::wasm_module,
 };
 
 use support::{
@@ -27,7 +26,10 @@ fn deleted_owner_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
         let owner = seed_account(&context, "WasmDeletedOwner").await?;
-        context.accounts.verify_email(owner.verification_token).await?;
+        context
+            .accounts
+            .verify_email(owner.verification_token)
+            .await?;
         let module_id = Uuid::now_v7();
         let now = Utc::now();
         let mut connection = context.pool.get().await?;
@@ -50,10 +52,9 @@ fn deleted_owner_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let repository = WasmRepository::new(context.pool.clone());
         let before = repository.list_metadata().await?;
         require(
-            before
-                .items
-                .iter()
-                .any(|module| module.wasm_module_id == module_id && module.user_id == owner.user_id),
+            before.items.iter().any(|module| {
+                module.wasm_module_id == module_id && module.user_id == owner.user_id
+            }),
             "active WebAssembly owner was not projected",
         )?;
 

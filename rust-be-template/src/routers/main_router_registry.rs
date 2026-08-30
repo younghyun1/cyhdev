@@ -21,16 +21,17 @@ pub(super) use crate::{
     features::accounts::api::{
         auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_headers},
         authorization_audit::list_authorization_audit,
-        authorization_mutations::{
-            assign_authorization_role, set_authorization_role_permission,
-        },
+        authorization_mutations::{assign_authorization_role, set_authorization_role_permission},
         authorization_queries::{
-            list_authorization_permissions, list_authorization_roles,
-            list_authorization_users, list_role_permissions,
+            list_authorization_permissions, list_authorization_roles, list_authorization_users,
+            list_role_permissions,
         },
         delete_account::delete_account,
-        hard_purge_account::hard_purge_account, is_superuser::is_superuser_handler, login::login,
-        logout::logout, me::me_handler,
+        hard_purge_account::hard_purge_account,
+        is_superuser::is_superuser_handler,
+        login::login,
+        logout::logout,
+        me::me_handler,
         media_cleanup::{resolve_media_cleanup, unresolved_media_cleanup},
         oidc_callback::oidc_callback,
         oidc_link::{complete_oidc_link, unlink_oidc},
@@ -52,9 +53,8 @@ pub(super) use crate::{
         delete_comment::delete_comment, delete_post::delete_post, get_posts::get_posts,
         read_post::read_post, rescind_comment_vote::rescind_comment_vote,
         rescind_post_vote::rescind_post_vote, search_posts::search_posts,
-        submit_comment::submit_comment, submit_post::submit_post,
-        update_comment::update_comment, update_post::update_post,
-        vote_comment::vote_comment, vote_post::vote_post,
+        submit_comment::submit_comment, submit_post::submit_post, update_comment::update_comment,
+        update_post::update_post, vote_comment::vote_comment, vote_post::vote_post,
     },
     features::forum::api::{
         audit::list_forum_moderation_audit,
@@ -71,12 +71,10 @@ pub(super) use crate::{
     },
     features::geo::api::lookup::{lookup_ip_info, lookup_ip_location, lookup_my_ip_info},
     features::i18n::api::{
-        get_ui_text_bundle::get_ui_text_bundle,
-        sync_i18n_cache::sync_i18n_cache,
+        get_ui_text_bundle::get_ui_text_bundle, sync_i18n_cache::sync_i18n_cache,
     },
     features::live_chat::api::{
-        cache_stats::get_live_chat_cache_stats,
-        get_messages::get_live_chat_messages,
+        cache_stats::get_live_chat_cache_stats, get_messages::get_live_chat_messages,
         ws::live_chat_ws_handler,
     },
     features::photography::api::{
@@ -87,14 +85,12 @@ pub(super) use crate::{
         rescind_photograph_comment_vote::rescind_photograph_comment_vote,
         rescind_photograph_vote::rescind_photograph_vote,
         submit_photograph_comment::submit_photograph_comment,
-        update_photograph_comment::update_photograph_comment,
-        upload_photograph::upload_photograph, vote_photograph::vote_photograph,
-        vote_photograph_comment::vote_photograph_comment,
+        update_photograph_comment::update_photograph_comment, upload_photograph::upload_photograph,
+        vote_photograph::vote_photograph, vote_photograph_comment::vote_photograph_comment,
     },
     features::reference_data::api::{
-        get_countries::get_countries, get_country::get_country,
-        get_language::get_language, get_languages::get_languages,
-        get_subdivisions::get_subdivisions_for_country,
+        get_countries::get_countries, get_country::get_country, get_language::get_language,
+        get_languages::get_languages, get_subdivisions::get_subdivisions_for_country,
     },
     features::server_status::api::{
         host_stats::ws_host_stats_handler,
@@ -110,7 +106,9 @@ pub(super) use crate::{
 };
 
 pub(super) use super::middleware::{
-    auth::auth_middleware, is_logged_in::is_logged_in_middleware, logging::log_middleware,
+    auth::auth_middleware,
+    is_logged_in::is_logged_in_middleware,
+    logging::log_middleware,
     role::require_superuser_middleware,
     trusted_origin::{TrustedOrigins, require_trusted_origin},
 };

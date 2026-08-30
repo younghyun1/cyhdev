@@ -1,19 +1,26 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
-    features::blog::domain::comment::CommentResponse,
-    dto::{requests::blog::update_comment_request::UpdateCommentRequest, responses::response_data::http_resp},
+    dto::{
+        requests::blog::update_comment_request::UpdateCommentRequest,
+        responses::response_data::http_resp,
+    },
     errors::code_error::{CodeErrorResp, HandlerResponse},
     features::accounts::domain::role::RoleType,
+    features::blog::domain::comment::CommentResponse,
     init::state::ServerState,
     util::time::now::tokio_now,
 };
 
-use super::error::{BlogOperation, map_blog_error};
 use super::bounded_json::BlogJson;
+use super::error::{BlogOperation, map_blog_error};
 
 #[utoipa::path(
     patch,
@@ -41,10 +48,10 @@ pub async fn update_comment(
     BlogJson(request): BlogJson<UpdateCommentRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    let comment = state.blog_service().update_comment(
-        requester_id,
-        comment_id,
-        request.comment_content,
-    ).await.map_err(|error| map_blog_error(error, BlogOperation::Update))?;
+    let comment = state
+        .blog_service()
+        .update_comment(requester_id, comment_id, request.comment_content)
+        .await
+        .map_err(|error| map_blog_error(error, BlogOperation::Update))?;
     Ok(http_resp(comment, (), start))
 }

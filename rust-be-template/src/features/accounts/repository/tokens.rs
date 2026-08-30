@@ -8,8 +8,8 @@ use uuid::Uuid;
 use crate::{
     features::accounts::{
         domain::account::{
-            EmailVerificationIssue, EmailVerificationReceipt, EmailVerificationToken, PasswordResetReceipt,
-            PasswordResetRequestReceipt, PasswordResetToken,
+            EmailVerificationIssue, EmailVerificationReceipt, EmailVerificationToken,
+            PasswordResetReceipt, PasswordResetRequestReceipt, PasswordResetToken,
         },
         error::AccountError,
         repository::{
@@ -212,9 +212,12 @@ impl AccountRepository {
                 let consumed = diesel::update(
                     email_verification_tokens::table
                         .filter(
-                            email_verification_tokens::email_verification_token_id.eq(token.token_id),
+                            email_verification_tokens::email_verification_token_id
+                                .eq(token.token_id),
                         )
-                        .filter(email_verification_tokens::email_verification_token_used_at.is_null()),
+                        .filter(
+                            email_verification_tokens::email_verification_token_used_at.is_null(),
+                        ),
                 )
                 .set(email_verification_tokens::email_verification_token_used_at.eq(verified_at))
                 .execute(&mut *connection)

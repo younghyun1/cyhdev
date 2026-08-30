@@ -5,10 +5,13 @@ use std::sync::Arc;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 
 use crate::{
-    features::{accounts::{
-        repository::account_repository::AccountRepository,
-        service::session_service::SessionService,
-    }, live_chat::service::lifecycle::LiveChatAccountLifecyclePort},
+    features::{
+        accounts::{
+            repository::account_repository::AccountRepository,
+            service::session_service::SessionService,
+        },
+        live_chat::service::lifecycle::LiveChatAccountLifecyclePort,
+    },
     util::media::object_store::MediaObjectStore,
 };
 

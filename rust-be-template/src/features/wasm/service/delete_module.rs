@@ -3,8 +3,8 @@
 use tracing::info;
 use uuid::Uuid;
 
-use super::{cleanup::CleanupOutcome, wasm_service::WasmService};
 use super::super::error::WasmError;
+use super::{cleanup::CleanupOutcome, wasm_service::WasmService};
 
 pub struct DeleteModuleOutcome {
     pub module_id: Uuid,

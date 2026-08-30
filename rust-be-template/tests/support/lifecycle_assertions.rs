@@ -7,10 +7,7 @@ use uuid::Uuid;
 
 use rust_be_template::{
     features::{
-        accounts::{
-            domain::account::DELETED_USER_DISPLAY_NAME,
-            error::AccountError,
-        },
+        accounts::{domain::account::DELETED_USER_DISPLAY_NAME, error::AccountError},
         blog::domain::post::UserBadgeInfo,
         photography::repository::photography_repository::PhotographyRepository,
     },
@@ -36,7 +33,10 @@ pub async fn require_login_rejected(
     {
         Err(AccountError::InvalidCredentials) => Ok(()),
         Err(error) => Err(Box::new(error) as BoxError),
-        Ok(_) => require(false, "deleted account authenticated with its original identity"),
+        Ok(_) => require(
+            false,
+            "deleted account authenticated with its original identity",
+        ),
     }
 }
 
@@ -85,7 +85,10 @@ pub async fn require_account_authority_cleared(
             .await?,
     );
     drop(connection);
-    require(remaining == (0, 0, 0), "soft deletion retained account authority")
+    require(
+        remaining == (0, 0, 0),
+        "soft deletion retained account authority",
+    )
 }
 
 pub async fn require_public_identity_is_generic(

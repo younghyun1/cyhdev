@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Multipart, Path, State}};
+use axum::{
+    Extension,
+    extract::{Multipart, Path, State},
+};
 use uuid::Uuid;
 
 use crate::{
@@ -13,7 +16,10 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::{asset_upload::read_assets, error::{WasmMutation, map_wasm_error}};
+use super::{
+    asset_upload::read_assets,
+    error::{WasmMutation, map_wasm_error},
+};
 
 #[utoipa::path(
     post,

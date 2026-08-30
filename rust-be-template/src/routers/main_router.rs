@@ -113,15 +113,39 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
 
     let protected_forum_router = Router::new()
         .route("/api/forum/topics", post(create_forum_topic))
-        .route("/api/forum/topics/{topic_id}", patch(update_forum_topic).delete(delete_forum_topic))
-        .route("/api/forum/topics/{topic_id}/replies", post(create_forum_reply))
-        .route("/api/forum/replies/{reply_id}", patch(update_forum_reply).delete(delete_forum_reply))
-        .route("/api/forum/topics/{topic_id}/subscription", post(subscribe_forum_topic).delete(unsubscribe_forum_topic))
-        .route("/api/forum/topics/{topic_id}/moderation", post(moderate_forum_topic))
-        .route("/api/forum/replies/{reply_id}/moderation", post(moderate_forum_reply))
-        .route("/api/forum/moderation/audit", get(list_forum_moderation_audit))
+        .route(
+            "/api/forum/topics/{topic_id}",
+            patch(update_forum_topic).delete(delete_forum_topic),
+        )
+        .route(
+            "/api/forum/topics/{topic_id}/replies",
+            post(create_forum_reply),
+        )
+        .route(
+            "/api/forum/replies/{reply_id}",
+            patch(update_forum_reply).delete(delete_forum_reply),
+        )
+        .route(
+            "/api/forum/topics/{topic_id}/subscription",
+            post(subscribe_forum_topic).delete(unsubscribe_forum_topic),
+        )
+        .route(
+            "/api/forum/topics/{topic_id}/moderation",
+            post(moderate_forum_topic),
+        )
+        .route(
+            "/api/forum/replies/{reply_id}/moderation",
+            post(moderate_forum_reply),
+        )
+        .route(
+            "/api/forum/moderation/audit",
+            get(list_forum_moderation_audit),
+        )
         .route("/api/forum/notifications", get(list_forum_notifications))
-        .route("/api/forum/notifications/{notification_id}/read", post(mark_forum_notification_read))
+        .route(
+            "/api/forum/notifications/{notification_id}/read",
+            post(mark_forum_notification_read),
+        )
         .layer(DefaultBodyLimit::max(FORUM_REQUEST_SIZE))
         .layer(auth_middleware.clone());
 
@@ -228,8 +252,14 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             "/api/admin/users/{user_id}/hard-purge",
             post(hard_purge_account),
         )
-        .route("/api/admin/media-cleanup/unresolved", get(unresolved_media_cleanup))
-        .route("/api/admin/media-cleanup/{cleanup_id}/resolve", post(resolve_media_cleanup))
+        .route(
+            "/api/admin/media-cleanup/unresolved",
+            get(unresolved_media_cleanup),
+        )
+        .route(
+            "/api/admin/media-cleanup/{cleanup_id}/resolve",
+            post(resolve_media_cleanup),
+        )
         .route(
             "/api/admin/account-retention-notifications",
             get(retention_notification_status),

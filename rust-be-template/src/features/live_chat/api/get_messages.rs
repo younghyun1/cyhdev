@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use axum::{extract::{Query, State}, response::IntoResponse};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+};
 
 use crate::{
     dto::{
@@ -36,7 +39,10 @@ pub async fn get_live_chat_messages(
     Query(request): Query<GetLiveChatMessagesRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    let messages = state.live_chat_service().page_messages(request.before_message_id, request.limit).await
+    let messages = state
+        .live_chat_service()
+        .page_messages(request.before_message_id, request.limit)
+        .await
         .map_err(|error| {
             let code = match &error {
                 super::super::error::LiveChatError::InvalidCursor => CodeError::INVALID_REQUEST,
@@ -47,6 +53,17 @@ pub async fn get_live_chat_messages(
         })?;
     let has_more = messages.len() == request.limit.clamp(1, 100);
     let next_before_message_id = messages.first().map(|message| message.live_chat_message_id);
-    let items = messages.into_iter().map(LiveChatMessageItem::from).collect();
-    Ok(http_resp(GetLiveChatMessagesResponse { items, next_before_message_id, has_more }, (), start))
+    let items = messages
+        .into_iter()
+        .map(LiveChatMessageItem::from)
+        .collect();
+    Ok(http_resp(
+        GetLiveChatMessagesResponse {
+            items,
+            next_before_message_id,
+            has_more,
+        },
+        (),
+        start,
+    ))
 }

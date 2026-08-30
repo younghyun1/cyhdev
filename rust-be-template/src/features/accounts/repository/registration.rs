@@ -62,7 +62,6 @@ impl AccountRepository {
 
         transaction_result.map_err(classify_registration_error)
     }
-
 }
 
 const EMAIL_UNIQUE_CONSTRAINT: &str = "users_user_email_unique";

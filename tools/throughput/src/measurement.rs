@@ -141,14 +141,17 @@ fn validate_executor_declaration(
 }
 
 fn build_schedule(workload: &WorkloadConfig) -> HarnessResult<Vec<usize>> {
-    let capacity = workload.requests.iter().try_fold(0_usize, |total, request| {
-        let weight = usize::try_from(request.weight).map_err(|_source| {
-            HarnessError::Arguments("request weight does not fit this platform".to_owned())
+    let capacity = workload
+        .requests
+        .iter()
+        .try_fold(0_usize, |total, request| {
+            let weight = usize::try_from(request.weight).map_err(|_source| {
+                HarnessError::Arguments("request weight does not fit this platform".to_owned())
+            })?;
+            total.checked_add(weight).ok_or_else(|| {
+                HarnessError::Arguments("combined request weight overflowed usize".to_owned())
+            })
         })?;
-        total.checked_add(weight).ok_or_else(|| {
-            HarnessError::Arguments("combined request weight overflowed usize".to_owned())
-        })
-    })?;
     let mut schedule = Vec::with_capacity(capacity);
     for (request_index, request) in workload.requests.iter().enumerate() {
         for _occurrence in 0..request.weight {
@@ -197,7 +200,9 @@ fn replay(
             .spawn(move || {
                 ready_barrier.wait();
                 start_barrier.wait();
-                let _completion = CompletionSignal { barrier: completion_barrier };
+                let _completion = CompletionSignal {
+                    barrier: completion_barrier,
+                };
                 measure_worker(
                     worker,
                     concurrency,

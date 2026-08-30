@@ -1,7 +1,7 @@
 pub mod batch;
 pub mod batch_session;
-pub mod batch_worker;
 pub mod batch_upload;
+pub mod batch_worker;
 pub mod media;
 pub mod photography_service;
 pub mod reads;

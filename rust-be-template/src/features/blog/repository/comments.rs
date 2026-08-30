@@ -11,12 +11,12 @@ use crate::{
     schema::{comments, posts},
 };
 
+use super::super::{domain::comment::Comment, error::BlogError};
 use super::{
     authority::{lock_active_user, require_owner_or_superuser},
     blog_repository::BlogRepository,
     records::{CommentRecord, NewCommentRecord},
 };
-use super::super::{domain::comment::Comment, error::BlogError};
 
 pub const MAX_COMPATIBILITY_POST_COMMENTS: usize = 1_000;
 const MAX_COMPATIBILITY_COMMENT_QUERY_ROWS: i64 = 1_001;
@@ -41,7 +41,10 @@ impl BlogRepository {
         let mut connection = self.connection().await?;
         let mut comments = comments::table
             .filter(comments::post_id.eq(post_id))
-            .order((comments::comment_created_at.asc(), comments::comment_id.asc()))
+            .order((
+                comments::comment_created_at.asc(),
+                comments::comment_id.asc(),
+            ))
             .select(CommentRecord::as_select())
             .limit(MAX_COMPATIBILITY_COMMENT_QUERY_ROWS)
             .load::<CommentRecord>(&mut connection)
@@ -54,7 +57,10 @@ impl BlogRepository {
         if truncated {
             comments.truncate(MAX_COMPATIBILITY_POST_COMMENTS);
         }
-        Ok(CommentList { comments, truncated })
+        Ok(CommentList {
+            comments,
+            truncated,
+        })
     }
 
     pub async fn insert_comment(

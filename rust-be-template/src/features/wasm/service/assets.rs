@@ -10,22 +10,20 @@ use crate::util::{
         process_uploaded_image_files::{ProcessedImageFile, process_uploaded_image_files},
     },
     media::{
-        object_store::ObjectLocation,
-        persistence::PendingMediaObject,
-        staged_upload::StagedUpload,
+        object_store::ObjectLocation, persistence::PendingMediaObject, staged_upload::StagedUpload,
     },
     s3::AWS_S3_BUCKET_NAME,
 };
 
+use super::super::{
+    domain::bundle::{NormalizedWasmBundle, WasmBundleKind},
+    error::WasmError,
+};
 use super::{
     asset_inputs::StagedBundleUpload,
     bundle_processing::{
         MAX_BUNDLE_SIZE_BYTES, is_wasm_magic, looks_like_html, normalize_bundle_file,
     },
-};
-use super::super::{
-    domain::bundle::{NormalizedWasmBundle, WasmBundleKind},
-    error::WasmError,
 };
 
 const BUNDLE_PREFIX_BYTES: usize = 512;
@@ -42,12 +40,7 @@ pub(super) async fn prepare_bundle(
     let (is_gzipped, kind) = classify_bundle(&bundle.source).await?;
     let path = bundle.source.path().to_path_buf();
     let normalized = tokio::task::spawn_blocking(move || {
-        normalize_bundle_file(
-            &path,
-            is_gzipped,
-            kind,
-            MAX_BUNDLE_SIZE_BYTES as usize,
-        )
+        normalize_bundle_file(&path, is_gzipped, kind, MAX_BUNDLE_SIZE_BYTES as usize)
     })
     .await?
     .map_err(WasmError::Bundle)?;
@@ -60,14 +53,11 @@ pub(super) async fn prepare_thumbnail(
     thumbnail: StagedUpload,
     region: &str,
 ) -> Result<PreparedThumbnail, WasmError> {
-    let mut outputs = process_uploaded_image_files(
-        thumbnail.path(),
-        None,
-        vec![CyhdevImageType::DemoThumbnail],
-    )
-    .await
-    .map_err(WasmError::Image)?
-    .into_iter();
+    let mut outputs =
+        process_uploaded_image_files(thumbnail.path(), None, vec![CyhdevImageType::DemoThumbnail])
+            .await
+            .map_err(WasmError::Image)?
+            .into_iter();
     let processed = match outputs.next() {
         Some(processed) => processed,
         None => {

@@ -4,10 +4,10 @@ use chrono::{DateTime, Utc};
 use serde_derive::Serialize;
 use uuid::Uuid;
 
+use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 use crate::features::live_chat::domain::{
     guest_nickname::normalize_guest_display_name, message::LiveChatMessage,
 };
-use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 
 use super::LIVE_CHAT_MESSAGE_FIXED_BYTES;
 

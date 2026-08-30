@@ -41,10 +41,8 @@ pub async fn enqueue_media_cleanup(
     let mut resolved_keys = Vec::with_capacity(requests.len());
     let mut unresolved_count = 0_usize;
     for request in requests {
-        let location = ObjectLocation::from_public_s3_url(
-            AWS_S3_BUCKET_NAME,
-            &request.original_url,
-        );
+        let location =
+            ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, &request.original_url);
         let (bucket, key) = match location {
             Some(location) => {
                 resolved_keys.push(location.key().to_owned());
@@ -95,11 +93,13 @@ pub async fn enqueue_media_cleanup(
         .load::<(Uuid, String, String, i32)>(&mut *connection)
         .await?
         .into_iter()
-        .map(|(cleanup_id, bucket, key, attempt_count)| DurableMediaCleanup {
-            cleanup_id,
-            location: ObjectLocation::new(bucket, key),
-            attempt_count,
-        })
+        .map(
+            |(cleanup_id, bucket, key, attempt_count)| DurableMediaCleanup {
+                cleanup_id,
+                location: ObjectLocation::new(bucket, key),
+                attempt_count,
+            },
+        )
         .collect();
     Ok(EnqueuedMediaCleanup {
         resolved,

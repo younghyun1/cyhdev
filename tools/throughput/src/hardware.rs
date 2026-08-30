@@ -1,13 +1,6 @@
 //! Best-effort hardware capture for interpreting machine-dependent results.
 
-use std::{
-    env,
-    ffi::OsString,
-    fs,
-    path::Path,
-    process::Command,
-    thread,
-};
+use std::{env, ffi::OsString, fs, path::Path, process::Command, thread};
 
 use serde::{Deserialize, Serialize};
 
@@ -62,7 +55,8 @@ pub fn environment_digest(
         executor_kind,
         target,
         resolved_address,
-    )).map_err(|source| HarnessError::Json {
+    ))
+    .map_err(|source| HarnessError::Json {
         path: Path::new("<observed-environment>").to_path_buf(),
         source,
     })?;
@@ -100,11 +94,7 @@ fn read_linux_cpu_model() -> Option<String> {
 fn read_linux_memory_bytes() -> Option<u64> {
     let memory = fs::read_to_string("/proc/meminfo").ok()?;
     let line = memory.lines().find(|line| line.starts_with("MemTotal:"))?;
-    let kibibytes = line
-        .split_ascii_whitespace()
-        .nth(1)?
-        .parse::<u64>()
-        .ok()?;
+    let kibibytes = line.split_ascii_whitespace().nth(1)?.parse::<u64>().ok()?;
     kibibytes.checked_mul(1_024)
 }
 
@@ -159,18 +149,26 @@ mod tests {
             rustc_version: Some("rustc nightly-a".to_owned()),
         };
         let first = environment_digest(
-            "fnv1a64:0000000000000000", &hardware, "debug",
+            "fnv1a64:0000000000000000",
+            &hardware,
+            "debug",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "http", "http://127.0.0.1:3000", Some("127.0.0.1:3000"),
+            "http",
+            "http://127.0.0.1:3000",
+            Some("127.0.0.1:3000"),
         )
-            .map_err(|error| error.to_string())?;
+        .map_err(|error| error.to_string())?;
         hardware.rustc_version = Some("rustc nightly-b".to_owned());
         let second = environment_digest(
-            "fnv1a64:0000000000000000", &hardware, "debug",
+            "fnv1a64:0000000000000000",
+            &hardware,
+            "debug",
             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "http", "http://127.0.0.1:3000", Some("127.0.0.1:3000"),
+            "http",
+            "http://127.0.0.1:3000",
+            Some("127.0.0.1:3000"),
         )
-            .map_err(|error| error.to_string())?;
+        .map_err(|error| error.to_string())?;
 
         if first == second {
             Err("toolchain change did not alter the observed digest".to_owned())

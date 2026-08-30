@@ -9,8 +9,8 @@ use std::{
     process::Command,
 };
 
-use crate::{TaskError, TaskResult};
 use super::credential_policy::{RUNTIME_CREDENTIAL_PATHS, is_runtime_credential_path};
+use crate::{TaskError, TaskResult};
 
 const MAX_SNAPSHOT_FILES: usize = 1_000_000;
 const MAX_SNAPSHOT_BYTES: u64 = 1024 * 1024 * 1024;
@@ -20,7 +20,13 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
     verify_runtime_credentials_are_private(root)?;
     let paths = git_paths(
         root,
-        &["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
         "list public source files",
     )?;
     let mut copied_files = 0usize;
@@ -36,8 +42,7 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
         validate_relative_path(&relative)?;
         if is_runtime_credential_path(&relative) {
             return Err(TaskError(
-                "a runtime credential-shaped file is eligible for public Git inclusion"
-                    .to_owned(),
+                "a runtime credential-shaped file is eligible for public Git inclusion".to_owned(),
             ));
         }
         let source = root.join(&relative);
@@ -61,7 +66,10 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
         }
         let destination = snapshot.join(&relative);
         let parent = destination.parent().ok_or_else(|| {
-            TaskError(format!("snapshot path has no parent: {}", destination.display()))
+            TaskError(format!(
+                "snapshot path has no parent: {}",
+                destination.display()
+            ))
         })?;
         fs::create_dir_all(parent).map_err(|error| {
             TaskError(format!("failed to create {}: {error}", parent.display()))
@@ -70,17 +78,19 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
             snapshot_symlink(&source, &destination)?
         } else {
             let remaining = MAX_SNAPSHOT_BYTES.saturating_sub(copied_bytes);
-            copy_regular_file_bounded(
-                &source,
-                &destination,
-                remaining.min(MAX_PUBLIC_FILE_BYTES),
-            )?
+            copy_regular_file_bounded(&source, &destination, remaining.min(MAX_PUBLIC_FILE_BYTES))?
         };
         copied_bytes = add_snapshot_bytes(copied_bytes, copied)?;
     }
     let after = git_paths(
         root,
-        &["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+        ],
         "relist public source files",
     )?;
     if paths != after {
@@ -111,7 +121,9 @@ fn verify_runtime_credentials_are_private(root: &Path) -> TaskResult<()> {
         validate_relative_path(&path)?;
         if is_runtime_credential_path(&path) {
             let metadata = fs::symlink_metadata(root.join(&path)).map_err(|error| {
-                TaskError(format!("failed to inspect ignored credential file: {error}"))
+                TaskError(format!(
+                    "failed to inspect ignored credential file: {error}"
+                ))
             })?;
             if !metadata.is_file() && !metadata.file_type().is_symlink() {
                 return Err(TaskError(

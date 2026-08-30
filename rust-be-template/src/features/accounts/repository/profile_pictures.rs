@@ -8,16 +8,11 @@ use crate::{
     features::accounts::{
         domain::account::ProfilePictureReplacement,
         error::AccountError,
-        repository::{
-            account_repository::AccountRepository,
-            records::NewProfilePictureRecord,
-        },
+        repository::{account_repository::AccountRepository, records::NewProfilePictureRecord},
     },
     persistence::media_cleanup::enqueue_media_cleanup,
     schema::{user_profile_pictures, users},
-    util::media::cleanup::{
-        MediaCleanupRequest, REASON_PROFILE_PICTURE_HISTORY_PRUNED,
-    },
+    util::media::cleanup::{MediaCleanupRequest, REASON_PROFILE_PICTURE_HISTORY_PRUNED},
 };
 
 pub const PROFILE_PICTURE_HISTORY_LIMIT: i64 = 8;
@@ -98,12 +93,9 @@ impl AccountRepository {
                     )
                     .await?;
                     if !overflow_ids.is_empty() {
-                        diesel::delete(
-                            user_profile_pictures::table.filter(
-                                user_profile_pictures::user_profile_picture_id
-                                    .eq_any(overflow_ids),
-                            ),
-                        )
+                        diesel::delete(user_profile_pictures::table.filter(
+                            user_profile_pictures::user_profile_picture_id.eq_any(overflow_ids),
+                        ))
                         .execute(&mut *connection)
                         .await?;
                     }
@@ -118,5 +110,4 @@ impl AccountRepository {
             .await
             .map_err(AccountError::Mutation)
     }
-
 }

@@ -6,17 +6,11 @@ use zeroize::Zeroizing;
 use crate::{
     dto::{
         requests::auth::signup_request::SignupRequest,
-        responses::{
-            auth::signup_response::SignupResponse,
-            response_data::http_resp_sensitive,
-        },
+        responses::{auth::signup_response::SignupResponse, response_data::http_resp_sensitive},
     },
     errors::code_error::{CodeErrorResp, HandlerResponse},
     features::accounts::{
-        api::{
-            account_error::map_signup_error,
-            auth_abuse::map_auth_throttle_rejection,
-        },
+        api::{account_error::map_signup_error, auth_abuse::map_auth_throttle_rejection},
         domain::{
             account::SignupCommand,
             auth_abuse::{AuthEndpoint, AuthIdentity},
@@ -95,12 +89,15 @@ pub async fn signup_handler(
     }
     tokio::time::sleep_until(start + SIGNUP_RESPONSE_FLOOR).await;
 
-    Ok((StatusCode::ACCEPTED, http_resp_sensitive(
-        SignupResponse {
-            message: "If registration can proceed, verification instructions will be sent."
-                .to_owned(),
-        },
-        (),
-        start,
-    )))
+    Ok((
+        StatusCode::ACCEPTED,
+        http_resp_sensitive(
+            SignupResponse {
+                message: "If registration can proceed, verification instructions will be sent."
+                    .to_owned(),
+            },
+            (),
+            start,
+        ),
+    ))
 }

@@ -173,8 +173,7 @@ impl LiveChatCache {
                 retain
             })
             .await;
-        self.message_rate_count
-            .fetch_sub(removed, Ordering::SeqCst);
+        self.message_rate_count.fetch_sub(removed, Ordering::SeqCst);
     }
 
     pub async fn active_typing_actors(&self, now: DateTime<Utc>) -> Vec<ChatActor> {
@@ -224,7 +223,8 @@ impl LiveChatCache {
 
     pub async fn unregister_connection(&self, connection_id: Uuid) {
         let _identity_guard = self.identity_mutation.lock().await;
-        let Some((_, removed_connection)) = self.connected_clients.remove_async(&connection_id).await
+        let Some((_, removed_connection)) =
+            self.connected_clients.remove_async(&connection_id).await
         else {
             return;
         };

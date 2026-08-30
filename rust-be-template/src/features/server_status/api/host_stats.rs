@@ -1,6 +1,13 @@
 use std::sync::Arc;
 
-use axum::{body::Bytes, extract::{State, ws::{Message, WebSocket, WebSocketUpgrade}}, response::Response};
+use axum::{
+    body::Bytes,
+    extract::{
+        State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
+    response::Response,
+};
 
 use crate::init::state::ServerState;
 

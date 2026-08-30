@@ -29,8 +29,7 @@ pub fn aggregate(samples: Vec<Sample>, elapsed: Duration, request_count: u64) ->
         match sample.outcome {
             Ok(outcome) => {
                 successes = successes.saturating_add(1);
-                let outcome_bytes =
-                    u64::try_from(outcome.response_bytes).unwrap_or(u64::MAX);
+                let outcome_bytes = u64::try_from(outcome.response_bytes).unwrap_or(u64::MAX);
                 response_bytes = response_bytes.saturating_add(outcome_bytes);
                 response_checksum ^= outcome.checksum;
             }

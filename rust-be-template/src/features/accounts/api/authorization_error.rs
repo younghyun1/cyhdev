@@ -31,9 +31,7 @@ pub(super) fn map_authorization_error(error: AuthorizationError) -> CodeErrorRes
                 | AuthorizationError::InvalidPageSize => CodeError::INVALID_REQUEST,
                 AuthorizationError::Query(_)
                 | AuthorizationError::InvalidPermissionName
-                | AuthorizationError::AuditUserMissing => {
-                    CodeError::AUTHORIZATION_DATA_INTEGRITY
-                }
+                | AuthorizationError::AuditUserMissing => CodeError::AUTHORIZATION_DATA_INTEGRITY,
                 AuthorizationError::AccountRepository(_) => CodeError::DB_QUERY_ERROR,
             };
             code_err(code, error)

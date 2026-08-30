@@ -44,7 +44,10 @@ impl ReferenceDataService {
                 let rows = countries.len().saturating_add(subdivisions.len());
                 *self.countries.write().await =
                     CountryAndSubdivisionsTable::new(countries, subdivisions);
-                info!(rows_synchronized = rows, "Synchronized country reference data");
+                info!(
+                    rows_synchronized = rows,
+                    "Synchronized country reference data"
+                );
             }
             Err(source) => error!(error = %source, "Failed to synchronize country data"),
         }
@@ -52,7 +55,10 @@ impl ReferenceDataService {
             Ok(languages) => {
                 let rows = languages.len();
                 *self.languages.write().await = IsoLanguageTable::from(languages);
-                info!(rows_synchronized = rows, "Synchronized language reference data");
+                info!(
+                    rows_synchronized = rows,
+                    "Synchronized language reference data"
+                );
             }
             Err(source) => error!(error = %source, "Failed to synchronize language data"),
         }
@@ -60,7 +66,10 @@ impl ReferenceDataService {
             Ok(currencies) => {
                 let rows = currencies.len();
                 *self.currencies.write().await = IsoCurrencyTable::from(currencies);
-                info!(rows_synchronized = rows, "Synchronized currency reference data");
+                info!(
+                    rows_synchronized = rows,
+                    "Synchronized currency reference data"
+                );
             }
             Err(source) => error!(error = %source, "Failed to synchronize currency data"),
         }

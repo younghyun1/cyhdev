@@ -7,8 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     dto::responses::{
-        auth::oidc_response::OidcAuthorizationResponse,
-        response_data::http_resp_sensitive,
+        auth::oidc_response::OidcAuthorizationResponse, response_data::http_resp_sensitive,
     },
     errors::code_error::HandlerResponse,
     features::accounts::{
@@ -52,7 +51,13 @@ pub async fn start_oidc_link(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
 ) -> HandlerResponse<impl IntoResponse> {
-    start_authorization(state, OidcFlowMode::Link { expected_user_id: user_id }).await
+    start_authorization(
+        state,
+        OidcFlowMode::Link {
+            expected_user_id: user_id,
+        },
+    )
+    .await
 }
 
 async fn start_authorization(

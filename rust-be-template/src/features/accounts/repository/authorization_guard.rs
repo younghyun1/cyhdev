@@ -5,9 +5,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::{
-        authorization_error::AuthorizationError, domain::role::RoleType,
-    },
+    features::accounts::{authorization_error::AuthorizationError, domain::role::RoleType},
     schema::{user_roles, users},
 };
 
@@ -53,10 +51,7 @@ pub(super) async fn lock_active_younghyun_authority(
         .load::<Uuid>(&mut *connection)
         .await?;
     let owner_count = owners.len();
-    match owners
-        .into_iter()
-        .find(|user_id| *user_id == actor_user_id)
-    {
+    match owners.into_iter().find(|user_id| *user_id == actor_user_id) {
         Some(user_id) => Ok((LockedYounghyun { user_id }, owner_count)),
         None => Err(AuthorizationError::Unauthorized),
     }

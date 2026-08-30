@@ -26,10 +26,7 @@ const PASSWORD_RESET_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Duration:
 const DUMMY_RESET_PASSWORD: &str = "ResetTimingOnly5728";
 
 impl AccountService {
-    pub async fn request_password_reset(
-        &self,
-        user_email: &str,
-    ) -> Result<(), AccountError> {
+    pub async fn request_password_reset(&self, user_email: &str) -> Result<(), AccountError> {
         validate_email(user_email)?;
         let password_job = self.try_password_job()?;
         let _password_matches = verify_pw(DUMMY_RESET_PASSWORD, &self.dummy_password_hash)
@@ -115,9 +112,7 @@ impl AccountService {
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match PasswordResetEmail::new()
-                .set_link(&format!(
-                    "{public_app_origin}/reset-password#token={token}"
-                ))
+                .set_link(&format!("{public_app_origin}/reset-password#token={token}"))
                 .to_message(&user_email)
             {
                 Ok(message) => message,

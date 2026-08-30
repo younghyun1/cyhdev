@@ -36,8 +36,11 @@ impl PhotographyError {
     pub fn is_retryable(&self) -> bool {
         match self {
             Self::Pool(_) => true,
-            Self::Query(diesel::result::Error::DatabaseError(kind, _)) => matches!(*kind,
-                diesel::result::DatabaseErrorKind::SerializationFailure | diesel::result::DatabaseErrorKind::ClosedConnection),
+            Self::Query(diesel::result::Error::DatabaseError(kind, _)) => matches!(
+                *kind,
+                diesel::result::DatabaseErrorKind::SerializationFailure
+                    | diesel::result::DatabaseErrorKind::ClosedConnection
+            ),
             _ => false,
         }
     }

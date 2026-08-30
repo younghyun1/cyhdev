@@ -1,6 +1,9 @@
 //! Bounded multipart parsing for WebAssembly assets.
 
-use axum::{extract::{Multipart, multipart::MultipartError}, http::StatusCode};
+use axum::{
+    extract::{Multipart, multipart::MultipartError},
+    http::StatusCode,
+};
 use tracing::{error, info};
 
 use crate::{
@@ -123,9 +126,18 @@ mod tests {
 
     #[test]
     fn multipart_statuses_preserve_client_and_server_ownership() {
-        assert_eq!(multipart_code(StatusCode::BAD_REQUEST).error_code, CodeError::INVALID_REQUEST.error_code);
-        assert_eq!(multipart_code(StatusCode::PAYLOAD_TOO_LARGE).error_code, CodeError::UPLOAD_TOO_LARGE.error_code);
-        assert_eq!(multipart_code(StatusCode::INTERNAL_SERVER_ERROR).error_code, CodeError::FILE_UPLOAD_ERROR.error_code);
+        assert_eq!(
+            multipart_code(StatusCode::BAD_REQUEST).error_code,
+            CodeError::INVALID_REQUEST.error_code
+        );
+        assert_eq!(
+            multipart_code(StatusCode::PAYLOAD_TOO_LARGE).error_code,
+            CodeError::UPLOAD_TOO_LARGE.error_code
+        );
+        assert_eq!(
+            multipart_code(StatusCode::INTERNAL_SERVER_ERROR).error_code,
+            CodeError::FILE_UPLOAD_ERROR.error_code
+        );
     }
 
     #[test]
@@ -134,6 +146,9 @@ mod tests {
         let empty = map_stage_error(StageUploadError::Empty);
         assert_eq!(oversized.http_status_code, StatusCode::PAYLOAD_TOO_LARGE);
         assert_eq!(empty.http_status_code, StatusCode::BAD_REQUEST);
-        assert_eq!(duplicate_field("bundle").http_status_code, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            duplicate_field("bundle").http_status_code,
+            StatusCode::BAD_REQUEST
+        );
     }
 }

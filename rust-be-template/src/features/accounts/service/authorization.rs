@@ -9,8 +9,7 @@ use crate::features::accounts::{
             AuthorizationAuditCursor, AuthorizationAuditPage, AuthorizationPage,
             AuthorizationPageSize, AuthorizationReason, AuthorizationSearch, AuthorizationUser,
             DEFAULT_AUTHORIZATION_PAGE_SIZE, PermissionDefinition, PermissionName,
-            RoleAssignmentReceipt, RoleDefinition, RolePermissionBinding,
-            RolePermissionReceipt,
+            RoleAssignmentReceipt, RoleDefinition, RolePermissionBinding, RolePermissionReceipt,
         },
         role::RoleType,
     },
@@ -59,11 +58,7 @@ impl AccountService {
         limit: Option<u16>,
     ) -> Result<AuthorizationPage<RolePermissionBinding>, AuthorizationError> {
         self.repository
-            .authorization_role_permissions(
-                actor_user_id,
-                after,
-                validated_page_size(limit)?,
-            )
+            .authorization_role_permissions(actor_user_id, after, validated_page_size(limit)?)
             .await
     }
 
@@ -74,11 +69,7 @@ impl AccountService {
         limit: Option<u16>,
     ) -> Result<AuthorizationAuditPage, AuthorizationError> {
         self.repository
-            .authorization_audit_events(
-                actor_user_id,
-                before,
-                validated_page_size(limit)?,
-            )
+            .authorization_audit_events(actor_user_id, before, validated_page_size(limit)?)
             .await
     }
 
@@ -90,10 +81,10 @@ impl AccountService {
         reason: String,
         request_id: Option<Uuid>,
     ) -> Result<RoleAssignmentReceipt, AuthorizationError> {
-        let role_type = RoleType::from_uuid(role_id)
-            .ok_or(AuthorizationError::InvalidRoleId(role_id))?;
-        let reason = AuthorizationReason::try_new(reason)
-            .map_err(|_| AuthorizationError::InvalidReason)?;
+        let role_type =
+            RoleType::from_uuid(role_id).ok_or(AuthorizationError::InvalidRoleId(role_id))?;
+        let reason =
+            AuthorizationReason::try_new(reason).map_err(|_| AuthorizationError::InvalidReason)?;
         let _session_consistency = self.session_consistency.write().await;
         let receipt = self
             .repository
@@ -119,10 +110,10 @@ impl AccountService {
         reason: String,
         request_id: Option<Uuid>,
     ) -> Result<RolePermissionReceipt, AuthorizationError> {
-        let role_type = RoleType::from_uuid(role_id)
-            .ok_or(AuthorizationError::InvalidRoleId(role_id))?;
-        let reason = AuthorizationReason::try_new(reason)
-            .map_err(|_| AuthorizationError::InvalidReason)?;
+        let role_type =
+            RoleType::from_uuid(role_id).ok_or(AuthorizationError::InvalidRoleId(role_id))?;
+        let reason =
+            AuthorizationReason::try_new(reason).map_err(|_| AuthorizationError::InvalidReason)?;
         let _session_consistency = self.session_consistency.write().await;
         self.repository
             .set_role_permission_with_audit(
@@ -162,9 +153,7 @@ fn validated_search(
     }
 }
 
-fn validated_page_size(
-    limit: Option<u16>,
-) -> Result<AuthorizationPageSize, AuthorizationError> {
+fn validated_page_size(limit: Option<u16>) -> Result<AuthorizationPageSize, AuthorizationError> {
     AuthorizationPageSize::try_new(limit.unwrap_or(DEFAULT_AUTHORIZATION_PAGE_SIZE))
         .map_err(|_| AuthorizationError::InvalidPageSize)
 }

@@ -5,8 +5,7 @@ use crate::{
     config::{ThresholdConfig, environment_config_digest, load_report, load_thresholds},
     error::{HarnessError, HarnessResult},
     executor::types::ExecutorKind,
-    hardware,
-    implementation,
+    hardware, implementation,
     report::{REPORT_SCHEMA_VERSION, ThresholdEvidence, ThroughputReport, Verdict},
 };
 
@@ -55,7 +54,12 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
             report.metrics.requests, report.configuration.iterations
         ));
     }
-    if report.metrics.successes.saturating_add(report.metrics.failures) != report.metrics.requests {
+    if report
+        .metrics
+        .successes
+        .saturating_add(report.metrics.failures)
+        != report.metrics.requests
+    {
         violations.push("success and failure counts do not add up to requests".to_owned());
     }
     let categorized_failures = report
@@ -125,9 +129,8 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
                 "executor target is `{}`, but the environment declares `{expected}`",
                 report.executor.target
             )),
-            None => violations.push(
-                "HTTP environment configuration must declare the exact `target`".to_owned(),
-            ),
+            None => violations
+                .push("HTTP environment configuration must declare the exact `target`".to_owned()),
         }
     }
     if report.configuration.compiled_profile != thresholds.compiled_profile {
@@ -160,8 +163,7 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
     if report.metrics.throughput_requests_per_second < thresholds.minimum_requests_per_second {
         violations.push(format!(
             "throughput {:.2} requests/s is below {:.2}",
-            report.metrics.throughput_requests_per_second,
-            thresholds.minimum_requests_per_second
+            report.metrics.throughput_requests_per_second, thresholds.minimum_requests_per_second
         ));
     }
     if report.metrics.error_rate_percent > thresholds.maximum_error_rate_percent {
@@ -215,8 +217,6 @@ pub fn enforce(verdict: &Verdict) -> HarnessResult<()> {
 
 fn compare_latency(name: &str, actual: u64, maximum: u64, violations: &mut Vec<String>) {
     if actual > maximum {
-        violations.push(format!(
-            "{name} latency {actual} us exceeds {maximum} us"
-        ));
+        violations.push(format!("{name} latency {actual} us exceeds {maximum} us"));
     }
 }

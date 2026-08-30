@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -31,7 +35,9 @@ pub async fn rescind_post_vote(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let service = state.blog_service();
-    service.rescind_post_vote(user_id, post_id).await
+    service
+        .rescind_post_vote(user_id, post_id)
+        .await
         .map_err(|error| map_blog_error(error, BlogOperation::VoteRescind))?;
     Ok(http_resp((), (), start))
 }

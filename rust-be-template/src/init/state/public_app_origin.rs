@@ -78,7 +78,9 @@ fn is_loopback(url: &reqwest::Url) -> bool {
         None => return false,
     };
     host.eq_ignore_ascii_case("localhost")
-        || host.parse::<IpAddr>().is_ok_and(|address| address.is_loopback())
+        || host
+            .parse::<IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
 }
 
 #[cfg(test)]
@@ -106,8 +108,17 @@ mod tests {
 
     #[test]
     fn only_local_loopback_may_use_plain_http() {
-        assert!(PublicAppOrigin::parse(Some("http://localhost:3000"), DeploymentEnvironment::Local).is_ok());
-        assert!(PublicAppOrigin::parse(Some("http://app.example"), DeploymentEnvironment::Local).is_err());
-        assert!(PublicAppOrigin::parse(Some("http://localhost:3000"), DeploymentEnvironment::Prod).is_err());
+        assert!(
+            PublicAppOrigin::parse(Some("http://localhost:3000"), DeploymentEnvironment::Local)
+                .is_ok()
+        );
+        assert!(
+            PublicAppOrigin::parse(Some("http://app.example"), DeploymentEnvironment::Local)
+                .is_err()
+        );
+        assert!(
+            PublicAppOrigin::parse(Some("http://localhost:3000"), DeploymentEnvironment::Prod)
+                .is_err()
+        );
     }
 }

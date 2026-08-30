@@ -28,8 +28,9 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
 }
 
 fn parse_bundle(locale: UiLocale, raw: &str) -> anyhow::Result<UiTextSourceBundle> {
-    let value: Value = serde_json::from_str(raw)
-        .map_err(|error| anyhow::anyhow!("Failed to parse {} UI text JSON: {error}", locale.as_tag()))?;
+    let value: Value = serde_json::from_str(raw).map_err(|error| {
+        anyhow::anyhow!("Failed to parse {} UI text JSON: {error}", locale.as_tag())
+    })?;
     let object = value
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("{} UI text JSON must be an object", locale.as_tag()))?;

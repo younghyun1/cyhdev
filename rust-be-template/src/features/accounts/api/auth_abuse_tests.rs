@@ -11,8 +11,8 @@ use super::auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_header
 use crate::features::accounts::service::auth_abuse::AuthAbuseService;
 
 #[tokio::test]
-async fn auth_route_headers_cover_extractor_and_throttle_rejections(
-) -> Result<(), Box<dyn Error>> {
+async fn auth_route_headers_cover_extractor_and_throttle_rejections() -> Result<(), Box<dyn Error>>
+{
     let limiter = Arc::new(AuthAbuseService::new()?);
     let router = Router::new()
         .route("/api/auth/login", post(accept_json))
@@ -72,7 +72,9 @@ async fn accept_json(Json(_body): Json<serde_json::Value>) -> StatusCode {
 fn assert_private_headers(headers: &reqwest::header::HeaderMap) {
     assert_eq!(
         headers.get(header::CACHE_CONTROL),
-        Some(&reqwest::header::HeaderValue::from_static("no-store, max-age=0")),
+        Some(&reqwest::header::HeaderValue::from_static(
+            "no-store, max-age=0"
+        )),
     );
     assert_eq!(
         headers.get(header::REFERRER_POLICY),

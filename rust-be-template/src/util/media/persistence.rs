@@ -77,9 +77,8 @@ pub enum MediaWriteError<E> {
 }
 
 /// Boxed ordered media-write operation returned across the object-store boundary.
-pub type MediaWriteFuture<'a, T, E> = Pin<
-    Box<dyn Future<Output = Result<MediaWriteSuccess<T>, MediaWriteError<E>>> + Send + 'a>,
->;
+pub type MediaWriteFuture<'a, T, E> =
+    Pin<Box<dyn Future<Output = Result<MediaWriteSuccess<T>, MediaWriteError<E>>> + Send + 'a>>;
 
 /// Uploads new objects, commits their metadata, then removes superseded objects.
 ///

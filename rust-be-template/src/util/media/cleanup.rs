@@ -131,9 +131,8 @@ pub async fn settle_durable_cleanup(
         {
             Ok(finalized) => settlement.finalized = finalized,
             Err(source) => {
-                settlement.ledger_errors = settlement
-                    .ledger_errors
-                    .saturating_add(completed_ids.len());
+                settlement.ledger_errors =
+                    settlement.ledger_errors.saturating_add(completed_ids.len());
                 error!(
                     error = %source,
                     cleanup_count = completed_ids.len(),

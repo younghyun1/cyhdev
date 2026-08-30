@@ -77,6 +77,10 @@ pub(super) fn try_reserve(counter: &AtomicUsize, max: usize) -> bool {
 pub(super) fn rejection(counter: &AtomicU64, cache: &'static str) {
     let total = counter.fetch_add(1, Ordering::Relaxed).saturating_add(1);
     if total.is_power_of_two() {
-        tracing::warn!(cache, rejected_total = total, "Rejected visitor cache admission");
+        tracing::warn!(
+            cache,
+            rejected_total = total,
+            "Rejected visitor cache admission"
+        );
     }
 }

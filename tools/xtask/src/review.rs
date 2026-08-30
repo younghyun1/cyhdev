@@ -244,9 +244,7 @@ fn run_http_throughput_thresholds(root: &Path) -> TaskResult<()> {
     let thresholds = required_environment_value("THROUGHPUT_HTTP_THRESHOLDS")?;
     let output = match env::var("THROUGHPUT_HTTP_OUTPUT") {
         Ok(value) if !value.trim().is_empty() => value,
-        Ok(_) | Err(env::VarError::NotPresent) => {
-            "target/throughput/backend-http.json".to_owned()
-        }
+        Ok(_) | Err(env::VarError::NotPresent) => "target/throughput/backend-http.json".to_owned(),
         Err(env::VarError::NotUnicode(_)) => {
             return Err(TaskError(
                 "THROUGHPUT_HTTP_OUTPUT must contain valid UTF-8".to_owned(),

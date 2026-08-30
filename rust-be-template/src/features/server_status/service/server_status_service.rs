@@ -1,6 +1,9 @@
 //! Process-owned runtime/build/host status service.
 
-use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use std::sync::{
+    Arc,
+    atomic::{AtomicU64, Ordering},
+};
 
 use crate::features::server_status::{
     domain::system_info::SystemInfo,
@@ -61,9 +64,13 @@ impl ServerStatusService {
         }
     }
 
-    pub fn app_name_version(&self) -> &str { self.app_name_version.as_ref() }
+    pub fn app_name_version(&self) -> &str {
+        self.app_name_version.as_ref()
+    }
 
-    pub fn record_response(&self) { self.responses_handled.fetch_add(1, Ordering::Relaxed); }
+    pub fn record_response(&self) {
+        self.responses_handled.fetch_add(1, Ordering::Relaxed);
+    }
 
     pub fn runtime(&self, users_logged_in: usize) -> RuntimeStatus {
         RuntimeStatus {
@@ -79,7 +86,11 @@ impl ServerStatusService {
 
     pub async fn state(&self, runtime: RuntimeStatus) -> anyhow::Result<ServerStateStatus> {
         let (database_version, database_latency) = self.repository.database_version().await?;
-        Ok(ServerStateStatus { database_version, database_latency, runtime })
+        Ok(ServerStateStatus {
+            database_version,
+            database_latency,
+            runtime,
+        })
     }
 
     pub async fn fastfetch(&self) -> Result<String, crate::errors::code_error::CodeError> {
@@ -91,7 +102,10 @@ impl ServerStatusService {
     }
 
     pub async fn host_stats(&self) -> HostStats {
-        let SystemInfo { cpu_usage, memory_usage } = self.system.latest().await;
+        let SystemInfo {
+            cpu_usage,
+            memory_usage,
+        } = self.system.latest().await;
         let memory_total = self.system.total_memory();
         HostStats {
             cpu_usage: cpu_usage as f32,

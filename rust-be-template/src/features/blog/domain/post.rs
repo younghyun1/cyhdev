@@ -3,8 +3,8 @@ use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use super::{cache::CachedPostInfo, vote::VoteState};
 use super::comment::CommentResponse;
+use super::{cache::CachedPostInfo, vote::VoteState};
 use crate::features::accounts::domain::{
     account::DELETED_USER_DISPLAY_NAME, public_author::PublicAuthor,
 };

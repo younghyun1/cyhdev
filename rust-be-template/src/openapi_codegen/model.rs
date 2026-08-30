@@ -76,7 +76,9 @@ pub fn select_contract(
 
     for (path, path_item) in path_map {
         let path_item = object(path_item, &format!("path item {path}"))?;
-        for method in ["delete", "get", "head", "options", "patch", "post", "put", "trace"] {
+        for method in [
+            "delete", "get", "head", "options", "patch", "post", "put", "trace",
+        ] {
             let Some(operation) = path_item.get(method) else {
                 continue;
             };
@@ -184,7 +186,9 @@ fn parse_parameters(
             }
         };
         let schema = parameter.get("schema").cloned().ok_or_else(|| {
-            CodegenError::new(format!("parameter {name} for {method} {path} has no schema"))
+            CodegenError::new(format!(
+                "parameter {name} for {method} {path} has no schema"
+            ))
         })?;
         parameters.push(Parameter {
             location,

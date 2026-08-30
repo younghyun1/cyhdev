@@ -4,16 +4,11 @@ use diesel::{
     BoolExpressionMethods, DecoratableTarget, ExpressionMethods, QueryDsl, Queryable, Selectable,
     SelectableHelper,
 };
-use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool,
-};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool};
 use uuid::Uuid;
 
 use crate::{
-    features::i18n::domain::{
-        message::InternationalizationString,
-        source::UiTextSourceBundle,
-    },
+    features::i18n::domain::{message::InternationalizationString, source::UiTextSourceBundle},
     schema::i18n_strings,
 };
 
@@ -41,10 +36,7 @@ impl I18nRepository {
         Self { pool }
     }
 
-    pub async fn cache_rows(
-        &self,
-        limit: i64,
-    ) -> anyhow::Result<Vec<InternationalizationString>> {
+    pub async fn cache_rows(&self, limit: i64) -> anyhow::Result<Vec<InternationalizationString>> {
         let mut connection = self.pool.get().await?;
         Ok(i18n_strings::table
             .filter(i18n_strings::i18n_string_country_subdivision_code.is_null())
@@ -79,10 +71,7 @@ impl I18nRepository {
                     .and(i18n_strings::i18n_string_language_code.eq(language_code))
                     .or(i18n_strings::i18n_string_country_code
                         .eq(fallback_country_code)
-                        .and(
-                            i18n_strings::i18n_string_language_code
-                                .eq(fallback_language_code),
-                        )),
+                        .and(i18n_strings::i18n_string_language_code.eq(fallback_language_code))),
             )
             .order((
                 i18n_strings::i18n_string_updated_at.desc(),

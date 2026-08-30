@@ -3,7 +3,9 @@ use uuid::Uuid;
 
 use super::{
     cache::CachedPostInfo,
-    comment::{BlogCommentBody, BlogCommentBodyError, Comment, CommentResponse, MAX_BLOG_COMMENT_CHARS},
+    comment::{
+        BlogCommentBody, BlogCommentBodyError, Comment, CommentResponse, MAX_BLOG_COMMENT_CHARS,
+    },
     post::{PostInfoWithVote, UserBadgeInfo},
     vote::VoteState,
 };

@@ -54,7 +54,6 @@ impl AuthorizationAuditKind {
             Self::RolePermissionRevoked => "role_permission_revoked",
         }
     }
-
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -147,13 +146,9 @@ fn is_valid_permission_name(value: &str) -> bool {
     for segment in value.split('.') {
         segment_count += 1;
         let mut bytes = segment.bytes();
-        let first_is_valid = bytes
-            .next()
-            .is_some_and(|byte| byte.is_ascii_lowercase());
+        let first_is_valid = bytes.next().is_some_and(|byte| byte.is_ascii_lowercase());
         if !first_is_valid
-            || !bytes.all(|byte| {
-                byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'
-            })
+            || !bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
         {
             return false;
         }
@@ -164,8 +159,7 @@ fn is_valid_permission_name(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AuthorizationPageSize, AuthorizationReason, DEFAULT_AUTHORIZATION_PAGE_SIZE,
-        PermissionName,
+        AuthorizationPageSize, AuthorizationReason, DEFAULT_AUTHORIZATION_PAGE_SIZE, PermissionName,
     };
 
     #[test]

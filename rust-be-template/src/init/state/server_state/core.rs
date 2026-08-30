@@ -1,13 +1,11 @@
-use std::sync::Arc;
 use super::ServerState;
 use crate::features::accounts::service::{
-    account_service::AccountService, auth_abuse::AuthAbuseService,
-    oidc::provider::OidcService,
+    account_service::AccountService, auth_abuse::AuthAbuseService, oidc::provider::OidcService,
     session_service::SessionService,
 };
+use crate::features::blog::service::blog_service::BlogService;
 use crate::features::forum::service::forum_service::ForumService;
 use crate::features::geo::service::geo_service::GeoService;
-use crate::features::blog::service::blog_service::BlogService;
 use crate::features::i18n::service::i18n_service::I18nService;
 use crate::features::live_chat::service::{
     live_chat_service::LiveChatService, rtc::coordinator::RtcCoordinator,
@@ -18,6 +16,7 @@ use crate::features::server_status::service::server_status_service::ServerStatus
 use crate::features::visitor::service::visitor_service::VisitorService;
 use crate::features::wasm::service::wasm_service::WasmService;
 use crate::init::state::{DeploymentEnvironment, PublicAppOrigin, ServerStateBuilder};
+use std::sync::Arc;
 
 impl ServerState {
     pub fn builder() -> ServerStateBuilder {
@@ -91,5 +90,4 @@ impl ServerState {
     pub fn public_app_origin(&self) -> PublicAppOrigin {
         self.public_app_origin.clone()
     }
-
 }

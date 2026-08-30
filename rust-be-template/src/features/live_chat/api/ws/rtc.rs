@@ -74,9 +74,7 @@ impl RtcSession {
     /// Route one inbound client signal.
     pub(super) async fn dispatch(&self, signal: RtcClientSignal) {
         if let Some(user_id) = self.actor.user_id
-            && self
-                .service.cache
-                .is_connected_user_disabled(user_id)
+            && self.service.cache.is_connected_user_disabled(user_id)
         {
             self.leave().await;
             self.send_error(
@@ -146,7 +144,8 @@ impl RtcSession {
         // keeps the room alive against concurrent GC). Every failure path below
         // must release_slot() so the reservation is not leaked.
         let room = match self
-            .service.rtc
+            .service
+            .rtc
             .acquire_room(DEFAULT_LIVE_CHAT_ROOM, self.actor.user_id)
             .await
         {
@@ -176,7 +175,8 @@ impl RtcSession {
         };
 
         let participant_id = match self
-            .service.rtc
+            .service
+            .rtc
             .participant_join(room.call_id, &self.actor, want_audio, want_video)
             .await
         {
@@ -212,9 +212,7 @@ impl RtcSession {
             Some(answer) => answer,
             None => {
                 peer.close().await;
-                self.service.rtc
-                    .participant_leave(participant_id)
-                    .await;
+                self.service.rtc.participant_leave(participant_id).await;
                 self.send_error("sdp_failed", "Could not negotiate the call.")
                     .await;
                 room.release_slot();
@@ -241,5 +239,4 @@ impl RtcSession {
         // Deliver existing publishers to the newcomer (SFU-offered renegotiation).
         room.subscribe_new_peer(peer).await;
     }
-
 }

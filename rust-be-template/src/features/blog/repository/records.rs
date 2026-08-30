@@ -4,7 +4,10 @@ use uuid::Uuid;
 
 use crate::schema::{comments, post_tags, posts, tags};
 
-use super::super::domain::{comment::Comment, post::{Post, PostInfo}};
+use super::super::domain::{
+    comment::Comment,
+    post::{Post, PostInfo},
+};
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = posts)]

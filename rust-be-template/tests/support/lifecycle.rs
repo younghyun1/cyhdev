@@ -15,8 +15,8 @@ use rust_be_template::{
         photography::repository::enums::DbPhotographContext,
     },
     schema::{
-        comment_votes, comments, live_chat_messages, photograph_comment_votes,
-        photograph_comments, photograph_votes, photographs, post_votes, posts,
+        comment_votes, comments, live_chat_messages, photograph_comment_votes, photograph_comments,
+        photograph_votes, photographs, post_votes, posts,
     },
 };
 
@@ -101,7 +101,8 @@ pub async fn seed_authored_content(
             photographs::photograph_comments.eq("retained photograph body"),
             photographs::photograph_lat.eq(37.0),
             photographs::photograph_lon.eq(-122.0),
-            photographs::photograph_thumbnail_link.eq("https://objects.example.test/photo/lifecycle-thumb.avif"),
+            photographs::photograph_thumbnail_link
+                .eq("https://objects.example.test/photo/lifecycle-thumb.avif"),
         ))
         .returning(photographs::photograph_id)
         .get_result::<Uuid>(&mut connection)
@@ -180,7 +181,11 @@ pub async fn require_authored_content_retained(
         .await?;
     let comment = comments::table
         .find(fixture.comment_id)
-        .select((comments::user_id, comments::comment_content, comments::total_upvotes))
+        .select((
+            comments::user_id,
+            comments::comment_content,
+            comments::total_upvotes,
+        ))
         .first::<(Uuid, String, i64)>(&mut connection)
         .await?;
     let photograph = photographs::table
@@ -228,8 +233,7 @@ pub async fn require_authored_content_retained(
             .await?,
         photograph_comment_votes::table
             .filter(
-                photograph_comment_votes::photograph_comment_id
-                    .eq(fixture.photograph_comment_id),
+                photograph_comment_votes::photograph_comment_id.eq(fixture.photograph_comment_id),
             )
             .count()
             .get_result::<i64>(&mut connection)
@@ -237,15 +241,20 @@ pub async fn require_authored_content_retained(
     );
     drop(connection);
 
-    require(post == (user_id, "retained post body".to_owned(), 1), "post was not retained")?;
-    require(comment == (user_id, "retained comment body".to_owned(), 1), "comment was not retained")?;
+    require(
+        post == (user_id, "retained post body".to_owned(), 1),
+        "post was not retained",
+    )?;
+    require(
+        comment == (user_id, "retained comment body".to_owned(), 1),
+        "comment was not retained",
+    )?;
     require(
         photograph == (user_id, "retained photograph body".to_owned(), 1),
         "photograph was not retained",
     )?;
     require(
-        photograph_comment
-            == (user_id, "retained photograph comment".to_owned(), 1),
+        photograph_comment == (user_id, "retained photograph comment".to_owned(), 1),
         "photograph comment was not retained",
     )?;
     require(

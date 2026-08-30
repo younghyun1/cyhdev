@@ -8,8 +8,8 @@ use uuid::Uuid;
 use crate::{
     features::accounts::{
         domain::lifecycle::{
-            HardPurgeAccountPlan, ProfileCleanupFinalization, ProfileObjectCleanup,
-            PROFILE_CLEANUP_BATCH_SIZE,
+            HardPurgeAccountPlan, PROFILE_CLEANUP_BATCH_SIZE, ProfileCleanupFinalization,
+            ProfileObjectCleanup,
         },
         domain::role::RoleType,
         error::AccountError,

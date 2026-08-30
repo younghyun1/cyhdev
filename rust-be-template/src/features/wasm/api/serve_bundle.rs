@@ -9,8 +9,8 @@ use axum::{
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::init::state::ServerState;
 use crate::errors::code_error::{CodeError, CodeErrorResp};
+use crate::init::state::ServerState;
 
 #[utoipa::path(
     get,
@@ -70,17 +70,17 @@ pub async fn serve_wasm(
     if bundle.content_type.starts_with("text/html") {
         // HTML demos execute in an opaque sandboxed origin even though their
         // stable URL is hosted by the application server.
-        response = response.header(
-            header::CONTENT_SECURITY_POLICY,
-            "sandbox allow-scripts",
-        );
+        response = response.header(header::CONTENT_SECURITY_POLICY, "sandbox allow-scripts");
     }
     response = response.header(header::X_CONTENT_TYPE_OPTIONS, "nosniff");
     match response.body(body) {
         Ok(response) => response,
         Err(error_value) => {
             error!(error = %error_value, wasm_module_id = %module_id, "Failed to build WebAssembly response");
-            text_response(StatusCode::INTERNAL_SERVER_ERROR, "Failed to build WASM response")
+            text_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to build WASM response",
+            )
         }
     }
 }
@@ -101,12 +101,16 @@ fn accepts_gzip(headers: &HeaderMap) -> bool {
             }
         }
     }
-    explicit_gzip.or(wildcard).is_some_and(|quality| quality > 0.0)
+    explicit_gzip
+        .or(wildcard)
+        .is_some_and(|quality| quality > 0.0)
 }
 
 fn encoding_quality<'a>(parameters: impl Iterator<Item = &'a str>) -> f32 {
     for parameter in parameters {
-        let Some((name, value)) = parameter.trim().split_once('=') else { continue };
+        let Some((name, value)) = parameter.trim().split_once('=') else {
+            continue;
+        };
         if !name.trim().eq_ignore_ascii_case("q") {
             continue;
         }

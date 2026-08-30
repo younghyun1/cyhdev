@@ -5,10 +5,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use crate::{
-    schema::media_object_cleanup,
-    util::media::cleanup::MediaCleanupFailureUpdate,
-};
+use crate::{schema::media_object_cleanup, util::media::cleanup::MediaCleanupFailureUpdate};
 
 #[derive(diesel::Insertable)]
 #[diesel(table_name = media_object_cleanup)]

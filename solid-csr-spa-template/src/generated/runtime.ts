@@ -94,3 +94,4 @@ export async function requestText<T>(
   const response = await requireSuccess(await transport(path, init));
   return (await response.text()) as unknown as T;
 }
+

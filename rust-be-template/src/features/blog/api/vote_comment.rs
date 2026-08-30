@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -13,8 +17,8 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::error::{BlogOperation, map_blog_error};
 use super::bounded_json::BlogJson;
+use super::error::{BlogOperation, map_blog_error};
 
 #[utoipa::path(
     post,
@@ -40,11 +44,18 @@ pub async fn vote_comment(
     BlogJson(request): BlogJson<UpvoteCommentRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    let counts = state.blog_service().vote_comment(user_id, comment_id, request.is_upvote).await
+    let counts = state
+        .blog_service()
+        .vote_comment(user_id, comment_id, request.is_upvote)
+        .await
         .map_err(|error| map_blog_error(error, BlogOperation::Insert))?;
-    Ok(http_resp(VoteCommentResponse {
-        upvote_count: counts.upvotes,
-        downvote_count: counts.downvotes,
-        is_upvote: request.is_upvote,
-    }, (), start))
+    Ok(http_resp(
+        VoteCommentResponse {
+            upvote_count: counts.upvotes,
+            downvote_count: counts.downvotes,
+            is_upvote: request.is_upvote,
+        },
+        (),
+        start,
+    ))
 }
