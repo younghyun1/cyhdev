@@ -6,6 +6,7 @@ ARG RUST_DOCKER_TAG=nightly
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
 FROM node:24-alpine AS frontend
+ARG SOURCE_DATE_EPOCH
 WORKDIR /workspace/solid-csr-spa-template
 RUN apk add --no-cache gzip zstd
 COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
@@ -21,7 +22,7 @@ FROM rustlang/rust:${RUST_DOCKER_TAG} AS host-release
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-gnu
 ARG RUST_TARGET_CPU=znver3
-ARG SOURCE_DATE_EPOCH=0
+ARG SOURCE_DATE_EPOCH
 # Bind Cargo and rustup to the dated nightly contained by the freshly pulled
 # image. Otherwise rust-toolchain.toml selects a second, mutable nightly alias.
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
@@ -36,8 +37,10 @@ COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-templ
 RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
+    build_epoch="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
+    && RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
+    SOURCE_DATE_EPOCH="$build_epoch" \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind \
@@ -99,7 +102,7 @@ CMD ["/app/server"]
 FROM rust-base AS build
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
-ARG SOURCE_DATE_EPOCH=0
+ARG SOURCE_DATE_EPOCH
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 
@@ -108,6 +111,8 @@ COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-templ
 RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
+    build_epoch="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
+    && SOURCE_DATE_EPOCH="$build_epoch" \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind && \

@@ -36,6 +36,6 @@ The checked-in `tools/final-review/evidence.manifest` is the executable W3/W8 ev
 
 All root Cargo commands use `Cargo.lock`; frontend builds use `npm ci` and `package-lock.json`. Use `./build.sh` or the corresponding `cargo xtask` commands instead of package-local build scripts. Optimized backend and image commands pull rolling nightly, build the frontend inside Docker, rebuild the Rust standard library, and apply the root release profile.
 
-Build metadata uses `SOURCE_DATE_EPOCH` when set and otherwise uses Unix epoch zero. Set the variable to a release timestamp when a meaningful build time is required without introducing wall-clock variation.
+Frontend and backend build metadata use `SOURCE_DATE_EPOCH` when set. Root optimized and image commands otherwise use the current Git commit timestamp, which is meaningful without invalidating Docker caches or making identical source builds vary with wall-clock time. Direct development builds without Git orchestration use their compilation time.
 
 Runtime credentials stay in ignored environment or provider credential files. The repository does not provision external accounts, OAuth clients, or deployment secrets.

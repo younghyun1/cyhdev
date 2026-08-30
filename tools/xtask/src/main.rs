@@ -155,15 +155,7 @@ fn run_native_build(root: &Path) -> TaskResult<()> {
 }
 
 fn run_image(root: &Path) -> TaskResult<()> {
-    let source_date_epoch = match env::var("SOURCE_DATE_EPOCH") {
-        Ok(value) => value,
-        Err(env::VarError::NotPresent) => "0".to_owned(),
-        Err(env::VarError::NotUnicode(_)) => {
-            return Err(TaskError(
-                "SOURCE_DATE_EPOCH must contain valid UTF-8".to_owned(),
-            ));
-        }
-    };
+    let source_date_epoch = release::source_date_epoch(root)?;
     let mut command = Command::new("docker");
     command
         .args([
