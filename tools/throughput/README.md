@@ -19,9 +19,9 @@ working_tree_digest=$(
     | sha256sum | awk '{print "sha256:" $1}'
 )
 database_server_version=$(PGDATABASE="$DB_URL" psql -Atqc "select current_setting('server_version')")
-database_schema_digest=$(PGDATABASE="$DB_URL" pg_dump --schema-only --no-owner --no-privileges --restrict-key=cyhdev-throughput-fingerprint \
+database_schema_digest=$(PGDATABASE="$DB_URL" pg_dump --schema-only --no-owner --no-privileges --restrict-key=0123456789abcdef0123456789abcdef \
   | sha256sum | awk '{print "sha256:" $1}')
-database_dataset_digest=$(PGDATABASE="$DB_URL" pg_dump --data-only --no-owner --no-privileges --restrict-key=cyhdev-throughput-fingerprint \
+database_dataset_digest=$(PGDATABASE="$DB_URL" pg_dump --data-only --no-owner --no-privileges --restrict-key=0123456789abcdef0123456789abcdef \
   | sha256sum | awk '{print "sha256:" $1}')
 geo_ipv4_digest=$(sha256sum rust-be-template/new_bundle_ipv4.db | awk '{print "sha256:" $1}')
 geo_ipv6_digest=$(sha256sum rust-be-template/new_bundle_ipv6.db | awk '{print "sha256:" $1}')
