@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -23,8 +23,12 @@ use crate::{
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     features::accounts::domain::role::RoleType,
+    features::accounts::repository::active_user::{
+        ActiveUserWriteError, lock_active_superuser, lock_active_user,
+    },
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
-    schema::{photograph_comment_votes, photograph_comments, user_profile_pictures, users},
+    schema::{photograph_comment_votes, photograph_comments},
     util::time::now::tokio_now,
 };
 
@@ -45,7 +49,7 @@ use crate::{
 )]
 pub async fn update_photograph_comment(
     Extension(requester_id): Extension<Uuid>,
-    Extension(role_type): Extension<RoleType>,
+    Extension(_role_type): Extension<RoleType>,
     State(state): State<Arc<ServerState>>,
     Path((_photograph_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdatePhotographCommentRequest>,
@@ -59,92 +63,90 @@ pub async fn update_photograph_comment(
         ));
     }
 
-    let is_superuser = role_type.is_superuser();
-
     let mut conn = state
         .get_conn()
         .await
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
-    let author_id: Uuid = photograph_comments::table
-        .select(photograph_comments::user_id)
-        .filter(photograph_comments::photograph_comment_id.eq(comment_id))
-        .first(&mut conn)
+    let (updated, vote_opt): (PhotographComment, Option<bool>) = match conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, requester_id).await?;
+            let author_id = photograph_comments::table
+                .select(photograph_comments::user_id)
+                .filter(photograph_comments::photograph_comment_id.eq(comment_id))
+                .first::<Uuid>(&mut *conn)
+                .await
+                .optional()?
+                .ok_or(ActiveUserWriteError::TargetNotFound)?;
+            if author_id != requester_id {
+                lock_active_superuser(&mut *conn, requester_id).await?;
+            }
+            let updated = diesel::update(
+                photograph_comments::table
+                    .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
+            )
+            .set((
+                photograph_comments::photograph_comment_content.eq(&request.comment_content),
+                photograph_comments::photograph_comment_updated_at.eq(chrono::Utc::now()),
+            ))
+            .returning(photograph_comments::all_columns)
+            .get_result(&mut *conn)
+            .await?;
+            let vote_opt = photograph_comment_votes::table
+                .filter(photograph_comment_votes::photograph_comment_id.eq(comment_id))
+                .filter(photograph_comment_votes::user_id.eq(requester_id))
+                .select(photograph_comment_votes::is_upvote)
+                .first::<bool>(&mut *conn)
+                .await
+                .optional()?;
+            Ok((updated, vote_opt))
+        })
         .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .ok_or_else(|| code_err(CodeError::COMMENT_NOT_FOUND, "Comment not found"))?;
-
-    if author_id != requester_id && !is_superuser {
-        return Err(code_err(
-            CodeError::UNAUTHORIZED_ACCESS,
-            "User is not authorized to edit this comment",
-        ));
-    }
-
-    let updated: PhotographComment = diesel::update(
-        photograph_comments::table
-            .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
-    )
-    .set((
-        photograph_comments::photograph_comment_content.eq(&request.comment_content),
-        photograph_comments::photograph_comment_updated_at.eq(chrono::Utc::now()),
-    ))
-    .returning(photograph_comments::all_columns)
-    .get_result(&mut conn)
-    .await
-    .map_err(|e| code_err(CodeError::DB_UPDATE_ERROR, e))?;
-
-    // Caller's current vote on this comment (for the returned vote_state).
-    let vote_opt = photograph_comment_votes::table
-        .filter(photograph_comment_votes::photograph_comment_id.eq(comment_id))
-        .filter(photograph_comment_votes::user_id.eq(requester_id))
-        .select(photograph_comment_votes::is_upvote)
-        .first::<bool>(&mut conn)
-        .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+    {
+        Ok(result) => result,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::TargetNotFound) => {
+            return Err(CodeError::COMMENT_NOT_FOUND.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_UPDATE_ERROR, e));
+        }
+    };
     let vote_state = match vote_opt {
         Some(true) => VoteState::Upvoted,
         Some(false) => VoteState::Downvoted,
         None => VoteState::DidNotVote,
     };
 
-    // Badge of the comment's author (not necessarily the requester).
     let author_uid = updated.user_id;
-    let user_row: Option<(String, i32)> = users::table
-        .filter(users::user_id.eq(author_uid))
-        .select((users::user_name, users::user_country))
-        .first::<(String, i32)>(&mut conn)
+    let public_authors = load_public_authors(&mut conn, &[author_uid])
         .await
-        .optional()
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-    let (user_name, user_country) = user_row.unwrap_or_else(|| ("Unknown".to_string(), 0));
-
-    let pic: Option<String> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq(author_uid))
-        .order(user_profile_pictures::user_profile_picture_updated_at.desc())
-        .select(user_profile_pictures::user_profile_picture_link)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .flatten();
 
     drop(conn);
 
     let country_map = state.country_map.read().await;
-    let user_country_flag = country_map.get_flag_by_code(user_country);
+    let (public_user_id, user_badge_info) = match public_authors.get(&author_uid) {
+        Some(author) => {
+            let country_flag = author
+                .country_code()
+                .and_then(|code| country_map.get_flag_by_code(code));
+            (
+                author.public_user_id(),
+                UserBadgeInfo::from_public_author(author, country_flag),
+            )
+        }
+        None => (Uuid::nil(), UserBadgeInfo::deleted()),
+    };
     drop(country_map);
 
     let resp = PhotographCommentResponse::from_comment_votestate_and_badge_info(
         updated,
         vote_state,
-        UserBadgeInfo {
-            user_name,
-            user_profile_picture_url: pic.unwrap_or_default(),
-            user_country_flag,
-        },
+        public_user_id,
+        user_badge_info,
     );
 
     Ok(http_resp(resp, (), start))

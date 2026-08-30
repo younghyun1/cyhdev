@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod image_upload;
 pub mod object_store;
 pub mod persistence;

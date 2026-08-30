@@ -12,6 +12,7 @@ use uuid::Uuid;
 use crate::{
     dto::responses::response_data::http_resp,
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
     init::state::ServerState,
     schema::{post_votes, posts},
     util::time::now::tokio_now,
@@ -61,7 +62,8 @@ pub async fn rescind_post_vote(
     }
 
     let (upvote_count, downvote_count) = match conn
-        .transaction::<_, diesel::result::Error, _>(async |conn| {
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, user_id).await?;
             let affected_rows = diesel::delete(
                 post_votes::table.filter(
                     post_votes::post_id
@@ -73,7 +75,7 @@ pub async fn rescind_post_vote(
             .await?;
 
             if affected_rows == 0 {
-                return Err(diesel::result::Error::NotFound);
+                return Err(ActiveUserWriteError::TargetNotFound);
             }
 
             let counts: VoteCounts = diesel::sql_query(
@@ -100,8 +102,15 @@ pub async fn rescind_post_vote(
         .await
     {
         Ok(counts) => counts,
-        Err(diesel::result::Error::NotFound) => return Err(CodeError::UPVOTE_DOES_NOT_EXIST.into()),
-        Err(e) => return Err(code_err(CodeError::DB_DELETION_ERROR, e)),
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::TargetNotFound) => {
+            return Err(CodeError::UPVOTE_DOES_NOT_EXIST.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_DELETION_ERROR, e));
+        }
     };
 
     // Update only the vote counts on the live cache entry in place; other fields

@@ -60,12 +60,13 @@ impl PhotographCommentResponse {
     pub fn from_comment_votestate_and_badge_info(
         comment: PhotographComment,
         vote_state: VoteState,
+        public_user_id: Uuid,
         user_badge_info: UserBadgeInfo,
     ) -> Self {
         Self {
             photograph_comment_id: comment.photograph_comment_id,
             photograph_id: comment.photograph_id,
-            user_id: comment.user_id,
+            user_id: public_user_id,
             photograph_comment_content: comment.photograph_comment_content,
             photograph_comment_created_at: comment.photograph_comment_created_at,
             photograph_comment_updated_at: comment.photograph_comment_updated_at,

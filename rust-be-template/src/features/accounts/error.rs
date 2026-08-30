@@ -20,6 +20,38 @@ pub enum AccountError {
     DuplicateUserName(#[source] DieselError),
     #[error("account was not found")]
     AccountNotFound,
+    #[error("the protected system actor cannot be deleted or purged")]
+    SystemActorProtected,
+    #[error("current database role does not authorize account hard purge")]
+    HardPurgeRequesterUnauthorized,
+    #[error("media cleanup record was not found")]
+    MediaCleanupNotFound,
+    #[error("media cleanup object location is invalid")]
+    InvalidMediaCleanupLocation,
+    #[error("media cleanup original URL did not match")]
+    MediaCleanupOriginalUrlMismatch,
+    #[error("media cleanup record is already resolved to another object")]
+    MediaCleanupAlreadyResolved,
+    #[error("media cleanup object is already represented by another record")]
+    MediaCleanupObjectConflict,
+    #[error("account has already been deleted")]
+    AccountAlreadyDeleted,
+    #[error("account must be deleted before retained identity can be purged")]
+    AccountNotDeleted,
+    #[error("account must be hard-purged before profile metadata can be finalized")]
+    AccountNotHardPurged,
+    #[error("retained identity cannot be purged before {purge_after}")]
+    RetentionPeriodActive { purge_after: chrono::DateTime<chrono::Utc> },
+    #[error("account credentials changed while deletion was being confirmed")]
+    AccountChanged,
+    #[error("the protected system actor used for neutral identity defaults is missing")]
+    SystemActorMissing,
+    #[error("retained account identity is missing")]
+    RetainedIdentityMissing,
+    #[error("account-retention schedule exceeded the supported timestamp range")]
+    RetentionScheduleOverflow,
+    #[error("profile-cleanup row count exceeded the supported platform range")]
+    ProfileCleanupCountOverflow,
     #[error("email-verification token was not found")]
     EmailVerificationTokenNotFound,
     #[error("password-reset token was not found")]
@@ -34,6 +66,8 @@ pub enum AccountError {
     InvalidEmail,
     #[error("user name is invalid")]
     InvalidUserName,
+    #[error("country, language, or subdivision selection is invalid")]
+    InvalidAccountGeography,
     #[error("password does not meet policy")]
     InvalidPassword,
     #[error("password did not match")]
@@ -60,6 +94,12 @@ pub enum AccountError {
     SessionTokenCollision,
     #[error("session store reached its fixed limit of {max_sessions} sessions")]
     SessionStoreSaturated { max_sessions: usize },
+}
+
+impl From<diesel::result::Error> for AccountError {
+    fn from(error: diesel::result::Error) -> Self {
+        Self::Mutation(error)
+    }
 }
 
 impl AccountError {

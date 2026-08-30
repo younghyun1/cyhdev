@@ -7,7 +7,7 @@ use axum::{
 };
 use chrono::Utc;
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -18,6 +18,7 @@ use crate::{
         responses::{response_data::http_resp, wasm_module::WasmModuleItem},
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
     init::state::ServerState,
     schema::wasm_module,
     util::time::now::tokio_now,
@@ -61,22 +62,33 @@ pub async fn update_wasm_module(
         code_err(CodeError::POOL_ERROR, e)
     })?;
 
-    let updated: WasmModuleMetadata = diesel::update(
-        wasm_module::table.filter(wasm_module::wasm_module_id.eq(wasm_module_id)),
-    )
-    .set(&changeset)
-    .returning(WasmModuleMetadata::as_returning())
-    .get_result(&mut conn)
-    .await
-    .map_err(|e| {
-        error!(error = ?e, wasm_module_id = %wasm_module_id, "Failed to update WASM module");
-        match e {
-            diesel::result::Error::NotFound => {
-                code_err(CodeError::DB_QUERY_ERROR, "WASM module not found")
-            }
-            _ => code_err(CodeError::DB_UPDATE_ERROR, e),
+    let updated: WasmModuleMetadata = match conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_superuser(&mut *conn, user_id).await?;
+            diesel::update(
+                wasm_module::table.filter(wasm_module::wasm_module_id.eq(wasm_module_id)),
+            )
+            .set(&changeset)
+            .returning(WasmModuleMetadata::as_returning())
+            .get_result(&mut *conn)
+            .await
+            .map_err(ActiveUserWriteError::from)
+        })
+        .await
+    {
+        Ok(updated) => updated,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
         }
-    })?;
+        Err(ActiveUserWriteError::Database(diesel::result::Error::NotFound))
+        | Err(ActiveUserWriteError::TargetNotFound) => {
+            return Err(code_err(CodeError::DB_QUERY_ERROR, "WASM module not found"));
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            error!(error = ?e, wasm_module_id = %wasm_module_id, "Failed to update WASM module");
+            return Err(code_err(CodeError::DB_UPDATE_ERROR, e));
+        }
+    };
 
     drop(conn);
 

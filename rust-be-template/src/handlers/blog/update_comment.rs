@@ -6,7 +6,7 @@ use axum::{
     response::IntoResponse,
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -17,8 +17,12 @@ use crate::{
         responses::response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{
+        ActiveUserWriteError, lock_active_superuser, lock_active_user,
+    },
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
-    schema::{comments, user_profile_pictures, users},
+    schema::comments,
     util::time::now::tokio_now,
 };
 
@@ -41,7 +45,7 @@ use crate::{
 )]
 pub async fn update_comment(
     Extension(requester_id): Extension<Uuid>,
-    Extension(role_type): Extension<RoleType>,
+    Extension(_role_type): Extension<RoleType>,
     State(state): State<Arc<ServerState>>,
     Path((_post_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateCommentRequest>,
@@ -53,71 +57,72 @@ pub async fn update_comment(
         .await
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
-    let is_superuser = role_type.is_superuser();
-
     // Check authorship
-    let author_id: Uuid = comments::table
-        .select(comments::user_id)
-        .filter(comments::comment_id.eq(comment_id))
-        .first(&mut conn)
+    let updated_comment: DbComment = match conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, requester_id).await?;
+            let author_id = comments::table
+                .select(comments::user_id)
+                .filter(comments::comment_id.eq(comment_id))
+                .first::<Uuid>(&mut *conn)
+                .await
+                .optional()?
+                .ok_or(ActiveUserWriteError::TargetNotFound)?;
+            if author_id != requester_id {
+                lock_active_superuser(&mut *conn, requester_id).await?;
+            }
+            diesel::update(comments::table.filter(comments::comment_id.eq(comment_id)))
+                .set((
+                    comments::comment_content.eq(&request.comment_content),
+                    comments::comment_updated_at.eq(chrono::Utc::now()),
+                ))
+                .returning(comments::all_columns)
+                .get_result(&mut *conn)
+                .await
+                .map_err(ActiveUserWriteError::from)
+        })
         .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .ok_or_else(|| code_err(CodeError::COMMENT_NOT_FOUND, "Comment not found"))?;
+    {
+        Ok(comment) => comment,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::TargetNotFound) => {
+            return Err(CodeError::COMMENT_NOT_FOUND.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_UPDATE_ERROR, e));
+        }
+    };
 
-    if author_id != requester_id && !is_superuser {
-        return Err(code_err(
-            CodeError::UNAUTHORIZED_ACCESS,
-            "User is not authorized to edit this comment",
-        ));
-    }
-
-    // Update comment
-    let updated_comment: DbComment =
-        diesel::update(comments::table.filter(comments::comment_id.eq(comment_id)))
-            .set((
-                comments::comment_content.eq(&request.comment_content),
-                comments::comment_updated_at.eq(chrono::Utc::now()),
-            ))
-            .returning(comments::all_columns)
-            .get_result(&mut conn)
-            .await
-            .map_err(|e| code_err(CodeError::DB_UPDATE_ERROR, e))?;
-
-    // Get user info for response
-    let (user_name, user_country): (String, i32) = users::table
-        .filter(users::user_id.eq(author_id))
-        .select((users::user_name, users::user_country))
-        .first(&mut conn)
+    let author_id = updated_comment.user_id;
+    let public_authors = load_public_authors(&mut conn, &[author_id])
         .await
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
 
-    let user_profile_picture_url: Option<String> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq(author_id))
-        .order(user_profile_pictures::user_profile_picture_updated_at.desc())
-        .select(user_profile_pictures::user_profile_picture_link)
-        .first(&mut conn)
-        .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .flatten();
-
     drop(conn);
 
-    // Look up country flag from cache
     let country_map = state.country_map.read().await;
-    let user_country_flag = country_map.get_flag_by_code(user_country);
+    let (public_user_id, user_badge_info) = match public_authors.get(&author_id) {
+        Some(author) => {
+            let country_flag = author
+                .country_code()
+                .and_then(|code| country_map.get_flag_by_code(code));
+            (
+                author.public_user_id(),
+                UserBadgeInfo::from_public_author(author, country_flag),
+            )
+        }
+        None => (Uuid::nil(), UserBadgeInfo::deleted()),
+    };
     drop(country_map);
 
     Ok(http_resp(
         CommentResponse::from_comment_votestate_and_badge_info(
             updated_comment,
             VoteState::DidNotVote,
-            UserBadgeInfo {
-                user_name,
-                user_profile_picture_url: user_profile_picture_url.unwrap_or_default(),
-                user_country_flag,
-            },
+            public_user_id,
+            user_badge_info,
         ),
         (),
         start,

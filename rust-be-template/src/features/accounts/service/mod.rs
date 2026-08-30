@@ -1,8 +1,10 @@
 pub mod account_service;
 pub mod authentication;
-pub mod maintenance;
+pub mod lifecycle;
+pub mod media_cleanup;
 pub mod passwords;
 pub mod profiles;
+pub mod profile_update;
 pub mod public_profiles;
 pub mod registration;
 pub mod roles;

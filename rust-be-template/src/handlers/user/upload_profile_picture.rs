@@ -21,6 +21,7 @@ use crate::{
             process_uploaded_image_files::process_uploaded_image_files,
         },
         media::{
+            cleanup::settle_durable_cleanup,
             image_upload::{has_file_extension, is_allowed_image_mime},
             object_store::{ObjectLocation, S3MediaObjectStore},
             persistence::{
@@ -88,31 +89,39 @@ pub async fn upload_profile_picture(
     }];
     let store = S3MediaObjectStore::from_config(&state.aws_profile_picture_config);
     let account_service = state.account_service();
+    let persistence_account_service = Arc::clone(&account_service);
 
     let result = persist_media_objects(&store, &pending, async move {
-        let replacement = account_service
+        let replacement = persistence_account_service
             .replace_profile_picture_metadata(user_id, image_type, &object_url)
             .await?;
         let superseded = replacement
-            .superseded_links
+            .cleanup_objects
             .iter()
-            .filter_map(|link| {
-                let location = ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, link);
-                if location.is_none() {
-                    warn!(user_id = %user_id, url = %link, "Skipped invalid superseded profile-picture URL");
-                }
-                location
-            })
+            .map(|cleanup| cleanup.location.clone())
             .collect();
-        Ok::<_, AccountError>(PersistedMedia::new(
-            replacement.profile_picture_id,
-            superseded,
-        ))
+        Ok::<_, AccountError>(PersistedMedia::new(replacement, superseded))
     })
     .await;
 
     match result {
-        Ok(success) => log_cleanup_failures(user_id, &success.cleanup_failures),
+        Ok(success) => {
+            if success.value.unresolved_cleanup_count > 0 {
+                warn!(
+                    user_id = %user_id,
+                    unresolved = success.value.unresolved_cleanup_count,
+                    "Superseded legacy profile media requires administrative resolution"
+                );
+            }
+            settle_durable_cleanup(
+                &account_service,
+                success.value.cleanup_objects,
+                &success.cleaned,
+                &success.cleanup_failures,
+            )
+            .await;
+            log_cleanup_failures(user_id, &success.cleanup_failures);
+        }
         Err(MediaWriteError::Upload {
             source,
             compensation_failures,

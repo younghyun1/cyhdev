@@ -1,7 +1,5 @@
 //! Atomic account registration persistence.
 
-use chrono::{DateTime, Utc};
-use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 
 use crate::{
@@ -65,30 +63,6 @@ impl AccountRepository {
         transaction_result.map_err(classify_registration_error)
     }
 
-    pub async fn purge_unverified_accounts(
-        &self,
-        expired_before: DateTime<Utc>,
-    ) -> Result<Vec<uuid::Uuid>, AccountError> {
-        let mut connection = self.connection().await?;
-        diesel::delete(
-            users::table.filter(
-                users::user_id
-                    .eq_any(
-                        email_verification_tokens::table
-                            .select(email_verification_tokens::user_id)
-                            .filter(
-                                email_verification_tokens::email_verification_token_expires_at
-                                    .lt(expired_before),
-                            ),
-                    )
-                    .and(users::user_is_email_verified.eq(false)),
-            ),
-        )
-        .returning(users::user_id)
-        .get_results(&mut connection)
-        .await
-        .map_err(AccountError::Mutation)
-    }
 }
 
 const EMAIL_UNIQUE_CONSTRAINT: &str = "users_user_email_unique";

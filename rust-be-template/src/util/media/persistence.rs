@@ -2,9 +2,23 @@
 
 use std::{collections::HashSet, future::Future, path::PathBuf, pin::Pin};
 
+use futures_util::{StreamExt, stream};
+
 use super::object_store::{
     MediaObjectStore, ObjectLocation, ObjectStoreError, ObjectStoreOperation,
 };
+
+/// Database constraint and log-safety bound for persisted cleanup failures.
+pub const MAX_CLEANUP_ERROR_CHARS: usize = 2_048;
+
+/// Retains a useful object-store error without allowing an unbounded ledger row.
+pub fn bounded_cleanup_error(error: &ObjectStoreError) -> String {
+    error
+        .to_string()
+        .chars()
+        .take(MAX_CLEANUP_ERROR_CHARS)
+        .collect()
+}
 
 /// A processed file waiting to be uploaded.
 #[derive(Clone, Debug)]
@@ -44,6 +58,8 @@ impl CleanupFailure {
 #[derive(Debug)]
 pub struct MediaWriteSuccess<T> {
     pub value: T,
+    /// Superseded objects confirmed absent from the object store.
+    pub cleaned: Vec<ObjectLocation>,
     pub cleanup_failures: Vec<CleanupFailure>,
 }
 
@@ -96,7 +112,7 @@ where
                 if source.operation() == ObjectStoreOperation::Upload {
                     uploaded.push(object.location.clone());
                 }
-                let compensation_failures =
+                let (_, compensation_failures) =
                     cleanup_objects(store, uploaded.iter().rev().cloned().collect()).await;
                 return Err(MediaWriteError::Upload {
                     source,
@@ -109,7 +125,7 @@ where
         let persisted = match persist.await {
             Ok(persisted) => persisted,
             Err(source) => {
-                let compensation_failures =
+                let (_, compensation_failures) =
                     cleanup_objects(store, uploaded.iter().rev().cloned().collect()).await;
                 return Err(MediaWriteError::Persistence {
                     source,
@@ -125,9 +141,10 @@ where
             .filter(|location| !uploaded_set.contains(location))
             .cloned()
             .collect();
-        let cleanup_failures = cleanup_objects(store, superseded).await;
+        let (cleaned, cleanup_failures) = cleanup_objects(store, superseded).await;
         Ok(MediaWriteSuccess {
             value: persisted.value,
+            cleaned,
             cleanup_failures,
         })
     })
@@ -136,16 +153,48 @@ where
 async fn cleanup_objects(
     store: &dyn MediaObjectStore,
     locations: Vec<ObjectLocation>,
-) -> Vec<CleanupFailure> {
+) -> (Vec<ObjectLocation>, Vec<CleanupFailure>) {
+    let mut cleaned = Vec::new();
     let mut failures = Vec::new();
     let mut visited = HashSet::new();
     for location in locations {
         if !visited.insert(location.clone()) {
             continue;
         }
-        if let Err(error) = store.delete(location.clone()).await {
-            failures.push(CleanupFailure { location, error });
+        match store.delete(location.clone()).await {
+            Ok(()) => cleaned.push(location),
+            Err(error) => failures.push(CleanupFailure { location, error }),
         }
     }
-    failures
+    (cleaned, failures)
+}
+
+/// Deletes a committed batch with bounded concurrency and deterministic deduplication.
+pub async fn cleanup_committed_objects(
+    store: &dyn MediaObjectStore,
+    locations: Vec<ObjectLocation>,
+    max_concurrency: usize,
+) -> (Vec<ObjectLocation>, Vec<CleanupFailure>) {
+    let mut visited = HashSet::with_capacity(locations.len());
+    let unique = locations
+        .into_iter()
+        .filter(|location| visited.insert(location.clone()))
+        .collect::<Vec<_>>();
+    let outcomes = stream::iter(unique)
+        .map(|location| async move {
+            let result = store.delete(location.clone()).await;
+            (location, result)
+        })
+        .buffer_unordered(max_concurrency.clamp(1, 32))
+        .collect::<Vec<_>>()
+        .await;
+    let mut cleaned = Vec::new();
+    let mut failures = Vec::new();
+    for (location, result) in outcomes {
+        match result {
+            Ok(()) => cleaned.push(location),
+            Err(error) => failures.push(CleanupFailure { location, error }),
+        }
+    }
+    (cleaned, failures)
 }

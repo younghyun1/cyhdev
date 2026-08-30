@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::error;
 use uuid::Uuid;
 
@@ -11,6 +11,7 @@ use crate::{
         cache::{CachedChatMessage, CachedLiveChatBan, ChatActor, DEFAULT_LIVE_CHAT_ROOM},
         message::LiveChatMessageInsertable,
     },
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
     init::state::ServerState,
     schema::{live_chat_bans, live_chat_messages},
 };
@@ -39,14 +40,22 @@ pub(super) async fn persist_message(
         message_created_at: Utc::now(),
     };
 
-    let persisted = diesel::insert_into(live_chat_messages::table)
-        .values(new_message)
-        .returning(live_chat_messages::all_columns)
-        .get_result::<crate::domain::live_chat::message::LiveChatMessage>(&mut conn)
+    let persisted = conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            if let Some(user_id) = actor.user_id {
+                lock_active_user(&mut *conn, user_id).await?;
+            }
+            diesel::insert_into(live_chat_messages::table)
+                .values(new_message)
+                .returning(live_chat_messages::all_columns)
+                .get_result::<crate::domain::live_chat::message::LiveChatMessage>(&mut *conn)
+                .await
+                .map_err(ActiveUserWriteError::from)
+        })
         .await
-        .map_err(|e| {
-            error!(error = ?e, "Failed to persist live chat message");
-            e
+        .map_err(|source| {
+            error!(error = %source, user_id = ?actor.user_id, "Failed to persist live chat message");
+            source
         })
         .ok();
 
@@ -55,6 +64,11 @@ pub(super) async fn persist_message(
         let mut cached_message = CachedChatMessage::from(message);
         cached_message.sender_country_flag = actor.country_flag.clone();
         cached_message.user_profile_picture_url = actor.user_profile_picture_url.clone();
+        if let Some(user_id) = cached_message.user_id
+            && state.live_chat_cache.is_connected_user_disabled(user_id)
+        {
+            let _ = cached_message.anonymize_deleted_user(user_id);
+        }
         cached_message
     })
 }
@@ -82,14 +96,22 @@ pub(super) async fn persist_live_chat_ban(
         expires_at: None,
     };
 
-    let persisted = diesel::insert_into(live_chat_bans::table)
-        .values(new_ban)
-        .returning(live_chat_bans::all_columns)
-        .get_result::<LiveChatBan>(&mut conn)
+    let persisted = conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            if let Some(user_id) = actor.user_id {
+                lock_active_user(&mut *conn, user_id).await?;
+            }
+            diesel::insert_into(live_chat_bans::table)
+                .values(new_ban)
+                .returning(live_chat_bans::all_columns)
+                .get_result::<LiveChatBan>(&mut *conn)
+                .await
+                .map_err(ActiveUserWriteError::from)
+        })
         .await
-        .map_err(|e| {
-            error!(error = ?e, user_id = ?actor.user_id, client_ip = %client_ip, "Failed to persist live chat ban");
-            e
+        .map_err(|source| {
+            error!(error = %source, user_id = ?actor.user_id, client_ip = %client_ip, "Failed to persist live chat ban");
+            source
         })
         .ok();
 

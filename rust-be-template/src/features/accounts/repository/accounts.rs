@@ -21,7 +21,11 @@ use crate::{
 impl AccountRepository {
     pub async fn email_exists(&self, email: &str) -> Result<bool, AccountError> {
         let mut connection = self.connection().await?;
-        diesel::select(exists(users::table.filter(users::user_email.eq(email))))
+        diesel::select(exists(
+            users::table
+                .filter(users::user_email.eq(email))
+                .filter(users::user_deleted_at.is_null()),
+        ))
             .get_result(&mut connection)
             .await
             .map_err(AccountError::Query)
@@ -34,6 +38,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         let record = users::table
             .filter(users::user_email.eq(email))
+            .filter(users::user_deleted_at.is_null())
             .select(AccountRecord::as_select())
             .first::<AccountRecord>(&mut connection)
             .await
@@ -50,6 +55,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         users::table
             .filter(users::user_id.eq(user_id))
+            .filter(users::user_deleted_at.is_null())
             .select(AccountProfileRecord::as_select())
             .first::<AccountProfileRecord>(&mut connection)
             .await
@@ -65,6 +71,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         let profile = users::table
             .filter(users::user_id.eq(user_id))
+            .filter(users::user_deleted_at.is_null())
             .select(AccountProfileRecord::as_select())
             .first::<AccountProfileRecord>(&mut connection)
             .await
@@ -78,6 +85,7 @@ impl AccountRepository {
 
         let profile_picture = user_profile_pictures::table
             .filter(user_profile_pictures::user_id.eq(user_id))
+            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true))
             .order(user_profile_pictures::user_profile_picture_created_at.desc())
             .select(ProfilePictureRecord::as_select())
             .first::<ProfilePictureRecord>(&mut connection)
@@ -99,6 +107,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         let account = users::table
             .filter(users::user_name.eq(user_name))
+            .filter(users::user_deleted_at.is_null())
             .select(PublicAccountRecord::as_select())
             .first::<PublicAccountRecord>(&mut connection)
             .await
@@ -111,6 +120,7 @@ impl AccountRepository {
 
         let profile_picture_url = user_profile_pictures::table
             .filter(user_profile_pictures::user_id.eq(account.user_id()))
+            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true))
             .filter(user_profile_pictures::user_profile_picture_is_on_cloud.eq(true))
             .filter(user_profile_pictures::user_profile_picture_link.is_not_null())
             .order(user_profile_pictures::user_profile_picture_created_at.desc())

@@ -7,6 +7,8 @@ use diesel::{
 };
 
 use crate::schema::{comment_votes, post_tags, post_votes, posts, tags};
+use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
+use crate::features::accounts::domain::public_author::PublicAuthor;
 
 #[derive(Clone, serde_derive::Serialize, QueryableByName, Queryable, Selectable, ToSchema)]
 #[diesel(table_name = posts)]
@@ -62,6 +64,29 @@ pub struct UserBadgeInfo {
     pub user_country_flag: Option<String>,
 }
 
+impl UserBadgeInfo {
+    /// Build the single public identity used for every deleted author.
+    pub fn deleted() -> Self {
+        Self {
+            user_name: DELETED_USER_DISPLAY_NAME.to_owned(),
+            // Existing clients use an empty URL as the absence sentinel.
+            user_profile_picture_url: String::new(),
+            user_country_flag: None,
+        }
+    }
+
+    pub fn from_public_author(author: &PublicAuthor, country_flag: Option<String>) -> Self {
+        if author.is_deleted() {
+            return Self::deleted();
+        }
+        Self {
+            user_name: author.user_name().to_owned(),
+            user_profile_picture_url: author.profile_picture_url().to_owned(),
+            user_country_flag: country_flag,
+        }
+    }
+}
+
 #[derive(serde_derive::Serialize, ToSchema)]
 pub struct PostInfoWithVote {
     pub post_id: uuid::Uuid,
@@ -88,11 +113,12 @@ impl PostInfoWithVote {
     pub fn from_cached_info_with_vote(
         cached: CachedPostInfo,
         vote_state: VoteState,
+        public_user_id: uuid::Uuid,
         user_badge_info: UserBadgeInfo,
     ) -> Self {
         Self {
             post_id: cached.post_id,
-            user_id: cached.user_id,
+            user_id: public_user_id,
             user_name: user_badge_info.user_name,
             user_profile_picture_url: user_badge_info.user_profile_picture_url,
             user_country_flag: user_badge_info.user_country_flag,
@@ -241,12 +267,13 @@ impl CommentResponse {
     pub fn from_comment_votestate_and_badge_info(
         comment: Comment,
         vote_state: VoteState,
+        public_user_id: uuid::Uuid,
         user_badge_info: UserBadgeInfo,
     ) -> Self {
         Self {
             comment_id: comment.comment_id,
             post_id: comment.post_id,
-            user_id: comment.user_id,
+            user_id: public_user_id,
             comment_content: comment.comment_content,
             comment_created_at: comment.comment_created_at,
             comment_updated_at: comment.comment_updated_at,

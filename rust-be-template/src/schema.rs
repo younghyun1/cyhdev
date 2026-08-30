@@ -31,6 +31,19 @@ diesel::table! {
 }
 
 diesel::table! {
+    deleted_account_retention (deleted_account_retention_id) {
+        deleted_account_retention_id -> Uuid,
+        deleted_account_retention_user_id -> Uuid,
+        deleted_account_retention_user_name -> Varchar,
+        deleted_account_retention_email -> Varchar,
+        deleted_account_retention_country -> Int4,
+        deleted_account_retention_language -> Int4,
+        deleted_account_retention_subdivision -> Nullable<Int4>,
+        deleted_account_retention_created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     email_verification_tokens (email_verification_token_id) {
         email_verification_token_id -> Uuid,
         user_id -> Uuid,
@@ -134,6 +147,21 @@ diesel::table! {
         message_created_at -> Timestamptz,
         message_edited_at -> Nullable<Timestamptz>,
         message_deleted_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    media_object_cleanup (media_object_cleanup_id) {
+        media_object_cleanup_id -> Uuid,
+        media_object_cleanup_bucket -> Nullable<Varchar>,
+        media_object_cleanup_key -> Nullable<Text>,
+        media_object_cleanup_original_url -> Text,
+        media_object_cleanup_reason -> Varchar,
+        media_object_cleanup_source_id -> Uuid,
+        media_object_cleanup_attempt_count -> Int4,
+        media_object_cleanup_created_at -> Timestamptz,
+        media_object_cleanup_last_attempt_at -> Nullable<Timestamptz>,
+        media_object_cleanup_last_error -> Nullable<Text>,
     }
 }
 
@@ -314,6 +342,7 @@ diesel::table! {
         user_profile_picture_image_type -> Int4,
         user_profile_picture_is_on_cloud -> Bool,
         user_profile_picture_link -> Nullable<Varchar>,
+        user_profile_picture_is_active -> Bool,
     }
 }
 
@@ -337,6 +366,10 @@ diesel::table! {
         user_country -> Int4,
         user_language -> Int4,
         user_subdivision -> Nullable<Int4>,
+        user_deleted_at -> Nullable<Timestamptz>,
+        user_purge_after -> Nullable<Timestamptz>,
+        user_hard_purged_at -> Nullable<Timestamptz>,
+        user_is_system_actor -> Bool,
     }
 }
 
@@ -370,6 +403,10 @@ diesel::joinable!(comment_votes -> comments (comment_id));
 diesel::joinable!(comment_votes -> users (user_id));
 diesel::joinable!(comments -> posts (post_id));
 diesel::joinable!(comments -> users (user_id));
+diesel::joinable!(deleted_account_retention -> iso_country (deleted_account_retention_country));
+diesel::joinable!(deleted_account_retention -> iso_country_subdivision (deleted_account_retention_subdivision));
+diesel::joinable!(deleted_account_retention -> iso_language (deleted_account_retention_language));
+diesel::joinable!(deleted_account_retention -> users (deleted_account_retention_user_id));
 diesel::joinable!(email_verification_tokens -> users (user_id));
 diesel::joinable!(i18n_strings -> iso_country (i18n_string_country_code));
 diesel::joinable!(i18n_strings -> iso_language (i18n_string_language_code));
@@ -408,6 +445,7 @@ diesel::joinable!(wasm_module -> users (user_id));
 diesel::allow_tables_to_appear_in_same_query!(
     comment_votes,
     comments,
+    deleted_account_retention,
     email_verification_tokens,
     i18n_strings,
     iso_country,
@@ -418,6 +456,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     live_chat_call_participants,
     live_chat_calls,
     live_chat_messages,
+    media_object_cleanup,
     password_reset_tokens,
     permissions,
     photograph_comment_votes,

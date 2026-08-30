@@ -20,6 +20,7 @@ use crate::{
         },
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
     init::state::ServerState,
     schema::photograph_comments,
     util::time::now::tokio_now,
@@ -54,7 +55,8 @@ pub async fn vote_photograph_comment(
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
     let counts: VoteCounts = match conn
-        .transaction::<_, diesel::result::Error, _>(async |conn| {
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, user_id).await?;
             let is_upvote = request.is_upvote;
 
             diesel::sql_query(
@@ -96,6 +98,12 @@ pub async fn vote_photograph_comment(
         .await
     {
         Ok(counts) => counts,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_INSERTION_ERROR, e));
+        }
         Err(e) => return Err(code_err(CodeError::DB_INSERTION_ERROR, e)),
     };
 

@@ -81,6 +81,15 @@ pub struct Photograph {
     pub photograph_total_downvotes: i64,
 }
 
+impl Photograph {
+    /// Remove account and location identity from a retained public photograph.
+    pub fn anonymize_deleted_owner(&mut self) {
+        self.user_id = Uuid::nil();
+        self.photograph_lat = 0.0;
+        self.photograph_lon = 0.0;
+    }
+}
+
 #[derive(Insertable)]
 #[diesel(table_name = photographs)]
 pub struct PhotographInsertable {

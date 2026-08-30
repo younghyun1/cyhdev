@@ -1,0 +1,5 @@
+# Integration tests
+
+The PostgreSQL integration binaries create isolated databases on the server named by `TEST_DATABASE_URL`, apply embedded migrations, execute ignored lifecycle cases, and force-drop each database afterward. `postgres_account_lifecycle` covers immediate session and login revocation, private retention, generic public identity primitives, authored post/comment/photograph/chat preservation, vote rows and denormalized totals, system-actor protection, premature hard-purge rejection, idempotent due hard purge and profile-cleanup finalization with a permanent users tombstone, and migration rollback/reapply. `postgres_profile_picture_history` covers the eight-picture cap, one-active-row invariant, selection, active fallback after deletion, and durable cleanup rows for pruned and explicitly deleted media.
+
+These cases are intentionally not executed during implementation waves. Wave 8 runs the database suite through the root review commands with an explicit PostgreSQL 18 maintenance URL; the lifecycle migration test must run serially with other rollback coverage.

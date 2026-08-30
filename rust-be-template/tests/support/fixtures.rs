@@ -9,6 +9,7 @@ use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use rust_be_template::{
+    domain::live_chat::cache::LiveChatCache,
     features::accounts::{
         domain::account::SignupCommand,
         repository::account_repository::AccountRepository,
@@ -23,6 +24,7 @@ pub const VALID_PASSWORD: &str = "ValidPass123";
 
 pub struct AccountTestContext {
     pub accounts: AccountService,
+    pub live_chat_cache: Arc<LiveChatCache>,
     pub repository: Arc<AccountRepository>,
     pub sessions: Arc<SessionService>,
     pub pool: Pool<AsyncPgConnection>,
@@ -41,14 +43,20 @@ pub fn account_test_context(database: &TestDatabase) -> TestResult<AccountTestCo
     let pool = database.pool()?;
     let repository = Arc::new(AccountRepository::new(pool.clone()));
     let sessions = Arc::new(SessionService::new());
+    let live_chat_cache = Arc::new(LiveChatCache::default());
     let email_client = AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous("127.0.0.1")
         .port(9)
         .build();
-    let accounts =
-        AccountService::new(Arc::clone(&repository), Arc::clone(&sessions), email_client);
+    let accounts = AccountService::new(
+        Arc::clone(&repository),
+        Arc::clone(&sessions),
+        Arc::clone(&live_chat_cache),
+        email_client,
+    );
 
     Ok(AccountTestContext {
         accounts,
+        live_chat_cache,
         repository,
         sessions,
         pool,

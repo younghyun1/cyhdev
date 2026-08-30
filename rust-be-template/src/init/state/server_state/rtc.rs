@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::error;
 use uuid::Uuid;
 
@@ -16,6 +16,7 @@ use super::ServerState;
 use crate::domain::live_chat::cache::ChatActor;
 use crate::domain::live_chat::call::{LiveChatCallInsertable, LiveChatCallParticipantInsertable};
 use crate::domain::live_chat::rtc::{RtcEngine, RtcRoom, RtcRoomAcquire};
+use crate::features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user};
 use crate::schema::{live_chat_call_participants, live_chat_calls};
 
 impl ServerState {
@@ -39,7 +40,11 @@ impl ServerState {
     /// and keeps the room alive against concurrent GC; the caller must
     /// `release_slot()` on every failure path and on leave. Returns `Full` at
     /// capacity and `Unavailable` when the SFU is off or the call row cannot open.
-    pub async fn acquire_rtc_room(&self, room_key: &str) -> RtcRoomAcquire {
+    pub async fn acquire_rtc_room(
+        &self,
+        room_key: &str,
+        user_id: Option<Uuid>,
+    ) -> RtcRoomAcquire {
         if self.rtc_engine.is_none() {
             return RtcRoomAcquire::Unavailable;
         }
@@ -64,7 +69,7 @@ impl ServerState {
                 return RtcRoomAcquire::Acquired(room);
             }
 
-            let call_id = match self.open_call_row(room_key).await {
+            let call_id = match self.open_call_row(room_key, user_id).await {
                 Some(call_id) => call_id,
                 None => return RtcRoomAcquire::Unavailable,
             };
@@ -174,11 +179,19 @@ impl ServerState {
                 return None;
             }
         };
-        let inserted = diesel::insert_into(live_chat_call_participants::table)
-            .values(row)
-            .execute(&mut conn)
+        let inserted = conn
+            .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+                if let Some(user_id) = actor.user_id {
+                    lock_active_user(&mut *conn, user_id).await?;
+                }
+                diesel::insert_into(live_chat_call_participants::table)
+                    .values(row)
+                    .execute(&mut *conn)
+                    .await
+                    .map_err(ActiveUserWriteError::from)
+            })
             .await
-            .map_err(|e| error!(error = ?e, "Failed to persist call participant join"))
+            .map_err(|source| error!(error = %source, user_id = ?actor.user_id, "Failed to persist call participant join"))
             .ok();
         drop(conn);
         inserted.map(|_| participant_id)
@@ -207,7 +220,7 @@ impl ServerState {
         drop(conn);
     }
 
-    async fn open_call_row(&self, room_key: &str) -> Option<Uuid> {
+    async fn open_call_row(&self, room_key: &str, user_id: Option<Uuid>) -> Option<Uuid> {
         let call_id = Uuid::now_v7();
         let new_call = LiveChatCallInsertable {
             live_chat_call_id: call_id,
@@ -222,11 +235,19 @@ impl ServerState {
                 return None;
             }
         };
-        let inserted = diesel::insert_into(live_chat_calls::table)
-            .values(new_call)
-            .execute(&mut conn)
+        let inserted = conn
+            .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+                if let Some(user_id) = user_id {
+                    lock_active_user(&mut *conn, user_id).await?;
+                }
+                diesel::insert_into(live_chat_calls::table)
+                    .values(new_call)
+                    .execute(&mut *conn)
+                    .await
+                    .map_err(ActiveUserWriteError::from)
+            })
             .await
-            .map_err(|e| error!(error = ?e, "Failed to open live chat call row"))
+            .map_err(|source| error!(error = %source, user_id = ?user_id, "Failed to open live chat call row"))
             .ok();
         drop(conn);
         inserted.map(|_| call_id)

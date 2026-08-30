@@ -1,10 +1,9 @@
 //! OpenAPI documentation registration for Swagger UI.
-
 use utoipa::OpenApi;
-
 use crate::features::accounts::api::{
-    check_if_user_exists, is_superuser, login, logout, me, reset_password,
-    public_user, reset_password_request, signup, verify_user_email,
+    check_if_user_exists, delete_account, hard_purge_account, is_superuser, login, logout,
+    media_cleanup, me, public_user, reset_password, reset_password_request, signup,
+    update_profile, verify_user_email,
 };
 use crate::handlers::{
     admin::sync_i18n_cache,
@@ -26,13 +25,12 @@ use crate::handlers::{
         vote_photograph_comment,
     },
     server::{get_host_fastfetch, healthcheck, lookup_ip_loc, root, visitor_board},
-    user::upload_profile_picture,
+    user::{profile_picture_history, upload_profile_picture},
     wasm_module::{
         delete_wasm_module, get_wasm_modules, serve_wasm, update_wasm_module,
         update_wasm_module_assets, upload_wasm_module,
     },
 };
-
 use crate::domain::{
     blog::blog::{
         Comment, CommentResponse, Post, PostInfo, PostInfoWithVote, Tag, UserBadgeInfo, VoteState,
@@ -46,10 +44,12 @@ use crate::domain::{
 };
 use crate::dto::{
     requests::{
+        admin::media_cleanup_request::ResolveMediaCleanupRequest,
         auth::{
             check_if_user_exists_request::CheckIfUserExistsRequest, login_request::LoginRequest,
             reset_password::ResetPasswordProcessRequest,
             reset_password_request::ResetPasswordRequest, signup_request::SignupRequest,
+            update_profile_request::UpdateProfileRequest,
             verify_user_email_request::EmailValidationToken,
         },
         blog::{
@@ -66,13 +66,21 @@ use crate::dto::{
         wasm_module::UpdateWasmModuleRequest,
     },
     responses::{
-        admin::sync_i18n_cache_response::SyncI18nCacheResponse,
+        admin::{
+            media_cleanup_response::{
+                ResolveMediaCleanupResponse, UnresolvedMediaCleanupItem, UnresolvedMediaCleanupResponse,
+            },
+            sync_i18n_cache_response::SyncI18nCacheResponse,
+        },
         auth::{
+            delete_account_response::DeleteAccountResponse,
+            hard_purge_account_response::{HardPurgeAccountResponse, ProfileObjectCleanupFailure},
             is_superuser_response::IsSuperuserResponse, login_response::LoginResponse,
             logout_response::LogoutResponse,
             me_response::{MeResponse, UserInfo, UserProfilePicture},
             reset_password_request_response::ResetPasswordRequestResponse,
             reset_password_response::ResetPasswordResponse, signup_response::SignupResponse,
+            update_profile_response::UpdateProfileResponse,
         },
         blog::{
             delete_comment_response::DeleteCommentResponse,
@@ -92,13 +100,20 @@ use crate::dto::{
         },
         photography::read_photograph_response::ReadPhotographResponse,
         photography::vote_photograph_response::VotePhotographResponse,
-        user::public_user_info_response::PublicUserInfoResponse,
+        user::{
+            profile_picture_history_response::{
+                DeleteProfilePictureResponse, ProfilePictureHistoryItem,
+                ProfilePictureHistoryResponse, SelectProfilePictureResponse,
+            },
+            public_user_info_response::PublicUserInfoResponse,
+        },
         live_chat::{GetLiveChatMessagesResponse, LiveChatCacheStatsResponse, LiveChatMessageItem},
         wasm_module::{GetWasmModulesResponse, WasmModuleItem},
     },
 };
 use crate::errors::code_error::CodeErrorResp;
 use crate::features::accounts::api::check_if_user_exists::CheckIfUserExistsResponse;
+use crate::dto::requests::auth::delete_account_request::DeleteAccountRequest;
 use crate::handlers::{
     blog::search_posts::SearchPostsResponse,
     countries::get_countries::GetCountriesResponse,
@@ -107,7 +122,6 @@ use crate::handlers::{
 };
 use crate::openapi_envelope::FrontendResponseEnvelope;
 use crate::util::geographic::ip_info_lookup::IpInfo;
-
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]
 #[openapi(
@@ -134,6 +148,11 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         reset_password::reset_password,
         verify_user_email::verify_user_email,
         logout::logout,
+        delete_account::delete_account,
+        hard_purge_account::hard_purge_account,
+        media_cleanup::unresolved_media_cleanup,
+        media_cleanup::resolve_media_cleanup,
+        update_profile::update_profile,
         get_posts::get_posts,
         read_post::read_post,
         submit_post::submit_post,
@@ -167,6 +186,9 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         cache_stats::get_live_chat_cache_stats,
         public_user::get_user_info,
         upload_profile_picture::upload_profile_picture,
+        profile_picture_history::list_profile_pictures,
+        profile_picture_history::select_profile_picture,
+        profile_picture_history::delete_profile_picture,
         get_wasm_modules::get_wasm_modules,
         upload_wasm_module::upload_wasm_module,
         update_wasm_module::update_wasm_module,
@@ -184,6 +206,16 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             LoginRequest,
             LoginResponse,
             LogoutResponse,
+            DeleteAccountRequest,
+            DeleteAccountResponse,
+            HardPurgeAccountResponse,
+            ProfileObjectCleanupFailure,
+            ResolveMediaCleanupRequest,
+            ResolveMediaCleanupResponse,
+            UnresolvedMediaCleanupItem,
+            UnresolvedMediaCleanupResponse,
+            UpdateProfileRequest,
+            UpdateProfileResponse,
             MeResponse,
             IsSuperuserResponse,
             ResetPasswordRequest,
@@ -236,6 +268,10 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             WasmModuleItem,
             DeleteWasmModuleResponse,
             PublicUserInfoResponse,
+            ProfilePictureHistoryItem,
+            ProfilePictureHistoryResponse,
+            SelectProfilePictureResponse,
+            DeleteProfilePictureResponse,
             RootHandlerResponse,
             ServerHealthcheckResponse,
             GetCountriesResponse,

@@ -1,7 +1,8 @@
-use std::collections::HashMap as StdHashMap;
+use std::collections::{HashMap as StdHashMap, HashSet as StdHashSet};
 
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
+    OptionalExtension, QueryDsl, SelectableHelper,
 };
 use diesel_async::RunQueryDsl;
 use tracing::{error, info};
@@ -19,6 +20,13 @@ use crate::domain::live_chat::{
 use crate::schema::{live_chat_bans, live_chat_messages, user_profile_pictures, users};
 use crate::util::time::now::tokio_now;
 
+type LiveChatUserPresentationRow = (
+    Uuid,
+    i32,
+    Option<chrono::DateTime<chrono::Utc>>,
+    Option<String>,
+);
+
 impl ServerState {
     pub async fn enrich_live_chat_message_flags(
         &self,
@@ -27,9 +35,6 @@ impl ServerState {
         let mut user_ids = Vec::new();
         let mut seen_user_ids: StdHashMap<Uuid, ()> = StdHashMap::new();
         for message in messages.iter() {
-            if message.sender_country_flag.is_some() && message.user_profile_picture_url.is_some() {
-                continue;
-            }
             if let Some(user_id) = message.user_id
                 && !seen_user_ids.contains_key(&user_id)
             {
@@ -40,45 +45,49 @@ impl ServerState {
 
         let mut user_country_codes: StdHashMap<Uuid, i32> = StdHashMap::new();
         let mut user_profile_picture_urls: StdHashMap<Uuid, String> = StdHashMap::new();
+        let mut deleted_user_ids: StdHashSet<Uuid> = StdHashSet::new();
         if !user_ids.is_empty() {
+            // Missing tombstones fail closed to the deleted presentation.
+            deleted_user_ids.extend(user_ids.iter().copied());
             let mut conn = self.get_conn().await?;
-            let rows: Vec<(Uuid, i32)> = users::table
+            let rows: Vec<LiveChatUserPresentationRow> = users::table
+                .left_join(user_profile_pictures::table.on(
+                    user_profile_pictures::user_id
+                        .eq(users::user_id)
+                        .and(user_profile_pictures::user_profile_picture_is_active.eq(true)),
+                ))
                 .filter(users::user_id.eq_any(&user_ids))
-                .select((users::user_id, users::user_country))
-                .load(&mut conn)
-                .await?;
-
-            let profile_picture_rows: Vec<(Uuid, Option<String>)> = user_profile_pictures::table
-                .filter(user_profile_pictures::user_id.eq_any(&user_ids))
-                .distinct_on(user_profile_pictures::user_id)
-                .order((
-                    user_profile_pictures::user_id,
-                    user_profile_pictures::user_profile_picture_updated_at.desc(),
-                ))
                 .select((
-                    user_profile_pictures::user_id,
-                    user_profile_pictures::user_profile_picture_link,
+                    users::user_id,
+                    users::user_country,
+                    users::user_deleted_at,
+                    user_profile_pictures::user_profile_picture_link.nullable(),
                 ))
                 .load(&mut conn)
                 .await?;
+
+            for (user_id, user_country, deleted_at, profile_picture_url) in rows {
+                if deleted_at.is_some() {
+                    deleted_user_ids.insert(user_id);
+                } else {
+                    deleted_user_ids.remove(&user_id);
+                    user_country_codes.insert(user_id, user_country);
+                    if let Some(profile_picture_url) = profile_picture_url {
+                        user_profile_picture_urls.insert(user_id, profile_picture_url);
+                    }
+                }
+            }
             drop(conn);
-
-            for (user_id, user_country) in rows {
-                user_country_codes.insert(user_id, user_country);
-            }
-
-            for (user_id, user_profile_picture_url) in profile_picture_rows {
-                if user_profile_picture_urls.contains_key(&user_id) {
-                    continue;
-                }
-                if let Some(user_profile_picture_url) = user_profile_picture_url {
-                    user_profile_picture_urls.insert(user_id, user_profile_picture_url);
-                }
-            }
         }
 
         let country_map = self.country_map.read().await;
         for message in messages.iter_mut() {
+            if let Some(user_id) = message.user_id
+                && deleted_user_ids.contains(&user_id)
+            {
+                let _ = message.anonymize_deleted_user(user_id);
+                continue;
+            }
             let country_flag = match (message.sender_country_flag.clone(), message.user_id) {
                 (Some(country_flag), _) => Some(country_flag),
                 (None, Some(user_id)) => user_country_codes

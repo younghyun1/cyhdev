@@ -11,11 +11,16 @@ use crate::{
         error::AccountError,
         repository::{account_repository::AccountRepository, records::NewProfilePictureRecord},
     },
-    schema::{user_profile_pictures, users},
+    schema::{media_object_cleanup, user_profile_pictures, users},
+    util::media::cleanup::{
+        MediaCleanupRequest, REASON_PROFILE_PICTURE_HISTORY_PRUNED, enqueue_media_cleanup,
+    },
 };
 
+pub const PROFILE_PICTURE_HISTORY_LIMIT: i64 = 8;
+
 impl AccountRepository {
-    /// Commits new metadata and retires prior links in one user-serialized transaction.
+    /// Commits a new active picture and prunes overflow history in one transaction.
     pub async fn replace_profile_picture(
         &self,
         user_id: Uuid,
@@ -31,58 +36,125 @@ impl AccountRepository {
                     // when no profile-picture row exists to lock yet.
                     users::table
                         .find(user_id)
+                        .filter(users::user_deleted_at.is_null())
                         .select(users::user_id)
                         .for_update()
                         .first::<Uuid>(&mut *connection)
                         .await?;
 
-                    let superseded_links = user_profile_pictures::table
-                        .filter(user_profile_pictures::user_id.eq(user_id))
-                        .filter(user_profile_pictures::user_profile_picture_is_on_cloud.eq(true))
-                        .select(user_profile_pictures::user_profile_picture_link)
-                        .load::<Option<String>>(&mut *connection)
-                        .await?
-                        .into_iter()
-                        .flatten()
-                        .collect();
+                    diesel::update(
+                        user_profile_pictures::table
+                            .filter(user_profile_pictures::user_id.eq(user_id))
+                            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true)),
+                    )
+                    .set(user_profile_pictures::user_profile_picture_is_active.eq(false))
+                    .execute(&mut *connection)
+                    .await?;
 
                     let profile_picture_id = diesel::insert_into(user_profile_pictures::table)
                         .values(NewProfilePictureRecord {
                             user_id,
                             user_profile_picture_image_type: image_type,
                             user_profile_picture_is_on_cloud: is_on_cloud,
+                            user_profile_picture_is_active: is_on_cloud && link.is_some(),
                             user_profile_picture_link: link,
                         })
                         .returning(user_profile_pictures::user_profile_picture_id)
                         .get_result(&mut *connection)
                         .await?;
 
-                    diesel::update(
-                        user_profile_pictures::table
-                            .filter(user_profile_pictures::user_id.eq(user_id))
-                            .filter(
-                                user_profile_pictures::user_profile_picture_id
-                                    .ne(profile_picture_id),
-                            )
-                            .filter(
-                                user_profile_pictures::user_profile_picture_is_on_cloud.eq(true),
-                            ),
+                    let overflow_rows = user_profile_pictures::table
+                        .filter(user_profile_pictures::user_id.eq(user_id))
+                        .order((
+                            user_profile_pictures::user_profile_picture_created_at.desc(),
+                            user_profile_pictures::user_profile_picture_id.desc(),
+                        ))
+                        .offset(PROFILE_PICTURE_HISTORY_LIMIT)
+                        .select((
+                            user_profile_pictures::user_profile_picture_id,
+                            user_profile_pictures::user_profile_picture_link,
+                        ))
+                        .load::<(Uuid, Option<String>)>(&mut *connection)
+                        .await?;
+                    let overflow_ids = overflow_rows
+                        .iter()
+                        .map(|(overflow_id, _)| *overflow_id)
+                        .collect::<Vec<_>>();
+                    let cleanup = enqueue_media_cleanup(
+                        connection,
+                        overflow_rows
+                            .into_iter()
+                            .filter_map(|(source_id, original_url)| {
+                                original_url.map(|original_url| MediaCleanupRequest {
+                                    original_url,
+                                    reason: REASON_PROFILE_PICTURE_HISTORY_PRUNED,
+                                    source_id,
+                                })
+                            })
+                            .collect(),
                     )
-                    .set((
-                        user_profile_pictures::user_profile_picture_is_on_cloud.eq(false),
-                        user_profile_pictures::user_profile_picture_link.eq(Option::<String>::None),
-                        user_profile_pictures::user_profile_picture_updated_at.eq(Utc::now()),
-                    ))
-                    .execute(&mut *connection)
                     .await?;
+                    if !overflow_ids.is_empty() {
+                        diesel::delete(
+                            user_profile_pictures::table.filter(
+                                user_profile_pictures::user_profile_picture_id
+                                    .eq_any(overflow_ids),
+                            ),
+                        )
+                        .execute(&mut *connection)
+                        .await?;
+                    }
 
                     Ok(ProfilePictureReplacement {
                         profile_picture_id,
-                        superseded_links,
+                        cleanup_objects: cleanup.resolved,
+                        unresolved_cleanup_count: cleanup.unresolved_count,
                     })
                 },
             )
             .await
             .map_err(AccountError::Mutation)
+    }
+
+    /// Removes a durable cleanup row only after idempotent object deletion succeeds.
+    pub async fn complete_media_object_cleanup(
+        &self,
+        cleanup_id: Uuid,
+    ) -> Result<bool, AccountError> {
+        let mut connection = self.connection().await?;
+        diesel::delete(media_object_cleanup::table.find(cleanup_id))
+            .execute(&mut connection)
+            .await
+            .map(|deleted| deleted == 1)
+            .map_err(AccountError::Mutation)
+    }
+
+    /// Records one failed attempt without overwriting a concurrent worker's result.
+    pub async fn record_media_object_cleanup_failure(
+        &self,
+        cleanup_id: Uuid,
+        expected_attempt_count: i32,
+        attempted_at: chrono::DateTime<Utc>,
+        error: &str,
+    ) -> Result<bool, AccountError> {
+        let next_attempt_count = expected_attempt_count.saturating_add(1);
+        let mut connection = self.connection().await?;
+        diesel::update(
+            media_object_cleanup::table
+                .find(cleanup_id)
+                .filter(
+                    media_object_cleanup::media_object_cleanup_attempt_count
+                        .eq(expected_attempt_count),
+                ),
+        )
+        .set((
+            media_object_cleanup::media_object_cleanup_attempt_count.eq(next_attempt_count),
+            media_object_cleanup::media_object_cleanup_last_attempt_at.eq(attempted_at),
+            media_object_cleanup::media_object_cleanup_last_error.eq(error),
+        ))
+        .execute(&mut connection)
+        .await
+        .map(|updated| updated == 1)
+        .map_err(AccountError::Mutation)
     }
 }

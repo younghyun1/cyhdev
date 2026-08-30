@@ -3,3 +3,4 @@ pub mod flush_photograph_views;
 pub mod flush_visitor_logs;
 pub mod prune_live_chat;
 pub mod prune_photograph_batches;
+pub mod retry_media_cleanup;

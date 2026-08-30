@@ -7,7 +7,7 @@ use std::{
     },
 };
 
-use scc::{Guard, HashMap, TreeIndex};
+use scc::{Guard, HashMap, HashSet, TreeIndex};
 use tokio::sync::{Mutex, broadcast};
 use uuid::Uuid;
 
@@ -15,9 +15,13 @@ mod actor;
 mod ban;
 mod ban_store;
 mod event;
+mod identity;
 mod message;
 mod rate;
 mod runtime_state;
+
+#[cfg(test)]
+mod retained_identity_tests;
 
 pub use actor::{ChatActor, ChatActorKey};
 pub use ban::CachedLiveChatBan;
@@ -45,6 +49,9 @@ pub struct LiveChatCache {
     eviction_queue: Mutex<VecDeque<ChatEvictionKey>>,
     typing_by_actor: HashMap<ChatActorKey, TypingState>,
     connected_clients: HashMap<Uuid, ChatConnectionState>,
+    disabled_connected_users: HashSet<Uuid>,
+    disabled_connected_users_saturated: AtomicBool,
+    identity_mutation: Mutex<()>,
     bans_by_user: HashMap<Uuid, CachedLiveChatBan>,
     bans_by_ip: HashMap<IpAddr, CachedLiveChatBan>,
     ban_mutation: Mutex<()>,
@@ -72,6 +79,9 @@ impl LiveChatCache {
             eviction_queue: Mutex::new(VecDeque::new()),
             typing_by_actor: HashMap::new(),
             connected_clients: HashMap::new(),
+            disabled_connected_users: HashSet::new(),
+            disabled_connected_users_saturated: AtomicBool::new(false),
+            identity_mutation: Mutex::new(()),
             bans_by_user: HashMap::new(),
             bans_by_ip: HashMap::new(),
             ban_mutation: Mutex::new(()),

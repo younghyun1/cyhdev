@@ -96,8 +96,13 @@ impl LiveChatCache {
         is_abnormal
     }
 
-    pub async fn set_typing(&self, state: TypingState) -> bool {
+    pub async fn set_typing(&self, mut state: TypingState) -> bool {
         let actor_key = state.actor.actor_key.clone();
+        if let ChatActorKey::User(user_id) = &actor_key
+            && self.is_connected_user_disabled(*user_id)
+        {
+            let _ = state.actor.anonymize_deleted_user(*user_id);
+        }
         if self
             .typing_by_actor
             .update_async(&actor_key, |_, current| *current = state.clone())
@@ -189,6 +194,12 @@ impl LiveChatCache {
         connection_id: Uuid,
         connection_state: ChatConnectionState,
     ) -> bool {
+        let _identity_guard = self.identity_mutation.lock().await;
+        if let Some(user_id) = connection_state.authority_user_id
+            && self.is_connected_user_disabled(user_id)
+        {
+            return false;
+        }
         if self
             .connected_count
             .try_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
@@ -212,13 +223,31 @@ impl LiveChatCache {
     }
 
     pub async fn unregister_connection(&self, connection_id: Uuid) {
-        if self
-            .connected_clients
-            .remove_async(&connection_id)
-            .await
-            .is_some()
-        {
-            self.connected_count.fetch_sub(1, Ordering::SeqCst);
+        let _identity_guard = self.identity_mutation.lock().await;
+        let Some((_, removed_connection)) = self.connected_clients.remove_async(&connection_id).await
+        else {
+            return;
+        };
+        self.connected_count.fetch_sub(1, Ordering::SeqCst);
+
+        let Some(user_id) = removed_connection.authority_user_id else {
+            return;
+        };
+        if !self.is_connected_user_disabled(user_id) {
+            return;
+        }
+        let mut another_connection_exists = false;
+        self.connected_clients
+            .iter_async(|_, connection| {
+                if connection.authority_user_id == Some(user_id) {
+                    another_connection_exists = true;
+                    return false;
+                }
+                true
+            })
+            .await;
+        if !another_connection_exists {
+            let _ = self.disabled_connected_users.remove_async(&user_id).await;
         }
     }
 

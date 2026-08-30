@@ -65,6 +65,20 @@ impl RtcSession {
 
     /// Route one inbound client signal.
     pub(super) async fn dispatch(&self, signal: RtcClientSignal) {
+        if let Some(user_id) = self.actor.user_id
+            && self
+                .state
+                .live_chat_cache
+                .is_connected_user_disabled(user_id)
+        {
+            self.leave().await;
+            self.send_error(
+                "account_deleted",
+                "This account can no longer use live chat calls.",
+            )
+            .await;
+            return;
+        }
         match signal {
             RtcClientSignal::Join {
                 sdp,
@@ -124,7 +138,11 @@ impl RtcSession {
         // Acquire reserves a participant slot atomically (enforces the cap and
         // keeps the room alive against concurrent GC). Every failure path below
         // must release_slot() so the reservation is not leaked.
-        let room = match self.state.acquire_rtc_room(DEFAULT_LIVE_CHAT_ROOM).await {
+        let room = match self
+            .state
+            .acquire_rtc_room(DEFAULT_LIVE_CHAT_ROOM, self.actor.user_id)
+            .await
+        {
             RtcRoomAcquire::Acquired(room) => room,
             RtcRoomAcquire::Full => {
                 self.send_error("room_full", "The call is full.").await;
@@ -231,7 +249,24 @@ impl RtcSession {
         // teardown_peer broadcasts Left, closes the PC, and releases the slot
         // exactly once (idempotent with the connection-failed path).
         if let Some(room) = room.as_ref() {
-            room.teardown_peer(self.connection_id).await;
+            let deleted_user_id = match self.actor.user_id {
+                Some(user_id)
+                    if self
+                        .state
+                        .live_chat_cache
+                        .is_connected_user_disabled(user_id) =>
+                {
+                    Some(user_id)
+                }
+                _ => None,
+            };
+            match deleted_user_id {
+                Some(user_id) => {
+                    room.teardown_deleted_user_peer(self.connection_id, user_id)
+                        .await;
+                }
+                None => room.teardown_peer(self.connection_id).await,
+            }
         }
 
         if let Some(participant_id) = participant_id {
@@ -249,10 +284,14 @@ impl RtcSession {
     /// on this connection's writer queue. Ends when the peer drops its sender.
     fn spawn_signal_relay(&self, mut rtc_signal_rx: mpsc::Receiver<RtcServerSignal>) {
         let out = self.out.clone();
+        let state = self.state.clone();
         let wire_protocol = self.wire_protocol;
         tokio::spawn(async move {
             while let Some(signal) = rtc_signal_rx.recv().await {
-                let event = LiveChatServerEvent::Rtc(signal);
+                let mut event = LiveChatServerEvent::Rtc(signal);
+                state
+                    .live_chat_cache
+                    .anonymize_event_for_public(&mut event);
                 match encode_event(&event, wire_protocol) {
                     Some(message) => {
                         if out.send(message).await.is_err() {

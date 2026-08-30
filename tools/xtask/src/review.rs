@@ -47,11 +47,19 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "postgres_account_identity",
                 "--test",
                 "postgres_account_http_boundaries",
+                "--test",
+                "postgres_account_lifecycle",
+                "--test",
+                "postgres_content_write_linearization",
+                "--test",
+                "postgres_profile_picture_history",
                 "--no-fail-fast",
                 "--",
                 "--ignored",
                 "--skip",
                 "embedded_migration_chain_reverts_and_reapplies",
+                "--skip",
+                "account_lifecycle_migration_reverts_and_reapplies",
             ])
             .current_dir(root),
     )
@@ -69,6 +77,23 @@ pub(crate) fn run_migration_rollback(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_account_boundaries",
                 "embedded_migration_chain_reverts_and_reapplies",
+                "--",
+                "--ignored",
+                "--exact",
+                "--test-threads=1",
+            ])
+            .current_dir(root),
+    )?;
+    run_command(
+        Command::new("cargo")
+            .args([
+                "test",
+                "--locked",
+                "--package",
+                "rust-be-template",
+                "--test",
+                "postgres_account_lifecycle",
+                "account_lifecycle_migration_reverts_and_reapplies",
                 "--",
                 "--ignored",
                 "--exact",

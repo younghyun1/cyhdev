@@ -16,6 +16,7 @@ use crate::{
     domain::photography::social::VoteCounts,
     dto::responses::response_data::http_resp,
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
     init::state::ServerState,
     schema::{photograph_comment_votes, photograph_comments},
     util::time::now::tokio_now,
@@ -48,7 +49,8 @@ pub async fn rescind_photograph_comment_vote(
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
     match conn
-        .transaction::<_, diesel::result::Error, _>(async |conn| {
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, user_id).await?;
             let affected_rows = diesel::delete(
                 photograph_comment_votes::table.filter(
                     photograph_comment_votes::photograph_comment_id
@@ -60,7 +62,7 @@ pub async fn rescind_photograph_comment_vote(
             .await?;
 
             if affected_rows == 0 {
-                return Err(diesel::result::Error::NotFound);
+                return Err(ActiveUserWriteError::TargetNotFound);
             }
 
             let counts: VoteCounts = diesel::sql_query(
@@ -90,10 +92,15 @@ pub async fn rescind_photograph_comment_vote(
         .await
     {
         Ok(()) => {}
-        Err(diesel::result::Error::NotFound) => {
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::TargetNotFound) => {
             return Err(CodeError::UPVOTE_DOES_NOT_EXIST.into());
         }
-        Err(e) => return Err(code_err(CodeError::DB_DELETION_ERROR, e)),
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_DELETION_ERROR, e));
+        }
     }
 
     Ok(http_resp((), (), start))

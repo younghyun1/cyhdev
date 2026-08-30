@@ -48,7 +48,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     });
   }
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     handleUnauthorizedResponse();
     throw new Error("Unauthorized; redirected to login");
   }

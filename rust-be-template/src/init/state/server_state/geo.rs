@@ -41,7 +41,7 @@ impl ServerState {
 
         let user_profile_picture_url = user_profile_pictures::table
             .filter(user_profile_pictures::user_id.eq(user_id))
-            .order(user_profile_pictures::user_profile_picture_updated_at.desc())
+            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true))
             .select(user_profile_pictures::user_profile_picture_link)
             .first::<Option<String>>(&mut conn)
             .await

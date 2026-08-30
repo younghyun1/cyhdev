@@ -18,17 +18,41 @@ macro_rules! operation {
 
 /// Explicit frontend contract boundary. Missing or method-mismatched routes fail generation.
 pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
+    operation!("account", "DELETE", "/api/auth/account"),
     operation!("account", "GET", "/api/auth/is-superuser"),
     operation!("account", "GET", "/api/auth/me"),
     operation!("account", "GET", "/api/auth/verify-user-email"),
     operation!("account", "GET", "/api/users/{user_name}"),
+    operation!("account", "GET", "/api/admin/media-cleanup/unresolved"),
     operation!("account", "POST", "/api/auth/check-if-user-exists"),
     operation!("account", "POST", "/api/auth/login"),
     operation!("account", "POST", "/api/auth/logout"),
     operation!("account", "POST", "/api/auth/reset-password"),
     operation!("account", "POST", "/api/auth/reset-password-request"),
     operation!("account", "POST", "/api/auth/signup"),
+    operation!("account", "PATCH", "/api/auth/profile"),
+    operation!(
+        "account",
+        "POST",
+        "/api/admin/media-cleanup/{cleanup_id}/resolve"
+    ),
+    operation!(
+        "account",
+        "POST",
+        "/api/admin/users/{user_id}/hard-purge"
+    ),
     operation!("account", "POST", "/api/user/upload-profile-picture"),
+    operation!("account", "GET", "/api/user/profile-pictures"),
+    operation!(
+        "account",
+        "POST",
+        "/api/user/profile-pictures/{profile_picture_id}/select"
+    ),
+    operation!(
+        "account",
+        "DELETE",
+        "/api/user/profile-pictures/{profile_picture_id}"
+    ),
     operation!("reference", "GET", "/api/healthcheck/server"),
     operation!("reference", "GET", "/api/healthcheck/state"),
     operation!("reference", "GET", "/api/healthcheck/fastfetch"),

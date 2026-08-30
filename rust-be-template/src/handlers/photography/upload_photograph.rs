@@ -6,7 +6,7 @@ use axum::{
     Extension,
     extract::{Multipart, State},
 };
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -14,6 +14,8 @@ use crate::{
     domain::photography::photographs::{Photograph, PhotographInsertable},
     dto::responses::response_data::{Response as ApiResponse, http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
+    features::accounts::repository::public_authors::load_deleted_user_ids,
     handlers::photography::photograph_upload_request::PhotographUploadRequest,
     init::state::ServerState,
     schema::photographs,
@@ -42,6 +44,8 @@ enum PhotographPersistenceError {
     Pool(#[source] anyhow::Error),
     #[error("photograph insert failed: {0}")]
     Insert(#[source] diesel::result::Error),
+    #[error("authenticated account is no longer active")]
+    Inactive,
 }
 
 #[utoipa::path(
@@ -128,8 +132,9 @@ pub async fn upload_photograph(
     ];
     let store = S3MediaObjectStore::from_config(&state.aws_profile_picture_config);
 
+    let persistence_state = state.clone();
     let result = persist_media_objects(&store, &pending, async move {
-        let mut connection = state
+        let mut connection = persistence_state
             .get_conn()
             .await
             .map_err(PhotographPersistenceError::Pool)?;
@@ -145,19 +150,49 @@ pub async fn upload_photograph(
             photograph_lon: longitude,
             photograph_thumbnail_link: thumbnail_url.clone(),
         };
-        let photograph = diesel::insert_into(photographs::table)
-            .values(insert)
-            .get_result(&mut connection)
+        let photograph: Photograph = connection
+            .transaction::<Photograph, ActiveUserWriteError, _>(async |connection| {
+                lock_active_superuser(&mut *connection, user_id).await?;
+                diesel::insert_into(photographs::table)
+                    .values(insert)
+                    .get_result::<Photograph>(&mut *connection)
+                    .await
+                    .map_err(ActiveUserWriteError::from)
+            })
             .await
-            .map_err(PhotographPersistenceError::Insert)?;
+            .map_err(|source| match source {
+                ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied => {
+                    PhotographPersistenceError::Inactive
+                }
+                ActiveUserWriteError::Database(source) => {
+                    PhotographPersistenceError::Insert(source)
+                }
+                ActiveUserWriteError::TargetNotFound => PhotographPersistenceError::Inactive,
+            })?;
         drop(connection);
         Ok(PersistedMedia::new(photograph, Vec::new()))
     })
     .await;
 
     match result {
-        Ok(success) => {
+        Ok(mut success) => {
             log_cleanup_failures(user_id, &success.cleanup_failures);
+            let owner_deleted = match state.get_conn().await {
+                Ok(mut connection) => match load_deleted_user_ids(&mut connection, &[user_id]).await {
+                    Ok(deleted_user_ids) => deleted_user_ids.contains(&user_id),
+                    Err(source) => {
+                        warn!(error = %source, user_id = %user_id, "Failed closed while presenting photograph owner");
+                        true
+                    }
+                },
+                Err(source) => {
+                    warn!(error = %source, user_id = %user_id, "Failed closed while presenting photograph owner");
+                    true
+                }
+            };
+            if owner_deleted {
+                success.value.anonymize_deleted_owner();
+            }
             Ok(http_resp(success.value, (), start))
         }
         Err(MediaWriteError::Upload {
@@ -176,6 +211,7 @@ pub async fn upload_photograph(
             let code = match &source {
                 PhotographPersistenceError::Pool(_) => CodeError::POOL_ERROR,
                 PhotographPersistenceError::Insert(_) => CodeError::DB_INSERTION_ERROR,
+                PhotographPersistenceError::Inactive => CodeError::UNAUTHORIZED_ACCESS,
             };
             error!(error = %source, user_id = %user_id, "Failed to commit photograph metadata");
             Err(code_err(code, source))

@@ -1,8 +1,12 @@
+//! Bounded photograph deletion with durable object cleanup.
+
 use std::sync::Arc;
 
-use axum::{Json, extract::State, response::IntoResponse};
-use diesel::prelude::*;
-use diesel_async::RunQueryDsl;
+use axum::{Extension, Json, extract::State, response::IntoResponse};
+use diesel::{ExpressionMethods, QueryDsl};
+use diesel_async::{AsyncConnection, RunQueryDsl};
+use tracing::{error, info};
+use uuid::Uuid;
 
 use crate::{
     dto::{
@@ -13,10 +17,25 @@ use crate::{
         },
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
     init::state::ServerState,
-    schema::photographs::dsl::*,
-    util::time::now::tokio_now,
+    schema::photographs,
+    util::{
+        media::{
+            cleanup::{
+                MediaCleanupRequest, REASON_DELETED_PHOTOGRAPH_IMAGE,
+                REASON_DELETED_PHOTOGRAPH_THUMBNAIL, enqueue_media_cleanup,
+                settle_durable_cleanup,
+            },
+            object_store::S3MediaObjectStore,
+            persistence::cleanup_committed_objects,
+        },
+        time::now::tokio_now,
+    },
 };
+
+const MAX_DELETE_PHOTOGRAPHS: usize = 1_000;
+const PHOTOGRAPH_CLEANUP_CONCURRENCY: usize = 8;
 
 #[utoipa::path(
     delete,
@@ -24,177 +43,160 @@ use crate::{
     tag = "photography",
     request_body = DeletePhotographsRequest,
     responses(
-        (status = 200, description = "Photographs deleted successfully", body = DeletePhotographsResponse),
+        (status = 200, description = "Photographs deleted with explicit object cleanup status", body = DeletePhotographsResponse),
+        (status = 400, description = "Invalid or oversized deletion set", body = CodeErrorResp),
         (status = 401, description = "Unauthorized", body = CodeErrorResp),
         (status = 403, description = "Forbidden (not superuser)", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]
 pub async fn delete_photographs(
+    Extension(requester_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Json(body): Json<DeletePhotographsRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
+    let photograph_ids = normalize_photograph_ids(body.photograph_ids).map_err(|count| {
+        code_err(
+            CodeError::INVALID_REQUEST,
+            format!(
+                "at most {MAX_DELETE_PHOTOGRAPHS} distinct photograph ids may be deleted; received {count}"
+            ),
+        )
+    })?;
+    if photograph_ids.is_empty() {
+        return Ok(http_resp(DeletePhotographsResponse::empty(), (), start));
+    }
 
-    let mut conn = state
+    let mut connection = state
         .get_conn()
         .await
-        .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+        .map_err(|error| code_err(CodeError::POOL_ERROR, error))?;
+    let (cleanup, deleted_rows) = match connection
+        .transaction::<_, ActiveUserWriteError, _>(async |connection| {
+            lock_active_superuser(&mut *connection, requester_id).await?;
+            let targets = photographs::table
+                .filter(photographs::photograph_id.eq_any(&photograph_ids))
+                .select((
+                    photographs::photograph_id,
+                    photographs::photograph_link,
+                    photographs::photograph_thumbnail_link,
+                ))
+                .load::<(Uuid, String, String)>(&mut *connection)
+                .await?;
+            let cleanup_requests = targets
+                .into_iter()
+                .flat_map(|(source_id, image_url, thumbnail_url)| {
+                    [
+                        MediaCleanupRequest {
+                            original_url: image_url,
+                            reason: REASON_DELETED_PHOTOGRAPH_IMAGE,
+                            source_id,
+                        },
+                        MediaCleanupRequest {
+                            original_url: thumbnail_url,
+                            reason: REASON_DELETED_PHOTOGRAPH_THUMBNAIL,
+                            source_id,
+                        },
+                    ]
+                })
+                .collect();
+            let cleanup = enqueue_media_cleanup(connection, cleanup_requests).await?;
+            let deleted_rows = diesel::delete(
+                photographs::table.filter(photographs::photograph_id.eq_any(&photograph_ids)),
+            )
+            .execute(&mut *connection)
+            .await?;
+            Ok((cleanup, deleted_rows))
+        })
+        .await
+    {
+        Ok(result) => result,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::Database(error)) => {
+            return Err(code_err(CodeError::DB_DELETION_ERROR, error));
+        }
+        Err(error) => return Err(code_err(CodeError::DB_DELETION_ERROR, error)),
+    };
+    drop(connection);
 
-    if body.photograph_ids.is_empty() {
-        return Ok(http_resp(
-            DeletePhotographsResponse {
-                deleted_count: 0,
-                s3_deleted_count: 0,
-            },
-            (),
-            start,
+    let cleanup_total = cleanup.resolved.len() + cleanup.unresolved_count;
+    let locations = cleanup
+        .resolved
+        .iter()
+        .map(|cleanup| cleanup.location.clone())
+        .collect();
+    let store = S3MediaObjectStore::from_config(&state.aws_profile_picture_config);
+    let (cleaned, failures) = cleanup_committed_objects(
+        &store,
+        locations,
+        PHOTOGRAPH_CLEANUP_CONCURRENCY,
+    )
+    .await;
+    for failure in &failures {
+        error!(
+            bucket = %failure.location.bucket(),
+            key = %failure.location.key(),
+            retryable = failure.is_retryable(),
+            error = %failure.error,
+            "Photograph object cleanup remains pending"
+        );
+    }
+    let settlement = settle_durable_cleanup(
+        &state.account_service(),
+        cleanup.resolved,
+        &cleaned,
+        &failures,
+    )
+    .await;
+    let response = DeletePhotographsResponse {
+        deleted_count: deleted_rows,
+        s3_deleted_count: cleaned.len(),
+        cleanup_failure_count: failures.len() + settlement.ledger_errors,
+        cleanup_remaining_count: cleanup_total.saturating_sub(settlement.finalized),
+        unresolved_cleanup_count: cleanup.unresolved_count,
+    };
+    info!(
+        deleted_db_rows = response.deleted_count,
+        deleted_objects = response.s3_deleted_count,
+        cleanup_failures = response.cleanup_failure_count,
+        cleanup_remaining = response.cleanup_remaining_count,
+        "Completed bounded photograph deletion"
+    );
+    Ok(http_resp(response, (), start))
+}
+
+fn normalize_photograph_ids(mut photograph_ids: Vec<Uuid>) -> Result<Vec<Uuid>, usize> {
+    photograph_ids.sort_unstable();
+    photograph_ids.dedup();
+    if photograph_ids.len() > MAX_DELETE_PHOTOGRAPHS {
+        return Err(photograph_ids.len());
+    }
+    Ok(photograph_ids)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MAX_DELETE_PHOTOGRAPHS, normalize_photograph_ids};
+    use uuid::Uuid;
+
+    #[test]
+    fn photograph_deletion_deduplicates_before_enforcing_the_cap() {
+        let repeated = vec![Uuid::from_u128(1); MAX_DELETE_PHOTOGRAPHS + 1];
+        let normalized = normalize_photograph_ids(repeated);
+        assert!(matches!(normalized, Ok(ids) if ids.len() == 1));
+    }
+
+    #[test]
+    fn photograph_deletion_rejects_too_many_distinct_ids() {
+        let ids = (0..=MAX_DELETE_PHOTOGRAPHS)
+            .map(|value| Uuid::from_u128(value as u128))
+            .collect();
+        assert!(matches!(
+            normalize_photograph_ids(ids),
+            Err(count) if count == MAX_DELETE_PHOTOGRAPHS + 1
         ));
     }
-
-    // Load links for all requested photographs
-    let target_photographs: Vec<(String, String)> = photographs
-        .filter(photograph_id.eq_any(&body.photograph_ids))
-        .select((photograph_link, photograph_thumbnail_link))
-        .load::<(String, String)>(&mut conn)
-        .await
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    // 2. Perform a single batch delete in the DB
-    let deleted_rows =
-        diesel::delete(photographs.filter(photograph_id.eq_any(&body.photograph_ids)))
-            .execute(&mut conn)
-            .await
-            .map_err(|e| code_err(CodeError::DB_DELETION_ERROR, e))?;
-
-    drop(conn);
-
-    // 3. After DB deletion succeeds, delete objects from S3.
-    //    We treat S3 deletion as a best-effort side effect. Failures are logged
-    //    but do not roll back the DB (which already reflects the authoritative state).
-    use aws_sdk_s3::{Client, types::ObjectIdentifier};
-
-    let aws_config = state.aws_profile_picture_config.clone();
-    let s3_client = Client::new(&aws_config);
-
-    // Use the same bucket that upload_photograph.rs (and the profile/wasm handlers)
-    // write to; otherwise deletions target the wrong bucket and orphan objects.
-    use crate::util::s3::AWS_S3_BUCKET_NAME;
-    let bucket = AWS_S3_BUCKET_NAME.to_string();
-
-    // Helper: convert full URL to bucket-relative key (strip leading '/')
-    fn url_to_key(url_str: &str) -> Option<String> {
-        if url_str.trim().is_empty() {
-            return None;
-        }
-
-        match reqwest::Url::parse(url_str) {
-            Ok(u) => {
-                let path = u.path().trim_start_matches('/');
-                if path.is_empty() {
-                    None
-                } else {
-                    Some(path.to_string())
-                }
-            }
-            Err(e) => {
-                tracing::warn!(
-                    url = url_str,
-                    error = %e,
-                    "Failed to parse photograph S3 URL; skipping key"
-                );
-                None
-            }
-        }
-    }
-
-    let mut object_keys: Vec<String> = Vec::new();
-    for (link, thumb) in target_photographs {
-        if let Some(k) = url_to_key(&link) {
-            object_keys.push(k);
-        }
-        if let Some(k) = url_to_key(&thumb) {
-            object_keys.push(k);
-        }
-    }
-
-    let s3_deleted_count: usize = if object_keys.is_empty() {
-        0
-    } else {
-        let mut total_deleted = 0usize;
-
-        for chunk in object_keys.chunks(1000) {
-            let mut identifiers: Vec<ObjectIdentifier> = Vec::with_capacity(chunk.len());
-            for k in chunk {
-                match ObjectIdentifier::builder().key(k).build() {
-                    Ok(obj_id) => identifiers.push(obj_id),
-                    Err(e) => {
-                        tracing::error!(
-                            key = %k,
-                            error = %e,
-                            "Failed to build S3 ObjectIdentifier; skipping key"
-                        );
-                    }
-                }
-            }
-
-            let delete = match aws_sdk_s3::types::Delete::builder()
-                .set_objects(Some(identifiers))
-                .build()
-            {
-                Ok(d) => d,
-                Err(e) => {
-                    tracing::error!(
-                        error = %e,
-                        "Failed to build S3 Delete request; skipping batch"
-                    );
-                    continue;
-                }
-            };
-
-            let resp = s3_client
-                .delete_objects()
-                .bucket(&bucket)
-                .set_delete(Some(delete))
-                .send()
-                .await;
-
-            match resp {
-                Ok(output) => {
-                    total_deleted += output.deleted().len();
-                    for err in output.errors() {
-                        tracing::error!(
-                            key = ?err.key(),
-                            code = ?err.code(),
-                            message = ?err.message(),
-                            "Failed to delete S3 object for photograph"
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::error!(
-                        error = %e,
-                        "S3 batch deletion for photographs failed"
-                    );
-                }
-            }
-        }
-
-        total_deleted
-    };
-
-    tracing::info!(
-        deleted_db_rows = deleted_rows,
-        s3_deleted_objects = s3_deleted_count,
-        "Completed batch deletion of photographs from DB and S3"
-    );
-
-    Ok(http_resp(
-        DeletePhotographsResponse {
-            deleted_count: deleted_rows,
-            s3_deleted_count,
-        },
-        (),
-        start,
-    ))
 }
