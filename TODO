@@ -1,31 +1,49 @@
 # Goals
 
-## Platform and architecture
+## Execution rules
 
-- [ ] Refactor the backend feature by feature into `api`, `service`, `repository`, and `domain` boundaries. Handlers should only parse, authorize, and map HTTP data; services should own use cases, transactions, and cache coordination; repositories should own Diesel queries; domain types should not depend on Axum or persistence. Replace business methods on `ServerState` with explicit dependencies and split files over 300 lines.
-- [ ] Generate the TypeScript API types and client from the OpenAPI contract, then reject backend/frontend contract drift in CI.
-- [ ] Make builds reproducible and non-mutating. Remove `git pull`, `npm update`, and `cargo update` from build scripts; build locked inputs from the monorepo root; stop copying frontend output between sibling repositories.
-- [ ] Add root CI for formatting, linting, unit and integration tests, migrations, OpenAPI contract generation, and development image smoke tests.
+- Complete waves in numeric order. Work items in the same wave can proceed concurrently unless a dependency says otherwise.
+- A foundation gate must land before dependent work starts. Continuous items begin in their listed wave and continue feature by feature without blocking unrelated later work.
+- Give each work item one owner. Serialize repository-wide integration and overlapping schema changes; keep feature-level changes isolated by module.
 
-## Security and account lifecycle
+## Wave 0: Immediate security gate
 
-- [ ] Remove the PostgreSQL credential embedded in `Dockerfile`, rotate it if it has ever been valid, inject runtime secrets through the deployment environment, and scan repository history and build contexts for other credentials.
-- [ ] Add OAuth/OIDC login and account linking without weakening the existing session and email-verification controls.
-- [ ] Replace the process-local session map with durable, revocable server-side sessions that survive restarts and have bounded cleanup. Store only hashed session secrets and define expiry, rotation, and multi-device behavior.
-- [ ] Route every user, email, password, and role mutation through one account service that refreshes or revokes all affected sessions.
-- [ ] Add an authorized administration API and UI for assigning roles and permissions, with an audit trail for every change.
-- [ ] Implement soft deletion and a deliberate account-retention policy. Preserve authored posts, comments, photographs, and chat history under an anonymized actor; avoid user foreign-key cascades; provide a separately authorized hard-purge path.
-- [ ] Notify unverified users before automatic purge, with idempotent delivery, retries, and a defined grace period.
+- [ ] **W0-A: Remove exposed credentials.** Remove the PostgreSQL credential embedded in `Dockerfile`, rotate it if it has ever been valid, inject runtime secrets through the deployment environment, and scan repository history and build contexts for other credentials. This blocks every later wave.
 
-## Reliability and performance
+## Wave 1: Repository foundation gate
 
-- [ ] Inventory every in-memory cache and give each one a size or memory bound, eviction policy, invalidation contract, and metrics. Add response caching only to measured, explicitly public, authentication-independent GET endpoints; never cache personalized responses through a global catch-all layer.
-- [ ] Stream media uploads and image processing through bounded buffers instead of retaining entire uploads in memory. Delete superseded S3 objects and make database/object-store failure recovery explicit.
-- [ ] Add database-backed integration tests for authentication, role gates, session refresh and revocation, soft deletion, cache consistency, media cleanup, and migration rollback boundaries.
-- [ ] Remove obsolete code and unsupported platform paths, including the unused OSM lookup service and Windows-only scripts and dependencies.
 
-## Product
+## Wave 2: Engineering foundations, concurrent
 
-- [ ] Add a forum with explicit moderation, pagination, search, notification, and retention requirements rather than reusing blog comments implicitly.
-- [ ] Add a throughput demo backed by a reproducible workload, recorded hardware and configuration, latency percentiles, and regression thresholds.
-- [ ] Add source links for major site components, especially authentication, pointing to stable repository paths or commit permalinks.
+- [ ] **W2-A: Establish backend boundaries, then continue incrementally.** Refactor by feature into `api`, `service`, `repository`, and `domain` boundaries. Migrate authentication and accounts first as the reference slice; that slice is the foundation gate for account work. Handlers should only parse, authorize, and map HTTP data; services should own use cases, transactions, and cache coordination; repositories should own Diesel queries; domain types should not depend on Axum or persistence. Replace business methods on `ServerState` with explicit dependencies and split files over 300 lines. Continue the remaining feature migrations alongside Waves 3 through 7 without overlapping active feature work.
+- [ ] **W2-B: Make builds reproducible and non-mutating.** Remove `git pull`, `npm update`, and `cargo update` from build scripts; build locked inputs from the monorepo root; stop copying frontend output between sibling repositories.
+- [ ] **W2-C: Generate frontend API contracts.** Generate the TypeScript API types and client from the OpenAPI contract, and provide a deterministic drift-check command for W3-B.
+- [ ] **W2-D: Add stable source links.** Add source links for major site components, especially authentication, using paths or commit permalinks that are stable after W1-A.
+
+## Wave 3: Verification and measurement, concurrent
+
+- [ ] **W3-A: Establish integration coverage.** Add a database-backed integration test harness and cover current authentication, role gates, session refresh and revocation, cache consistency, media cleanup, and migration rollback boundaries. Extend the suite with soft-deletion cases when W5-B lands.
+- [ ] **W3-B: Add root CI.** Run formatting, linting, unit and integration tests, migrations, OpenAPI contract generation, and development image smoke tests. W2-B and W2-C are prerequisites; consume W3-A tests as they land.
+- [ ] **W3-C: Remove obsolete paths.** Remove obsolete code and unsupported platform paths, including the unused OSM lookup service and Windows-only scripts and dependencies. Start after W2-B so build changes do not overlap.
+- [ ] **W3-D: Add reproducible throughput measurement.** Build a throughput demo with a recorded workload, hardware and configuration, latency percentiles, and regression thresholds. Establish the benchmark independently, then wire thresholds into W3-B.
+
+## Wave 4: Independent backend vertical slices, concurrent
+
+- [ ] **W4-A: Centralize account mutations.** Route every user, email, password, and role mutation through the account service established by W2-A; refresh or revoke all affected sessions.
+- [ ] **W4-B: Bound and validate caches.** Inventory every in-memory cache and give each one a size or memory bound, eviction policy, invalidation contract, and metrics. Use W3-D measurements before adding response caching to explicitly public, authentication-independent GET endpoints; never cache personalized responses through a global catch-all layer.
+- [ ] **W4-C: Stream media persistence.** Stream media uploads and image processing through bounded buffers instead of retaining entire uploads in memory. Delete superseded S3 objects and make database/object-store failure recovery explicit.
+
+## Wave 5: Account and data foundations, concurrent
+
+- [ ] **W5-A: Make sessions durable.** Replace the process-local session map with durable, revocable server-side sessions that survive restarts and have bounded cleanup. Store only hashed session secrets and define expiry, rotation, and multi-device behavior. W4-A is a prerequisite.
+- [ ] **W5-B: Implement soft deletion and retention.** Preserve authored posts, comments, photographs, and chat history under an anonymized actor; avoid user foreign-key cascades; define retention; provide a separately authorized hard-purge path. Coordinate user-schema changes with W5-A, but the implementations can otherwise proceed concurrently.
+
+## Wave 6: Account capabilities, concurrent
+
+- [ ] **W6-A: Add OAuth/OIDC.** Add login and account linking without weakening the session and email-verification controls. W5-A is a prerequisite.
+- [ ] **W6-B: Add role and permission administration.** Add an authorized administration API and UI for assigning roles and permissions, with an audit trail for every change. W4-A and W5-A are prerequisites.
+- [ ] **W6-C: Notify users before automatic purge.** Add idempotent delivery, retries, and a defined grace period. W5-B is a prerequisite.
+
+## Wave 7: Dependent product work
+
+- [ ] **W7-A: Add a forum.** Define moderation, pagination, search, notification, and retention behavior instead of reusing blog comments implicitly. W5-B and W6-B are prerequisites.
