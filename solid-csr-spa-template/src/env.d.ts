@@ -1,5 +1,13 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_REPOSITORY_SOURCE_BASE_URL?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 declare module "@toast-ui/editor" {
   import type { EditorOptions as _EditorOptions } from "@toast-ui/editor/types";
   export type EditorOptions = _EditorOptions;
