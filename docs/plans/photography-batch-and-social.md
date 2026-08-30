@@ -20,13 +20,13 @@ Both are additive. The legacy `upload_photograph` endpoint stays (still used for
 
 ## Conventions to follow (verified)
 
-- `uuid` already has the `v7` feature and `num_cpus` is a dependency; `tokio` is `features=["full"]`. Use `Uuid::now_v7()` for new ids (CLAUDE.md prefers v7; legacy code uses v4).
+- `uuid` already has the `v7` feature and `num_cpus` is a dependency; `tokio` is `features=["full"]`. Use `Uuid::now_v7()` for new IDs; legacy code uses v4.
 - In-memory cache house pattern: `scc::HashMap`/`TreeIndex` + `Atomic*` counters, async `insert_async`/`update_async`/`retain_async`/`scan_async` (`src/domain/live_chat/cache.rs`). `ServerState` holds caches as fields (`src/init/state/server_state.rs`), initialized in `src/init/state/builder.rs`, with `impl ServerState` split into submodules under `src/init/state/server_state/`.
 - Handlers: `State(state): State<Arc<ServerState>>` first, then `Extension(user_id): Extension<Uuid>` / `Path` / `Json`; return `HandlerResponse<impl IntoResponse>`; wrap success in `http_resp(data, (), start)` with `start = tokio_now()`; errors via `code_err(CodeError::X, e)`. Acquire DB conn late and `drop(conn)` right after the query.
 - No `unwrap`/`expect`; explicit `match` on `Option`/`Result`; structured `tracing` with fields; files <300 LOC (split into folders whose `mod.rs` holds only declarations); rustdoc on modules/functions.
 - Routes registered in `src/routers/main_router.rs` across public / protected (auth) / superuser tiers. Periodic jobs use the `supervise(...)` + `schedule_task_every_minute_at(...)` pattern in `src/jobs/job_funcs/init_scheduler.rs`.
 - Frontend: plain exported `createSignal`/`createStore` modules for global state (`src/state/*.ts`), NOT SolidJS Context. Styling via `src/styles/pageStyles.ts` tokens + the inline `<style>` block in `photographs.tsx` (no real `.css`). i18n is strictly typed: every new key must be added to `src/i18n/keys.ts` AND both `src/i18n/defaults/en-us.ts` and `ko-kr.ts` or `tsc` fails.
-- Column naming: new columns/PKs use the table-prefixed convention (`photograph_view_count`, `photograph_vote_id`, ...) per CLAUDE.md, even though blog's legacy columns are unprefixed (`vote_id`, `total_upvotes`). Structure mirrors blog; names follow CLAUDE.md.
+- Column naming: new columns and primary keys use the table-prefixed convention (`photograph_view_count`, `photograph_vote_id`, ...), even though blog's legacy columns are unprefixed (`vote_id`, `total_upvotes`).
 
 ---
 
@@ -105,7 +105,7 @@ Clone the blog system (`src/handlers/blog/`, `src/domain/blog/blog.rs`, `src/dto
 ## Verification
 
 Backend:
-- `cargo fmt && cargo clippy` clean (dev build only, no release per CLAUDE.md). Run diesel migration; confirm `schema.rs` regenerated and indexes exist.
+- `cargo fmt && cargo clippy` clean. Run the Diesel migration; confirm `schema.rs` is regenerated and indexes exist.
 - Batch upload: `curl -F context=photography -F 'files=@a.jpg' -F 'files=@b.jpg' -F 'meta=[{"comment":"x","lat":1,"lon":2},{"comment":"y","lat":3,"lon":4}]'` to `/api/photographs/batch-upload` (with superuser session cookie) returns 202 + `batch_id` immediately; poll `GET /api/photographs/batch/{id}` and watch items move queued→encoding→…→completed; rows appear in `photographs`, objects in S3.
 - Privacy: poll a random/other-user `batch_id` → 404 (never 403). Force a bad image to confirm `Failed{reason}` and that the batch still reaches `done`. Confirm the prune job evicts terminal batches after TTL (temporarily lower TTL to verify).
 - Social: vote/unvote a photo and a comment (toggle up/down, denormalized counts update); submit/edit/delete threaded comments (author + superuser paths, 401 for guests); open detail → `photograph_view_count` increments by 1 per call.

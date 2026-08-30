@@ -58,7 +58,7 @@ pub async fn compress_old_logs(_state: Arc<ServerState>) {
                     .unwrap_or_else(|| "zst".to_string()),
             );
 
-            // spawn_blocking needs owned paths (CLAUDE.md: blocking work off the runtime threads)
+            // Compression is blocking, so it receives owned paths off the runtime threads.
             let owned_path = path.to_path_buf();
             let owned_compressed_path = compressed_path.clone();
 
