@@ -107,7 +107,6 @@ argon2 = "0.6.0"
 base64 = "0.23.1"
 getrandom = "0.4.3"
 rand = "0.10"
-rand_08 = { package = "rand", version = "0.8.8" }
 rustls = { version = "0.23.43", features = [] }
 sha2 = "0.11.0"
 time = "0.3.55"
