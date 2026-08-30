@@ -129,6 +129,12 @@ export const routes = defineRoutes([
     ),
   },
   {
+    path: "/admin/operations",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/admin_operations"))),
+    ),
+  },
+  {
     path: "/under-construction",
     component: lazy(() => import("./errors/404")),
   },

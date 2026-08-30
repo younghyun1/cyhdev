@@ -1,0 +1,131 @@
+.operations-error,
+.operations-receipt,
+.operations-warning-receipt,
+.operations-danger-note,
+.operations-field-error {
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+}
+
+.operations-error,
+.operations-field-error {
+    border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+    background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+    color: var(--danger);
+}
+
+.operations-error {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.operations-receipt {
+    border-color: color-mix(in srgb, var(--ok) 45%, var(--line));
+    background: color-mix(in srgb, var(--ok) 8%, var(--surface));
+    color: var(--ok);
+}
+
+.operations-warning-receipt,
+.operations-danger-note {
+    border-color: color-mix(in srgb, var(--warning) 50%, var(--line));
+    background: color-mix(in srgb, var(--warning) 9%, var(--surface));
+}
+
+.operations-danger-panel {
+    border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+}
+
+.operations-purge-form,
+.operations-dialog form {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.operations-purge-form {
+    width: min(100%, 46rem);
+}
+
+.operations-field-error {
+    font-size: 0.85rem;
+}
+
+.operations-danger-button {
+    border-color: var(--danger) !important;
+    background: color-mix(in srgb, var(--danger) 12%, var(--surface)) !important;
+    color: var(--danger) !important;
+    font-weight: 700 !important;
+}
+
+.operations-purge-receipt {
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+
+.operations-failure-list {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.operations-failure-list li {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+}
+
+.operations-failure-list small {
+    color: var(--ink-muted);
+}
+
+.operations-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem;
+    background: color-mix(in srgb, #000 70%, transparent);
+}
+
+.operations-dialog {
+    width: min(100%, 42rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    padding: 1.5rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 0.75rem;
+    background: var(--surface);
+    box-shadow: 0 1.5rem 4rem color-mix(in srgb, #000 35%, transparent);
+}
+
+.operations-dialog > * + * {
+    margin-top: 0.85rem;
+}
+
+.operations-dialog-resource {
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 0.4rem;
+}
+
+.operations-confirm-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+.operations-confirm-checkbox input {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+@media (max-width: 48rem) {
+    .operations-dialog-actions button {
+        width: 100%;
+    }
+}

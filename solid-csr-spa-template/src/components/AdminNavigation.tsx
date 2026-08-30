@@ -20,6 +20,10 @@ export const ADMIN_NAVIGATION_LINKS = [
     href: "/admin/authorization",
     labelKey: "top_bar.admin.authorization",
   },
+  {
+    href: "/admin/operations",
+    labelKey: "top_bar.admin.operations",
+  },
   { href: "/blog/new", labelKey: "top_bar.admin.blog" },
   { href: "/photographs", labelKey: "top_bar.admin.photographs" },
   { href: "/projects", labelKey: "top_bar.admin.projects" },

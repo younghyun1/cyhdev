@@ -3,7 +3,6 @@ import type {
   LoginRequest,
   ResetPasswordProcessRequest,
   ResetPasswordRequest,
-  ResolveMediaCleanupRequest,
   SignupRequest,
   UpdateProfileRequest,
   VerifyUserEmailRequest,
@@ -28,20 +27,6 @@ export const authApi = {
     contractApi.updateProfile({ body }),
   uploadProfilePicture: (body: FormData) =>
     contractApi.uploadProfilePicture({ body }),
-} as const;
-
-export const adminAccountApi = {
-  hardPurgeAccount: (userId: string) =>
-    contractApi.hardPurgeAccount({ path: { user_id: userId } }),
-  unresolvedMediaCleanup: () => contractApi.unresolvedMediaCleanup(),
-  resolveMediaCleanup: (
-    cleanupId: string,
-    body: ResolveMediaCleanupRequest,
-  ) =>
-    contractApi.resolveMediaCleanup({
-      path: { cleanup_id: cleanupId },
-      body,
-    }),
 } as const;
 
 export const userApi = {

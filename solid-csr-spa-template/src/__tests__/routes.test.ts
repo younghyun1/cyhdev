@@ -28,6 +28,7 @@ describe("application routes", () => {
     ["/forum/0198f4d0-aaaa-7000-8000-000000000001", "/forum/:topic_id"],
     ["/photographs/42", "/photographs/:photograph_id"],
     ["/admin/authorization", "/admin/authorization"],
+    ["/admin/operations", "/admin/operations"],
   ])("matches %s with the expected route", (url, pattern) => {
     expect(Router.match(url).at(-1)?.pattern).toBe(pattern);
   });
