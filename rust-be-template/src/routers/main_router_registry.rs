@@ -2,22 +2,7 @@
 
 pub(super) use std::sync::Arc;
 
-pub(super) use axum::{
-    Router,
-    extract::DefaultBodyLimit,
-    http::{Method, header},
-    middleware::{from_fn, from_fn_with_state},
-    routing::{delete, get, patch, post},
-};
-pub(super) use tower_http::{
-    compression::CompressionLayer,
-    cors::{AllowOrigin, CorsLayer},
-};
-pub(super) use utoipa::OpenApi;
-pub(super) use utoipa_swagger_ui::SwaggerUi;
-
 pub(super) use crate::{
-    docs::ApiDoc,
     features::accounts::api::{
         auth_abuse::enforce_auth_ip_throttle,
         authorization_audit::list_authorization_audit,
@@ -102,7 +87,18 @@ pub(super) use crate::{
         serve_bundle::serve_wasm, update_assets::update_wasm_module_assets,
         update_metadata::update_wasm_module, upload_module::upload_wasm_module,
     },
-    init::state::{DeploymentEnvironment, ServerState},
+    init::state::ServerState,
+};
+pub(super) use axum::{
+    Router,
+    extract::DefaultBodyLimit,
+    http::{Method, header},
+    middleware::{from_fn, from_fn_with_state},
+    routing::{delete, get, patch, post},
+};
+pub(super) use tower_http::{
+    compression::CompressionLayer,
+    cors::{AllowOrigin, CorsLayer},
 };
 
 pub(super) use super::middleware::{

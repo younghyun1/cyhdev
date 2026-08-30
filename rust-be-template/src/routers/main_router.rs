@@ -1,6 +1,7 @@
 use super::main_router_registry::*;
 
 mod static_assets;
+use super::swagger::build_swagger_router;
 use static_assets::static_asset_handler;
 
 const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 150; // 150MB
@@ -293,8 +294,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .merge(batch_upload_router)
         .merge(authorization_admin_router)
         .merge(media_cleanup_admin_router)
-        .layer(require_superuser_middleware.clone())
-        .layer(auth_middleware.clone());
+        .layer(require_superuser_middleware)
+        .layer(auth_middleware);
 
     let api_router = public_router
         .merge(auth_abuse_router)
@@ -313,18 +314,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .with_state(state.clone());
 
     let router = Router::new().merge(api_router);
-    let swagger_ui = SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
-
-    let mut swagger_router = Router::new().merge(swagger_ui);
-
-    if matches!(
-        state.get_deployment_environment(),
-        DeploymentEnvironment::Prod
-    ) {
-        swagger_router = swagger_router
-            .layer(require_superuser_middleware)
-            .layer(auth_middleware.clone());
-    }
+    let swagger_router =
+        build_swagger_router(state.session_service(), state.get_deployment_environment());
 
     let router = router
         .merge(swagger_router)
