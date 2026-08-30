@@ -51,7 +51,7 @@ After the HTTPS health endpoint succeeds, bridge a plain loopback HTTP listener 
 
 ```bash
 curl --fail --silent --show-error --insecure https://127.0.0.1:8443/api/healthcheck/server
-socat TCP-LISTEN:3000,bind=127.0.0.1,reuseaddr,fork OPENSSL:127.0.0.1:8443,verify=0
+socat TCP-LISTEN:3000,bind=127.0.0.1,reuseaddr,fork OPENSSL:127.0.0.1:8443,verify=0,snihost=localhost
 ```
 
 Run at least five threshold-free calibrations on an idle host. Use distinct output paths and keep all declared and observed environment digests identical:
