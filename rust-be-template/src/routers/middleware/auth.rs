@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     body::Body,
@@ -7,29 +7,22 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::extract::CookieJar;
-use uuid::Uuid;
-
 use crate::{
     errors::code_error::{CodeError, HandlerResponse, code_err},
-    init::state::ServerState,
+    features::accounts::{
+        domain::session::{SESSION_COOKIE_NAME, Session},
+        service::session_service::SessionService,
+    },
 };
 
 pub async fn auth_middleware(
-    State(state): State<Arc<ServerState>>,
+    State(sessions): State<Arc<SessionService>>,
     cookie_jar: CookieJar,
     mut request: Request<Body>,
     next: Next,
 ) -> HandlerResponse<impl IntoResponse> {
-    let session_id = match cookie_jar.get("session_id") {
-        Some(session_cookie) => match Uuid::from_str(session_cookie.value()) {
-            Ok(session_id) => session_id,
-            Err(e) => {
-                return Err(code_err(
-                    CodeError::UNAUTHORIZED_ACCESS,
-                    format!("Failed to parse session cookie: {e}"),
-                ));
-            }
-        },
+    let session_token = match cookie_jar.get(SESSION_COOKIE_NAME) {
+        Some(session_cookie) => session_cookie.value(),
         None => {
             return Err(code_err(
                 CodeError::UNAUTHORIZED_ACCESS,
@@ -38,22 +31,15 @@ pub async fn auth_middleware(
         }
     };
 
-    let session: crate::init::state::Session = match state.get_session(&session_id).await {
-        Ok(session) => session,
-        Err(e) => {
+    let session: Session = match sessions.lookup(session_token).await {
+        Some(session) => session,
+        None => {
             return Err(code_err(
                 CodeError::UNAUTHORIZED_ACCESS,
-                format!("Failed to retrieve session: {e}"),
+                "Failed to retrieve session",
             ));
         }
     };
-
-    if !session.is_unexpired() {
-        return Err(code_err(
-            CodeError::UNAUTHORIZED_ACCESS,
-            "Session has expired".to_string(),
-        ));
-    }
 
     if !session.get_is_email_verified() {
         return Err(code_err(

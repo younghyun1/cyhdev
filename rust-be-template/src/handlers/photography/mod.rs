@@ -1,9 +1,11 @@
 pub mod batch_list;
 pub mod batch_status;
 pub mod batch_upload;
+mod batch_upload_support;
 pub mod delete_photograph_comment;
 pub mod delete_photographs;
 pub mod get_photographs;
+pub mod photograph_upload_request;
 pub mod read_photograph;
 pub mod rescind_photograph_comment_vote;
 pub mod rescind_photograph_vote;

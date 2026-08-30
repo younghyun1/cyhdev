@@ -33,7 +33,7 @@ pub struct RequestLogContext {
 struct RequestActor {
     user_id: Uuid,
     user_name: String,
-    role_type: crate::domain::auth::role::RoleType,
+    role_type: crate::features::accounts::domain::role::RoleType,
 }
 
 impl From<&AuthSession> for RequestActor {

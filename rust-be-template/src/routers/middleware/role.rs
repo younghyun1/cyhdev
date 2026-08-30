@@ -1,8 +1,8 @@
 use axum::{body::Body, extract::Request, middleware::Next, response::IntoResponse};
 
 use crate::{
-    domain::auth::role::RoleType,
     errors::code_error::{CodeError, HandlerResponse, code_err},
+    features::accounts::domain::role::RoleType,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -46,8 +46,6 @@ pub async fn require_superuser_middleware(
     request: Request<Body>,
     next: Next,
 ) -> HandlerResponse<impl IntoResponse> {
-    match require_role(&request, RoleRequirement::AtLeast(RoleType::Younghyun)) {
-        Ok(_) => Ok(next.run(request).await),
-        Err(e) => Err(e),
-    }
+    require_role(&request, RoleRequirement::AtLeast(RoleType::Younghyun))?;
+    Ok(next.run(request).await)
 }

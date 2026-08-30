@@ -5,8 +5,9 @@ import type {
   IsoCountry,
   IsoCountrySubdivision,
   IsoLanguage,
-} from "../dtos/responses/dropdown";
-import type { SignupResponse } from "../dtos/responses/auth";
+  SignupRequest,
+  SignupResponse,
+} from "../generated";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
@@ -26,11 +27,15 @@ function SignupPage() {
   const [success, setSuccess] = createSignal<SignupResponse | null>(null);
 
   // ––––– dropdown data
-  const [countries, setCountries] = createSignal<IsoCountry[]>([]);
-  const [languages, setLanguages] = createSignal<IsoLanguage[]>([]);
-  const [subdivisions, setSubdivisions] = createSignal<IsoCountrySubdivision[]>(
-    [],
-  );
+  const [countries, setCountries] = createSignal<
+    ReadonlyArray<IsoCountry>
+  >([]);
+  const [languages, setLanguages] = createSignal<
+    ReadonlyArray<IsoLanguage>
+  >([]);
+  const [subdivisions, setSubdivisions] = createSignal<
+    ReadonlyArray<IsoCountrySubdivision>
+  >([]);
 
   const navigate = useNavigate();
 
@@ -120,7 +125,7 @@ function SignupPage() {
       user_country: Number(userCountry()),
       user_language: Number(userLanguage()),
       user_subdivision: userSubdivision() ? Number(userSubdivision()) : null,
-    };
+    } satisfies SignupRequest;
     try {
       const res = await authApi.signup(body);
       if (res.success && res.data) {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    http::{HeaderValue, Method, header},
+    http::{Method, header},
     middleware::{from_fn, from_fn_with_state},
     routing::{delete, get, patch, post},
 };
@@ -16,16 +16,15 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
-    DOMAIN_NAME,
     docs::ApiDoc,
+    features::accounts::api::{
+        check_if_user_exists::check_if_user_exists_handler, is_superuser::is_superuser_handler,
+        login::login, logout::logout, me::me_handler, public_user::get_user_info,
+        reset_password::reset_password, reset_password_request::reset_password_request_process,
+        signup::signup_handler, verify_user_email::verify_user_email,
+    },
     handlers::{
         admin::{get_host_stats::ws_host_stats_handler, sync_i18n_cache::sync_i18n_cache},
-        auth::{
-            check_if_user_exists::check_if_user_exists_handler, is_superuser::is_superuser_handler,
-            login::login, logout::logout, me::me_handler, reset_password::reset_password,
-            reset_password_request::reset_password_request_process, signup::signup_handler,
-            verify_user_email::verify_user_email,
-        },
         blog::{
             delete_comment::delete_comment, delete_post::delete_post, get_posts::get_posts,
             read_post::read_post, rescind_comment_vote::rescind_comment_vote,
@@ -59,10 +58,12 @@ use crate::{
             lookup_ip_loc::lookup_ip_location, root::root_handler,
             visitor_board::get_visitor_board_entries,
         },
-        user::{get_user_info::get_user_info, upload_profile_picture::upload_profile_picture},
+        user::upload_profile_picture::upload_profile_picture,
         wasm_module::{
-            delete_wasm_module, get_wasm_modules, serve_wasm, update_wasm_module,
-            update_wasm_module_assets, upload_wasm_module,
+            delete_wasm_module::delete_wasm_module, get_wasm_modules::get_wasm_modules,
+            serve_wasm::serve_wasm, update_wasm_module::update_wasm_module,
+            update_wasm_module_assets::update_wasm_module_assets,
+            upload_wasm_module::upload_wasm_module,
         },
     },
     init::state::{DeploymentEnvironment, ServerState},
@@ -71,6 +72,7 @@ use crate::{
 use super::middleware::{
     auth::auth_middleware, is_logged_in::is_logged_in_middleware, logging::log_middleware,
     role::require_superuser_middleware,
+    trusted_origin::{TrustedOrigins, require_trusted_origin},
 };
 
 mod static_assets;
@@ -83,22 +85,25 @@ const BATCH_REQUEST_SIZE: usize = 1024 * 1024 * 1024; // 1GB (route-scoped to ba
 const REPLENISHED_EVERY_MILLISECONDS: u64 = 63;
 const RATE_LIMIT_BURST_SIZE: u32 = 1024;
 
-pub fn build_router(state: Arc<ServerState>) -> axum::Router {
-    let auth_middleware = from_fn_with_state(state.clone(), auth_middleware);
+pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
+    let sessions = state.session_service();
+    let auth_middleware = from_fn_with_state(Arc::clone(&sessions), auth_middleware);
     let require_superuser_middleware = from_fn(require_superuser_middleware);
-    // let api_key_check_middleware = from_fn_with_state(state.clone(), api_key_check_middleware);
     let log_middleware = from_fn_with_state(state.clone(), log_middleware);
-    let is_logged_in_middleware = from_fn_with_state(state.clone(), is_logged_in_middleware);
+    let is_logged_in_middleware = from_fn_with_state(sessions, is_logged_in_middleware);
+    let trusted_origins = Arc::new(TrustedOrigins::from_environment(
+        state.get_deployment_environment(),
+    )?);
+    let trusted_origin_middleware =
+        from_fn_with_state(Arc::clone(&trusted_origins), require_trusted_origin);
     let compression_middleware = CompressionLayer::new().zstd(true).gzip(true);
 
-    // Auth is cookie-based (session_id cookie with credentials), so CORS must NOT reflect an
-    // arbitrary Origin while allowing credentials. We build an explicit allow-list of trusted
-    // frontend origins. Never combine `AllowOrigin::any()` with `allow_credentials(true)`:
-    // tower-http panics on that combination at runtime.
+    // Credentialed CORS and side-effect protection use one exact allow-list. CORS governs which
+    // responses browsers expose; the middleware also rejects cross-origin writes and WebSockets.
     let cors_layer = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(build_trusted_origins(
-            state.get_deployment_environment(),
-        )))
+        .allow_origin(AllowOrigin::list(
+            trusted_origins.header_values().iter().cloned(),
+        ))
         .allow_credentials(true)
         .allow_methods([
             Method::GET,
@@ -107,7 +112,12 @@ pub fn build_router(state: Arc<ServerState>) -> axum::Router {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .expose_headers([
+            header::HeaderName::from_static("x-server-built-time"),
+            header::HeaderName::from_static("x-server-name"),
+            header::HeaderName::from_static("x-server-rust-version"),
+        ]);
 
     let governor_conf = match GovernorConfigBuilder::default()
         .per_millisecond(REPLENISHED_EVERY_MILLISECONDS)
@@ -220,15 +230,13 @@ pub fn build_router(state: Arc<ServerState>) -> axum::Router {
         )
         .layer(auth_middleware.clone());
 
-    // Batch upload accepts large multi-file bodies. The route-scoped
-    // DefaultBodyLimit here is closest to the handler, so it overrides the global
-    // 150MB limit added later on api_router, without widening it for other routes.
+    // This route-local limit overrides the global limit without widening other routes.
     let batch_upload_router = Router::new()
         .route("/api/photographs/batch-upload", post(batch_upload))
         .layer(DefaultBodyLimit::max(BATCH_REQUEST_SIZE));
 
     let superuser_router = Router::new()
-        .route("/api/admin/sync-i18n-cache", get(sync_i18n_cache))
+        .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
         .route("/api/blog/posts", post(submit_post))
         .route("/api/blog/{post_id}", patch(update_post))
         .route("/api/photographs/upload", post(upload_photograph))
@@ -253,27 +261,20 @@ pub fn build_router(state: Arc<ServerState>) -> axum::Router {
         .layer(require_superuser_middleware.clone())
         .layer(auth_middleware.clone());
 
-    // Combine all API routes and apply shared middleware. Rate limiting is intentionally NOT
-    // applied here; it is applied to the outer router below so that the static fallback and
-    // Swagger UI assets are throttled too (otherwise those surfaces are unbounded). CORS stays
-    // scoped to the API router only.
+    // CORS remains API-only; the outer rate limiter also covers Swagger and static assets.
     let api_router = public_router
         .merge(protected_router)
         .merge(superuser_router)
         .layer(is_logged_in_middleware)
-        // .layer(api_key_check_middleware)
+        .layer(trusted_origin_middleware)
         .layer(log_middleware)
         .layer(DefaultBodyLimit::max(MAX_REQUEST_SIZE))
         .layer(cors_layer)
         .with_state(state.clone());
 
-    // Final router: merge API routes and set the static asset handler as the fallback
     let router = Router::new().merge(api_router);
 
-    // Swagger UI is always available, but in prod it is gated behind auth + superuser.
-    //
-    // NOTE: `SwaggerUi` itself doesn't expose `.layer(...)`, so we nest it under a router where we
-    // can apply middleware layers.
+    // Swagger has no layer method, so nest it to require production superuser authentication.
     let swagger_ui = SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
     let mut swagger_router = Router::new().merge(swagger_ui);
@@ -287,9 +288,7 @@ pub fn build_router(state: Arc<ServerState>) -> axum::Router {
             .layer(auth_middleware.clone());
     }
 
-    // Set the static asset fallback first, then wrap the entire router (API + swagger + static
-    // fallback) in the rate limiter so every request surface is throttled, then apply compression
-    // as the outermost layer. `governor_conf` is consumed exactly once here.
+    // The rate limiter covers every surface; compression remains outermost.
     let mut router = router
         .merge(swagger_router)
         .fallback_service(get(static_asset_handler));
@@ -298,59 +297,5 @@ pub fn build_router(state: Arc<ServerState>) -> axum::Router {
         router = router.layer(GovernorLayer::new(governor_conf));
     }
 
-    router.layer(compression_middleware)
-}
-
-/// Builds the explicit list of trusted CORS origins for credentialed requests.
-///
-/// The session cookie is scoped to [`DOMAIN_NAME`], so the production frontend origins are
-/// `https://{DOMAIN_NAME}` and `https://www.{DOMAIN_NAME}`. Non-production environments also
-/// accept the usual local dev origins so the frontend dev server can talk to the API.
-///
-/// Additional origins may be supplied via the comma-separated `CORS_ALLOWED_ORIGINS` env var
-/// (e.g. a separately-hosted frontend) without recompiling.
-///
-/// Origins that fail to parse into a [`HeaderValue`] are logged and skipped rather than panicking,
-/// keeping startup infallible.
-fn build_trusted_origins(env: DeploymentEnvironment) -> Vec<HeaderValue> {
-    let mut origins: Vec<String> = vec![
-        format!("https://{DOMAIN_NAME}"),
-        format!("https://www.{DOMAIN_NAME}"),
-    ];
-
-    // In non-prod environments, allow the local frontend dev server origins.
-    if !matches!(env, DeploymentEnvironment::Prod) {
-        origins.extend(
-            [
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-            ]
-            .into_iter()
-            .map(str::to_owned),
-        );
-    }
-
-    // Operator-supplied extra origins (comma-separated), for split-origin deployments.
-    if let Ok(extra) = std::env::var("CORS_ALLOWED_ORIGINS") {
-        origins.extend(
-            extra
-                .split(',')
-                .map(str::trim)
-                .filter(|origin| !origin.is_empty())
-                .map(str::to_owned),
-        );
-    }
-
-    origins
-        .into_iter()
-        .filter_map(|origin| match HeaderValue::from_str(&origin) {
-            Ok(value) => Some(value),
-            Err(e) => {
-                tracing::error!(origin = %origin, error = %e, "Skipping invalid CORS origin");
-                None
-            }
-        })
-        .collect()
+    Ok(router.layer(compression_middleware))
 }

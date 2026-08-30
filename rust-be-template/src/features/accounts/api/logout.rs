@@ -5,16 +5,15 @@ use axum_extra::extract::{
     CookieJar,
     cookie::{Cookie, SameSite},
 };
-use tracing::{error, info};
-use uuid::Uuid;
+use tracing::{info, warn};
 
 use crate::{
-    DOMAIN_NAME,
     dto::responses::{
         auth::logout_response::LogoutResponse, response_data::http_resp_with_cookies,
     },
     errors::code_error::{CodeErrorResp, HandlerResponse},
-    init::state::{DeploymentEnvironment, ServerState},
+    features::accounts::domain::session::SESSION_COOKIE_NAME,
+    init::state::ServerState,
     util::time::now::tokio_now,
 };
 
@@ -32,54 +31,19 @@ pub async fn logout(
     State(state): State<Arc<ServerState>>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
+    let cookie = removal_cookie();
 
-    // Construct the cookie with the same attributes as when it was set,
-    // including the explicit Domain attribute, so the browser actually
-    // clears the cookie set at login (RFC 6265 name+path+domain match).
-    let domain = match state.get_deployment_environment() {
-        DeploymentEnvironment::Local
-        | DeploymentEnvironment::Dev
-        | DeploymentEnvironment::Staging => "localhost",
-        DeploymentEnvironment::Prod => DOMAIN_NAME,
-    };
-
-    let mut cookie = Cookie::build(("session_id", ""))
-        .path("/")
-        .http_only(true)
-        .secure(true)
-        .domain(domain)
-        .same_site(SameSite::Strict)
-        .build();
-
-    // Adjust the cookie to make it a removal cookie
-    cookie.make_removal();
-
-    let session_id = cookie_jar
-        .get("session_id")
-        .map(|cook| cook.value().to_owned());
-
-    tokio::spawn(async move {
-        if let Some(session_id) = session_id {
-            match state
-                .remove_session(Uuid::parse_str(&session_id).unwrap_or(Uuid::nil()))
-                .await
-            {
-                Ok((removed_session_id, session_count)) => {
-                    info!(
-                        removed_session_id = %removed_session_id,
-                        session_count = %session_count,
-                        "User logout; session removed.",
-                    );
-                }
-                Err(e) => {
-                    error!(
-                        error = %e,
-                        "Failed to remove session from state",
-                    );
-                }
-            };
+    if let Some(session_cookie) = cookie_jar.get(SESSION_COOKIE_NAME) {
+        if state
+            .account_service()
+            .logout(session_cookie.value())
+            .await
+        {
+            info!("User logout; session removed");
+        } else {
+            warn!("Logout session was absent or malformed");
         }
-    });
+    }
 
     Ok(http_resp_with_cookies(
         LogoutResponse {
@@ -90,4 +54,40 @@ pub async fn logout(
         None,
         Some(vec![cookie]),
     ))
+}
+
+fn removal_cookie() -> Cookie<'static> {
+    let mut cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
+        .path("/")
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Strict)
+        .build();
+    cookie.make_removal();
+    cookie
+}
+
+#[cfg(test)]
+mod tests {
+    use super::removal_cookie;
+    use crate::features::accounts::domain::session::SESSION_COOKIE_NAME;
+
+    #[test]
+    fn removal_cookie_matches_session_cookie_scope() {
+        let cookie = removal_cookie();
+
+        assert_eq!(cookie.name(), SESSION_COOKIE_NAME);
+        assert_eq!(cookie.path(), Some("/"));
+        assert_eq!(cookie.domain(), None);
+        assert_eq!(cookie.http_only(), Some(true));
+        assert_eq!(cookie.secure(), Some(true));
+        assert_eq!(
+            cookie.same_site(),
+            Some(axum_extra::extract::cookie::SameSite::Strict)
+        );
+        assert_eq!(
+            cookie.max_age().map(|duration| duration.whole_seconds()),
+            Some(0)
+        );
+    }
 }

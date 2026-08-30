@@ -1,9 +1,13 @@
 use ansi_to_html::convert;
 use chrono::{DateTime, Utc};
 use tokio::{process::Command, sync::RwLock};
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::errors::code_error::CodeError;
+
+/// Fastfetch is diagnostic text, so cap command-controlled output before it is
+/// retained for the lifetime of the process.
+pub const FASTFETCH_CACHE_MAX_BYTES: usize = 256 * 1024;
 
 pub struct FastFetchCache {
     fastfetch_string: RwLock<String>,
@@ -57,10 +61,24 @@ impl FastFetchCache {
 
         // Convert stdout to a String, assuming UTF-8/ANSI output
         let ansi_output = String::from_utf8_lossy(&output.stdout).to_string();
-        let html_output = convert(&ansi_output).map_err(|e| {
+        let mut html_output = convert(&ansi_output).map_err(|e| {
             error!(error = %e, "Failed to convert fastfetch output to HTML");
             CodeError::COULD_NOT_RUN_FASTFETCH
         })?;
+        if html_output.len() > FASTFETCH_CACHE_MAX_BYTES {
+            let original_bytes = html_output.len();
+            let mut boundary = FASTFETCH_CACHE_MAX_BYTES;
+            while !html_output.is_char_boundary(boundary) {
+                boundary = boundary.saturating_sub(1);
+            }
+            html_output.truncate(boundary);
+            warn!(
+                original_bytes,
+                cached_bytes = html_output.len(),
+                max_bytes = FASTFETCH_CACHE_MAX_BYTES,
+                "Truncated fastfetch cache entry to its byte budget"
+            );
+        }
 
         {
             let mut fastfetch_guard = self.fastfetch_string.write().await;

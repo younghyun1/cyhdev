@@ -1,127 +1,135 @@
-use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
-use uuid::Uuid;
+//! Fixed-capacity, process-local session authority.
 
-use super::ServerState;
-use crate::domain::auth::{
-    role::RoleType,
-    user::{User, UserInfo},
-    user_roles::UserRole,
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
 };
-use crate::init::state::session::{DEFAULT_SESSION_DURATION, Session};
-use crate::schema::users;
 
-impl ServerState {
-    pub async fn new_session(
+use zeroize::Zeroizing;
+
+use crate::features::accounts::{
+    domain::{
+        account::{LoginAccount, SessionAccount},
+        role::RoleType,
+        session::{
+            DEFAULT_SESSION_DURATION, SESSION_SECRET_BYTES, Session, SessionKey, SessionToken,
+        },
+    },
+    error::AccountError,
+};
+
+pub const MAX_SESSIONS: usize = 16_384;
+const MAX_TOKEN_GENERATION_ATTEMPTS: usize = 4;
+
+/// Owns all session authority for the single backend process.
+pub struct SessionService {
+    sessions: scc::HashMap<SessionKey, Session>,
+    active_slots: AtomicUsize,
+    max_sessions: usize,
+}
+
+impl Default for SessionService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SessionService {
+    pub fn new() -> Self {
+        Self::with_max_sessions(MAX_SESSIONS)
+    }
+
+    pub(super) fn with_max_sessions(max_sessions: usize) -> Self {
+        Self {
+            sessions: scc::HashMap::with_capacity(max_sessions),
+            active_slots: AtomicUsize::new(0),
+            max_sessions,
+        }
+    }
+
+    /// Creates a session and optionally rotates the session presented by this browser.
+    pub async fn create(
         &self,
-        user: &User,
-        is_email_verified: bool,
+        account: &LoginAccount,
+        role_type: RoleType,
+        previous_token: Option<&str>,
         valid_for: Option<chrono::Duration>,
-    ) -> anyhow::Result<Uuid> {
-        let role_type = match self
-            .role_for_user_or_insert_default(user.user_id, RoleType::User)
-            .await
-        {
-            Ok(role_type) => role_type,
-            Err(e) => return Err(e),
-        };
+    ) -> Result<SessionToken, AccountError> {
+        // Generate before revoking the prior credential so entropy failure cannot log out
+        // a browser without replacing its session.
+        let (token, key) = self.generate_unique_credential().await?;
 
-        let session_id = Uuid::new_v4();
-        let now = chrono::Utc::now();
-        let session_duration = match valid_for {
-            Some(duration) => duration,
-            None => DEFAULT_SESSION_DURATION,
-        };
-        let expires_at = now + session_duration;
-        match self
-            .session_map
-            .insert_async(
-                session_id,
-                Session {
-                    session_id,
-                    is_email_verified,
-                    created_at: now,
-                    expires_at,
-                    user_id: user.user_id,
-                    role_type,
-                    user_language: user.user_language,
-                    user_name: user.user_name.clone(),
-                    user_country: user.user_country,
-                },
-            )
-            .await
-        {
-            Ok(_) => (),
-            Err(_) => {
-                return Err(anyhow::anyhow!(
-                    "Failed to insert session into scc::HashMap; key already exists!"
-                ));
+        if let Some(previous_token) = previous_token {
+            let _ = self.remove(previous_token).await;
+        }
+
+        if !self.try_reserve_slot() {
+            let _ = self.purge_expired().await;
+            if !self.try_reserve_slot() {
+                return Err(AccountError::SessionStoreSaturated {
+                    max_sessions: self.max_sessions,
+                });
             }
+        }
+
+        let now = chrono::Utc::now();
+        let session = Session {
+            is_email_verified: account.is_email_verified,
+            created_at: now,
+            expires_at: now + valid_for.unwrap_or(DEFAULT_SESSION_DURATION),
+            user_id: account.user_id,
+            role_type,
+            user_language: account.language,
+            user_name: Arc::from(account.user_name.as_str()),
+            user_country: account.country,
         };
 
-        Ok(session_id)
+        match self.sessions.insert_async(key, session).await {
+            Ok(()) => Ok(token),
+            Err(_) => {
+                self.release_slots(1);
+                Err(AccountError::SessionTokenCollision)
+            }
+        }
     }
 
-    pub async fn role_for_user(&self, user_id: Uuid) -> anyhow::Result<Option<RoleType>> {
-        let mut conn = match self.get_conn().await {
-            Ok(conn) => conn,
-            Err(e) => return Err(e),
-        };
-        UserRole::role_for_user(&mut conn, user_id).await
+    /// Returns an active session through one hash derivation and one map lookup.
+    pub async fn lookup(&self, token: &str) -> Option<Session> {
+        let key = SessionKey::from_token(token)?;
+        let session = self
+            .sessions
+            .read_async(&key, |_, session| session.clone())
+            .await?;
+
+        if session.is_unexpired_at(chrono::Utc::now()) {
+            Some(session)
+        } else {
+            let _ = self.remove_key(&key).await;
+            None
+        }
     }
 
-    pub async fn role_for_user_or_insert_default(
+    pub async fn refresh_for_user(
         &self,
-        user_id: Uuid,
-        default_role_type: RoleType,
-    ) -> anyhow::Result<RoleType> {
-        let mut conn = match self.get_conn().await {
-            Ok(conn) => conn,
-            Err(e) => return Err(e),
-        };
-        UserRole::role_for_user_or_insert_default(&mut conn, user_id, default_role_type).await
-    }
+        user_id: uuid::Uuid,
+        account: &SessionAccount,
+        role_type: RoleType,
+    ) -> usize {
+        let now = chrono::Utc::now();
+        let mut refreshed = 0usize;
 
-    pub async fn refresh_sessions_for_user(&self, user_id: Uuid) -> anyhow::Result<usize> {
-        let mut conn = match self.get_conn().await {
-            Ok(conn) => conn,
-            Err(e) => return Err(e),
-        };
-
-        let user_info = match users::table
-            .filter(users::user_id.eq(user_id))
-            .select(UserInfo::as_select())
-            .first::<UserInfo>(&mut conn)
-            .await
-            .optional()
-        {
-            Ok(user_info) => user_info,
-            Err(e) => return Err(anyhow::anyhow!("Failed to fetch user info: {}", e)),
-        };
-
-        let user_info = match user_info {
-            Some(user_info) => user_info,
-            None => return Ok(0),
-        };
-
-        let role_type =
-            match UserRole::role_for_user_or_insert_default(&mut conn, user_id, RoleType::User)
-                .await
-            {
-                Ok(role_type) => role_type,
-                Err(e) => return Err(e),
-            };
-
-        drop(conn);
-
-        let mut refreshed = 0;
-        self.session_map
+        self.sessions
             .iter_mut_async(|mut entry| {
-                if entry.user_id == user_id {
-                    entry.user_name = user_info.user_name.clone();
-                    entry.user_country = user_info.user_country;
-                    entry.user_language = user_info.user_language;
-                    entry.is_email_verified = user_info.user_is_email_verified;
+                if !entry.is_unexpired_at(now) {
+                    let _ = entry.consume();
+                    self.release_slots(1);
+                } else if entry.user_id == user_id {
+                    entry.user_name = Arc::from(account.user_name.as_str());
+                    entry.user_country = account.country;
+                    entry.user_language = account.language;
+                    entry.is_email_verified = account.is_email_verified;
                     entry.role_type = role_type;
                     refreshed += 1;
                 }
@@ -129,48 +137,90 @@ impl ServerState {
             })
             .await;
 
-        Ok(refreshed)
+        refreshed
     }
 
-    pub async fn get_session(&self, session_id: &Uuid) -> anyhow::Result<Session> {
-        match self
-            .session_map
-            .read_async(session_id, |_, v| v.clone())
-            .await
-        {
-            Some(session) => Ok(session),
-            None => Err(anyhow::anyhow!("Session not found")),
+    pub fn len(&self) -> usize {
+        self.sessions.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.sessions.is_empty()
+    }
+
+    pub async fn remove(&self, token: &str) -> bool {
+        match SessionKey::from_token(token) {
+            Some(key) => self.remove_key(&key).await,
+            None => false,
         }
     }
 
-    pub fn get_session_length(&self) -> usize {
-        self.session_map.len()
-    }
-
-    pub async fn remove_session(&self, session_id: Uuid) -> anyhow::Result<(Uuid, usize)> {
-        let cur_session_count = self.session_map.len();
-        match self.session_map.remove_async(&session_id).await {
-            Some((session_id, _)) => Ok((session_id, cur_session_count - 1)),
-            None => Err(anyhow::anyhow!("Session map out of sync!")),
-        }
-    }
-
-    pub async fn purge_expired_sessions(&self) -> (usize, usize) {
-        let now = chrono::Utc::now();
-        let (mut pruned, mut remaining): (usize, usize) = (0, 0);
-
-        self.session_map
+    pub async fn remove_for_user(&self, user_id: uuid::Uuid) -> usize {
+        let mut removed = 0usize;
+        self.sessions
             .iter_mut_async(|entry| {
-                if entry.expires_at < now {
-                    pruned += 1;
+                if entry.user_id == user_id {
                     let _ = entry.consume();
-                } else {
-                    remaining += 1;
+                    self.release_slots(1);
+                    removed += 1;
                 }
                 true
             })
             .await;
+        removed
+    }
 
-        (pruned, remaining)
+    pub async fn purge_expired(&self) -> (usize, usize) {
+        let now = chrono::Utc::now();
+        let mut pruned = 0usize;
+        self.sessions
+            .iter_mut_async(|entry| {
+                if !entry.is_unexpired_at(now) {
+                    let _ = entry.consume();
+                    self.release_slots(1);
+                    pruned += 1;
+                }
+                true
+            })
+            .await;
+        (pruned, self.sessions.len())
+    }
+
+    async fn generate_unique_credential(
+        &self,
+    ) -> Result<(SessionToken, SessionKey), AccountError> {
+        for _ in 0..MAX_TOKEN_GENERATION_ATTEMPTS {
+            let mut secret = Zeroizing::new([0_u8; SESSION_SECRET_BYTES]);
+            getrandom::fill(secret.as_mut()).map_err(AccountError::SessionEntropy)?;
+            let key = SessionKey::from_secret(secret.as_ref());
+            let key_exists = self.sessions.read_async(&key, |_, _| ()).await.is_some();
+            if !key_exists {
+                return Ok((SessionToken::from_secret(&secret), key));
+            }
+        }
+
+        Err(AccountError::SessionTokenCollision)
+    }
+
+    async fn remove_key(&self, key: &SessionKey) -> bool {
+        match self.sessions.remove_async(key).await {
+            Some(_) => {
+                self.release_slots(1);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn try_reserve_slot(&self) -> bool {
+        self.active_slots
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |current| {
+                (current < self.max_sessions).then_some(current + 1)
+            })
+            .is_ok()
+    }
+
+    fn release_slots(&self, count: usize) {
+        self.active_slots.fetch_sub(count, Ordering::AcqRel);
     }
 }

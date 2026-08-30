@@ -8,6 +8,8 @@ pub struct PublicUserInfoResponse {
     pub user_id: Uuid,
     pub user_name: String,
     pub user_created_at: DateTime<Utc>,
+    #[schema(required)]
     pub user_country_flag: Option<String>,
+    #[schema(required)]
     pub user_profile_picture_url: Option<String>,
 }

@@ -14,12 +14,12 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::role::RoleType,
     dto::responses::{
         photography::delete_photograph_comment_response::DeletePhotographCommentResponse,
         response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::domain::role::RoleType,
     init::state::ServerState,
     schema::photograph_comments,
     util::time::now::tokio_now,

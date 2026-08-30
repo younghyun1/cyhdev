@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import type { MeResponse } from "../dtos/responses/auth";
+import type { MeResponse } from "../generated";
 
 export const [isAuthenticated, setAuthenticated] = createSignal<boolean | null>(
   null,

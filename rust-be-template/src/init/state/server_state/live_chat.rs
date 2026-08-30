@@ -1,13 +1,20 @@
 use std::collections::HashMap as StdHashMap;
 
-use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+};
 use diesel_async::RunQueryDsl;
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use super::ServerState;
 use crate::domain::live_chat::{
-    ban::LiveChatBan, cache::CachedChatMessage, message::LiveChatMessage,
+    ban::LiveChatBan,
+    cache::{
+        BanCacheLookup, CachedChatMessage, CachedLiveChatBan,
+        LIVE_CHAT_BAN_INDEX_MAX_ENTRIES,
+    },
+    message::LiveChatMessage,
 };
 use crate::schema::{live_chat_bans, live_chat_messages, user_profile_pictures, users};
 use crate::util::time::now::tokio_now;
@@ -104,28 +111,99 @@ impl ServerState {
         let now = chrono::Utc::now();
         let mut conn = self.get_conn().await?;
 
-        let rows: Vec<LiveChatBan> = live_chat_bans::table
+        let mut rows: Vec<LiveChatBan> = live_chat_bans::table
             .filter(
                 live_chat_bans::expires_at
                     .is_null()
                     .or(live_chat_bans::expires_at.gt(now)),
             )
+            .order((
+                live_chat_bans::banned_at.desc(),
+                live_chat_bans::live_chat_ban_id.desc(),
+            ))
+            .limit((LIVE_CHAT_BAN_INDEX_MAX_ENTRIES + 1) as i64)
             .select(LiveChatBan::as_select())
             .load(&mut conn)
             .await?;
 
         drop(conn);
 
+        let source_complete = rows.len() <= LIVE_CHAT_BAN_INDEX_MAX_ENTRIES;
+        if !source_complete {
+            rows.truncate(LIVE_CHAT_BAN_INDEX_MAX_ENTRIES);
+        }
         let row_count = rows.len();
-        self.live_chat_cache.sync_bans(rows).await;
+        self.live_chat_cache.sync_bans(rows, source_complete).await;
+        let stats = self.live_chat_cache.ban_stats();
 
         info!(
             elapsed = ?start.elapsed(),
-            rows_synchronized = %row_count,
-            "Synchronized live chat ban cache."
+            rows_synchronized = row_count,
+            user_entries = stats.user_entries,
+            ip_entries = stats.ip_entries,
+            max_entries_per_index = stats.max_entries_per_index,
+            cache_complete = stats.complete,
+            cache_hits = stats.hits,
+            cache_misses = stats.misses,
+            database_read_throughs = stats.database_read_throughs,
+            rejected_admissions = stats.rejected_admissions,
+            "Synchronized live chat ban cache"
         );
 
         Ok(row_count)
+    }
+
+    pub async fn is_live_chat_actor_banned(&self, user_id: Option<Uuid>, ip: std::net::IpAddr) -> bool {
+        match self.live_chat_cache.lookup_ban(user_id, ip).await {
+            BanCacheLookup::Banned => return true,
+            BanCacheLookup::NotBanned => return false,
+            BanCacheLookup::DatabaseReadThroughRequired => {}
+        }
+        self.live_chat_cache.record_ban_database_read_through();
+
+        let mut conn = match self.get_conn().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(error = ?e, user_id = ?user_id, client_ip = %ip, "Live chat ban read-through failed closed");
+                return true;
+            }
+        };
+        let now = chrono::Utc::now();
+        let ip_network = ipnet::IpNet::from(ip);
+        let mut query = live_chat_bans::table
+            .filter(
+                live_chat_bans::expires_at
+                    .is_null()
+                    .or(live_chat_bans::expires_at.gt(now)),
+            )
+            .into_boxed();
+        query = match user_id {
+            Some(user_id) => query.filter(
+                live_chat_bans::user_id
+                    .eq(Some(user_id))
+                    .or(live_chat_bans::banned_ip.eq(Some(ip_network))),
+            ),
+            None => query.filter(live_chat_bans::banned_ip.eq(Some(ip_network))),
+        };
+        let row = query
+            .order(live_chat_bans::banned_at.desc())
+            .select(LiveChatBan::as_select())
+            .first::<LiveChatBan>(&mut conn)
+            .await
+            .optional();
+        drop(conn);
+
+        match row {
+            Ok(Some(ban)) => {
+                let _ = self.live_chat_cache.cache_ban(CachedLiveChatBan::from(ban)).await;
+                true
+            }
+            Ok(None) => false,
+            Err(e) => {
+                error!(error = ?e, user_id = ?user_id, client_ip = %ip, "Live chat ban read-through failed closed");
+                true
+            }
+        }
     }
 
     pub async fn sync_live_chat_cache(&self) -> anyhow::Result<usize> {

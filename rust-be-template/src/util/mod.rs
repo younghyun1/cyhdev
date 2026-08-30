@@ -1,10 +1,10 @@
-pub mod auth;
 pub mod crypto;
 pub mod email;
 pub mod extract;
 pub mod geographic;
 pub mod image;
 pub mod init_logger;
+pub mod media;
 pub mod s3;
 pub mod string;
 pub mod system;

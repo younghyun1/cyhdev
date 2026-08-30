@@ -114,8 +114,7 @@ impl RtcSession {
 
         if self
             .state
-            .live_chat_cache
-            .is_banned(self.actor.user_id, self.client_ip)
+            .is_live_chat_actor_banned(self.actor.user_id, self.client_ip)
             .await
         {
             self.send_error("banned", "Live chat access denied.").await;

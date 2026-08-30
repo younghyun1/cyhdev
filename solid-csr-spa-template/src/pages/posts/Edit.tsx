@@ -1,6 +1,7 @@
 import { createSignal, onSettled, Show } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
+import type { UpdatePostRequest } from "../../generated";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
 import TurndownService from "turndown";
@@ -21,6 +22,18 @@ const normalizeMarkdown = (content: string) => {
   } catch {
     return content;
   }
+};
+
+const markdownContentFromMetadata = (metadata: unknown): string | null => {
+  if (
+    typeof metadata !== "object" ||
+    metadata === null ||
+    !("markdown_content" in metadata)
+  ) {
+    return null;
+  }
+  const markdownContent = metadata.markdown_content;
+  return typeof markdownContent === "string" ? markdownContent : null;
 };
 
 export default function EditPostPage() {
@@ -60,7 +73,9 @@ export default function EditPostPage() {
           setTitle(post.post_title);
           setIsPublished(post.post_is_published);
           setInitialPublished(post.post_is_published);
-          const markdownFromMetadata = post.post_metadata?.markdown_content;
+          const markdownFromMetadata = markdownContentFromMetadata(
+            post.post_metadata,
+          );
           if (
             typeof markdownFromMetadata === "string" &&
             markdownFromMetadata.trim().length > 0
@@ -93,15 +108,16 @@ export default function EditPostPage() {
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
+    const request = {
+      post_title: title(),
+      post_content: body(),
+      post_tags: postTags,
+      post_is_published: isPublished(),
+    } satisfies UpdatePostRequest;
 
     try {
       const res = await blogApi.updatePost(
-        {
-          post_title: title(),
-          post_content: body(),
-          post_tags: postTags,
-          post_is_published: isPublished(),
-        },
+        request,
         canonicalPostId() ?? params.post_id!,
       );
       if (res.success) {

@@ -1,1 +1,1 @@
-// TODO: enable soft deletion of accounts
+//! Account deletion remains disabled until soft deletion is implemented.

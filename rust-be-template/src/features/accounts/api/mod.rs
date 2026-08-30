@@ -1,9 +1,11 @@
+mod account_error;
 pub mod check_if_user_exists;
 pub mod delete_account;
 pub mod is_superuser;
 pub mod login;
 pub mod logout;
 pub mod me;
+pub mod public_user;
 pub mod resend_email_verification_email;
 pub mod reset_password;
 pub mod reset_password_request;

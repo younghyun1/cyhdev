@@ -14,14 +14,14 @@ import {
 import { pageStyles, chipClass } from "../../styles/pageStyles";
 import { t, tx } from "../../state/i18n";
 import type { UiTextKey } from "../../i18n/keys";
-import type { BatchItemStatusName } from "../../dtos/responses/photography";
+import type { ProcessingStatus } from "../../generated";
 
 interface ProcessingModalProps {
   show: boolean;
   onClose: () => void;
 }
 
-const STATUS_LABEL: Record<BatchItemStatusName, UiTextKey> = {
+const STATUS_LABEL: Record<ProcessingStatus["status"], UiTextKey> = {
   queued: "photos.status_queued",
   encoding: "photos.status_encoding",
   uploading: "photos.status_uploading",

@@ -1,19 +1,19 @@
-// An endpoint to get the user data if logged in.
+//! Current-account transport endpoint.
 
 use std::sync::Arc;
 
 use axum::{Extension, extract::State, response::IntoResponse};
-use diesel::{ExpressionMethods, QueryDsl, SelectableHelper};
-use diesel_async::RunQueryDsl;
 
 use crate::{
     build_info::{BUILD_TIME_UTC, LIB_VERSION_MAP, RUSTC_VERSION},
-    domain::auth::user::{UserInfo, UserProfilePicture},
-    dto::responses::{auth::me_response::MeResponse, response_data::http_resp},
-    errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    dto::responses::{
+        auth::me_response::{MeResponse, UserInfo, UserProfilePicture},
+        response_data::http_resp,
+    },
+    errors::code_error::{CodeErrorResp, HandlerResponse},
+    features::accounts::api::account_error::{AccountMutation, map_account_error},
     init::state::ServerState,
     routers::middleware::is_logged_in::AuthStatus,
-    schema::{user_profile_pictures, users},
     util::time::now::tokio_now,
 };
 
@@ -27,75 +27,42 @@ use crate::{
     )
 )]
 pub async fn me_handler(
-    Extension(is_logged_in): Extension<AuthStatus>,
+    Extension(auth_status): Extension<AuthStatus>,
     State(state): State<Arc<ServerState>>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-
-    // Determine the user_id based on AuthStatus
-    let user_id = match is_logged_in {
-        AuthStatus::LoggedIn(ref user_id) => Some(*user_id),
+    let account = match auth_status {
+        AuthStatus::LoggedIn(user_id) => state
+            .account_service()
+            .current_account(user_id)
+            .await
+            .map_err(|error| map_account_error(error, AccountMutation::Update))?,
         AuthStatus::LoggedOut => None,
     };
+    let (user_info, user_profile_picture) = match account {
+        Some(account) => (
+            Some(UserInfo::from(account.profile)),
+            account.profile_picture.map(UserProfilePicture::from),
+        ),
+        None => (None, None),
+    };
 
-    // If not logged in, return None for all user data fields
-    if let Some(user_id) = user_id {
-        let mut conn = state
-            .get_conn()
-            .await
-            .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+    Ok(http_resp(
+        MeResponse {
+            user_info,
+            user_profile_picture,
+            build_time: BUILD_TIME_UTC,
+            axum_version: axum_version(),
+            rust_version: RUSTC_VERSION,
+        },
+        (),
+        start,
+    ))
+}
 
-        let user_info: Option<UserInfo> = users::table
-            .filter(users::user_id.eq(user_id))
-            .select(UserInfo::as_select())
-            .first(&mut conn)
-            .await
-            .ok();
-
-        let user_profile_picture: Option<UserProfilePicture> = user_profile_pictures::table
-            .filter(user_profile_pictures::user_id.eq(user_id))
-            .order(user_profile_pictures::user_profile_picture_created_at.desc())
-            .first::<UserProfilePicture>(&mut conn)
-            .await
-            .map_err(|e| code_err(CodeError::USER_NOT_FOUND, e))
-            .ok();
-
-        drop(conn);
-
-        let axum_version: Option<&crate::build_info::LibVersion> = LIB_VERSION_MAP.get("axum");
-        let axum_version = match axum_version {
-            Some(lib) => [lib.get_name(), lib.get_version()].concat(),
-            None => String::from("Unknown"),
-        };
-
-        Ok(http_resp(
-            MeResponse {
-                user_info,
-                user_profile_picture,
-                build_time: BUILD_TIME_UTC,
-                axum_version,
-                rust_version: RUSTC_VERSION,
-            },
-            (),
-            start,
-        ))
-    } else {
-        let axum_version: Option<&crate::build_info::LibVersion> = LIB_VERSION_MAP.get("axum");
-        let axum_version = match axum_version {
-            Some(lib) => [lib.get_name(), lib.get_version()].concat(),
-            None => String::from("Unknown"),
-        };
-
-        Ok(http_resp(
-            MeResponse {
-                user_info: None,
-                user_profile_picture: None,
-                build_time: BUILD_TIME_UTC,
-                axum_version,
-                rust_version: RUSTC_VERSION,
-            },
-            (),
-            start,
-        ))
+fn axum_version() -> String {
+    match LIB_VERSION_MAP.get("axum") {
+        Some(version) => [version.get_name(), version.get_version()].concat(),
+        None => "Unknown".to_string(),
     }
 }

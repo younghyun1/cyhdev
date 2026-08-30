@@ -12,6 +12,8 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 ## Architecture
 
 - [Backend feature boundaries](architecture/be/feature-boundaries.md)
+- [Browser session security](architecture/be/browser-session-security.md)
+- [Media persistence](architecture/be/media-persistence.md)
 
 ## Active Plans
 

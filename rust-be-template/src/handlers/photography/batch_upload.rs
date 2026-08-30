@@ -15,71 +15,30 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use chrono::Utc;
-use serde_derive::Deserialize;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::{
-    domain::photography::{
-        batch::session::{BatchItem, BatchSession},
-        batch::status::ProcessingStatus,
-        photographs::PhotographContext,
-    },
+    domain::photography::{batch::session::BatchSession, photographs::PhotographContext},
     dto::responses::{
-        photography::batch_status_response::{BatchUploadItem, BatchUploadResponse},
-        response_data::http_resp,
+        photography::batch_status_response::BatchUploadResponse, response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     init::state::ServerState,
     util::{
-        image::batch_pipeline::{
-            BatchPipelineItem, append_chunk, batch_temp_dir, open_staging_file, spawn_batch,
-        },
+        image::batch_pipeline::{append_chunk, batch_temp_dir, open_staging_file, spawn_batch},
+        media::staged_upload::read_bounded_text_field,
         time::now::tokio_now,
     },
 };
 
-/// Per-file size cap (matches the single-upload limit). The whole-request cap is
-/// applied by the route-scoped `DefaultBodyLimit` in `main_router.rs`.
-const MAX_FILE_SIZE_BYTES: u64 = 1024 * 1024 * 150; // 150MB
-/// Upper bound on files per batch.
-const MAX_FILES_PER_BATCH: usize = 50;
+const MAX_BATCH_META_BYTES: usize = 256 * 1024;
+const MAX_CONTEXT_BYTES: usize = 128;
 
-const ALLOWED_MIME_TYPES: [&str; 16] = [
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-    "image/x-portable-anymap",
-    "image/tiff",
-    "image/x-tga",
-    "image/vnd-ms.dds",
-    "image/bmp",
-    "image/vnd.microsoft.icon",
-    "image/vnd.radiance",
-    "image/x-exr",
-    "image/farbfeld",
-    "image/avif",
-    "image/qoi",
-    "image/vnd.zbrush.pcx",
-];
-
-/// Per-file metadata supplied in the `meta` JSON sidecar, aligned to file order.
-#[derive(Debug, Deserialize)]
-struct BatchMetaEntry {
-    comment: Option<String>,
-    lat: Option<f64>,
-    lon: Option<f64>,
-}
-
-/// A file successfully staged to disk during multipart parsing.
-struct StagedFile {
-    item_id: Uuid,
-    file_name: Option<String>,
-    content_type: Option<String>,
-    size_bytes: u64,
-}
+use super::batch_upload_support::{
+    BatchMetaEntry, MAX_FILE_SIZE_BYTES, MAX_FILES_PER_BATCH, StagedFile, is_allowed_mime_type,
+    prepare_batch, remove_staging_dir, StagingDirectoryGuard,
+};
 
 #[utoipa::path(
     post,
@@ -102,6 +61,7 @@ pub async fn batch_upload(
     let start = tokio_now();
     let batch_id = Uuid::now_v7();
     let dir = batch_temp_dir(batch_id);
+    let mut staging_guard = StagingDirectoryGuard::new(dir.clone());
 
     let mut staged: Vec<StagedFile> = Vec::new();
     let mut meta: Option<Vec<BatchMetaEntry>> = None;
@@ -125,11 +85,7 @@ pub async fn batch_upload(
                 let file_name = field.file_name().map(|n| n.to_string());
                 let content_type = field.content_type().map(|c| c.to_string());
 
-                if !content_type
-                    .as_deref()
-                    .map(|c| ALLOWED_MIME_TYPES.contains(&c))
-                    .unwrap_or(false)
-                {
+                if !is_allowed_mime_type(content_type.as_deref()) {
                     let _ = tokio::fs::remove_dir_all(&dir).await;
                     warn!(user_id = %user_id, content_type = ?content_type, "Unsupported image type in batch");
                     return Err(code_err(
@@ -155,15 +111,17 @@ pub async fn batch_upload(
                             return Err(code_err(CodeError::FILE_UPLOAD_ERROR, e));
                         }
                     };
-                    size_bytes += chunk.len() as u64;
-                    if size_bytes > MAX_FILE_SIZE_BYTES {
-                        let _ = tokio::fs::remove_dir_all(&dir).await;
-                        warn!(user_id = %user_id, limit = MAX_FILE_SIZE_BYTES, "Batch file exceeds maximum size");
-                        return Err(code_err(
-                            CodeError::FILE_UPLOAD_ERROR,
-                            "A file exceeds the maximum allowed size",
-                        ));
-                    }
+                    size_bytes = match size_bytes.checked_add(chunk.len() as u64) {
+                        Some(size) if size <= MAX_FILE_SIZE_BYTES => size,
+                        _ => {
+                            let _ = tokio::fs::remove_dir_all(&dir).await;
+                            warn!(user_id = %user_id, limit = MAX_FILE_SIZE_BYTES, "Batch file exceeds maximum size");
+                            return Err(code_err(
+                                CodeError::FILE_UPLOAD_ERROR,
+                                "A file exceeds the maximum allowed size",
+                            ));
+                        }
+                    };
                     if let Err(e) = append_chunk(&mut file, &chunk).await {
                         let _ = tokio::fs::remove_dir_all(&dir).await;
                         error!(error = ?e, user_id = %user_id, "Failed writing batch file chunk");
@@ -171,6 +129,13 @@ pub async fn batch_upload(
                     }
                 }
                 drop(file);
+                if size_bytes == 0 {
+                    let _ = tokio::fs::remove_dir_all(&dir).await;
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Batch files must not be empty",
+                    ));
+                }
 
                 staged.push(StagedFile {
                     item_id,
@@ -181,10 +146,12 @@ pub async fn batch_upload(
             }
 
             Some("meta") => {
-                let text = field.text().await.map_err(|e| {
-                    error!(error = ?e, user_id = %user_id, "Failed reading meta field");
-                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
-                })?;
+                let text = read_bounded_text_field(field, MAX_BATCH_META_BYTES)
+                    .await
+                    .map_err(|e| {
+                        error!(error = %e, user_id = %user_id, "Failed reading meta field");
+                        code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                    })?;
                 match serde_json::from_str::<Vec<BatchMetaEntry>>(&text) {
                     Ok(parsed) => meta = Some(parsed),
                     Err(e) => {
@@ -196,10 +163,12 @@ pub async fn batch_upload(
             }
 
             Some("context") | Some("photograph_context") => {
-                let text = field.text().await.map_err(|e| {
-                    error!(error = ?e, user_id = %user_id, "Failed reading context field");
-                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
-                })?;
+                let text = read_bounded_text_field(field, MAX_CONTEXT_BYTES)
+                    .await
+                    .map_err(|e| {
+                        error!(error = %e, user_id = %user_id, "Failed reading context field");
+                        code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                    })?;
                 match PhotographContext::from_str(&text) {
                     Some(ctx) => context = ctx,
                     None => {
@@ -251,106 +220,52 @@ pub async fn batch_upload(
         ));
     }
 
-    // Resolve per-file metadata per context, mirroring the single-upload rules.
-    let now = Utc::now();
     let total = staged.len();
-    let mut pipeline_items: Vec<BatchPipelineItem> = Vec::with_capacity(total);
-    let mut session_items: Vec<BatchItem> = Vec::with_capacity(total);
-    let mut response_items: Vec<BatchUploadItem> = Vec::with_capacity(total);
+    let prepared = match prepare_batch(user_id, context, staged, meta) {
+        Ok(prepared) => prepared,
+        Err(e) => {
+            remove_staging_dir(&dir).await;
+            return Err(e);
+        }
+    };
 
-    for (file, entry) in staged.into_iter().zip(meta) {
-        let (comments, lat, lon) = match context {
-            PhotographContext::Photography => {
-                let comments = match entry.comment {
-                    Some(c) if !c.trim().is_empty() => c,
-                    _ => {
-                        let _ = tokio::fs::remove_dir_all(&dir).await;
-                        warn!(user_id = %user_id, "Batch item missing comment");
-                        return Err(code_err(
-                            CodeError::INVALID_REQUEST,
-                            "Each photo requires a comment",
-                        ));
-                    }
-                };
-                let lat = match entry.lat {
-                    Some(v) => v,
-                    None => {
-                        let _ = tokio::fs::remove_dir_all(&dir).await;
-                        warn!(user_id = %user_id, "Batch item missing latitude");
-                        return Err(code_err(
-                            CodeError::INVALID_REQUEST,
-                            "Each photo requires a location",
-                        ));
-                    }
-                };
-                let lon = match entry.lon {
-                    Some(v) => v,
-                    None => {
-                        let _ = tokio::fs::remove_dir_all(&dir).await;
-                        warn!(user_id = %user_id, "Batch item missing longitude");
-                        return Err(code_err(
-                            CodeError::INVALID_REQUEST,
-                            "Each photo requires a location",
-                        ));
-                    }
-                };
-                (comments, lat, lon)
-            }
-            PhotographContext::Post => {
-                let fallback = file
-                    .file_name
-                    .clone()
-                    .unwrap_or_else(|| "post image".to_string());
-                let comments = match entry.comment {
-                    Some(c) if !c.trim().is_empty() => c,
-                    _ => fallback,
-                };
-                (comments, entry.lat.unwrap_or(0.0), entry.lon.unwrap_or(0.0))
-            }
-        };
-
-        response_items.push(BatchUploadItem {
-            item_id: file.item_id,
-            file_name: file.file_name.clone(),
-        });
-        session_items.push(BatchItem {
-            item_id: file.item_id,
-            original_file_name: file.file_name.clone(),
-            original_size_bytes: file.size_bytes,
-            status: ProcessingStatus::Queued,
-            created_at: now,
-            updated_at: now,
-        });
-        pipeline_items.push(BatchPipelineItem {
-            item_id: file.item_id,
-            file_name: file.file_name,
-            content_type: file.content_type,
-            comments,
-            lat,
-            lon,
-        });
-    }
-
-    let batch = Arc::new(BatchSession::new(batch_id, user_id, total, now));
-    for item in session_items {
+    let batch = Arc::new(BatchSession::new(
+        batch_id,
+        user_id,
+        total,
+        prepared.created_at,
+    ));
+    for item in prepared.session_items {
         batch.register_item(item).await;
     }
-    state.register_batch(Arc::clone(&batch)).await;
+    if !state.register_batch(Arc::clone(&batch)).await {
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        warn!(
+            user_id = %user_id,
+            batch_id = %batch_id,
+            "Photograph batch tracker is at capacity"
+        );
+        return Err(code_err(
+            CodeError::INVALID_REQUEST,
+            "too many active photograph batches",
+        ));
+    }
 
     spawn_batch(
         Arc::clone(&state),
         Arc::clone(&batch),
-        pipeline_items,
+        prepared.pipeline_items,
         user_id,
         context,
     );
+    staging_guard.disarm();
 
     info!(user_id = %user_id, batch_id = %batch_id, total, "Accepted batch upload; processing started");
 
     let resp = BatchUploadResponse {
         batch_id,
         total,
-        items: response_items,
+        items: prepared.response_items,
     };
     Ok((StatusCode::ACCEPTED, http_resp(resp, (), start)))
 }

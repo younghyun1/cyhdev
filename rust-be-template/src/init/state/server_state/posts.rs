@@ -1,7 +1,7 @@
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::ServerState;
+use super::{ServerState, blog_cache_policy::BLOG_POST_CACHE_MAX_ENTRIES};
 use crate::domain::blog::blog::CachedPostInfo;
 use crate::init::load_cache::post_info::load_post_info;
 use crate::util::time::now::tokio_now;
@@ -9,242 +9,184 @@ use crate::util::time::now::tokio_now;
 impl ServerState {
     fn normalize_post_slug(slug: &str) -> Option<String> {
         let normalized = slug.trim().to_lowercase();
-        if normalized.is_empty() {
-            None
-        } else {
-            Some(normalized)
-        }
+        if normalized.is_empty() { None } else { Some(normalized) }
     }
 
-    /// Upserts a post into the metadata cache and slug cache. Returns `true` when
-    /// the post was a genuinely new entry (so callers can decide whether the
-    /// O(n log n) order-cache rebuild is required).
+    async fn remove_cached_post(&self, post_id: Uuid) -> Option<CachedPostInfo> {
+        let removed = self.blog_posts_cache.remove_async(&post_id).await.map(|(_, post)| post);
+        if let Some(post) = &removed
+            && let Some(slug) = Self::normalize_post_slug(&post.post_slug)
+            && let Some(mapped_id) = self
+                .blog_post_slug_cache
+                .read_async(&slug, |_, cached_id| *cached_id)
+                .await
+            && mapped_id == post_id
+        {
+            let _ = self.blog_post_slug_cache.remove_async(&slug).await;
+        }
+        removed
+    }
+
+    async fn oldest_cached_post(&self) -> Option<(chrono::DateTime<chrono::Utc>, Uuid)> {
+        let mut oldest = None;
+        self.blog_posts_cache
+            .iter_async(|post_id, post| {
+                let candidate = (post.post_created_at, *post_id);
+                if oldest.is_none_or(|current| candidate < current) {
+                    oldest = Some(candidate);
+                }
+                true
+            })
+            .await;
+        oldest
+    }
+
     async fn upsert_post_cache_internal(
         &self,
         post: &CachedPostInfo,
         sync_search_index: bool,
     ) -> bool {
-        let previous_slug = self
+        let mutation = self.blog_cache_mutation.lock().await;
+        let previous = self
             .blog_posts_cache
-            .read_async(&post.post_id, |_, cached| cached.post_slug.clone())
+            .read_async(&post.post_id, |_, cached| cached.clone())
             .await;
+        let mut admitted_new = false;
 
-        let newly_inserted = self
-            .blog_posts_cache
-            .update_async(&post.post_id, |_, cached| {
-                *cached = post.clone();
-            })
-            .await
-            .is_none();
-        if newly_inserted {
-            let _ = self
-                .blog_posts_cache
-                .insert_async(post.post_id, post.clone())
-                .await;
-        }
-
-        let new_slug_normalized = Self::normalize_post_slug(&post.post_slug);
-        if let Some(old_slug) = previous_slug
-            && let Some(old_slug_normalized) = Self::normalize_post_slug(&old_slug)
-            && let Some(mapped_post_id) = self
-                .blog_post_slug_cache
-                .read_async(&old_slug_normalized, |_, post_id| *post_id)
-                .await
-            && mapped_post_id == post.post_id
-            && Some(old_slug_normalized.as_str()) != new_slug_normalized.as_deref()
-        {
-            let _ = self
-                .blog_post_slug_cache
-                .remove_async(&old_slug_normalized)
-                .await;
-        }
-
-        if let Some(new_slug) = new_slug_normalized
-            && self
-                .blog_post_slug_cache
-                .update_async(&new_slug, |_, mapped_post_id| {
-                    *mapped_post_id = post.post_id;
-                })
-                .await
-                .is_none()
-        {
-            let _ = self
-                .blog_post_slug_cache
-                .insert_async(new_slug, post.post_id)
-                .await;
-        }
-
-        if !sync_search_index {
-            return newly_inserted;
-        }
-
-        if post.post_is_published {
-            if let Err(e) =
-                self.search_index
-                    .update_post(post.post_id, &post.post_title, &post.post_tags)
-            {
-                error!(error = ?e, post_id = %post.post_id, "Failed to update search index");
+        if previous.is_none() {
+            if self.blog_posts_cache.len() >= BLOG_POST_CACHE_MAX_ENTRIES {
+                let candidate = (post.post_created_at, post.post_id);
+                match self.oldest_cached_post().await {
+                    Some(oldest) if candidate <= oldest => {
+                        self.blog_cache_metrics.record_rejected_admission();
+                    }
+                    Some((_, oldest_id)) => {
+                        let _ = self.remove_cached_post(oldest_id).await;
+                        self.blog_cache_metrics.record_eviction();
+                        admitted_new = true;
+                    }
+                    None => admitted_new = true,
+                }
+            } else {
+                admitted_new = true;
             }
-        } else if let Err(e) = self.search_index.remove_post_and_commit(post.post_id) {
-            error!(
-                error = ?e,
-                post_id = %post.post_id,
-                "Failed to remove unpublished post from search index"
-            );
         }
 
-        newly_inserted
+        if previous.is_some() || admitted_new {
+            if let Some(previous) = previous
+                && Self::normalize_post_slug(&previous.post_slug)
+                    != Self::normalize_post_slug(&post.post_slug)
+            {
+                let _ = self.remove_cached_post(post.post_id).await;
+            }
+            let _ = self.blog_posts_cache.upsert_async(post.post_id, post.clone()).await;
+            if let Some(slug) = Self::normalize_post_slug(&post.post_slug) {
+                if self.blog_post_slug_cache.contains_async(&slug).await
+                    || self.blog_post_slug_cache.len() < BLOG_POST_CACHE_MAX_ENTRIES
+                {
+                    let _ = self.blog_post_slug_cache.upsert_async(slug, post.post_id).await;
+                } else {
+                    self.blog_cache_metrics.record_rejected_admission();
+                }
+            }
+        }
+        drop(mutation);
+
+        if sync_search_index {
+            self.sync_post_search_document(post);
+        }
+        admitted_new
+    }
+
+    fn sync_post_search_document(&self, post: &CachedPostInfo) {
+        let result = if post.post_is_published {
+            self.search_index.update_post(post.post_id, &post.post_title, &post.post_tags)
+        } else {
+            self.search_index.remove_post_and_commit(post.post_id)
+        };
+        if let Err(e) = result {
+            error!(error = ?e, post_id = %post.post_id, "Failed to update search index");
+        }
     }
 
     async fn rebuild_post_order_cache(&self) {
-        let mut ordered_posts: Vec<(chrono::DateTime<chrono::Utc>, Uuid)> =
-            Vec::with_capacity(self.blog_posts_cache.len());
-
+        let mut ordered = Vec::with_capacity(self.blog_posts_cache.len());
         self.blog_posts_cache
-            .iter_async(|post_id, post_info| {
-                ordered_posts.push((post_info.post_created_at, *post_id));
+            .iter_async(|post_id, post| {
+                ordered.push((post.post_created_at, *post_id));
                 true
             })
             .await;
-
-        ordered_posts.sort_by_key(|post| std::cmp::Reverse(post.0));
-        let ordered_post_ids = ordered_posts
-            .into_iter()
-            .map(|(_, post_id)| post_id)
-            .collect();
-        let mut lock = self.blog_post_order_cache.write().await;
-        *lock = ordered_post_ids;
+        ordered.sort_by_key(|entry| std::cmp::Reverse(*entry));
+        *self.blog_post_order_cache.write().await =
+            ordered.into_iter().map(|(_, post_id)| post_id).collect();
     }
 
     pub async fn synchronize_post_info_cache(&self) {
         let start = tokio_now();
-
-        let post_info_vec = match load_post_info(self).await {
-            Ok(post_info_vec) => post_info_vec,
+        let post_info = match load_post_info(self).await {
+            Ok(posts) => posts,
             Err(e) => {
                 error!(error = ?e, "Could not synchronize post metadata cache");
                 return;
             }
         };
 
-        self.blog_posts_cache
-            .iter_mut_async(|entry| {
-                let _ = entry.consume();
-                true
-            })
-            .await;
-        self.blog_post_slug_cache
-            .iter_mut_async(|entry| {
-                let _ = entry.consume();
-                true
-            })
-            .await;
-
-        for post_info in &post_info_vec {
-            let _ = self.upsert_post_cache_internal(post_info, false).await;
+        let mutation = self.blog_cache_mutation.lock().await;
+        self.blog_posts_cache.clear_async().await;
+        self.blog_post_slug_cache.clear_async().await;
+        drop(mutation);
+        for post in &post_info {
+            let _ = self.upsert_post_cache_internal(post, false).await;
         }
         self.rebuild_post_order_cache().await;
 
-        let posts_for_index = post_info_vec
-            .iter()
-            .filter(|p| p.post_is_published)
-            .map(|p| (p.post_id, p.post_title.as_str(), p.post_tags.as_slice()));
-
-        match self.search_index.sync_with_posts(posts_for_index) {
-            Ok((added, removed)) => {
-                if added > 0 || removed > 0 {
-                    info!(
-                        added = added,
-                        removed = removed,
-                        total_indexed = self.search_index.num_docs(),
-                        "Search index synchronized with cache"
-                    );
-                } else {
-                    info!(
-                        total_indexed = self.search_index.num_docs(),
-                        "Search index already coherent"
-                    );
-                }
-            }
-            Err(e) => {
-                error!(error = ?e, "Failed to sync search index");
-                let posts_for_rebuild = post_info_vec
-                    .iter()
-                    .filter(|p| p.post_is_published)
-                    .map(|p| (p.post_id, p.post_title.as_str(), p.post_tags.as_slice()));
-                if let Err(e) = self.search_index.rebuild_index(posts_for_rebuild) {
-                    error!(error = ?e, "Failed to rebuild search index");
-                }
-            }
+        if let Err(e) = self.rebuild_post_search_index_from_db().await {
+            error!(error = ?e, "Failed to rebuild complete post search index");
         }
 
-        let elapsed = start.elapsed();
+        let metrics = self.blog_cache_metrics.snapshot();
         info!(
-            rows_synchronized = %self.blog_posts_cache.len(),
-            slug_rows_synchronized = %self.blog_post_slug_cache.len(),
-            elapsed=%format!("{elapsed:?}"),
-            "Post metadata cache synchronized."
+            rows_synchronized = self.blog_posts_cache.len(),
+            slug_rows_synchronized = self.blog_post_slug_cache.len(),
+            max_entries = BLOG_POST_CACHE_MAX_ENTRIES,
+            cache_hits = metrics.hits,
+            cache_misses = metrics.misses,
+            cache_evictions = metrics.evictions,
+            rejected_admissions = metrics.rejected_admissions,
+            database_read_throughs = metrics.database_read_throughs,
+            elapsed = ?start.elapsed(),
+            "Post metadata cache synchronized"
         );
     }
 
-    pub async fn get_posts_from_cache(
+    pub(super) async fn get_posts_from_bounded_cache(
         &self,
         page: usize,
         page_size: usize,
         include_unpublished: bool,
     ) -> (Vec<CachedPostInfo>, usize) {
-        let page_size = page_size.max(1);
-        let start_index = (page.saturating_sub(1)) * page_size;
-        let ordered_post_ids = {
-            let lock = self.blog_post_order_cache.read().await;
-            lock.clone()
-        };
-
-        let mut posts: Vec<CachedPostInfo> = Vec::with_capacity(page_size);
-        let mut visible_posts = 0usize;
-
-        for post_id in ordered_post_ids {
-            // Cheap visibility read: avoid cloning the whole CachedPostInfo just
-            // to check publication state / count visible posts.
-            let is_published = match self
-                .blog_posts_cache
-                .read_async(&post_id, |_, p| p.post_is_published)
-                .await
-            {
-                Some(is_published) => is_published,
+        let page_size = page_size.clamp(1, 100);
+        let start_index = page.saturating_sub(1).saturating_mul(page_size);
+        let ordered_ids = self.blog_post_order_cache.read().await.clone();
+        let mut posts = Vec::with_capacity(page_size);
+        let mut visible = 0usize;
+        for post_id in ordered_ids {
+            let post = match self.get_post_from_cache(&post_id).await {
+                Some(post) => post,
                 None => continue,
             };
-
-            if !include_unpublished && !is_published {
-                continue;
-            }
-
-            // Only clone the full struct for posts that are actually on this page.
-            if visible_posts >= start_index
-                && posts.len() < page_size
-                && let Some(post) = self.get_post_from_cache(&post_id).await
-            {
-                posts.push(post);
-            }
-            visible_posts += 1;
+            if !include_unpublished && !post.post_is_published { continue; }
+            if visible >= start_index && posts.len() < page_size { posts.push(post); }
+            visible += 1;
         }
-
-        let total_pages = visible_posts.div_ceil(page_size);
-
-        (posts, total_pages)
+        (posts, visible.div_ceil(page_size))
     }
 
     pub async fn delete_post_from_cache(&self, post_id: Uuid) {
-        if let Some((_, removed_post)) = self.blog_posts_cache.remove_async(&post_id).await
-            && let Some(removed_slug) = Self::normalize_post_slug(&removed_post.post_slug)
-            && let Some(mapped_post_id) = self
-                .blog_post_slug_cache
-                .read_async(&removed_slug, |_, cached_post_id| *cached_post_id)
-                .await
-            && mapped_post_id == post_id
-        {
-            let _ = self.blog_post_slug_cache.remove_async(&removed_slug).await;
-        }
+        let mutation = self.blog_cache_mutation.lock().await;
+        let _ = self.remove_cached_post(post_id).await;
+        drop(mutation);
         self.rebuild_post_order_cache().await;
         if let Err(e) = self.search_index.remove_post_and_commit(post_id) {
             error!(error = ?e, post_id = %post_id, "Failed to remove post from search index");
@@ -252,162 +194,56 @@ impl ServerState {
     }
 
     pub async fn insert_post_to_cache(&self, post: &CachedPostInfo) {
-        let _ = self.upsert_post_cache_internal(post, true).await;
-        self.rebuild_post_order_cache().await;
+        if self.upsert_post_cache_internal(post, true).await {
+            self.rebuild_post_order_cache().await;
+        }
     }
 
     pub async fn insert_post_to_cache_without_search_sync(&self, post: &CachedPostInfo) {
-        // Refresh the cached post (view/vote counts) without re-sorting the global
-        // order on the hot read/rescind paths. Only rebuild when a genuinely new
-        // post entered the cache (e.g. a cold-cache miss in read_post), since the
-        // ordering key (post_created_at) is immutable for an existing entry.
         if self.upsert_post_cache_internal(post, false).await {
             self.rebuild_post_order_cache().await;
         }
     }
 
-    /// Updates only the vote-count fields of a cached post. Does NOT rebuild the
-    /// order cache, since vote counts never affect ordering (keyed on
-    /// post_created_at). `update_async` is a no-op when the entry is absent (e.g.
-    /// the post was deleted between the DB write and this call); the DB stays
-    /// authoritative and the next synchronize_post_info_cache reconciles.
-    pub async fn update_post_vote_counts(
-        &self,
-        post_id: Uuid,
-        total_upvotes: i64,
-        total_downvotes: i64,
-    ) {
-        let _ = self
-            .blog_posts_cache
-            .update_async(&post_id, |_, cached| {
-                cached.total_upvotes = total_upvotes;
-                cached.total_downvotes = total_downvotes;
-            })
-            .await;
+    pub async fn update_post_vote_counts(&self, post_id: Uuid, upvotes: i64, downvotes: i64) {
+        let _ = self.blog_posts_cache.update_async(&post_id, |_, cached| {
+            cached.total_upvotes = upvotes;
+            cached.total_downvotes = downvotes;
+        }).await;
     }
 
     pub async fn get_post_from_cache(&self, post_id: &Uuid) -> Option<CachedPostInfo> {
-        self.blog_posts_cache
-            .read_async(post_id, |_, v| v.clone())
-            .await
+        let post = self.blog_posts_cache.read_async(post_id, |_, post| post.clone()).await;
+        if post.is_some() { self.blog_cache_metrics.record_hit(); }
+        else { self.blog_cache_metrics.record_miss(); }
+        post
     }
 
-    pub async fn get_post_id_by_slug_from_cache(&self, post_slug: &str) -> Option<Uuid> {
-        let normalized_slug = Self::normalize_post_slug(post_slug)?;
-        self.blog_post_slug_cache
-            .read_async(&normalized_slug, |_, post_id| *post_id)
-            .await
+    pub async fn get_post_id_by_slug_from_cache(&self, slug: &str) -> Option<Uuid> {
+        let normalized = Self::normalize_post_slug(slug)?;
+        let post_id = self.blog_post_slug_cache.read_async(&normalized, |_, id| *id).await;
+        if post_id.is_some() { self.blog_cache_metrics.record_hit(); }
+        else { self.blog_cache_metrics.record_miss(); }
+        post_id
     }
 
-    pub async fn cache_post_slug_mapping(&self, post_slug: &str, post_id: Uuid) {
-        let Some(normalized_slug) = Self::normalize_post_slug(post_slug) else {
-            return;
-        };
-
-        if self
-            .blog_post_slug_cache
-            .update_async(&normalized_slug, |_, cached_post_id| {
-                *cached_post_id = post_id;
-            })
-            .await
-            .is_none()
+    pub async fn cache_post_slug_mapping(&self, slug: &str, post_id: Uuid) {
+        let Some(normalized) = Self::normalize_post_slug(slug) else { return };
+        let mutation = self.blog_cache_mutation.lock().await;
+        if !self.blog_posts_cache.contains_async(&post_id).await {
+            self.blog_cache_metrics.record_rejected_admission();
+        } else if self.blog_post_slug_cache.contains_async(&normalized).await
+            || self.blog_post_slug_cache.len() < BLOG_POST_CACHE_MAX_ENTRIES
         {
-            let _ = self
-                .blog_post_slug_cache
-                .insert_async(normalized_slug, post_id)
-                .await;
+            let _ = self.blog_post_slug_cache.upsert_async(normalized, post_id).await;
+        } else {
+            self.blog_cache_metrics.record_rejected_admission();
         }
+        drop(mutation);
     }
 
-    pub async fn get_post_from_cache_by_slug(&self, post_slug: &str) -> Option<CachedPostInfo> {
-        let post_id = self.get_post_id_by_slug_from_cache(post_slug).await?;
+    pub async fn get_post_from_cache_by_slug(&self, slug: &str) -> Option<CachedPostInfo> {
+        let post_id = self.get_post_id_by_slug_from_cache(slug).await?;
         self.get_post_from_cache(&post_id).await
-    }
-
-    async fn posts_from_ids(&self, post_ids: Vec<Uuid>) -> Vec<CachedPostInfo> {
-        let mut results = Vec::with_capacity(post_ids.len());
-        for post_id in post_ids {
-            if let Some(post) = self.get_post_from_cache(&post_id).await {
-                results.push(post);
-            }
-        }
-        results
-    }
-
-    pub async fn search_posts_by_title(
-        &self,
-        query: &str,
-        offset: usize,
-        limit: usize,
-    ) -> (Vec<CachedPostInfo>, usize) {
-        let (post_ids, total_matches) = match self
-            .search_index
-            .search_by_title_paged(query, offset, limit)
-        {
-            Ok(result) => result,
-            Err(e) => {
-                error!(error = ?e, "Search by title failed");
-                return (vec![], 0);
-            }
-        };
-
-        (self.posts_from_ids(post_ids).await, total_matches)
-    }
-
-    pub async fn search_posts_by_title_and_tags(
-        &self,
-        query: &str,
-        tags: &[String],
-        offset: usize,
-        limit: usize,
-    ) -> (Vec<CachedPostInfo>, usize) {
-        let (post_ids, total_matches) = match self
-            .search_index
-            .search_by_title_and_tags_paged(query, tags, offset, limit)
-        {
-            Ok(result) => result,
-            Err(e) => {
-                error!(error = ?e, "Search by title and tags failed");
-                return (vec![], 0);
-            }
-        };
-
-        (self.posts_from_ids(post_ids).await, total_matches)
-    }
-
-    pub async fn search_posts_by_tags(
-        &self,
-        tags: &[String],
-        offset: usize,
-        limit: usize,
-    ) -> (Vec<CachedPostInfo>, usize) {
-        let (post_ids, total_matches) =
-            match self.search_index.search_by_tags_paged(tags, offset, limit) {
-                Ok(result) => result,
-                Err(e) => {
-                    error!(error = ?e, "Search by tags failed");
-                    return (vec![], 0);
-                }
-            };
-
-        (self.posts_from_ids(post_ids).await, total_matches)
-    }
-
-    pub async fn search_posts_by_tag(
-        &self,
-        tag: &str,
-        offset: usize,
-        limit: usize,
-    ) -> (Vec<CachedPostInfo>, usize) {
-        let (post_ids, total_matches) =
-            match self.search_index.search_by_tag_paged(tag, offset, limit) {
-                Ok(result) => result,
-                Err(e) => {
-                    error!(error = ?e, "Search by tag failed");
-                    return (vec![], 0);
-                }
-            };
-
-        (self.posts_from_ids(post_ids).await, total_matches)
     }
 }

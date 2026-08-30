@@ -14,7 +14,6 @@ use uuid::Uuid;
 
 use crate::{
     domain::{
-        auth::role::RoleType,
         blog::blog::{UserBadgeInfo, VoteState},
         photography::social::{PhotographComment, PhotographCommentResponse},
     },
@@ -23,6 +22,7 @@ use crate::{
         responses::response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::domain::role::RoleType,
     init::state::ServerState,
     schema::{photograph_comment_votes, photograph_comments, user_profile_pictures, users},
     util::time::now::tokio_now,

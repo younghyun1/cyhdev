@@ -2,6 +2,7 @@
 name = "rust-be-template"
 version.workspace = true
 edition.workspace = true
+default-run = "rust-be-template"
 
 [lints]
 workspace = true
@@ -9,6 +10,10 @@ workspace = true
 [[bin]]
 name = "process_ip2location_dbs"
 path = "src/util/geographic/process_ip2location_dbs.rs"
+
+[[bin]]
+name = "openapi-contracts"
+path = "src/openapi_contracts_main.rs"
 
 [dependencies]
 # web framework
@@ -29,7 +34,7 @@ tower-http = { version = "0.7.0", features = [
 ] }
 
 # OpenAPI
-utoipa = { version = "5.5.0", features = ["axum_extras", "uuid", "chrono"] }
+utoipa = { version = "5.5.0", features = ["axum_extras", "uuid", "chrono", "repr"] }
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "vendored"] }
 
 # parallelism
@@ -66,6 +71,7 @@ tracing-appender.workspace = true
 
 # error
 anyhow.workspace = true
+thiserror = "2.0.20"
 
 # system information
 num_cpus = "1.17.0"
@@ -98,9 +104,13 @@ email_address = "0.2.9"
 
 # crypto/rand
 argon2 = "0.5.3"
+base64 = "0.23.1"
+getrandom = "0.4.3"
 rand = "0.10"
 rand_08 = { package = "rand", version = "0.8.7" }
 rustls = { version = "0.23.43", features = [] }
+sha2 = "0.11.0"
+time = "0.3.55"
 zeroize = { version = "1.9.0", features = ["derive"] }
 
 # memory allocator
@@ -125,6 +135,7 @@ bigdecimal = { version = "0.4.10", features = ["serde"] }
 image = "0.25.10"
 fast_image_resize = { version = "6.1.0", features = ["image"]}
 kamadak-exif = "0.6.1"
+tempfile = "3.27.0"
 
 # markdown
 comrak = { version = "0.54.0", features = ["emojis", "shortcodes"] }
@@ -163,7 +174,7 @@ nutype = "0.7.0"
 chrono.workspace = true
 serde_json.workspace = true
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 libc = { version = "0.2.189", features = [] }
 
 [target.'cfg(all(target_os = "linux", target_env = "gnu"))'.dependencies]
@@ -172,7 +183,3 @@ zstd = { version = "0.13.3", features = ["fat-lto", "zstdmt", "pkg-config"] }
 [target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
 zstd = { version = "0.13.3", features = ["zstdmt"] }
 pq-sys = { version = "0.7.5", default-features = false, features = ["bundled_without_openssl"] }
-
-[target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.62.2", features = ["Win32_System_SystemInformation", "Win32_System_Threading"] }
-zstd = { version = "0.13.3", features = ["fat-lto", "zstdmt"] }

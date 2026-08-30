@@ -1,7 +1,8 @@
 use anyhow::Result;
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
+use zeroize::Zeroizing;
 
-pub async fn hash_pw(password: String) -> Result<String> {
+pub async fn hash_pw(password: Zeroizing<String>) -> Result<String> {
     tokio::task::spawn_blocking(move || {
         let argon2 = Argon2::default();
         let salt = SaltString::generate(&mut rand_08::rngs::OsRng);

@@ -1,11 +1,7 @@
-use diesel::{Queryable, QueryableByName};
-use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::schema::roles;
-
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RoleType {
     Younghyun = 0,
     Moderator = 1,
@@ -14,13 +10,13 @@ pub enum RoleType {
 }
 
 impl RoleType {
-    pub fn from_uuid(role_id: Uuid) -> anyhow::Result<RoleType> {
+    pub fn from_uuid(role_id: Uuid) -> Option<RoleType> {
         match role_id.as_u128() {
-            ROLE_YOUNGHYUN => Ok(RoleType::Younghyun),
-            ROLE_MODERATOR => Ok(RoleType::Moderator),
-            ROLE_USER => Ok(RoleType::User),
-            ROLE_GUEST => Ok(RoleType::Guest),
-            _ => Err(anyhow::anyhow!("Invalid role ID")),
+            ROLE_YOUNGHYUN => Some(RoleType::Younghyun),
+            ROLE_MODERATOR => Some(RoleType::Moderator),
+            ROLE_USER => Some(RoleType::User),
+            ROLE_GUEST => Some(RoleType::Guest),
+            _ => None,
         }
     }
 
@@ -34,12 +30,7 @@ impl RoleType {
     }
 
     pub fn is_superuser(self) -> bool {
-        match self {
-            RoleType::Younghyun => true,
-            RoleType::Moderator => false,
-            RoleType::User => false,
-            RoleType::Guest => false,
-        }
+        self == Self::Younghyun
     }
 
     pub fn permits(self, required_role_type: RoleType) -> bool {
@@ -65,22 +56,33 @@ const ROLE_USER: u128 = 2131042888123140653623930835701279230;
 // 019a6c86-d66b-7223-97ef-a8a26551a080
 const ROLE_GUEST: u128 = 2131042895169936790354381715792830592;
 
-#[derive(Serialize, Deserialize, QueryableByName, Queryable)]
-#[diesel(table_name = roles)]
-pub struct Role {
-    role_id: Uuid,
-    role_name: String,
-    role_description: String,
-}
+#[cfg(test)]
+mod tests {
+    use super::RoleType;
+    use uuid::Uuid;
 
-impl Role {
-    pub fn get_from_role_id(self) -> anyhow::Result<RoleType> {
-        match self.role_id.as_u128() {
-            ROLE_YOUNGHYUN => Ok(RoleType::Younghyun),
-            ROLE_MODERATOR => Ok(RoleType::Moderator),
-            ROLE_USER => Ok(RoleType::User),
-            ROLE_GUEST => Ok(RoleType::Guest),
-            _ => Err(anyhow::anyhow!("Invalid role ID")),
+    #[test]
+    fn role_ids_round_trip() {
+        for role in [
+            RoleType::Younghyun,
+            RoleType::Moderator,
+            RoleType::User,
+            RoleType::Guest,
+        ] {
+            assert_eq!(RoleType::from_uuid(role.id()), Some(role));
         }
+    }
+
+    #[test]
+    fn unknown_role_id_is_rejected() {
+        assert_eq!(RoleType::from_uuid(Uuid::nil()), None);
+    }
+
+    #[test]
+    fn permissions_follow_role_hierarchy() {
+        assert!(RoleType::Younghyun.permits(RoleType::Moderator));
+        assert!(RoleType::Moderator.permits(RoleType::User));
+        assert!(!RoleType::User.permits(RoleType::Moderator));
+        assert!(!RoleType::Guest.is_superuser());
     }
 }

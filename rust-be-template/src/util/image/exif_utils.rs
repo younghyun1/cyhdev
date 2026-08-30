@@ -1,13 +1,31 @@
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use exif::{In, Tag};
-use std::io::Cursor;
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Cursor, Seek},
+    path::Path,
+};
 use tracing::{debug, warn};
 
 pub fn extract_exif_shot_at(image_bytes: &[u8]) -> Result<Option<DateTime<Utc>>> {
     let mut cursor = Cursor::new(image_bytes);
 
-    let exif_reader = match exif::Reader::new().read_from_container(&mut cursor) {
+    extract_exif_shot_at_from_reader(&mut cursor)
+}
+
+/// Reads EXIF directly from a staged upload without cloning its encoded bytes.
+pub fn extract_exif_shot_at_from_path(path: &Path) -> Result<Option<DateTime<Utc>>> {
+    let file = File::open(path)?;
+    let mut reader = BufReader::with_capacity(64 * 1024, file);
+    extract_exif_shot_at_from_reader(&mut reader)
+}
+
+fn extract_exif_shot_at_from_reader<R>(reader: &mut R) -> Result<Option<DateTime<Utc>>>
+where
+    R: BufRead + Seek,
+{
+    let exif_reader = match exif::Reader::new().read_from_container(reader) {
         Ok(r) => r,
         Err(e) => {
             debug!(error = %e, "Could not read standard EXIF container");

@@ -1,20 +1,50 @@
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
 use crate::domain::i18n::i18n::InternationalizationString;
-use chrono::{DateTime, Utc};
-use std::collections::{BTreeMap, HashMap};
-use uuid::Uuid;
+
+pub const I18N_CACHE_MAX_ENTRIES: usize = 50_000;
+pub const I18N_CACHE_MAX_BYTES: usize = 64 * 1024 * 1024;
+const I18N_CACHE_ENTRY_OVERHEAD_BYTES: usize = 64;
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct I18nCacheKey {
+    reference_key: String,
+    country_code: i32,
+    language_code: i32,
+}
+
+impl I18nCacheKey {
+    fn new(reference_key: &str, country_code: i32, language_code: i32) -> Self {
+        Self {
+            reference_key: reference_key.to_string(),
+            country_code,
+            language_code,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct I18nCacheStats {
+    pub entries: usize,
+    pub retained_bytes: usize,
+    pub complete: bool,
+    pub hits: u64,
+    pub misses: u64,
+    pub rejected_admissions: u64,
+    pub database_read_throughs: u64,
+}
 
 pub struct I18nCache {
-    pub rows: Vec<InternationalizationString>,
-    // HashMap indexes
-    pub country_idx: HashMap<i32, Vec<usize>>,
-    pub subdivision_idx: HashMap<Option<String>, Vec<usize>>,
-    pub language_idx: HashMap<i32, Vec<usize>>,
-    pub created_by_idx: HashMap<Uuid, Vec<usize>>,
-    pub updated_by_idx: HashMap<Uuid, Vec<usize>>,
-    pub reference_idx: HashMap<String, Vec<usize>>,
-    // BTreeMap indexes
-    pub created_at_idx: BTreeMap<DateTime<Utc>, Vec<usize>>,
-    pub updated_at_idx: BTreeMap<DateTime<Utc>, Vec<usize>>,
+    entries: HashMap<I18nCacheKey, String>,
+    retained_bytes: usize,
+    complete: bool,
+    hits: AtomicU64,
+    misses: AtomicU64,
+    rejected_admissions: AtomicU64,
+    database_read_throughs: AtomicU64,
 }
 
 impl Default for I18nCache {
@@ -26,135 +56,65 @@ impl Default for I18nCache {
 impl I18nCache {
     pub fn new() -> Self {
         Self {
-            rows: Vec::new(),
-            country_idx: HashMap::new(),
-            subdivision_idx: HashMap::new(),
-            language_idx: HashMap::new(),
-            created_by_idx: HashMap::new(),
-            updated_by_idx: HashMap::new(),
-            reference_idx: HashMap::new(),
-            created_at_idx: BTreeMap::new(),
-            updated_at_idx: BTreeMap::new(),
+            entries: HashMap::new(),
+            retained_bytes: 0,
+            complete: true,
+            hits: AtomicU64::new(0),
+            misses: AtomicU64::new(0),
+            rejected_admissions: AtomicU64::new(0),
+            database_read_throughs: AtomicU64::new(0),
         }
     }
 
-    pub fn from_rows(rows: Vec<InternationalizationString>) -> Self {
-        let mut cache = I18nCache::new();
-        for (i, row) in rows.into_iter().enumerate() {
-            // Push to row vec, retain `i` as index
-            cache.rows.push(row);
-            let row_ref = &cache.rows[i];
-            // country
-            cache
-                .country_idx
-                .entry(row_ref.i18n_string_country_code)
-                .or_default()
-                .push(i);
-            // subdivision
-            cache
-                .subdivision_idx
-                .entry(row_ref.i18n_string_country_subdivision_code.clone())
-                .or_default()
-                .push(i);
-            // language
-            cache
-                .language_idx
-                .entry(row_ref.i18n_string_language_code)
-                .or_default()
-                .push(i);
-            // created_by
-            cache
-                .created_by_idx
-                .entry(row_ref.i18n_string_created_by)
-                .or_default()
-                .push(i);
-            // updated_by
-            cache
-                .updated_by_idx
-                .entry(row_ref.i18n_string_updated_by)
-                .or_default()
-                .push(i);
-            // reference_key
-            cache
-                .reference_idx
-                .entry(row_ref.i18n_string_reference_key.clone())
-                .or_default()
-                .push(i);
-            // created_at
-            cache
-                .created_at_idx
-                .entry(row_ref.i18n_string_created_at)
-                .or_default()
-                .push(i);
-            // updated_at
-            cache
-                .updated_at_idx
-                .entry(row_ref.i18n_string_updated_at)
-                .or_default()
-                .push(i);
+    pub fn from_rows(rows: Vec<InternationalizationString>, source_complete: bool) -> Self {
+        let mut cache = Self::new();
+        cache.complete = source_complete;
+        for row in rows {
+            cache.admit_row(&row);
         }
         cache
     }
 
-    // Example lookup methods:
-    pub fn by_country(&self, code: i32) -> Vec<&InternationalizationString> {
-        self.country_idx
-            .get(&code)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
-    }
-    pub fn by_subdivision(&self, code: Option<&str>) -> Vec<&InternationalizationString> {
-        let key = code.map(|s| s.to_string());
-        self.subdivision_idx
-            .get(&key)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
-    }
-    pub fn by_language(&self, code: i32) -> Vec<&InternationalizationString> {
-        self.language_idx
-            .get(&code)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
-    }
-    pub fn by_reference(&self, key: &str) -> Vec<&InternationalizationString> {
-        self.reference_idx
-            .get(key)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
-    }
-    pub fn by_created_by(&self, user: &Uuid) -> Vec<&InternationalizationString> {
-        self.created_by_idx
-            .get(user)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
-    }
-    pub fn by_updated_by(&self, user: &Uuid) -> Vec<&InternationalizationString> {
-        self.updated_by_idx
-            .get(user)
-            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
-            .unwrap_or_default()
+    pub fn admit_rows(&mut self, rows: &[InternationalizationString]) {
+        for row in rows {
+            self.admit_row(row);
+        }
     }
 
-    pub fn range_created_at(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&InternationalizationString> {
-        self.created_at_idx
-            .range(start..=end)
-            .flat_map(|(_k, v)| v.iter().map(|&i| &self.rows[i]))
-            .collect()
+    fn admit_row(&mut self, row: &InternationalizationString) {
+        if row.i18n_string_country_subdivision_code.is_some() {
+            return;
+        }
+        let key = I18nCacheKey::new(
+            &row.i18n_string_reference_key,
+            row.i18n_string_country_code,
+            row.i18n_string_language_code,
+        );
+        let estimated_bytes = key.reference_key.len()
+            + row.i18n_string_content.len()
+            + I18N_CACHE_ENTRY_OVERHEAD_BYTES;
+        if let Some(previous) = self.entries.remove(&key) {
+            self.retained_bytes = self.retained_bytes.saturating_sub(
+                key.reference_key.len() + previous.len() + I18N_CACHE_ENTRY_OVERHEAD_BYTES,
+            );
+        }
+        if self.entries.len() >= I18N_CACHE_MAX_ENTRIES
+            || estimated_bytes > I18N_CACHE_MAX_BYTES.saturating_sub(self.retained_bytes)
+        {
+            self.complete = false;
+            self.rejected_admissions.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
+        self.retained_bytes += estimated_bytes;
+        self.entries.insert(key, row.i18n_string_content.clone());
     }
 
-    pub fn range_updated_at(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&InternationalizationString> {
-        self.updated_at_idx
-            .range(start..=end)
-            .flat_map(|(_k, v)| v.iter().map(|&i| &self.rows[i]))
-            .collect()
+    pub fn is_complete(&self) -> bool {
+        self.complete
+    }
+
+    pub fn record_database_read_through(&self) {
+        self.database_read_throughs.fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn ui_text_bundle(
@@ -166,32 +126,74 @@ impl I18nCache {
         required_keys: &[&str],
     ) -> HashMap<String, String> {
         let mut texts = HashMap::with_capacity(required_keys.len());
-
-        for key in required_keys {
-            let text = match self.find_ui_text(key, country_code, language_code) {
-                Some(text) => Some(text),
-                None => self.find_ui_text(key, fallback_country_code, fallback_language_code),
-            };
-
-            if let Some(text) = text {
-                texts.insert((*key).to_string(), text);
+        for reference_key in required_keys {
+            let primary = I18nCacheKey::new(reference_key, country_code, language_code);
+            let fallback = I18nCacheKey::new(
+                reference_key,
+                fallback_country_code,
+                fallback_language_code,
+            );
+            let text = self.entries.get(&primary).or_else(|| self.entries.get(&fallback));
+            match text {
+                Some(text) => {
+                    self.hits.fetch_add(1, Ordering::Relaxed);
+                    texts.insert((*reference_key).to_string(), text.clone());
+                }
+                None => {
+                    self.misses.fetch_add(1, Ordering::Relaxed);
+                }
             }
         }
-
         texts
     }
 
-    fn find_ui_text(&self, key: &str, country_code: i32, language_code: i32) -> Option<String> {
-        let indices = self.reference_idx.get(key)?;
-        for &idx in indices {
-            let row = self.rows.get(idx)?;
-            if row.i18n_string_country_code == country_code
-                && row.i18n_string_language_code == language_code
-            {
-                return Some(row.i18n_string_content.clone());
+    pub fn ui_text_bundle_from_rows(
+        rows: &[InternationalizationString],
+        country_code: i32,
+        language_code: i32,
+        fallback_country_code: i32,
+        fallback_language_code: i32,
+        required_keys: &[&str],
+    ) -> HashMap<String, String> {
+        let mut entries = HashMap::<I18nCacheKey, String>::with_capacity(rows.len());
+        for row in rows {
+            if row.i18n_string_country_subdivision_code.is_some() {
+                continue;
             }
+            let key = I18nCacheKey::new(
+                &row.i18n_string_reference_key,
+                row.i18n_string_country_code,
+                row.i18n_string_language_code,
+            );
+            entries
+                .entry(key)
+                .or_insert_with(|| row.i18n_string_content.clone());
         }
 
-        None
+        let mut texts = HashMap::with_capacity(required_keys.len());
+        for reference_key in required_keys {
+            let primary = I18nCacheKey::new(reference_key, country_code, language_code);
+            let fallback = I18nCacheKey::new(
+                reference_key,
+                fallback_country_code,
+                fallback_language_code,
+            );
+            if let Some(text) = entries.get(&primary).or_else(|| entries.get(&fallback)) {
+                texts.insert((*reference_key).to_string(), text.clone());
+            }
+        }
+        texts
+    }
+
+    pub fn stats(&self) -> I18nCacheStats {
+        I18nCacheStats {
+            entries: self.entries.len(),
+            retained_bytes: self.retained_bytes,
+            complete: self.complete,
+            hits: self.hits.load(Ordering::Relaxed),
+            misses: self.misses.load(Ordering::Relaxed),
+            rejected_admissions: self.rejected_admissions.load(Ordering::Relaxed),
+            database_read_throughs: self.database_read_throughs.load(Ordering::Relaxed),
+        }
     }
 }

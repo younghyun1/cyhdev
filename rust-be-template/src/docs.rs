@@ -1,26 +1,24 @@
 //! OpenAPI documentation registration for Swagger UI.
-//!
-//! Important: Utoipa only exposes operations you list in `#[openapi(paths(...))]`.
-//! Handler functions still need their own `#[utoipa::path(...)]` attributes.
 
 use utoipa::OpenApi;
 
-// ---- handlers (for `paths(...)`) ----
+use crate::features::accounts::api::{
+    check_if_user_exists, is_superuser, login, logout, me, reset_password,
+    public_user, reset_password_request, signup, verify_user_email,
+};
 use crate::handlers::{
     admin::sync_i18n_cache,
-    auth::{
-        check_if_user_exists, is_superuser, login, logout, me, reset_password,
-        reset_password_request, signup, verify_user_email,
-    },
     blog::{
         delete_comment, delete_post, get_posts, read_post, rescind_comment_vote, rescind_post_vote,
-        submit_comment, submit_post, update_comment, update_post, vote_comment, vote_post,
+        search_posts, submit_comment, submit_post, update_comment, update_post, vote_comment,
+        vote_post,
     },
     countries::{
         get_countries, get_country, get_language, get_languages, get_subdivisions_for_country,
     },
-    geo_ip::lookup_ip,
+    geo_ip::{lookup_ip, lookup_my_ip},
     i18n::get_ui_text_bundle,
+    live_chat::{cache_stats, get_messages},
     photography::{
         batch_list, batch_status, batch_upload, delete_photograph_comment, delete_photographs,
         get_photographs, read_photograph, rescind_photograph_comment_vote, rescind_photograph_vote,
@@ -28,12 +26,14 @@ use crate::handlers::{
         vote_photograph_comment,
     },
     server::{get_host_fastfetch, healthcheck, lookup_ip_loc, root, visitor_board},
-    user::{get_user_info, upload_profile_picture},
+    user::upload_profile_picture,
+    wasm_module::{
+        delete_wasm_module, get_wasm_modules, serve_wasm, update_wasm_module,
+        update_wasm_module_assets, upload_wasm_module,
+    },
 };
 
-// ---- schemas (for `components(schemas(...))`) ----
 use crate::domain::{
-    auth::user::{User, UserInfo, UserProfilePicture},
     blog::blog::{
         Comment, CommentResponse, Post, PostInfo, PostInfoWithVote, Tag, UserBadgeInfo, VoteState,
     },
@@ -41,7 +41,7 @@ use crate::domain::{
         CountryAndSubdivisions, IsoCountry, IsoCountrySubdivision, IsoCurrency, IsoLanguage,
     },
     photography::batch::status::ProcessingStatus,
-    photography::photographs::Photograph,
+    photography::photographs::{Photograph, PhotographContext},
     photography::social::{PhotographComment, PhotographCommentResponse},
 };
 use crate::dto::{
@@ -63,12 +63,14 @@ use crate::dto::{
         photography::submit_photograph_comment_request::SubmitPhotographCommentRequest,
         photography::update_photograph_comment_request::UpdatePhotographCommentRequest,
         photography::vote_photograph_request::VotePhotographRequest,
+        wasm_module::UpdateWasmModuleRequest,
     },
     responses::{
         admin::sync_i18n_cache_response::SyncI18nCacheResponse,
         auth::{
             is_superuser_response::IsSuperuserResponse, login_response::LoginResponse,
-            logout_response::LogoutResponse, me_response::MeResponse,
+            logout_response::LogoutResponse,
+            me_response::{MeResponse, UserInfo, UserProfilePicture},
             reset_password_request_response::ResetPasswordRequestResponse,
             reset_password_response::ResetPasswordResponse, signup_response::SignupResponse,
         },
@@ -84,40 +86,45 @@ use crate::dto::{
             BatchUploadResponse,
         },
         photography::delete_photograph_comment_response::DeletePhotographCommentResponse,
+        photography::delete_photographs_response::DeletePhotographsResponse,
         photography::get_photograph_response::{
             GetPhotographsResponse, PaginationMeta, PhotographItem,
         },
         photography::read_photograph_response::ReadPhotographResponse,
         photography::vote_photograph_response::VotePhotographResponse,
         user::public_user_info_response::PublicUserInfoResponse,
+        live_chat::{GetLiveChatMessagesResponse, LiveChatCacheStatsResponse, LiveChatMessageItem},
+        wasm_module::{GetWasmModulesResponse, WasmModuleItem},
     },
 };
 use crate::errors::code_error::CodeErrorResp;
+use crate::features::accounts::api::check_if_user_exists::CheckIfUserExistsResponse;
+use crate::handlers::{
+    blog::search_posts::SearchPostsResponse,
+    countries::get_countries::GetCountriesResponse,
+    server::{healthcheck::ServerHealthcheckResponse, root::RootHandlerResponse},
+    wasm_module::delete_wasm_module::DeleteWasmModuleResponse,
+};
+use crate::openapi_envelope::FrontendResponseEnvelope;
 use crate::util::geographic::ip_info_lookup::IpInfo;
 
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]
 #[openapi(
-    // All public + protected API routes from `main_router.rs`.
+    modifiers(&FrontendResponseEnvelope),
     paths(
-        // --- server ---
         healthcheck::healthcheck,
         root::root_handler,
         get_host_fastfetch::get_host_fastfetch,
         visitor_board::get_visitor_board_entries,
         lookup_ip_loc::lookup_ip_location,
-
-        // --- geo_ip ---
         lookup_ip::lookup_ip_info,
-
-        // --- dropdowns / countries ---
+        lookup_my_ip::lookup_my_ip_info,
         get_languages::get_languages,
         get_language::get_language,
         get_countries::get_countries,
         get_country::get_country,
         get_subdivisions_for_country::get_subdivisions_for_country,
-
-        // --- auth ---
         signup::signup_handler,
         is_superuser::is_superuser_handler,
         me::me_handler,
@@ -127,8 +134,6 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         reset_password::reset_password,
         verify_user_email::verify_user_email,
         logout::logout,
-
-        // --- blog ---
         get_posts::get_posts,
         read_post::read_post,
         submit_post::submit_post,
@@ -141,14 +146,9 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         update_post::update_post,
         submit_comment::submit_comment,
         rescind_comment_vote::rescind_comment_vote,
-
-        // --- i18n ---
+        search_posts::search_posts,
         get_ui_text_bundle::get_ui_text_bundle,
-
-        // --- admin ---
         sync_i18n_cache::sync_i18n_cache,
-
-        // --- photography ---
         get_photographs::get_photographs,
         upload_photograph::upload_photograph,
         delete_photographs::delete_photographs,
@@ -163,20 +163,24 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         submit_photograph_comment::submit_photograph_comment,
         update_photograph_comment::update_photograph_comment,
         delete_photograph_comment::delete_photograph_comment,
-
-        // --- user ---
-        get_user_info::get_user_info,
+        get_messages::get_live_chat_messages,
+        cache_stats::get_live_chat_cache_stats,
+        public_user::get_user_info,
         upload_profile_picture::upload_profile_picture,
+        get_wasm_modules::get_wasm_modules,
+        upload_wasm_module::upload_wasm_module,
+        update_wasm_module::update_wasm_module,
+        update_wasm_module_assets::update_wasm_module_assets,
+        delete_wasm_module::delete_wasm_module,
+        serve_wasm::serve_wasm,
     ),
     components(
         schemas(
-            // shared error response
             CodeErrorResp,
-
-            // --- auth DTOs ---
             SignupRequest,
             SignupResponse,
             CheckIfUserExistsRequest,
+            CheckIfUserExistsResponse,
             LoginRequest,
             LoginResponse,
             LogoutResponse,
@@ -187,8 +191,6 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             ResetPasswordProcessRequest,
             ResetPasswordResponse,
             EmailValidationToken,
-
-            // --- blog DTOs ---
             GetPostsRequest,
             GetPostsResponse,
             ReadPostResponse,
@@ -203,15 +205,10 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             UpdatePostRequest,
             DeleteCommentResponse,
             DeletePostResponse,
-
-            // --- i18n DTOs ---
+            SearchPostsResponse,
             GetUiTextBundleRequest,
             UiTextBundleResponse,
-
-            // --- admin DTOs ---
             SyncI18nCacheResponse,
-
-            // --- photography DTOs ---
             GetPhotographsResponse,
             PhotographItem,
             PaginationMeta,
@@ -227,25 +224,29 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             SubmitPhotographCommentRequest,
             UpdatePhotographCommentRequest,
             DeletePhotographCommentResponse,
+            DeletePhotographsResponse,
             ReadPhotographResponse,
             PhotographComment,
             PhotographCommentResponse,
-
-            // --- domain models used in responses ---
+            GetLiveChatMessagesResponse,
+            LiveChatMessageItem,
+            LiveChatCacheStatsResponse,
+            UpdateWasmModuleRequest,
+            GetWasmModulesResponse,
+            WasmModuleItem,
+            DeleteWasmModuleResponse,
             PublicUserInfoResponse,
-
+            RootHandlerResponse,
+            ServerHealthcheckResponse,
+            GetCountriesResponse,
             IpInfo,
-
             IsoCountry,
             IsoCountrySubdivision,
             IsoCurrency,
             IsoLanguage,
             CountryAndSubdivisions,
-
-            User,
             UserInfo,
             UserProfilePicture,
-
             Post,
             PostInfo,
             PostInfoWithVote,
@@ -254,8 +255,8 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             Tag,
             UserBadgeInfo,
             VoteState,
-
             Photograph,
+            PhotographContext,
         )
     ),
     tags(
@@ -267,7 +268,9 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         (name = "i18n", description = "Internationalization endpoints"),
         (name = "admin", description = "Admin endpoints"),
         (name = "photography", description = "Photography endpoints"),
-        (name = "user", description = "User endpoints")
+        (name = "user", description = "User endpoints"),
+        (name = "live_chat", description = "Live chat HTTP endpoints"),
+        (name = "wasm_module", description = "WebAssembly module endpoints")
     )
 )]
 pub struct ApiDoc;

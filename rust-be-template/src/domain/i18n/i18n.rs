@@ -4,7 +4,7 @@ use diesel::{
     ExpressionMethods, QueryDsl,
     prelude::{Insertable, Queryable, QueryableByName},
 };
-use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::PooledConnection};
+use diesel_async::RunQueryDsl;
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
@@ -81,16 +81,4 @@ impl InternationalizationString {
         Ok(result)
     }
 
-    pub async fn get_all(
-        mut conn: PooledConnection<'_, AsyncPgConnection>,
-    ) -> anyhow::Result<Vec<InternationalizationString>> {
-        let result: Vec<InternationalizationString> = i18n_strings::table
-            .load::<InternationalizationString>(&mut conn)
-            .await
-            .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-        drop(conn);
-
-        Ok(result)
-    }
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::RunQueryDsl;
+use futures_util::TryStreamExt;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -15,30 +16,31 @@ impl ServerState {
         let start = tokio_now();
         let mut conn = self.get_conn().await?;
 
-        let rows: Vec<(Uuid, Vec<u8>)> = wasm_module::table
+        let mut rows = wasm_module::table
             .select((
                 wasm_module::wasm_module_id,
                 wasm_module::wasm_module_bundle_gz,
             ))
-            .load(&mut conn)
+            .order((
+                wasm_module::wasm_module_updated_at.asc(),
+                wasm_module::wasm_module_id.asc(),
+            ))
+            .load_stream::<(Uuid, Vec<u8>)>(&mut conn)
             .await?;
 
-        drop(conn);
-
-        let mut cached = 0usize;
-        for (wasm_module_id, gz_bytes) in rows {
-            if self
+        self.wasm_module_cache.clear().await;
+        while let Some((wasm_module_id, gz_bytes)) = rows.try_next().await? {
+            let _ = self
                 .cache_wasm_module_from_gzip(wasm_module_id, gz_bytes)
-                .await
-                .is_some()
-            {
-                cached += 1;
-            }
+                .await;
         }
+        drop(rows);
+        drop(conn);
+        let cached = self.wasm_module_cache.len();
 
         info!(
             elapsed = ?start.elapsed(),
-            rows_synchronized = %cached,
+            entries_cached = cached,
             "Synchronized WASM module cache."
         );
 
@@ -52,11 +54,16 @@ impl ServerState {
         content_type: &'static str,
     ) {
         let bytes: Arc<[u8]> = Arc::from(gz_bytes.into_boxed_slice());
+        let size_bytes = bytes.len();
         let entry = (bytes, true, content_type);
-        let _ = self
-            .wasm_module_cache
-            .insert_async(wasm_module_id, entry)
-            .await;
+        let admitted = self.wasm_module_cache.upsert(wasm_module_id, entry).await;
+        if !admitted {
+            info!(
+                wasm_module_id = %wasm_module_id,
+                size_bytes,
+                "WASM module exceeds the cache byte budget; serving without admission"
+            );
+        }
     }
 
     async fn cache_wasm_module_from_gzip(
@@ -85,9 +92,9 @@ impl ServerState {
         let bytes: Arc<[u8]> = Arc::from(gz_bytes.into_boxed_slice());
         let entry = (bytes.clone(), true, content_type);
 
-        let _ = self
+        let admitted = self
             .wasm_module_cache
-            .insert_async(wasm_module_id, entry.clone())
+            .upsert(wasm_module_id, entry.clone())
             .await;
 
         info!(
@@ -95,6 +102,11 @@ impl ServerState {
             size_bytes = bytes.len(),
             is_gzipped = true,
             content_type = content_type,
+            admitted,
+            cache_used_bytes = self.wasm_module_cache.used_bytes(),
+            cache_entries = self.wasm_module_cache.len(),
+            cache_evictions = self.wasm_module_cache.evictions(),
+            cache_rejections = self.wasm_module_cache.rejected_entries(),
             "Loaded WASM module bundle into cache"
         );
 
@@ -105,11 +117,7 @@ impl ServerState {
         &self,
         wasm_module_id: Uuid,
     ) -> Option<(Arc<[u8]>, bool, &'static str)> {
-        if let Some(entry) = self
-            .wasm_module_cache
-            .read_async(&wasm_module_id, |_, v| v.clone())
-            .await
-        {
+        if let Some(entry) = self.wasm_module_cache.get(&wasm_module_id).await {
             return Some(entry);
         }
 
@@ -144,6 +152,6 @@ impl ServerState {
     }
 
     pub async fn invalidate_wasm_module(&self, wasm_module_id: Uuid) {
-        let _ = self.wasm_module_cache.remove_async(&wasm_module_id).await;
+        let _ = self.wasm_module_cache.invalidate(&wasm_module_id).await;
     }
 }

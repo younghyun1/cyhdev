@@ -1,5 +1,6 @@
 import { For } from "solid-js";
 import {
+  repositorySourceBaseUrl,
   repositorySourcePaths,
   repositorySourceUrl,
   type RepositorySourcePath,
@@ -83,8 +84,9 @@ export function RepositorySourceMap() {
     <section class={pageStyles.cardPadded}>
       <h2 class={pageStyles.sourceMapTitle}>5) Source map</h2>
       <p class={pageStyles.sourceMapIntro}>
-        These links resolve from paths relative to the monorepo root. They do
-        not use line anchors, so ordinary edits do not invalidate them.
+        {repositorySourceBaseUrl
+          ? "These links resolve from paths relative to the monorepo root. They do not use line anchors, so ordinary edits do not invalidate them."
+          : "These paths are relative to the monorepo root. Links become available after a published repository URL is configured."}
       </p>
       <div class={pageStyles.sourceGroupGrid}>
         <For each={sourceGroups}>
@@ -94,23 +96,35 @@ export function RepositorySourceMap() {
               <p class={pageStyles.sourceGroupDescription}>{group.description}</p>
               <ul class={pageStyles.sourceLinkList}>
                 <For each={group.references}>
-                  {(reference) => (
-                    <li>
-                      <a
-                        href={repositorySourceUrl(reference.path)}
-                        class={pageStyles.sourceLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                  {(reference) => {
+                    const sourceUrl = repositorySourceUrl(reference.path);
+                    const content = (
+                      <>
                         <span class={pageStyles.sourceLinkLabel}>
                           {reference.label}
                         </span>
                         <code class={pageStyles.sourceLinkPath}>
                           {reference.path}
                         </code>
-                      </a>
-                    </li>
-                  )}
+                      </>
+                    );
+                    return (
+                      <li>
+                        {sourceUrl ? (
+                          <a
+                            href={sourceUrl}
+                            class={pageStyles.sourceLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {content}
+                          </a>
+                        ) : (
+                          <span class={pageStyles.sourceLink}>{content}</span>
+                        )}
+                      </li>
+                    );
+                  }}
                 </For>
               </ul>
             </section>

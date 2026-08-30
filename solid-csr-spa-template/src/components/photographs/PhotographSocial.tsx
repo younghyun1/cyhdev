@@ -24,9 +24,7 @@ import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { t } from "../../state/i18n";
 import { UserBadge } from "../UserBadge";
-import type { PhotographCommentResponse } from "../../dtos/responses/photography";
-
-type VoteState = 0 | 1 | 2;
+import type { PhotographCommentResponse, VoteState } from "../../generated";
 
 const COMMENT_INDENT_PX = 16;
 
@@ -55,7 +53,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
 
   // Local, mutable comment list seeded from the detail load. Comment mutations
   // edit this list directly so we never refetch (which would re-count a view).
-  const [comments, setComments] = createSignal<PhotographCommentResponse[]>([]);
+  const [comments, setComments] = createSignal<
+    ReadonlyArray<PhotographCommentResponse>
+  >([]);
   createEffect(
     () => detail(),
     (d) => {
@@ -277,9 +277,9 @@ export default function PhotographSocial(props: PhotographSocialProps) {
 
   // Remove a comment and all of its descendants (server cascade-deletes them).
   const removeSubtree = (
-    list: PhotographCommentResponse[],
+    list: ReadonlyArray<PhotographCommentResponse>,
     rootId: string,
-  ): PhotographCommentResponse[] => {
+  ): ReadonlyArray<PhotographCommentResponse> => {
     const doomed = new Set<string>([rootId]);
     let changed = true;
     while (changed) {

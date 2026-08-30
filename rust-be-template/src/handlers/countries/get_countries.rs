@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use axum::{extract::State, response::IntoResponse};
+use utoipa::ToSchema;
 
 use crate::{
     domain::country::IsoCountry,
@@ -10,12 +11,18 @@ use crate::{
     util::time::now::tokio_now,
 };
 
+/// Serialized shape of the cached country list returned by this endpoint.
+#[derive(ToSchema)]
+pub struct GetCountriesResponse {
+    pub countries: Vec<IsoCountry>,
+}
+
 #[utoipa::path(
     get,
     path = "/api/dropdown/country",
     tag = "countries",
     responses(
-        (status = 200, description = "List of countries", body = [IsoCountry]),
+        (status = 200, description = "List of countries", body = GetCountriesResponse),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]

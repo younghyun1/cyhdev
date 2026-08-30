@@ -1,10 +1,5 @@
-#![recursion_limit = "256"]
-// Diesel 2.3.12 derives emit this lint at field declaration spans; there is no
-// handwritten struct initializer to shorten at those locations.
-#![allow(clippy::redundant_field_names)]
-
-use init::server_init::server_init_proc;
 use mimalloc::MiMalloc;
+use rust_be_template::{LOGS_DIR, init::server_init::server_init_proc};
 use tracing::{error, info, level_filters};
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
@@ -12,21 +7,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-
-pub mod build_info;
-pub mod docs;
-pub mod domain;
-pub mod dto;
-pub mod errors;
-pub mod handlers;
-pub mod init;
-pub mod jobs;
-pub mod routers;
-pub mod schema;
-pub mod util;
-
-pub const DOMAIN_NAME: &str = "cyhdev.com";
-pub const LOGS_DIR: &str = "./logs/";
 
 // main function
 #[tokio::main(flavor = "multi_thread")]

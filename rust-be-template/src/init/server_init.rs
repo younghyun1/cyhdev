@@ -127,15 +127,7 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     state.sync_live_chat_ban_cache().await?;
     state.sync_live_chat_cache().await?;
 
-    let api_key = std::env::var("X_API_KEY")
-        .map_err(|e| anyhow::anyhow!("Failed to load X_API_KEY from .env: {}", e))?;
-
-    let api_key_uuid = uuid::Uuid::parse_str(&api_key)
-        .map_err(|e| anyhow::anyhow!("Failed to parse X_API_KEY as UUID: {}", e))?;
-
-    drop(api_key);
-
-    state.insert_api_key(api_key_uuid).await?;
+    let router = build_router(Arc::clone(&state))?;
 
     info!(
         event = "server_state_initialized",
@@ -167,7 +159,7 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     );
 
     axum_server::bind_rustls(host_socket_addr, config)
-        .serve(build_router(state).into_make_service_with_connect_info::<SocketAddr>())
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
 

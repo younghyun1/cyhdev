@@ -63,7 +63,7 @@ pub async fn root_handler(
             timestamp: Utc::now(),
             server_uptime: format_duration(state.get_uptime()),
             responses_handled: state.get_responses_handled(),
-            users_logged_in: state.get_session_length(),
+            users_logged_in: state.session_service().len(),
             db_version: version.version,
             db_latency: format!("{db_elapsed:?}"),
         },

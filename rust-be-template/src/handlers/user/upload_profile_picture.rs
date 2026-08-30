@@ -1,55 +1,41 @@
+//! Streamed profile-picture replacement with object-store compensation.
+
 use std::sync::Arc;
 
 use axum::{
     Extension,
     extract::{Multipart, State},
-    response::IntoResponse,
 };
-use diesel_async::RunQueryDsl;
 use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::user::UserProfilePictureInsertable,
-    dto::responses::response_data::http_resp,
+    dto::responses::response_data::{Response as ApiResponse, http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::error::AccountError,
     init::state::ServerState,
-    schema::user_profile_pictures,
     util::{
         image::{
+            image_variant::{CyhdevImageType, IMAGE_ENCODING_FORMAT},
             map_image_format_to_db_enum::map_image_format_to_str,
-            process_uploaded_images::{
-                CyhdevImageType, IMAGE_ENCODING_FORMAT, process_uploaded_image,
-            },
+            process_uploaded_image_files::process_uploaded_image_files,
         },
+        media::{
+            image_upload::{has_file_extension, is_allowed_image_mime},
+            object_store::{ObjectLocation, S3MediaObjectStore},
+            persistence::{
+                CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
+                persist_media_objects,
+            },
+            staged_upload::{StageUploadError, StagedUpload, stage_file_field},
+        },
+        s3::AWS_S3_BUCKET_NAME,
         time::now::tokio_now,
     },
 };
 
-const MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE: usize = 1024 * 1024 * 10; // 10MB
-const ALLOWED_MIME_TYPES: [&str; 16] = [
-    "image/png",                // PNG
-    "image/jpeg",               // JPEG
-    "image/gif",                // GIF
-    "image/webp",               // WebP
-    "image/x-portable-anymap",  // PNM (general format including PBM, PGM, PPM)
-    "image/tiff",               // TIFF
-    "image/x-tga",              // TGA
-    "image/vnd-ms.dds",         // DDS
-    "image/bmp",                // BMP
-    "image/vnd.microsoft.icon", // ICO
-    "image/vnd.radiance",       // HDR
-    "image/x-exr",              // OpenEXR
-    "image/farbfeld",           // Farbfeld
-    "image/avif",               // AVIF
-    "image/qoi",                // QOI
-    "image/vnd.zbrush.pcx",     // PCX
-];
+const MAX_PROFILE_PICTURE_BYTES: u64 = 10 * 1024 * 1024;
 
-const AWS_S3_BUCKET_NAME: &str = "cyhdev-img";
-
-// TODO: STREAM to file, don't keep the whole damn thing around
-// TODO: DELETE old S3 objects
 #[utoipa::path(
     post,
     path = "/api/user/upload-profile-picture",
@@ -66,185 +52,168 @@ pub async fn upload_profile_picture(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     mut multipart: Multipart,
-) -> HandlerResponse<impl IntoResponse> {
+) -> HandlerResponse<ApiResponse<(), ()>> {
     let start = tokio_now();
-    let mut uploaded_file: Vec<u8> = Vec::new();
-    let mut mime: Option<String> = None;
-    let mut _extension: String = String::new();
-
-    // Process the multipart fields
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        error!(error = ?e, user_id = %user_id, "Failed to fetch next multipart field");
-        code_err(CodeError::FILE_UPLOAD_ERROR, e)
-    })? {
-        // For the first field, extract metadata (file name and MIME type)
-        if uploaded_file.is_empty() {
-            _extension = field
-                .file_name()
-                .and_then(|name| name.rsplit('.').next().map(|ext| ext.to_string()))
-                .ok_or_else(|| {
-                    warn!(user_id = %user_id, "Missing file extension in uploaded filename");
-                    code_err(
-                        CodeError::FILE_UPLOAD_ERROR,
-                        "No extensions, that's illegal!",
-                    )
-                })?;
-            mime = Some(
-                field
-                    .content_type()
-                    .map(|mime| mime.to_string())
-                    .ok_or_else(|| {
-                        warn!(user_id = %user_id, "No MIME content type on uploaded file");
-                        code_err(
-                            CodeError::FILE_UPLOAD_ERROR,
-                            "No MIME extensions, that's illegal!",
-                        )
-                    })?,
-            );
-            if !mime
-                .as_ref()
-                .map(|m| ALLOWED_MIME_TYPES.contains(&m.as_str()))
-                .unwrap_or(false)
-            {
-                warn!(
-                    user_id = %user_id,
-                    mime = ?mime,
-                    "Unsupported image type; rejecting upload"
-                );
-                return Err(code_err(
-                    CodeError::FILE_UPLOAD_ERROR,
-                    "Unsupported image type; no PSDs!",
-                ));
-            }
-        }
-        // Read and accumulate the field's bytes.
-        let bytes = field.bytes().await.map_err(|e| {
-            error!(error = ?e, user_id = %user_id, "Failed reading multipart field bytes");
-            code_err(CodeError::FILE_UPLOAD_ERROR, e)
-        })?;
-        if uploaded_file.len() + bytes.len() > MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE {
-            warn!(
-                user_id = %user_id,
-                limit = MAX_SIZE_OF_UPLOADABLE_PROFILE_PICTURE,
-                "Profile picture exceeds maximum allowed size; rejecting upload"
-            );
-            return Err(code_err(
-                CodeError::FILE_UPLOAD_ERROR,
-                "Profile picture exceeds the 10MB size limit!",
-            ));
-        }
-        uploaded_file.extend_from_slice(&bytes);
-    }
-
-    if uploaded_file.is_empty() {
-        warn!(user_id = %user_id, "Uploaded file is empty");
-        return Err(code_err(CodeError::FILE_UPLOAD_ERROR, "File is empty!"));
-    }
-
-    // compress and process image here in a blocking thread
-    let processed_image: Vec<u8> = process_uploaded_image(
-        uploaded_file,
-        None,
-        CyhdevImageType::ProfilePicture,
-    )
-    .await
-    .map_err(|e| {
-        error!(error = ?e, user_id = %user_id, "Failed to process uploaded profile picture");
-        code_err(CodeError::COULD_NOT_PROCESS_IMAGE, e)
+    let upload = read_profile_picture(&mut multipart, user_id).await?;
+    let mut processed =
+        process_uploaded_image_files(upload.path(), None, vec![CyhdevImageType::ProfilePicture])
+            .await
+            .map_err(|source| {
+                error!(error = %source, user_id = %user_id, "Failed to process profile picture");
+                code_err(CodeError::COULD_NOT_PROCESS_IMAGE, source)
+            })?
+            .into_iter();
+    let processed = processed.next().ok_or_else(|| {
+        code_err(
+            CodeError::COULD_NOT_PROCESS_IMAGE,
+            "Profile-picture encoder produced no output",
+        )
     })?;
+    drop(upload);
 
-    // store in filesystem or S3
-    let image_id: Uuid = uuid::Uuid::new_v4();
-    let (extension, image_type_db_id) = map_image_format_to_str(IMAGE_ENCODING_FORMAT);
-
-    let image_path = format!("images/{image_id}.{extension}");
-
-    // upload to S3 here
-    // Initialize AWS S3 client from environment and upload the image
-    let s3_client = aws_sdk_s3::Client::new(&state.aws_profile_picture_config);
-
-    s3_client
-        .put_object()
-        .bucket(AWS_S3_BUCKET_NAME)
-        .key(&image_path)
-        .content_type(mime.as_deref().unwrap_or("application/octet-stream"))
-        .body(aws_sdk_s3::primitives::ByteStream::from(processed_image))
-        .send()
-        .await
-        .map_err(|e| {
-            error!(
-                error = ?e,
-                user_id = %user_id,
-                bucket = AWS_S3_BUCKET_NAME,
-                key = %image_path,
-                "Failed to upload profile picture to S3"
-            );
-            code_err(CodeError::FILE_UPLOAD_ERROR, e)
-        })?;
-
-    // Assemble the public S3 object URL
-    // Replace `<region>` below with your actual AWS region as appropriate
-    let s3_region: String = state
+    let image_id = Uuid::now_v7();
+    let (extension, image_type) = map_image_format_to_str(IMAGE_ENCODING_FORMAT);
+    let location =
+        ObjectLocation::new(AWS_S3_BUCKET_NAME, format!("images/{image_id}.{extension}"));
+    let region = state
         .aws_profile_picture_config
         .region()
-        .map(|r| r.to_string())
+        .map(|region| region.to_string())
         .unwrap_or_else(|| "us-west-1".to_string());
+    let object_url = location.public_s3_url(&region);
+    let pending = [PendingMediaObject {
+        location: location.clone(),
+        content_type: "image/avif".to_string(),
+        source: processed.path_buf(),
+    }];
+    let store = S3MediaObjectStore::from_config(&state.aws_profile_picture_config);
+    let account_service = state.account_service();
 
-    let object_url: String = format!(
-        "https://{}.s3.{}.amazonaws.com/{}",
-        AWS_S3_BUCKET_NAME, s3_region, image_path
-    );
-
-    let mut conn = state.get_conn().await.map_err(|e| {
-        error!(error = ?e, user_id = %user_id, "Failed to get DB connection from pool");
-        code_err(CodeError::POOL_ERROR, e)
-    })?;
-
-    let db_result: Result<Uuid, diesel::result::Error> =
-        diesel::insert_into(user_profile_pictures::table)
-            .values(UserProfilePictureInsertable {
-                user_id,
-                user_profile_picture_image_type: image_type_db_id,
-                user_profile_picture_is_on_cloud: true,
-                user_profile_picture_link: Some(object_url),
+    let result = persist_media_objects(&store, &pending, async move {
+        let replacement = account_service
+            .replace_profile_picture_metadata(user_id, image_type, &object_url)
+            .await?;
+        let superseded = replacement
+            .superseded_links
+            .iter()
+            .filter_map(|link| {
+                let location = ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, link);
+                if location.is_none() {
+                    warn!(user_id = %user_id, url = %link, "Skipped invalid superseded profile-picture URL");
+                }
+                location
             })
-            .returning(user_profile_pictures::user_profile_picture_id)
-            .get_result(&mut conn)
-            .await;
+            .collect();
+        Ok::<_, AccountError>(PersistedMedia::new(
+            replacement.profile_picture_id,
+            superseded,
+        ))
+    })
+    .await;
 
-    match db_result {
-        Err(e) => {
+    match result {
+        Ok(success) => log_cleanup_failures(user_id, &success.cleanup_failures),
+        Err(MediaWriteError::Upload {
+            source,
+            compensation_failures,
+        }) => {
+            log_cleanup_failures(user_id, &compensation_failures);
             error!(
-                error = ?e,
                 user_id = %user_id,
-                key = %image_path,
-                "Failed to insert user profile picture row into DB"
+                key = %location.key(),
+                operation = ?source.operation(),
+                retryable = source.is_retryable(),
+                error = %source,
+                "Failed to upload profile picture"
             );
-            // Clean up the orphaned S3 object if DB insertion fails
-            if let Err(del_err) = s3_client
-                .delete_object()
-                .bucket(AWS_S3_BUCKET_NAME)
-                .key(&image_path)
-                .send()
-                .await
-            {
-                error!(
-                    error = ?del_err,
-                    user_id = %user_id,
-                    bucket = AWS_S3_BUCKET_NAME,
-                    key = %image_path,
-                    "Failed to delete orphaned S3 object after DB insertion failure"
-                );
-            }
-            return Err(code_err(CodeError::DB_INSERTION_ERROR, e));
+            return Err(code_err(CodeError::FILE_UPLOAD_ERROR, source));
         }
-        Ok(user_profile_picture_id) => {
-            let _user_profile_picture_id = user_profile_picture_id;
+        Err(MediaWriteError::Persistence {
+            source,
+            compensation_failures,
+        }) => {
+            log_cleanup_failures(user_id, &compensation_failures);
+            let code = match &source {
+                AccountError::Pool(_) => CodeError::POOL_ERROR,
+                _ => CodeError::DB_INSERTION_ERROR,
+            };
+            error!(error = %source, user_id = %user_id, "Failed to commit profile-picture metadata");
+            return Err(code_err(code, source));
         }
     }
 
-    drop(conn);
-
-    // TODO: define response dto later
     Ok(http_resp((), (), start))
+}
+
+async fn read_profile_picture(
+    multipart: &mut Multipart,
+    user_id: Uuid,
+) -> HandlerResponse<StagedUpload> {
+    let mut upload = None;
+    while let Some(field) = multipart.next_field().await.map_err(|source| {
+        error!(error = %source, user_id = %user_id, "Failed to read multipart field");
+        code_err(CodeError::FILE_UPLOAD_ERROR, source)
+    })? {
+        if upload.is_some() {
+            return Err(code_err(
+                CodeError::FILE_UPLOAD_ERROR,
+                "Only one profile picture may be uploaded",
+            ));
+        }
+        validate_file_metadata(field.file_name(), field.content_type(), user_id)?;
+        upload = Some(
+            stage_file_field(field, MAX_PROFILE_PICTURE_BYTES)
+                .await
+                .map_err(map_stage_error)?,
+        );
+    }
+    upload.ok_or_else(|| code_err(CodeError::FILE_UPLOAD_ERROR, "File is empty"))
+}
+
+fn validate_file_metadata(
+    file_name: Option<&str>,
+    content_type: Option<&str>,
+    user_id: Uuid,
+) -> HandlerResponse<()> {
+    let file_name = file_name.ok_or_else(|| {
+        warn!(user_id = %user_id, "Profile picture is missing a filename");
+        code_err(CodeError::FILE_UPLOAD_ERROR, "Filename is required")
+    })?;
+    if !has_file_extension(file_name) {
+        return Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "Filename extension is required",
+        ));
+    }
+    let content_type = content_type
+        .ok_or_else(|| code_err(CodeError::FILE_UPLOAD_ERROR, "Content type is required"))?;
+    if !is_allowed_image_mime(content_type) {
+        return Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "Unsupported image type",
+        ));
+    }
+    Ok(())
+}
+
+fn map_stage_error(source: StageUploadError) -> CodeErrorResp {
+    let code = if matches!(&source, StageUploadError::TooLarge { .. }) {
+        CodeError::IMAGE_TOO_LARGE
+    } else {
+        CodeError::FILE_UPLOAD_ERROR
+    };
+    code_err(code, source)
+}
+
+fn log_cleanup_failures(user_id: Uuid, failures: &[CleanupFailure]) {
+    for failure in failures {
+        error!(
+            user_id = %user_id,
+            bucket = %failure.location.bucket(),
+            key = %failure.location.key(),
+            retryable = failure.is_retryable(),
+            error = %failure.error,
+            "Media cleanup remains pending"
+        );
+    }
 }

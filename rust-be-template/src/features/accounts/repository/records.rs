@@ -1,246 +1,240 @@
+//! Diesel records kept private to the account repository boundary.
+
 use chrono::{DateTime, Utc};
-use diesel::{Queryable, QueryableByName, Selectable, prelude::Insertable};
-use diesel_async::{
-    AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::PooledConnection,
-};
-use serde_derive::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use diesel::{AsChangeset, Insertable, Queryable, Selectable};
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::{role::RoleType, user_roles::UserRole},
-    dto::requests::auth::signup_request::SignupRequest,
-    errors::code_error::{CodeError, CodeErrorResp, code_err},
-    schema::{email_verification_tokens, password_reset_tokens, user_profile_pictures, users},
-    util::crypto::hash_pw::hash_pw,
+    features::accounts::domain::account::{
+        AccountProfile, EmailVerificationToken, LoginAccount, PasswordResetReceipt,
+        PasswordResetToken, ProfilePicture, PublicAccount, SessionAccount,
+    },
+    schema::{
+        email_verification_tokens, password_reset_tokens, user_profile_pictures, user_roles, users,
+    },
 };
 
-// TODO: update with new fields - country, subdivision, etc after filling out the data
-#[derive(Serialize, Deserialize, QueryableByName, Queryable, ToSchema)]
+#[derive(Queryable, Selectable)]
 #[diesel(table_name = users)]
-pub struct User {
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Varchar)]
-    pub user_name: String,
-    #[diesel(sql_type = diesel::sql_types::Varchar)]
-    pub user_email: String,
-    #[diesel(sql_type = diesel::sql_types::Varchar)]
-    pub user_password_hash: String,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub user_created_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub user_updated_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub user_is_email_verified: bool,
-    #[diesel(sql_type = diesel::sql_types::Integer)]
-    pub user_country: i32,
-    #[diesel(sql_type = diesel::sql_types::Integer)]
-    pub user_language: i32,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Integer>)]
-    pub user_subdivision: Option<i32>,
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct AccountRecord {
+    pub(super) user_id: Uuid,
+    pub(super) user_name: String,
+    pub(super) user_email: String,
+    pub(super) user_password_hash: String,
+    pub(super) user_updated_at: DateTime<Utc>,
+    pub(super) user_is_email_verified: bool,
+    pub(super) user_country: i32,
+    pub(super) user_language: i32,
 }
 
-// TODO: update with new fields - country, subdivision, etc after filling out the data
-#[derive(Serialize, Deserialize, Queryable, Selectable, ToSchema)]
-#[diesel(table_name = users)]
-pub struct UserInfo {
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Varchar)]
-    pub user_name: String,
-    #[diesel(sql_type = diesel::sql_types::Varchar)]
-    pub user_email: String,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub user_is_email_verified: bool,
-    #[diesel(sql_type = diesel::sql_types::Integer)]
-    pub user_country: i32,
-    #[diesel(sql_type = diesel::sql_types::Integer)]
-    pub user_language: i32,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Integer>)]
-    pub user_subdivision: Option<i32>,
-}
+impl AccountRecord {
+    pub(super) fn into_login_account(self) -> LoginAccount {
+        LoginAccount {
+            user_id: self.user_id,
+            user_name: self.user_name,
+            password_hash: self.user_password_hash,
+            is_email_verified: self.user_is_email_verified,
+            country: self.user_country,
+            language: self.user_language,
+        }
+    }
 
-// TODO: Formalize DTO-Insertion Object relations
-// TODO: Separate DTOs and VOs, also separate by response and request
-// lmao
-
-impl User {
-    pub async fn insert_one(
-        conn: &mut PooledConnection<'_, AsyncPgConnection>,
-        request: &SignupRequest,
-    ) -> Result<Uuid, CodeErrorResp> {
-        let new_user = match UserInsertable::from(request).await {
-            Ok(new_user) => new_user,
-            Err(e) => return Err(code_err(CodeError::COULD_NOT_HASH_PW, e)),
-        };
-
-        let inserted_user_id = conn
-            .transaction::<Uuid, diesel::result::Error, _>(async |conn| {
-                let user_id = match diesel::insert_into(users::table)
-                    .values(new_user)
-                    .returning(users::user_id)
-                    .get_result::<Uuid>(&mut *conn)
-                    .await
-                {
-                    Ok(user_id) => user_id,
-                    Err(e) => return Err(e),
-                };
-
-                match UserRole::insert_for_user(conn, user_id, RoleType::User).await {
-                    Ok(()) => Ok(user_id),
-                    Err(e) => Err(e),
-                }
-            })
-            .await;
-
-        match inserted_user_id {
-            Ok(user_id) => Ok(user_id),
-            Err(e) => match e {
-                diesel::result::Error::DatabaseError(
-                    diesel::result::DatabaseErrorKind::UniqueViolation,
-                    _,
-                ) => Err(code_err(CodeError::EMAIL_MUST_BE_UNIQUE, e)),
-                _ => Err(code_err(CodeError::DB_INSERTION_ERROR, e)),
-            },
+    pub(super) fn into_password_reset_receipt(self) -> PasswordResetReceipt {
+        PasswordResetReceipt {
+            user_id: self.user_id,
+            user_name: self.user_name,
+            user_email: self.user_email,
+            updated_at: self.user_updated_at,
         }
     }
 }
 
-#[derive(Insertable)]
+#[derive(Queryable, Selectable)]
 #[diesel(table_name = users)]
-pub struct UserInsertable {
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct AccountProfileRecord {
+    user_id: Uuid,
     user_name: String,
     user_email: String,
-    user_password_hash: String,
+    user_is_email_verified: bool,
     user_country: i32,
     user_language: i32,
     user_subdivision: Option<i32>,
 }
 
-impl UserInsertable {
-    async fn from(request: &SignupRequest) -> anyhow::Result<Self> {
-        let user_password_hash = match hash_pw(request.user_password.clone()).await {
-            Ok(user_password_hash) => user_password_hash,
-            Err(e) => return Err(e),
-        };
-
-        Ok(Self {
-            user_name: request.user_name.clone(),
-            user_email: request.user_email.clone(),
-            user_password_hash,
-            user_country: request.user_country,
-            user_language: request.user_language,
-            user_subdivision: request.user_subdivision,
-        })
+impl From<AccountProfileRecord> for AccountProfile {
+    fn from(record: AccountProfileRecord) -> Self {
+        Self {
+            user_id: record.user_id,
+            user_name: record.user_name,
+            user_email: record.user_email,
+            is_email_verified: record.user_is_email_verified,
+            country: record.user_country,
+            language: record.user_language,
+            subdivision: record.user_subdivision,
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, QueryableByName, Queryable)]
-pub struct EmailVerificationToken {
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub email_verification_token_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub email_verification_token: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub email_verification_token_expires_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub email_verification_token_created_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Timestamptz>)]
-    pub email_verification_token_used_at: Option<DateTime<Utc>>,
+impl From<AccountProfileRecord> for SessionAccount {
+    fn from(record: AccountProfileRecord) -> Self {
+        Self {
+            user_name: record.user_name,
+            is_email_verified: record.user_is_email_verified,
+            country: record.user_country,
+            language: record.user_language,
+        }
+    }
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct PublicAccountRecord {
+    user_id: Uuid,
+    user_name: String,
+    user_created_at: DateTime<Utc>,
+    user_country: i32,
+}
+
+impl PublicAccountRecord {
+    pub(super) fn user_id(&self) -> Uuid {
+        self.user_id
+    }
+
+    pub(super) fn into_public_account(self, profile_picture_url: Option<String>) -> PublicAccount {
+        PublicAccount {
+            user_id: self.user_id,
+            user_name: self.user_name,
+            created_at: self.user_created_at,
+            country: self.user_country,
+            profile_picture_url,
+        }
+    }
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = user_profile_pictures)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct ProfilePictureRecord {
+    user_profile_picture_id: Uuid,
+    user_id: Uuid,
+    user_profile_picture_created_at: DateTime<Utc>,
+    user_profile_picture_updated_at: DateTime<Utc>,
+    user_profile_picture_image_type: i32,
+    user_profile_picture_is_on_cloud: bool,
+    user_profile_picture_link: Option<String>,
+}
+
+impl From<ProfilePictureRecord> for ProfilePicture {
+    fn from(record: ProfilePictureRecord) -> Self {
+        Self {
+            profile_picture_id: record.user_profile_picture_id,
+            user_id: record.user_id,
+            created_at: record.user_profile_picture_created_at,
+            updated_at: record.user_profile_picture_updated_at,
+            image_type: record.user_profile_picture_image_type,
+            is_on_cloud: record.user_profile_picture_is_on_cloud,
+            link: record.user_profile_picture_link,
+        }
+    }
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = email_verification_tokens)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct EmailVerificationTokenRecord {
+    email_verification_token_id: Uuid,
+    user_id: Uuid,
+    email_verification_token_expires_at: DateTime<Utc>,
+    email_verification_token_created_at: DateTime<Utc>,
+    email_verification_token_used_at: Option<DateTime<Utc>>,
+}
+
+impl From<EmailVerificationTokenRecord> for EmailVerificationToken {
+    fn from(record: EmailVerificationTokenRecord) -> Self {
+        Self {
+            token_id: record.email_verification_token_id,
+            user_id: record.user_id,
+            created_at: record.email_verification_token_created_at,
+            expires_at: record.email_verification_token_expires_at,
+            used_at: record.email_verification_token_used_at,
+        }
+    }
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = password_reset_tokens)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct PasswordResetTokenRecord {
+    password_reset_token_id: Uuid,
+    user_id: Uuid,
+    password_reset_token_expires_at: DateTime<Utc>,
+    password_reset_token_created_at: DateTime<Utc>,
+    password_reset_token_used_at: Option<DateTime<Utc>>,
+}
+
+impl From<PasswordResetTokenRecord> for PasswordResetToken {
+    fn from(record: PasswordResetTokenRecord) -> Self {
+        Self {
+            token_id: record.password_reset_token_id,
+            user_id: record.user_id,
+            created_at: record.password_reset_token_created_at,
+            expires_at: record.password_reset_token_expires_at,
+            used_at: record.password_reset_token_used_at,
+        }
+    }
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = users)]
+pub(super) struct NewAccountRecord<'a> {
+    pub(super) user_name: &'a str,
+    pub(super) user_email: &'a str,
+    pub(super) user_password_hash: &'a str,
+    pub(super) user_country: i32,
+    pub(super) user_language: i32,
+    pub(super) user_subdivision: Option<i32>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = user_roles)]
+pub(super) struct NewUserRoleRecord {
+    pub(super) user_id: Uuid,
+    pub(super) role_id: Uuid,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = email_verification_tokens)]
-pub struct NewEmailVerificationToken<'nevt> {
-    user_id: &'nevt Uuid,
-    email_verification_token: &'nevt Uuid,
-    email_verification_token_expires_at: DateTime<Utc>,
-    email_verification_token_created_at: DateTime<Utc>,
-}
-
-impl<'nevt> NewEmailVerificationToken<'nevt> {
-    pub fn new(
-        user_id: &'nevt Uuid,
-        email_verification_token: &'nevt Uuid,
-        email_verification_token_expires_at: DateTime<Utc>,
-        email_verification_token_created_at: DateTime<Utc>,
-    ) -> Self {
-        Self {
-            user_id,
-            email_verification_token,
-            email_verification_token_expires_at,
-            email_verification_token_created_at,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, QueryableByName, Queryable)]
-pub struct PasswordResetToken {
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub password_reset_token_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub password_reset_token: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub password_reset_token_expires_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub password_reset_token_created_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Timestamptz>)]
-    pub password_reset_token_used_at: Option<DateTime<Utc>>,
+pub(super) struct NewEmailVerificationTokenRecord {
+    pub(super) user_id: Uuid,
+    pub(super) email_verification_token: Uuid,
+    pub(super) email_verification_token_expires_at: DateTime<Utc>,
+    pub(super) email_verification_token_created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = password_reset_tokens)]
-pub struct NewPasswordResetToken<'a> {
-    user_id: &'a Uuid,
-    password_reset_token: &'a Uuid,
-    password_reset_token_expires_at: DateTime<Utc>,
-    password_reset_token_created_at: DateTime<Utc>,
+pub(super) struct NewPasswordResetTokenRecord {
+    pub(super) user_id: Uuid,
+    pub(super) password_reset_token: Uuid,
+    pub(super) password_reset_token_expires_at: DateTime<Utc>,
+    pub(super) password_reset_token_created_at: DateTime<Utc>,
 }
 
-impl<'a> NewPasswordResetToken<'a> {
-    pub fn new(
-        user_id: &'a Uuid,
-        password_reset_token: &'a Uuid,
-        password_reset_token_expires_at: DateTime<Utc>,
-        password_reset_token_created_at: DateTime<Utc>,
-    ) -> Self {
-        Self {
-            user_id,
-            password_reset_token,
-            password_reset_token_expires_at,
-            password_reset_token_created_at,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, QueryableByName, Queryable, ToSchema)]
-pub struct UserProfilePicture {
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_profile_picture_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub user_id: uuid::Uuid,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub user_profile_picture_created_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Timestamptz)]
-    pub user_profile_picture_updated_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Integer)]
-    pub user_profile_picture_image_type: i32,
-    #[diesel(sql_type = diesel::sql_types::Bool)]
-    pub user_profile_picture_is_on_cloud: bool,
-    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Varchar>)]
-    pub user_profile_picture_link: Option<String>,
+#[derive(AsChangeset)]
+#[diesel(table_name = users)]
+pub(super) struct UpdatePasswordRecord<'a> {
+    pub(super) user_password_hash: &'a str,
+    pub(super) user_updated_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = user_profile_pictures)]
-pub struct UserProfilePictureInsertable {
-    pub user_id: Uuid,
-    pub user_profile_picture_image_type: i32,
-    pub user_profile_picture_is_on_cloud: bool,
-    pub user_profile_picture_link: Option<String>,
+pub(super) struct NewProfilePictureRecord<'a> {
+    pub(super) user_id: Uuid,
+    pub(super) user_profile_picture_image_type: i32,
+    pub(super) user_profile_picture_is_on_cloud: bool,
+    pub(super) user_profile_picture_link: Option<&'a str>,
 }

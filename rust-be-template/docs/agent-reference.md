@@ -65,7 +65,7 @@ and route registration in `src/routers/main_router.rs`.
    - visitor board data
    - WASM module bundle cache
    - live chat ban and message cache
-7. `X_API_KEY` is parsed as a UUID and inserted into in-memory API key state.
+7. The trusted browser-origin policy is validated before jobs or listeners start.
 8. Background jobs are started.
 9. An HTTP redirect listener binds to `127.0.0.1:80`; HTTPS binds to
    `HOST_IP:HOST_PORT`.
@@ -89,10 +89,11 @@ paths unless the bootstrap is changed.
   bucket selection.
 - `SEARCH_INDEX_PATH`: optional Tantivy index path, default
   `./data/search_index`.
-- `CURR_ENV`: maps to `Local`, `Dev`, `Staging`, or `Prod`; unknown values fall
-  back to `Local`, and missing falls back to `Prod`.
-- `X_API_KEY`: UUID API key inserted into memory. The API-key middleware exists
-  but is currently not applied in the router.
+- `CURR_ENV`: required deployment mode mapped to `Local`, `Dev`, `Staging`, or
+  `Prod`; missing and unknown values abort startup.
+- `TRUSTED_BROWSER_ORIGINS`: optional comma-separated extra origins used by
+  credentialed CORS and request-origin enforcement. Entries outside `Local`
+  must be exact HTTPS origins.
 
 ## ServerState
 
@@ -109,14 +110,13 @@ Core fields:
 
 In-memory caches:
 
-- `session_map`: `scc::HashMap<Uuid, Session>`.
+- `SessionService`: fixed-capacity `scc::HashMap` keyed by SHA-256 digests of opaque session secrets; it is intentionally process-local and independent of `ServerState` persistence concerns.
 - `blog_posts_cache`: post metadata keyed by post UUID.
 - `blog_post_slug_cache`: normalized slug to post UUID.
 - `blog_post_order_cache`: `RwLock<Vec<Uuid>>` ordered by newest created time.
 - `search_index`: disk-backed Tantivy index for blog title and tags.
 - `geo_ip_db`: decompressed IPv4 and IPv6 GeoIP bundles.
 - `visitor_board_map` and `visitor_log_buffer`: visitor aggregation.
-- `api_keys_set`: in-memory API keys.
 - `country_map`, `languages_map`, `currency_map`: cached reference data.
 - `i18n_cache`: indexed i18n rows.
 - `system_info_state`: CPU/memory snapshots.
@@ -149,13 +149,15 @@ Shared API layers:
 - `DefaultBodyLimit`: 150 MB.
 - `GovernorLayer`: global rate limiter, configured with 1024 burst and
   replenishment every 63 ms.
-- `CorsLayer::very_permissive()`.
+- Credentialed CORS with an exact trusted-origin list.
+- `require_trusted_origin`: rejects unsafe requests and WebSocket upgrades when
+  the `Origin` header is missing, duplicated, or not trusted.
 - Response compression: zstd and gzip.
 
 Access tiers:
 
 - Public router: no required authenticated session.
-- Protected router: `auth_middleware`, which requires a valid `session_id`
+- Protected router: `auth_middleware`, which requires a valid `__Host-cyhdev-session`
   cookie and verified email.
 - Superuser router: `auth_middleware` plus `require_superuser_middleware`.
 
@@ -235,7 +237,7 @@ Authenticated routes:
 
 Superuser routes:
 
-- `GET /api/admin/sync-i18n-cache`
+- `POST /api/admin/sync-i18n-cache`
 - `POST /api/blog/posts`
 - `PATCH /api/blog/{post_id}`
 - `POST /api/photographs/upload`
@@ -324,15 +326,13 @@ When adding errors:
 
 Auth is cookie-based:
 
-- Login validates email and password form, verifies Argon2 password hash, removes
-  any old `session_id` cookie session if present, creates a new in-memory
-  session, and sets a secure, http-only `session_id` cookie.
-- Session duration defaults to one hour.
-- Sessions live only in memory in `ServerState.session_map`.
+- Login validates email and password form, verifies the Argon2 password hash, rotates only the session presented by that browser, creates a new in-memory session, and sets the host-only `__Host-cyhdev-session` cookie with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and a one-hour `Max-Age`.
+- Session credentials are 256 random bits encoded as 43 unpadded base64url characters. The fixed-capacity store retains only the SHA-256-derived lookup key and bounded account authority.
+- Sessions live only in `SessionService`; the 16,384-entry cap returns HTTP 503 after one expired-entry purge rather than growing memory or evicting an active session.
 - `auth_middleware` requires:
-  - parsable `session_id`
+  - a canonical fixed-length opaque session token
   - session present in memory
-  - `created_at < now < expires_at`
+  - `created_at <= now < expires_at`
   - verified email
 - `is_logged_in_middleware` is softer and only populates login context when a
   valid session exists. Public handlers use it to decorate results or include
@@ -700,7 +700,7 @@ Changing auth or role behavior:
 
 1. Check `RoleType` fixed UUID mappings.
 2. Check both `auth_middleware` and `is_logged_in_middleware`.
-3. Check cookie domain and secure settings for all deployment environments.
+3. Preserve the host-only, secure, HTTP-only, `SameSite=Strict` cookie policy.
 4. Consider session refresh and invalidation jobs.
 5. Avoid assuming sessions survive process restarts.
 
@@ -735,10 +735,9 @@ Changing live chat:
 
 ## Known Sharp Edges
 
-- API key middleware is present but commented out in `main_router.rs`.
 - OpenAPI docs require manual registration and are not fully synchronized with
   all current routes.
-- Sessions are in memory only.
+- Sessions are intentionally single-process; a restart revokes all sessions and multiple backend processes are unsupported.
 - Swagger is mounted in all environments but protected only in `Prod`.
 - Docker compose port mapping appears inconsistent with `HOST_PORT=443`.
 - The app requires local GeoIP bundle files at startup.

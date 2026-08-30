@@ -7,6 +7,8 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
+    "contracts:check": "cargo run --manifest-path ../Cargo.toml --locked --package rust-be-template --bin openapi-contracts -- check",
+    "contracts:generate": "cargo run --manifest-path ../Cargo.toml --locked --package rust-be-template --bin openapi-contracts -- generate",
     "serve": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

@@ -16,9 +16,9 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type {
-  PhotographItem,
   GetPhotographsResponse,
-} from "../dtos/responses/photography";
+  PhotographItem,
+} from "../generated";
 import { t, tx, locale } from "../state/i18n";
 import BatchUploadFields from "../components/photographs/BatchUploadFields";
 import ProcessingModal from "../components/photographs/ProcessingModal";
@@ -393,7 +393,7 @@ export default function Photographs(props: RouteSectionProps) {
     setLoading(true);
     try {
       const resp = await photographyApi.getPhotographs(page(), 24);
-      const data = resp.data as GetPhotographsResponse;
+      const data: GetPhotographsResponse = resp.data;
 
       if (data.items.length === 0) {
         setHasMore(false);
