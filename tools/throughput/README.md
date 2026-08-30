@@ -1,6 +1,6 @@
 # Throughput harness
 
-`cargo xtask throughput` replays the checked-in `public-read-v1` workload against a deterministic in-process fixture, writes `target/throughput/public-read-v1.json`, and fails when the checked-in throughput, error-rate, or p50/p95/p99 latency limits are exceeded. The report records workload, environment, and threshold digests; declared run conditions; observed hardware, kernel, and exact Rust compiler; exact concurrency and buffer bounds; aggregate failures; and a response checksum. Configuration inputs are capped at 1 MiB and saved reports at 16 MiB before JSON deserialization.
+`cargo xtask throughput` compiles and executes `throughput-harness` with the workspace release profile. It replays the checked-in `public-read-v1` workload against a deterministic in-process fixture, writes `target/throughput/public-read-v1.json`, and fails when the checked-in throughput, error-rate, or p50/p95/p99 latency limits are exceeded. The report records workload, environment, and threshold digests; declared run conditions; observed hardware, kernel, and exact Rust compiler; exact concurrency and buffer bounds; aggregate failures; and a response checksum. Configuration inputs are capped at 1 MiB and saved reports at 16 MiB before JSON deserialization.
 
 The default fixture is a portable regression smoke test, not a backend capacity claim. A real baseline has two phases. `record` measures the backend without thresholds and deliberately emits no verdict; a normal run then enforces reviewed thresholds pinned to that machine and configuration.
 
@@ -33,10 +33,18 @@ socat -V 2>&1 | head -n 1
 
 Copy those outputs into the matching fields without including `DB_URL`. The `PGDATABASE` commands use the exact URL exported to the backend, rather than whichever local cluster `psql` would otherwise choose. Repeat every digest immediately before regression runs; any mismatch requires restoring the recorded inputs or deliberately recalibrating.
 
-Start the backend in one terminal. Existing environment values provide the disposable database and runtime dependencies; the explicit listener values keep the measurement on loopback and outside privileged ports:
+Build both measured executables before calibration. `./build.sh` produces the optimized `znver3` GNU backend artifact with the workspace release profile; the separate Cargo command ensures the harness is already compiled with the same workspace release profile before any measurement command starts:
 
 ```bash
-HOST_IP=127.0.0.1 HOST_PORT=8443 cargo xtask backend
+./build.sh
+cargo build --locked --release --package throughput-harness
+```
+
+Start the optimized backend artifact in one terminal. Existing environment values provide the disposable database and runtime dependencies; running from `rust-be-template` preserves its backend-relative `.env`, Geo-IP bundle, certificate, and search-index paths. The explicit listener values keep the measurement on loopback and outside privileged ports:
+
+```bash
+cd rust-be-template
+HOST_IP=127.0.0.1 HOST_PORT=8443 ../target/x86_64-unknown-linux-gnu/release/rust-be-template
 ```
 
 After the HTTPS health endpoint succeeds, bridge a plain loopback HTTP listener to the backend in a second terminal. Keep this exact bridge in place for calibration and regression runs because its TLS and process-per-connection overhead is part of the recorded topology:
@@ -65,7 +73,7 @@ Only `http://` targets are accepted. Terminate TLS in front of the harness when 
 Recheck a saved calibration or thresholded report without replaying the workload:
 
 ```bash
-cargo run --locked --package throughput-harness -- check --report target/throughput/backend-http.json --thresholds target/throughput/backend-thresholds.json
+cargo run --locked --release --package throughput-harness -- check --report target/throughput/backend-http.json --thresholds target/throughput/backend-thresholds.json
 ```
 
 Run comparisons on an idle host under the declared power profile. An HTTP environment file must set `configuration.target` to the exact normalized target reported by the harness. A report contains both the canonical declared-environment digest and an observed digest that includes hardware, kernel, compiler, build profile, resolved socket address, normalized target, and a build-time SHA-256 digest of the harness sources, manifests, lockfile, and toolchain declaration. HTTP thresholds require and enforce the observed, implementation, and resolved-address evidence. Recalibrate thresholds deliberately when any recorded input changes; do not compare reports with different evidence as if they were the same baseline.

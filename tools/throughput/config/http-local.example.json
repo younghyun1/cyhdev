@@ -2,9 +2,9 @@
   "schema_version": 1,
   "label": "localhost-backend-baseline",
   "power_profile": "performance",
-  "build_profile": "debug backend and debug harness through cargo xtask",
+  "build_profile": "optimized znver3 GNU backend via ./build.sh; release harness via cargo xtask throughput",
   "configuration": {
-    "backend_command": "HOST_IP=127.0.0.1 HOST_PORT=8443 cargo xtask backend",
+    "backend_command": "cd rust-be-template && HOST_IP=127.0.0.1 HOST_PORT=8443 ../target/x86_64-unknown-linux-gnu/release/rust-be-template",
     "backend_listener": "https://127.0.0.1:8443",
     "database_dataset_digest": "sha256:REPLACE_WITH_EXACT_DATA_DUMP_DIGEST",
     "database_schema_digest": "sha256:REPLACE_WITH_EXACT_SCHEMA_DUMP_DIGEST",

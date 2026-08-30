@@ -2,7 +2,7 @@
   "schema_version": 1,
   "label": "portable-development-fixture",
   "power_profile": "performance or equivalent",
-  "build_profile": "debug via cargo xtask throughput",
+  "build_profile": "release harness via cargo xtask throughput",
   "configuration": {
     "executor": "in-process deterministic fixture",
     "service_dependencies": "none",
