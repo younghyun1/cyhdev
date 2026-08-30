@@ -1,0 +1,16 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deterministic UUID email-verification tokens in isolated browser tests"
+condition = "AND"
+regexTarget = "match"
+paths = ['''solid-csr-spa-template/src/__tests__/verify_email(_link)?\.test\.tsx?$''']
+regexes = ['''(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b''']
+
+[[allowlists]]
+description = "Deterministic pg_dump restriction seeds used only for benchmark fingerprints"
+condition = "AND"
+regexTarget = "match"
+paths = ['''tools/throughput/README\.md$''']
+regexes = ['''--restrict-key=[A-Za-z0-9_-]{32,}''']

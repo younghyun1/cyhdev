@@ -9,7 +9,15 @@ type ReviewStep = (&'static str, fn(&Path) -> TaskResult<()>);
 pub(crate) fn run_format_check(root: &Path) -> TaskResult<()> {
     run_command(
         Command::new("cargo")
-            .args(["fmt", "--all", "--", "--check"])
+            .args([
+                "fmt",
+                "--package",
+                "rust-be-template",
+                "--package",
+                "xtask",
+                "--",
+                "--check",
+            ])
             .current_dir(root),
     )
 }

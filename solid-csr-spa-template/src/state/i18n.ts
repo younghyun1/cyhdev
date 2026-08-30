@@ -17,9 +17,29 @@ function browserDefaultLocale(): UiLocale {
   return language.startsWith("ko") ? "ko-KR" : "en-US";
 }
 
+function readStoredLocale(): string | null {
+  try {
+    return typeof window !== "undefined"
+      ? window.localStorage.getItem(UI_LOCALE_STORAGE_KEY)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistLocale(nextLocale: UiLocale): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(UI_LOCALE_STORAGE_KEY, nextLocale);
+    }
+  } catch {
+    // Storage may be disabled or unavailable for an opaque browser origin.
+  }
+}
+
 function initialLocale(): UiLocale {
   if (typeof window === "undefined") return "en-US";
-  const persisted = localStorage.getItem(UI_LOCALE_STORAGE_KEY);
+  const persisted = readStoredLocale();
   return isUiLocale(persisted) ? persisted : browserDefaultLocale();
 }
 
@@ -73,7 +93,7 @@ export async function loadUiTextBundle(nextLocale = locale()) {
 export async function setLocale(nextLocale: UiLocale) {
   setLocaleSignal(nextLocale);
   if (typeof window !== "undefined") {
-    localStorage.setItem(UI_LOCALE_STORAGE_KEY, nextLocale);
+    persistLocale(nextLocale);
   }
   applyLocale(nextLocale);
   await loadUiTextBundle(nextLocale);

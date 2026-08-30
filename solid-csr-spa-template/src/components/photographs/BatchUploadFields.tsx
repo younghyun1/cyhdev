@@ -9,7 +9,15 @@
 // until every photo has a comment and a location. Builds FormData as ordered
 // `files` + a `meta` JSON array aligned to file order + `context`.
 
-import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+} from "solid-js";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
@@ -180,9 +188,11 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
     map.on("geosearch/showlocation", ((result: {
       location: { x: number; y: number };
     }) => {
-      setLocationForCurrent(result.location.y, result.location.x);
+      untrack(() => setLocationForCurrent(result.location.y, result.location.x));
     }) as unknown as L.LeafletEventHandlerFn);
-    map.on("click", (e) => setLocationForCurrent(e.latlng.lat, e.latlng.lng));
+    map.on("click", (e) =>
+      untrack(() => setLocationForCurrent(e.latlng.lat, e.latlng.lng)),
+    );
 
     // The map mounts inside a modal; fix tile layout once the panel has sized.
     setTimeout(() => map?.invalidateSize(), 50);
@@ -273,13 +283,14 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
                   type="button"
                   onClick={() => setIndex(i())}
                   title={e.file.name}
-                  class={`h-2.5 w-2.5 shrink-0 rounded-full transition ${
+                  class={[
+                    "h-2.5 w-2.5 shrink-0 rounded-full transition",
                     i() === index()
                       ? "bg-ink ring-2 ring-offset-1 ring-line-strong"
                       : entryComplete(e)
                         ? "bg-ok"
-                        : "bg-line-strong"
-                  }`}
+                        : "bg-line-strong",
+                  ]}
                 />
               )}
             </For>

@@ -82,7 +82,11 @@ export default function AuthorizationConfirmation(props: Props) {
               </p>
             </Show>
             <div class="authorization-dialog-actions">
-              <button type="button" onClick={props.onCancel} disabled={props.busy}>
+              <button
+                type="button"
+                onClick={() => props.onCancel()}
+                disabled={props.busy}
+              >
                 {t("common.cancel")}
               </button>
               <button

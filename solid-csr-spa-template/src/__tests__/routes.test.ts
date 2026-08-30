@@ -1,12 +1,12 @@
 import { createRouter } from "@solidjs/router";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const storage = new Map<string, string>();
-vi.stubGlobal("localStorage", {
+Object.defineProperty(window, "localStorage", { configurable: true, value: {
   getItem: (key: string) => storage.get(key) ?? null,
   setItem: (key: string, value: string) => storage.set(key, value),
   removeItem: (key: string) => storage.delete(key),
-});
+} });
 
 let Router: ReturnType<typeof createRouter>;
 

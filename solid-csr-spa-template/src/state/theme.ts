@@ -2,13 +2,29 @@ import { createSignal, flush } from "solid-js";
 
 function getInitialTheme(): "light" | "dark" {
   if (typeof window !== "undefined") {
-    const persisted = localStorage.getItem("theme");
+    const persisted = readStoredTheme();
     if (persisted === "dark" || persisted === "light") return persisted;
     if (window.matchMedia?.("(prefers-color-scheme: dark)")?.matches) {
       return "dark";
     }
   }
   return "light";
+}
+
+function readStoredTheme(): string | null {
+  try {
+    return typeof window !== "undefined" ? window.localStorage.getItem("theme") : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistTheme(next: "light" | "dark"): void {
+  try {
+    if (typeof window !== "undefined") window.localStorage.setItem("theme", next);
+  } catch {
+    // Storage may be disabled or unavailable for an opaque browser origin.
+  }
 }
 
 export const [theme, setTheme] = createSignal<"light" | "dark">(
@@ -33,5 +49,5 @@ export function toggleTheme() {
   // Writes land on the microtask flush; force the write through so a second
   // toggle in the same tick (or a synchronous read) sees the new value.
   flush();
-  localStorage.setItem("theme", next);
+  persistTheme(next);
 }

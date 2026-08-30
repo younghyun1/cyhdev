@@ -1,6 +1,9 @@
 DROP INDEX IF EXISTS photographs_context_idx;
 
 ALTER TABLE public.photographs
+    ALTER COLUMN photograph_context DROP DEFAULT;
+
+ALTER TABLE public.photographs
     ALTER COLUMN photograph_context TYPE int2
     USING (CASE WHEN photograph_context = 'post' THEN 1 ELSE 0 END)::int2;
 

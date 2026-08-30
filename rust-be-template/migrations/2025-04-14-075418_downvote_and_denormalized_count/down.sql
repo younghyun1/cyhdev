@@ -1,4 +1,9 @@
 -- 1. Remove denormalized counters
+DROP INDEX IF EXISTS idx_posts_total_upvotes;
+DROP INDEX IF EXISTS idx_posts_total_downvotes;
+DROP INDEX IF EXISTS idx_comments_total_upvotes;
+DROP INDEX IF EXISTS idx_comments_total_downvotes;
+
 ALTER TABLE public.posts
 DROP COLUMN total_upvotes;
 
@@ -58,14 +63,6 @@ RENAME COLUMN created_at TO upvoted_at;
 DROP INDEX idx_comment_votes_is_upvote;
 
 DROP INDEX idx_post_votes_is_upvote;
-
-DROP INDEX idx_posts_total_upvotes;
-
-DROP INDEX idx_posts_total_downvotes;
-
-DROP INDEX idx_comments_total_upvotes;
-
-DROP INDEX idx_comments_total_downvotes;
 
 -- 6. Remove is_upvote field and keep only upvotes
 DELETE FROM public.comment_votes

@@ -6,6 +6,7 @@ import {
   Show,
   onSettled,
   createMemo,
+  untrack,
 } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import type { RouteSectionProps } from "@solidjs/router";
@@ -471,15 +472,16 @@ export default function Photographs(props: RouteSectionProps) {
 
   // When any tracked batch finishes processing, reload the grid from page 1.
   onSettled(() => {
-    setBatchCompletionHandler(() => {
-      setPhotos([]);
-      setPage(1);
-      setHasMore(true);
-      // The resets above land on the microtask flush; force them through so
-      // fetchPhotos' loading()/hasMore()/page() guards see the reset state.
-      flush();
-      void fetchPhotos();
-    });
+    setBatchCompletionHandler(() =>
+      untrack(() => {
+        setPhotos([]);
+        setPage(1);
+        setHasMore(true);
+        // Force queued resets through before fetchPhotos checks its guards.
+        flush();
+        void fetchPhotos();
+      }),
+    );
     return () => setBatchCompletionHandler(null);
   });
 
@@ -578,17 +580,18 @@ export default function Photographs(props: RouteSectionProps) {
     (open) => {
       if (!open) return;
 
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          if (selectedPhoto()) closePhoto();
-          else if (isSelectionMode()) {
-            setIsSelectionMode(false);
-            setSelectedForDeletion(new Set<string>());
+      const handleKeyDown = (e: KeyboardEvent) =>
+        untrack(() => {
+          if (e.key === "Escape") {
+            if (selectedPhoto()) closePhoto();
+            else if (isSelectionMode()) {
+              setIsSelectionMode(false);
+              setSelectedForDeletion(new Set<string>());
+            }
           }
-        }
-        if (e.key === "ArrowLeft") navigatePhoto("prev");
-        if (e.key === "ArrowRight") navigatePhoto("next");
-      };
+          if (e.key === "ArrowLeft") void navigatePhoto("prev");
+          if (e.key === "ArrowRight") void navigatePhoto("next");
+        });
 
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
@@ -699,22 +702,24 @@ export default function Photographs(props: RouteSectionProps) {
                               />
                               <Show when={isSelectionMode()}>
                                 <div
-                                  class={`absolute inset-0 transition-all z-10 ${
+                                  class={[
+                                    "absolute inset-0 transition-all z-10",
                                     selectedForDeletion().has(
                                       photo.photograph_id,
                                     )
                                       ? "ring-4 ring-danger ring-inset bg-black/20"
-                                      : "hover:bg-black/10"
-                                  }`}
+                                      : "hover:bg-black/10",
+                                  ]}
                                 >
                                   <div
-                                    class={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
+                                    class={[
+                                      "absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center",
                                       selectedForDeletion().has(
                                         photo.photograph_id,
                                       )
                                         ? "bg-danger"
-                                        : "bg-black/40"
-                                    }`}
+                                        : "bg-black/40",
+                                    ]}
                                   >
                                     <Show
                                       when={selectedForDeletion().has(

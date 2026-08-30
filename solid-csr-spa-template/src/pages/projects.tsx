@@ -4,6 +4,7 @@ import {
   For,
   Show,
   onSettled,
+  untrack,
 } from "solid-js";
 import { UserBadge } from "../components/UserBadge";
 import { isSuperuser, user } from "../state/auth";
@@ -303,17 +304,12 @@ export default function Projects() {
 
   // Close modal on Escape key
   onSettled(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedModule()) {
-        setSelectedModule(null);
-      }
-      if (e.key === "Escape" && showUpload()) {
-        setShowUpload(false);
-      }
-      if (e.key === "Escape" && editingModule()) {
-        setEditingModule(null);
-      }
-    };
+    const handleKeyDown = (e: KeyboardEvent) =>
+      untrack(() => {
+        if (e.key === "Escape" && selectedModule()) setSelectedModule(null);
+        if (e.key === "Escape" && showUpload()) setShowUpload(false);
+        if (e.key === "Escape" && editingModule()) setEditingModule(null);
+      });
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });

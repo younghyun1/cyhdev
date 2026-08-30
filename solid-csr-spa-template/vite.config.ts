@@ -15,6 +15,9 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
+    // The editor is already isolated behind a lazy route; its self-contained
+    // Toast UI chunk is ~551 kB minified and does not affect initial loading.
+    chunkSizeWarningLimit: 600,
   },
   test: {
     environment: "jsdom",

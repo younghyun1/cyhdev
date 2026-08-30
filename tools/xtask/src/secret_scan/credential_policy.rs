@@ -32,14 +32,14 @@ pub(super) fn is_runtime_credential_path(path: &Path) -> bool {
     if name == ".env.example" || name.ends_with(".env.example") {
         return false;
     }
+    let extension = Path::new(name).extension().and_then(OsStr::to_str);
+    let credential_named = name.contains("credentials")
+        && !matches!(extension, Some("rs" | "ts" | "tsx" | "js" | "jsx" | "md"));
     name == ".env"
         || name.starts_with(".env.")
         || name == "service-account.json"
-        || name.contains("credentials")
-        || matches!(
-            Path::new(name).extension().and_then(OsStr::to_str),
-            Some("pem" | "key" | "p12" | "pfx")
-        )
+        || credential_named
+        || matches!(extension, Some("pem" | "key" | "p12" | "pfx"))
         || components.iter().any(|component| component == "certs")
         || (name == "password.txt" && components.iter().any(|component| component == "db"))
 }

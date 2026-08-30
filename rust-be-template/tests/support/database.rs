@@ -156,7 +156,10 @@ async fn validate_maintenance_server(maintenance_url: String) -> Result<(), Harn
             });
         }
         let Some(server_address) = row.server_address else { return Ok(()) };
-        let address = server_address.parse::<std::net::IpAddr>().map_err(|_| {
+        let address_text = server_address
+            .split_once('/')
+            .map_or(server_address.as_str(), |(address, _prefix)| address);
+        let address = address_text.parse::<std::net::IpAddr>().map_err(|_| {
             HarnessError::InvalidServerAddress { address: server_address.clone() }
         })?;
         if address.is_loopback() {

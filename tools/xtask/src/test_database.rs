@@ -33,10 +33,11 @@ pub(crate) fn validate() -> TaskResult<()> {
             "--no-align",
             "--field-separator=|",
             "--set=ON_ERROR_STOP=1",
+            "--dbname",
+            &database_url,
             "--command",
             "SELECT current_setting('server_version_num'), current_database(), COALESCE(inet_server_addr()::text, '')",
         ])
-        .env("PGDATABASE", &database_url)
         .output()
         .map_err(|error| TaskError(format!("failed to execute psql for test database validation: {error}")))?;
     drop(database_url);
@@ -78,7 +79,10 @@ fn validate_server_address(server_address: &str) -> TaskResult<()> {
     if server_address.is_empty() {
         return Ok(());
     }
-    let address = server_address
+    let address_text = server_address
+        .split_once('/')
+        .map_or(server_address, |(address, _prefix)| address);
+    let address = address_text
         .parse::<IpAddr>()
         .map_err(|_| TaskError("PostgreSQL returned an invalid server address".to_owned()))?;
     if address.is_loopback() {

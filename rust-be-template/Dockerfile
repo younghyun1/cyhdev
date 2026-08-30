@@ -6,8 +6,8 @@ ARG APP_NAME=rust-be-template
 # This prevents an ambient local dist directory from changing the backend image.
 FROM node:24-alpine AS frontend
 WORKDIR /workspace/solid-csr-spa-template
-COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
+RUN npm ci --legacy-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
 RUN npm run build
 
@@ -27,7 +27,11 @@ RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx
 FROM rust-base AS smoke-build
 ARG APP_NAME
 COPY . ./
-COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+# Frontend correctness has its own Wave 8 gate. A deterministic placeholder is
+# sufficient to compile and lay out the backend development image without
+# coupling this smoke target to production frontend bundling.
+RUN mkdir -p solid-csr-spa-template/dist \
+    && printf '%s\n' '<!doctype html><title>backend smoke</title>' > solid-csr-spa-template/dist/index.html
 RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \

@@ -75,7 +75,7 @@ export default function ForumReplyItem(props: ForumReplyItemProps) {
   return (
     <article
       id={`forum-reply-${props.reply.reply_id}`}
-      class={`forum-reply ${masked() ? "forum-reply--masked" : ""}`}
+      class={["forum-reply", masked() ? "forum-reply--masked" : ""]}
     >
       <div class="forum-reply__meta">
         <ForumAuthorBadge author={props.reply.author} />

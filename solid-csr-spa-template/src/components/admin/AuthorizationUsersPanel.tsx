@@ -118,7 +118,11 @@ export default function AuthorizationUsersPanel(props: Props) {
         <p class="authorization-empty">{t("authorization.users.empty")}</p>
       </Show>
       <Show when={props.nextCursor !== null}>
-        <button type="button" disabled={props.loading} onClick={props.onNext}>
+        <button
+          type="button"
+          disabled={props.loading}
+          onClick={() => props.onNext()}
+        >
           {t("common.next")}
         </button>
       </Show>

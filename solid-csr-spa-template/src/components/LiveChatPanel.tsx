@@ -501,7 +501,13 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
 
   return (
     <section
-      class={`${pageStyles.card} flex min-h-0 flex-col ${isFull() ? "h-[calc(100vh-12rem)] max-h-[44rem]" : "h-[28rem] max-h-[calc(100vh-10rem)]"}`}
+      class={[
+        pageStyles.card,
+        "flex min-h-0 flex-col",
+        isFull()
+          ? "h-[calc(100vh-12rem)] max-h-[44rem]"
+          : "h-[28rem] max-h-[calc(100vh-10rem)]",
+      ]}
     >
       <header
         class={`${pageStyles.cardHeader} flex items-center justify-between gap-3`}
@@ -551,21 +557,21 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           <For each={visibleMessages()}>
             {(message) => (
               <article
-                class={`rounded-sm border px-3 py-2 text-sm ${
+                class={[
+                  "rounded-sm border px-3 py-2 text-sm",
                   message.kind === "pending"
                     ? message.status === "failed"
                       ? "border-danger/30 bg-danger/10 text-danger"
                       : "border-line bg-surface-2 text-ink-muted opacity-70"
-                    : "border-line bg-surface"
-                }`}
+                    : "border-line bg-surface",
+                ]}
               >
                 <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
                   <span
-                    class={`font-mono font-semibold ${
-                      message.kind === "pending"
-                        ? ""
-                        : "text-ink"
-                    }`}
+                    class={[
+                      "font-mono font-semibold",
+                      message.kind === "pending" ? "" : "text-ink",
+                    ]}
                   >
                     <Show
                       when={messageUserId(message)}
@@ -589,11 +595,10 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                   </time>
                 </div>
                 <p
-                  class={`whitespace-pre-wrap break-words ${
-                    message.kind === "pending"
-                      ? ""
-                      : "text-ink"
-                  }`}
+                  class={[
+                    "whitespace-pre-wrap break-words",
+                    message.kind === "pending" ? "" : "text-ink",
+                  ]}
                 >
                   {messageBody(message)}
                 </p>

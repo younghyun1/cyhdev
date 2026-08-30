@@ -373,7 +373,12 @@ export default function PhotographSocial(props: PhotographSocialProps) {
 
             <div class="flex items-center gap-2 mt-1">
               <button
-                class={`text-lg px-1 ${cv().vs === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
+                class={[
+                  "text-lg px-1",
+                  cv().vs === 0
+                    ? "text-ok font-bold"
+                    : "text-ink-muted hover:text-ok",
+                ]}
                 onClick={() => voteComment(comment(), true)}
                 title={t("blog.vote.upvote")}
               >
@@ -383,7 +388,12 @@ export default function PhotographSocial(props: PhotographSocialProps) {
                 {cv().up - cv().down}
               </span>
               <button
-                class={`text-lg px-1 ${cv().vs === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
+                class={[
+                  "text-lg px-1",
+                  cv().vs === 1
+                    ? "text-danger font-bold"
+                    : "text-ink-muted hover:text-danger",
+                ]}
                 onClick={() => voteComment(comment(), false)}
                 title={t("blog.vote.downvote")}
               >
@@ -462,7 +472,12 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-2">
             <button
-              class={`text-2xl transition ${photoVote().vs === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
+              class={[
+                "text-2xl transition",
+                photoVote().vs === 0
+                  ? "text-ok font-bold"
+                  : "text-ink-muted hover:text-ok",
+              ]}
               onClick={() => votePhoto(true)}
               aria-label={t("blog.vote.upvote")}
             >
@@ -472,7 +487,12 @@ export default function PhotographSocial(props: PhotographSocialProps) {
               {photoVote().up - photoVote().down}
             </span>
             <button
-              class={`text-2xl transition ${photoVote().vs === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
+              class={[
+                "text-2xl transition",
+                photoVote().vs === 1
+                  ? "text-danger font-bold"
+                  : "text-ink-muted hover:text-danger",
+              ]}
               onClick={() => votePhoto(false)}
               aria-label={t("blog.vote.downvote")}
             >

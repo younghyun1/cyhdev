@@ -183,8 +183,8 @@ async fn assert_audit_guards(
 fn owner_invariant_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let first = seed_account(&context, "AuthorizationOwnerOne").await?;
-        let second = seed_account(&context, "AuthorizationOwnerTwo").await?;
+        let first = seed_account(&context, "AuthOwnerOne").await?;
+        let second = seed_account(&context, "AuthOwnerTwo").await?;
         context
             .accounts
             .assign_role(first.user_id, RoleType::Younghyun)

@@ -152,11 +152,12 @@ const TopBar = () => {
                       <li class="py-1 px-2 md:px-3">
                         <a
                           href={link.href}
-                          class={`whitespace-nowrap transition-colors duration-90 ${
+                          class={[
+                            "whitespace-nowrap transition-colors duration-90",
                             isActive(link.href)
                               ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
-                              : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8"
-                          }`}
+                              : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8",
+                          ]}
                         >
                           {t(link.labelKey)}
                         </a>
@@ -327,11 +328,12 @@ const TopBar = () => {
                     <li>
                       <a
                         href={link.href}
-                        class={`block px-4 py-2 font-mono text-sm rounded-sm transition-colors ${
+                        class={[
+                          "block px-4 py-2 font-mono text-sm rounded-sm transition-colors",
                           isActive(link.href)
                             ? "text-ink bg-surface-2 border-l-2 border-accent"
-                            : "text-ink-muted hover:text-ink hover:bg-surface-2"
-                        }`}
+                            : "text-ink-muted hover:text-ink hover:bg-surface-2",
+                        ]}
                         onClick={() => setSidebarOpen(false)}
                       >
                         {t(link.labelKey)}
