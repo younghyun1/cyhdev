@@ -68,8 +68,18 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     handleUnauthorizedResponse();
     throw new Error("Unauthorized; redirected to login");
   }
+  if (response.status === 403) {
+    handleAdminForbiddenResponse(path);
+  }
 
   return response;
+}
+
+/** Drops stale privileged UI immediately after a database-authoritative denial. */
+export function handleAdminForbiddenResponse(path: string): void {
+  if (path.startsWith("/api/admin/")) {
+    setSuperuser(false);
+  }
 }
 
 /** Clears local authority and redirects after an authenticated request fails. */

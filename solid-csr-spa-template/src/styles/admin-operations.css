@@ -1,0 +1,229 @@
+.operations-page {
+    min-height: 100%;
+    padding: 4rem 1.5rem 6rem;
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.operations-page-inner {
+    width: min(100%, 88rem);
+    margin: 0 auto;
+    display: grid;
+    gap: 1.5rem;
+}
+
+.operations-page-header,
+.operations-panel,
+.operations-purge-receipt {
+    display: grid;
+    gap: 1rem;
+}
+
+.operations-page-header {
+    gap: 0.35rem;
+}
+
+.operations-page-header h1,
+.operations-page-header p,
+.operations-panel h2,
+.operations-panel h3,
+.operations-panel h4,
+.operations-panel p,
+.operations-purge-receipt h3 {
+    margin: 0;
+}
+
+.operations-page-header > p:last-child,
+.operations-panel-heading p,
+.operations-muted,
+.operations-bound-note {
+    color: var(--ink-muted);
+}
+
+.operations-eyebrow {
+    color: var(--accent) !important;
+    font: 600 0.75rem/1 var(--font-mono);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.operations-panel {
+    padding: 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    background: var(--surface);
+}
+
+.operations-panel-heading,
+.operations-record-heading,
+.operations-dialog-actions,
+.operations-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.operations-panel-heading > div {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.operations-bound-note {
+    font: 0.75rem/1.4 var(--font-mono);
+}
+
+.operations-page button,
+.operations-page input,
+.operations-dialog button,
+.operations-dialog input {
+    border: 1px solid var(--line-strong);
+    border-radius: 0.4rem;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+}
+
+.operations-page button,
+.operations-dialog button {
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+}
+
+.operations-page button:disabled,
+.operations-dialog button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.operations-page input,
+.operations-dialog input {
+    padding: 0.55rem 0.65rem;
+}
+
+.operations-primary-button,
+.operations-status {
+    border-color: var(--accent) !important;
+    background: var(--accent-soft) !important;
+    color: var(--accent-strong) !important;
+}
+
+.operations-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.operations-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.operations-table th,
+.operations-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+.operations-table thead th {
+    color: var(--ink-muted);
+    font: 600 0.75rem/1.2 var(--font-mono);
+    text-transform: uppercase;
+}
+
+.operations-table small,
+.operations-record small {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+}
+
+.operations-status {
+    display: inline-block;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    font: 600 0.72rem/1 var(--font-mono);
+}
+
+.operations-failure-detail {
+    max-width: 30rem;
+    color: var(--danger) !important;
+    overflow-wrap: anywhere;
+}
+
+.operations-pagination {
+    justify-content: flex-end;
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+}
+
+.operations-record-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.operations-record {
+    display: grid;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.55rem;
+    background: var(--paper);
+}
+
+.operations-record-heading strong,
+.operations-details dd {
+    overflow-wrap: anywhere;
+}
+
+.operations-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.operations-details div {
+    min-width: 0;
+}
+
+.operations-details dt {
+    margin-bottom: 0.25rem;
+    color: var(--ink-muted);
+    font: 600 0.72rem/1.2 var(--font-mono);
+    text-transform: uppercase;
+}
+
+.operations-details dd {
+    margin: 0;
+}
+
+.operations-inert-url {
+    display: block;
+    padding: 0.4rem;
+    border-radius: 0.3rem;
+    background: var(--surface-2);
+    white-space: pre-wrap;
+    word-break: break-all;
+    user-select: text;
+}
+
+@media (max-width: 48rem) {
+    .operations-page {
+        padding: 3rem 0.75rem 5rem;
+    }
+
+    .operations-panel-heading,
+    .operations-record-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .operations-panel-heading > button,
+    .operations-record-heading > button {
+        width: 100%;
+    }
+}

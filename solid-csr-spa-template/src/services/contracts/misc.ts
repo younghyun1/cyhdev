@@ -15,10 +15,6 @@ export const i18nApi = {
     contractApi.getUiTextBundle({ query: { locale } }),
 } as const;
 
-export const adminApi = {
-  syncI18nCache: () => contractApi.syncI18nCache(),
-} as const;
-
 export const wasmModuleApi = {
   getWasmModules: () => contractApi.getWasmModules(),
   uploadWasmModule: (
