@@ -22,12 +22,15 @@ ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-gnu
 ARG RUST_TARGET_CPU=znver3
 ARG SOURCE_DATE_EPOCH=0
+# Bind Cargo and rustup to the dated nightly contained by the freshly pulled
+# image. Otherwise rust-toolchain.toml selects a second, mutable nightly alias.
+ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
 WORKDIR /workspace
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates clang git gzip libpq-dev libzstd-dev lld make perl pkg-config zstd \
     && rm -rf /var/lib/apt/lists/* \
-    && rustup component add rust-src
+    && rustup component add rust-src --toolchain "$RUSTUP_TOOLCHAIN"
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 RUN --mount=type=cache,target=/workspace/target/ \
@@ -37,7 +40,7 @@ RUN --mount=type=cache,target=/workspace/target/ \
     CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
-        -Z build-std-features=backtrace \
+        -Z build-std-features=backtrace,panic-unwind \
     && ldd_output="$(ldd "./target/$RUST_TARGET/release/$APP_NAME")" \
     && printf '%s\n' "$ldd_output" \
     && ! printf '%s\n' "$ldd_output" | grep -q 'not found' \
@@ -52,11 +55,12 @@ COPY --from=host-release /out/ /
 FROM rustlang/rust:nightly-alpine AS rust-base
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
+ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
 WORKDIR /workspace
 
 # Install native build dependencies required by the bundled C libraries.
 RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
-    && rustup component add rust-src
+    && rustup component add rust-src --toolchain "$RUSTUP_TOOLCHAIN"
 
 # Compile the current backend in the development profile. This stage also
 # consumes the frontend output because the backend embeds that directory.
@@ -106,7 +110,7 @@ RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
-        -Z build-std-features=backtrace && \
+        -Z build-std-features=backtrace,panic-unwind && \
     upx --lzma --best "./target/$RUST_TARGET/release/$APP_NAME" && \
     cp "./target/$RUST_TARGET/release/$APP_NAME" /bin/server
 
