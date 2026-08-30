@@ -6,6 +6,9 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use web_sys::{Document, HtmlCanvasElement, HtmlElement, MouseEvent, Window};
 
+type AnimationFrameCallback = Closure<dyn FnMut()>;
+type AnimationLoop = Rc<RefCell<Option<AnimationFrameCallback>>>;
+
 const MAX_BOUNCE: u32 = 10;
 const FOV_DEG: f32 = 62.0;
 const CAMERA_DIST: f32 = 9.5;
@@ -554,7 +557,7 @@ fn document() -> Result<Document, String> {
         .ok_or_else(|| "document() unavailable".to_string())
 }
 
-fn request_animation_frame(f: &Closure<dyn FnMut()>) {
+fn request_animation_frame(f: &AnimationFrameCallback) {
     let _ = window()
         .and_then(|w| {
             w.request_animation_frame(f.as_ref().unchecked_ref())
@@ -1293,9 +1296,7 @@ impl GpuState {
             pass.draw(0..3, 0..1);
         }
         self.queue.submit(Some(encoder.finish()));
-        let tmp = self.read_idx;
-        self.read_idx = self.write_idx;
-        self.write_idx = tmp;
+        std::mem::swap(&mut self.read_idx, &mut self.write_idx);
         self.iteration = self.iteration.wrapping_add(1);
         self.frame = self.frame.wrapping_add(1);
         perf_now() - pass_start
@@ -1396,7 +1397,7 @@ fn install_input_handlers(state: &Rc<RefCell<GpuState>>) -> Result<(), String> {
         let cb = Closure::<dyn FnMut(MouseEvent)>::new(move |e: MouseEvent| {
             let mut st = s.borrow_mut();
             st.mouse_down = true;
-            st.last_mouse = (e.client_x() as f64, e.client_y() as f64);
+            st.last_mouse = (e.client_x(), e.client_y());
         });
         canvas
             .add_event_listener_with_callback("mousedown", cb.as_ref().unchecked_ref())
@@ -1420,11 +1421,11 @@ fn install_input_handlers(state: &Rc<RefCell<GpuState>>) -> Result<(), String> {
         let cb = Closure::<dyn FnMut(MouseEvent)>::new(move |e: MouseEvent| {
             let mut st = s.borrow_mut();
             if st.mouse_down {
-                let dx = e.client_x() as f64 - st.last_mouse.0;
-                let dy = e.client_y() as f64 - st.last_mouse.1;
+                let dx = e.client_x() - st.last_mouse.0;
+                let dy = e.client_y() - st.last_mouse.1;
                 st.cam_yaw += dx as f32 * 0.005;
                 st.cam_pitch = (st.cam_pitch + dy as f32 * 0.005).clamp(-1.2, 1.2);
-                st.last_mouse = (e.client_x() as f64, e.client_y() as f64);
+                st.last_mouse = (e.client_x(), e.client_y());
                 st.clear_accumulation();
             }
         });
@@ -1443,7 +1444,7 @@ pub async fn start() -> Result<(), String> {
 
     install_input_handlers(&state)?;
 
-    let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
+    let f: AnimationLoop = Rc::new(RefCell::new(None));
     let g = f.clone();
     let s = state.clone();
 

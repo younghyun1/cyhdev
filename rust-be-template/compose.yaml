@@ -10,7 +10,8 @@
 services:
   server:
     build:
-      context: .
+      context: ..
+      dockerfile: rust-be-template/Dockerfile
       target: final
     # Runtime configuration stays outside the image and build context.
     env_file:

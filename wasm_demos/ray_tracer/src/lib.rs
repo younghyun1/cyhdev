@@ -9,6 +9,9 @@ use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, MouseEvent
 
 mod wgpu_renderer;
 
+type AnimationFrameCallback = Closure<dyn FnMut()>;
+type AnimationLoop = Rc<RefCell<Option<AnimationFrameCallback>>>;
+
 // ---- JS helpers ----
 #[wasm_bindgen]
 extern "C" {
@@ -29,7 +32,7 @@ fn document() -> web_sys::Document {
 fn perf() -> web_sys::Performance {
     window().performance().unwrap()
 }
-fn request_animation_frame(f: &Closure<dyn FnMut()>) {
+fn request_animation_frame(f: &AnimationFrameCallback) {
     window()
         .request_animation_frame(f.as_ref().unchecked_ref())
         .unwrap();
@@ -891,7 +894,7 @@ impl State {
 
         let camera = build_camera(w, h, self.cam_yaw, self.cam_pitch);
         let total_pixels = (w * h) as usize;
-        let min_pixels = ((total_pixels / 192).max(1024)).min(16384);
+        let min_pixels = (total_pixels / 192).clamp(1024, 16384);
         let start = perf().now();
 
         let mut traced = 0usize;
@@ -941,9 +944,21 @@ impl State {
             self.window_rays = 0;
         }
 
-        let data =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(&self.pixels), w, h).unwrap();
-        self.ctx.put_image_data(&data, 0.0, 0.0).unwrap();
+        let data = match ImageData::new_with_u8_clamped_array_and_sh(
+            Clamped(&self.pixels),
+            w,
+            h,
+        ) {
+            Ok(data) => data,
+            Err(error) => {
+                log(&format!("Could not prepare the rendered frame: {error:?}"));
+                return;
+            }
+        };
+        match self.ctx.put_image_data(&data, 0, 0) {
+            Ok(()) => {}
+            Err(error) => log(&format!("Could not draw the rendered frame: {error:?}")),
+        }
         self.draw_hud();
     }
 }
@@ -1034,7 +1049,7 @@ fn start_cpu() {
         let cb = Closure::<dyn FnMut(MouseEvent)>::new(move |e: MouseEvent| {
             let mut st = s.borrow_mut();
             st.mouse_down = true;
-            st.last_mouse = (e.client_x() as f64, e.client_y() as f64);
+            st.last_mouse = (e.client_x(), e.client_y());
         });
         canvas
             .add_event_listener_with_callback("mousedown", cb.as_ref().unchecked_ref())
@@ -1056,11 +1071,11 @@ fn start_cpu() {
         let cb = Closure::<dyn FnMut(MouseEvent)>::new(move |e: MouseEvent| {
             let mut st = s.borrow_mut();
             if st.mouse_down {
-                let dx = e.client_x() as f64 - st.last_mouse.0;
-                let dy = e.client_y() as f64 - st.last_mouse.1;
+                let dx = e.client_x() - st.last_mouse.0;
+                let dy = e.client_y() - st.last_mouse.1;
                 st.cam_yaw += dx as f32 * 0.005;
                 st.cam_pitch = (st.cam_pitch + dy as f32 * 0.005).clamp(-1.2, 1.2);
-                st.last_mouse = (e.client_x() as f64, e.client_y() as f64);
+                st.last_mouse = (e.client_x(), e.client_y());
                 st.reset_accumulation();
                 let salt = st.frame.wrapping_mul(3907).wrapping_add(11);
                 st.reseed_rng_states(salt);
@@ -1073,7 +1088,7 @@ fn start_cpu() {
     }
 
     // Animation loop
-    let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
+    let f: AnimationLoop = Rc::new(RefCell::new(None));
     let g = f.clone();
     let s = state.clone();
     *g.borrow_mut() = Some(Closure::new(move || {

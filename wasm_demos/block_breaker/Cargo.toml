@@ -1,7 +1,10 @@
 [package]
 name = "block_breaker"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--enable-bulk-memory", "--enable-nontrapping-float-to-int"]
@@ -28,12 +31,3 @@ web-sys = { version = "0.3.85", features = [
     "TouchList",
     "Performance",
 ] }
-
-[profile.release]
-opt-level = "z"
-codegen-units = 1
-lto = true
-strip = true
-panic = "abort"
-debug = false
-incremental = false
