@@ -1,15 +1,51 @@
 # syntax=docker/dockerfile:1
 
 ARG APP_NAME=rust-be-template
+ARG RUST_DOCKER_TAG=nightly
 
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
 FROM node:24-alpine AS frontend
 WORKDIR /workspace/solid-csr-spa-template
+RUN apk add --no-cache gzip zstd
 COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
 RUN npm ci --legacy-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
-RUN npm run build
+RUN npm run build \
+    && find ./dist -type f ! -iname '*.png' ! -iname '*.jpg' ! -iname '*.gz' ! -iname '*.zst' \
+        -exec sh -c 'gzip -9 -c "$1" > "$1.gz"; zstd --ultra -22 -q -c "$1" > "$1.zst"' _ {} \;
+
+# The compatibility artifact preserves the original build.sh ABI and output:
+# glibc, Zen 3 tuning, no UPX, and a host-visible Cargo release path.
+FROM rustlang/rust:${RUST_DOCKER_TAG} AS host-release
+ARG APP_NAME
+ARG RUST_TARGET=x86_64-unknown-linux-gnu
+ARG RUST_TARGET_CPU=znver3
+ARG SOURCE_DATE_EPOCH=0
+WORKDIR /workspace
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates clang git gzip libpq-dev libzstd-dev lld make perl pkg-config zstd \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup component add rust-src
+COPY . ./
+COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+RUN --mount=type=cache,target=/workspace/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
+    CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
+    cargo +nightly build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
+        -Z build-std=core,alloc,std,panic_unwind \
+        -Z build-std-features=backtrace \
+    && ldd_output="$(ldd "./target/$RUST_TARGET/release/$APP_NAME")" \
+    && printf '%s\n' "$ldd_output" \
+    && ! printf '%s\n' "$ldd_output" | grep -q 'not found' \
+    && mkdir -p /out \
+    && cp "./target/$RUST_TARGET/release/$APP_NAME" "/out/$APP_NAME"
+
+FROM scratch AS artifact
+COPY --from=host-release /out/ /
 
 # The rolling tag intentionally tracks the latest nightly toolchain. Root image
 # commands use --pull so a cached base cannot pin an older nightly.

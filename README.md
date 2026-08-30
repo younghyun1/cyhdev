@@ -12,6 +12,18 @@ This repository contains the backend, web application, maintenance utilities, an
 
 Use `cargo xtask --help` for root-relative development, verification, and image commands. During implementation, `cargo xtask clippy` is the only stage gate; it checks native packages for the host and browser packages for `wasm32-unknown-unknown`. Run the broader final-review commands only after the implementation waves are complete.
 
+## Optimized build
+
+Run the restored compatibility entry point from any directory:
+
+```bash
+./build.sh
+```
+
+It is equivalent to `cargo xtask build`. The build uses locked frontend and Cargo inputs, rolling nightly, `build-std`, the workspace release profile, gzip-9/zstd-22 frontend assets, and `target-cpu=znver3`. It exports the uncompressed glibc executable to `target/x86_64-unknown-linux-gnu/release/rust-be-template` and rejects unresolved dynamic libraries. `APP_NAME`, `TARGET_TRIPLE`, `TARGET_CPU`, `RUST_DOCKER_TAG`, `DOCKER_PLATFORM`, and `SOURCE_DATE_EPOCH` are the supported environment controls. The compatibility builder intentionally does not restore dependency updates or Git pulls.
+
+Use `cargo xtask build-dev` when an unoptimized native development build is wanted. `cargo xtask image` separately builds the optimized musl deployment image.
+
 The deferred gates are `cargo xtask fmt`, `cargo xtask unit`, `cargo xtask db-integration`, `cargo xtask migration-rollback`, `cargo xtask openapi`, `cargo xtask frontend-check`, `cargo xtask image-smoke`, `cargo xtask throughput`, and `cargo xtask secret-scan`. `cargo xtask final-review` runs all of them plus Clippy and reports every failed gate. It does not run a release build. Its throughput step first runs the portable fixture, then requires `THROUGHPUT_HTTP_TARGET`, `THROUGHPUT_HTTP_ENVIRONMENT`, and `THROUGHPUT_HTTP_THRESHOLDS` for the hardware-specific backend baseline; the environment must declare the exact target, and the thresholds must pin the observed environment digest. `THROUGHPUT_HTTP_OUTPUT` optionally changes the report destination.
 
 Use `cargo xtask throughput record` to capture a threshold-free real-backend calibration before setting regression limits. The [throughput runbook](tools/throughput/README.md) defines the localhost topology, calibration policy, and Wave 8 environment variables.
@@ -22,7 +34,7 @@ Database gates require `TEST_DATABASE_URL` to name a disposable PostgreSQL 18 ma
 
 The checked-in `tools/final-review/evidence.manifest` is the executable W3/W8 evidence contract. The final review validates its xtask command and review-step registrations, required repository evidence, and the throughput and redacted secret-scan reports, then writes a deterministic receipt to `target/final-review/evidence.json`.
 
-All root Cargo commands use `Cargo.lock`; frontend builds use `npm ci` and `package-lock.json`. Use `cargo xtask build`, `cargo xtask frontend-build`, `cargo xtask wasm-build`, and `cargo xtask image` instead of package-local build scripts. The image command pulls the rolling nightly builder, builds the frontend inside Docker, rebuilds the Rust standard library, and applies the root release profile.
+All root Cargo commands use `Cargo.lock`; frontend builds use `npm ci` and `package-lock.json`. Use `./build.sh` or the corresponding `cargo xtask` commands instead of package-local build scripts. Optimized backend and image commands pull rolling nightly, build the frontend inside Docker, rebuild the Rust standard library, and apply the root release profile.
 
 Build metadata uses `SOURCE_DATE_EPOCH` when set and otherwise uses Unix epoch zero. Set the variable to a release timestamp when a meaningful build time is required without introducing wall-clock variation.
 
