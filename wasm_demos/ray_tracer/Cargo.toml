@@ -13,12 +13,12 @@ wasm-opt = ["-Oz", "--enable-bulk-memory", "--enable-nontrapping-float-to-int"]
 crate-type = ["cdylib"]
 
 [dependencies]
-wasm-bindgen = "0.2.108"
-wasm-bindgen-futures = "0.4.55"
-js-sys = "0.3.76"
-bytemuck = { version = "1.24.0", features = ["derive"] }
-wgpu = { version = "28.0.0", features = ["webgl"] }
-web-sys = { version = "0.3.85", features = [
+wasm-bindgen = "0.2.127"
+wasm-bindgen-futures = "0.4.77"
+js-sys = "0.3.104"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+wgpu = { version = "30.0.1", features = ["webgl"] }
+web-sys = { version = "0.3.104", features = [
     "Window",
     "Document",
     "HtmlCanvasElement",

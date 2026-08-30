@@ -83,13 +83,13 @@ serde = "1.0.229"
 serde_derive = "1.0.229"
 serde_json.workspace = true
 bitcode = "0.6.9"
-flate2 = "1.1.9"
+flate2 = "1.1.10"
 
 # types
 chrono.workspace = true
 chrono-tz = { version = "0.10.4", features = ["serde"] }
-scc = "3.8.6"
-uuid = { version = "1.25.0", features = [
+scc = "3.8.7"
+uuid = { version = "1.26.0", features = [
     "v4",
     "v7",
     "serde",
@@ -103,11 +103,11 @@ ipnet = "2.12.1"
 email_address = "0.2.9"
 
 # crypto/rand
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 base64 = "0.23.1"
 getrandom = "0.4.3"
 rand = "0.10"
-rand_08 = { package = "rand", version = "0.8.7" }
+rand_08 = { package = "rand", version = "0.8.8" }
 rustls = { version = "0.23.43", features = [] }
 sha2 = "0.11.0"
 time = "0.3.55"
@@ -154,17 +154,17 @@ mime_guess = "2.0.5"
 
 # internment
 internment = "0.8.6"
-memmap2 = "0.9.9"
+memmap2 = "0.9.11"
 
 # aws
-aws-sdk-s3 = { version = "1.143.0", features = ["behavior-version-latest"] }
+aws-sdk-s3 = { version = "1.144.0", features = ["behavior-version-latest"] }
 aws-config = { version = "1.11.0", features = [
     "rustls",
     "behavior-version-latest",
 ] }
 aws-types = "1.5.0"
-rtc = "0.20.3"
-webrtc = "0.20.3"
+rtc = "0.20.4"
+webrtc = "0.20.4"
 nutype = "0.7.0"
 
 # enable for dockerization?
