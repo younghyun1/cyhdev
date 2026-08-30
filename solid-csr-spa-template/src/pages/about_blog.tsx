@@ -1,3 +1,4 @@
+import { RepositorySourceMap } from "../components/RepositorySourceMap";
 import { pageStyles } from "../styles/pageStyles";
 
 export default function AboutBlog() {
@@ -11,7 +12,7 @@ export default function AboutBlog() {
             Blog Tech Stack
           </h1>
           <p class="text-xs text-ink-muted">
-            Last updated: 2026-03-06
+            Last updated: 2026-08-30
             <br />
           </p>
         </div>
@@ -310,6 +311,8 @@ export default function AboutBlog() {
               fast, observable, and stubbornly low-overhead.
             </p>
           </section>
+
+          <RepositorySourceMap />
         </section>
       </section>
     </main>

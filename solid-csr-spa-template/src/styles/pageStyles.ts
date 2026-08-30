@@ -68,6 +68,17 @@ export const pageStyles = {
     "rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger",
   callPill:
     "inline-flex items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-xs font-semibold text-ok",
+  sourceMapTitle: "text-lg font-bold text-ink",
+  sourceMapIntro: "mt-2 text-sm leading-6 text-ink-muted",
+  sourceGroupGrid: "mt-5 grid gap-4 sm:grid-cols-2",
+  sourceGroup: "rounded-sm border border-line bg-surface-2 p-4",
+  sourceGroupTitle: "text-sm font-semibold text-ink",
+  sourceGroupDescription: "mt-1 text-xs leading-5 text-ink-muted",
+  sourceLinkList: "mt-3 space-y-2",
+  sourceLink:
+    "block rounded-sm border border-line bg-surface px-3 py-2 transition-colors hover:border-line-strong hover:bg-paper",
+  sourceLinkLabel: "block text-sm font-medium text-accent",
+  sourceLinkPath: "mt-1 block break-all text-xs text-ink-muted",
 };
 
 /**

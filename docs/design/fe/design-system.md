@@ -61,3 +61,7 @@ Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No
 ## Code blocks
 
 `src/styles/code.css` is a hand-written highlight.js theme on the dark surface (`#141210`) used in BOTH modes; dark code blocks on cream are intentional. Prose maps `--tw-prose-pre-bg` to the same surface. Inline code renders as a bordered `surface-2` chip without backtick pseudo-content.
+
+## Repository source links
+
+The tech-stack page builds implementation links from `VITE_REPOSITORY_SOURCE_BASE_URL` and typed monorepo-relative paths in `src/config/sourceLinks.ts`. The base must point to the repository file root for a branch or commit, such as `https://github.com/younghyun1/cyhdev/blob/main`; production can replace `main` with a commit hash when permanent historical links are required. Keep provider and revision configuration in the base, keep component paths relative to the monorepo root, and do not add line fragments. Source-map layout classes remain centralized in `src/styles/pageStyles.ts`.
