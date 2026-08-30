@@ -1,0 +1,31 @@
+# Runtime configuration and credentials
+**/.env
+**/.env.*
+!**/.env.example
+**/*credentials*.json
+**/service-account.json
+**/certs/
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+
+# Build and package output
+/target/
+**/target/
+**/node_modules/
+**/dist/
+**/pkg/
+rust-be-template/fe/
+
+# Generated source
+**/src/build_info.rs
+
+# Local tooling
+**/.claude/settings.local.json
+**/.idea/
+**/.vscode/
+**/.DS_Store
+
+# The executable workspace lockfile is authoritative.
+!/Cargo.lock
