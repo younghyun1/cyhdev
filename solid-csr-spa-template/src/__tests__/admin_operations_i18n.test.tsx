@@ -16,6 +16,7 @@ vi.mock("../services/all_api", () => ({
 }));
 
 import I18nSyncPanel from "../components/admin/operations/I18nSyncPanel";
+import { ADMIN_OPERATION_SECTION_IDS } from "../components/admin/navigation";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import type { AdminOperationsApi } from "../services/contracts/admin_operations";
 import { setLocaleSignal, setTexts } from "../state/i18n";
@@ -42,7 +43,10 @@ describe("UI text synchronization operations", () => {
       "syncI18n"
     >;
 
-    render(() => <I18nSyncPanel service={service} />);
+    const result = render(() => <I18nSyncPanel service={service} />);
+    expect(
+      result.container.querySelector(`#${ADMIN_OPERATION_SECTION_IDS.i18n}`),
+    ).not.toBeNull();
     expect(syncI18n).not.toHaveBeenCalled();
     fireEvent.click(
       screen.getByRole("button", { name: "Synchronize UI text" }),
@@ -55,7 +59,9 @@ describe("UI text synchronization operations", () => {
   });
 
   it("warns that a rejected synchronization can be partially applied", async () => {
-    const syncI18n = vi.fn().mockRejectedValue(new Error("cache reload failed"));
+    const syncI18n = vi.fn().mockRejectedValue(
+      new Error("cache reload failed"),
+    );
     const service = { syncI18n } as Pick<
       AdminOperationsApi,
       "syncI18n"
@@ -67,7 +73,9 @@ describe("UI text synchronization operations", () => {
     );
 
     expect(await screen.findByText("cache reload failed")).toBeTruthy();
-    expect(screen.getByText(/database rows before a later cache refresh failed/)).toBeTruthy();
+    expect(
+      screen.getByText(/database rows before a later cache refresh failed/),
+    ).toBeTruthy();
     expect(getUiTextBundle).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 # Administration operations UI
 
-`/admin/operations` is lazy-loaded behind both authenticated and superuser route guards. Its Operations link appears in the desktop and mobile administration menus only after account bootstrap confirms both conditions. The page binds one typed `adminOperationsApi` wrapper to generated OpenAPI methods; each panel owns independent loading, error, mutation, and receipt state. GET panels load on mount, but no mutation runs until an administrator explicitly confirms it.
+`/admin/operations` is lazy-loaded behind both authenticated and superuser route guards and rendered inside the shared administration workspace. Its persistent desktop sidebar and compact mobile navigation expose stable fragment links for each operations panel only after account bootstrap confirms both conditions. The page binds one typed `adminOperationsApi` wrapper to generated OpenAPI methods; each panel owns independent loading, error, mutation, and receipt state. GET panels load on mount, but no mutation runs until an administrator explicitly confirms it.
 
 Retention notifications use 25-row keyset pages and replace the visible page instead of accumulating records. Both cursor fields are always sent together, paging stops after 100 client pages, and Next is disabled at a short terminal page. Retry requires confirmation of the notification UUID, account UUID, and localized delivery stage. A retry success or conflict resets the view to page one because retry changes queue ordering.
 

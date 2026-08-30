@@ -1,8 +1,9 @@
-import { Show, createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 
 import type { AdminOperationsApi } from "../../../services/contracts/admin_operations";
 import { adminOperationsApi } from "../../../services/contracts/admin_operations";
 import { loadUiTextBundle, locale, t, tx } from "../../../state/i18n";
+import { ADMIN_OPERATION_SECTION_IDS } from "../navigation";
 import { operationErrorMessage } from "./operationsFormat";
 
 type Props = {
@@ -32,7 +33,11 @@ export default function I18nSyncPanel(props: Props) {
   };
 
   return (
-    <section class="operations-panel" aria-labelledby="i18n-heading">
+    <section
+      id={ADMIN_OPERATION_SECTION_IDS.i18n}
+      class="operations-panel"
+      aria-labelledby="i18n-heading"
+    >
       <div class="operations-panel-heading">
         <div>
           <h2 id="i18n-heading">{t("operations.i18n.title")}</h2>

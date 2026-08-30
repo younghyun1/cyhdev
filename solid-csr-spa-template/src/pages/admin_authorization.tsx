@@ -4,6 +4,7 @@ import AuthorizationAuditPanel from "../components/admin/AuthorizationAuditPanel
 import AuthorizationConfirmation from "../components/admin/AuthorizationConfirmation";
 import AuthorizationPermissionsPanel from "../components/admin/AuthorizationPermissionsPanel";
 import AuthorizationUsersPanel from "../components/admin/AuthorizationUsersPanel";
+import AdminWorkspace from "../components/admin/AdminWorkspace";
 import type {
   AuthorizationAuditCursorItem,
   AuthorizationState,
@@ -32,8 +33,9 @@ export default function AdminAuthorizationPage() {
   const [activeSearch, setActiveSearch] = createSignal("");
   const [loading, setLoading] = createSignal(true);
   const [pageError, setPageError] = createSignal<string | null>(null);
-  const [pending, setPending] =
-    createSignal<PendingAuthorizationChange | null>(null);
+  const [pending, setPending] = createSignal<PendingAuthorizationChange | null>(
+    null,
+  );
   const [mutationBusy, setMutationBusy] = createSignal(false);
   const [mutationError, setMutationError] = createSignal<string | null>(null);
 
@@ -164,16 +166,17 @@ export default function AdminAuthorizationPage() {
     }
   };
 
-  const refreshAfterMutation = async (kind: PendingAuthorizationChange["kind"]) => {
+  const refreshAfterMutation = async (
+    kind: PendingAuthorizationChange["kind"],
+  ) => {
     const usersPromise = authorizationAdminApi.users({
       search: activeSearch() || undefined,
       limit: PAGE_SIZE,
     });
     const auditPromise = authorizationAdminApi.audit({ limit: PAGE_SIZE });
-    const bindingsPromise =
-      kind === "permission"
-        ? loadAllRolePermissions()
-        : Promise.resolve(state().bindings);
+    const bindingsPromise = kind === "permission"
+      ? loadAllRolePermissions()
+      : Promise.resolve(state().bindings);
     const [users, audit, bindings] = await Promise.all([
       usersPromise,
       auditPromise,
@@ -190,67 +193,74 @@ export default function AdminAuthorizationPage() {
   };
 
   return (
-    <main class="authorization-page">
-      <div class="authorization-page-inner">
-        <header class="authorization-page-header">
-          <div>
-            <p class="authorization-eyebrow">{t("authorization.eyebrow")}</p>
-            <h1>{t("page.authorization.title")}</h1>
-            <p>{t("authorization.subtitle")}</p>
-          </div>
-          <button type="button" onClick={loadInitial} disabled={loading()}>
-            {t("common.refresh")}
-          </button>
-        </header>
-        <Show when={pageError() !== null}>
-          <p class="authorization-error" role="alert">{pageError()}</p>
-        </Show>
-        <Show when={!loading() || state().roles.length > 0} fallback={
-          <p class="authorization-loading">{t("common.loading")}</p>
-        }>
-          <AuthorizationUsersPanel
-            users={state().users}
-            roles={state().roles}
-            nextCursor={state().usersNextCursor}
-            loading={loading()}
-            onSearch={searchUsers}
-            onNext={nextUsers}
-            onAssign={(user, role) => {
-              setMutationError(null);
-              setPending({ kind: "role", user, role });
-            }}
-          />
-          <AuthorizationPermissionsPanel
-            roles={state().roles}
-            permissions={state().permissions}
-            bindings={state().bindings}
-            onToggle={(role, permission, enabled) => {
-              setMutationError(null);
-              setPending({ kind: "permission", role, permission, enabled });
-            }}
-          />
-          <AuthorizationAuditPanel
-            events={state().auditEvents}
-            nextCursor={state().auditNextCursor}
-            loading={loading()}
-            onNext={nextAudit}
-          />
-        </Show>
+    <AdminWorkspace>
+      <div class="authorization-page">
+        <div class="authorization-page-inner">
+          <header class="authorization-page-header">
+            <div>
+              <p class="authorization-eyebrow">{t("authorization.eyebrow")}</p>
+              <h1>{t("page.authorization.title")}</h1>
+              <p>{t("authorization.subtitle")}</p>
+            </div>
+            <button type="button" onClick={loadInitial} disabled={loading()}>
+              {t("common.refresh")}
+            </button>
+          </header>
+          <Show when={pageError() !== null}>
+            <p class="authorization-error" role="alert">{pageError()}</p>
+          </Show>
+          <Show
+            when={!loading() || state().roles.length > 0}
+            fallback={
+              <p class="authorization-loading">{t("common.loading")}</p>
+            }
+          >
+            <AuthorizationUsersPanel
+              users={state().users}
+              roles={state().roles}
+              nextCursor={state().usersNextCursor}
+              loading={loading()}
+              onSearch={searchUsers}
+              onNext={nextUsers}
+              onAssign={(user, role) => {
+                setMutationError(null);
+                setPending({ kind: "role", user, role });
+              }}
+            />
+            <AuthorizationPermissionsPanel
+              roles={state().roles}
+              permissions={state().permissions}
+              bindings={state().bindings}
+              onToggle={(role, permission, enabled) => {
+                setMutationError(null);
+                setPending({ kind: "permission", role, permission, enabled });
+              }}
+            />
+            <AuthorizationAuditPanel
+              events={state().auditEvents}
+              nextCursor={state().auditNextCursor}
+              loading={loading()}
+              onNext={nextAudit}
+            />
+          </Show>
+        </div>
+        <AuthorizationConfirmation
+          change={pending()}
+          busy={mutationBusy()}
+          error={mutationError()}
+          onCancel={() => {
+            if (!mutationBusy()) setPending(null);
+          }}
+          onConfirm={applyChange}
+        />
       </div>
-      <AuthorizationConfirmation
-        change={pending()}
-        busy={mutationBusy()}
-        error={mutationError()}
-        onCancel={() => {
-          if (!mutationBusy()) setPending(null);
-        }}
-        onConfirm={applyChange}
-      />
-    </main>
+    </AdminWorkspace>
   );
 }
 
-async function loadAllRolePermissions(): Promise<readonly RolePermissionItem[]> {
+async function loadAllRolePermissions(): Promise<
+  readonly RolePermissionItem[]
+> {
   const bindings: RolePermissionItem[] = [];
   let after: string | undefined;
   for (let page = 0; page < MAX_BINDING_PAGES; page += 1) {
@@ -272,5 +282,7 @@ function auditQuery(cursor: AuthorizationAuditCursorItem) {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : t("authorization.error.unknown");
+  return error instanceof Error
+    ? error.message
+    : t("authorization.error.unknown");
 }

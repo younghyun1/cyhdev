@@ -9,11 +9,12 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import MediaCleanupPanel from "../components/admin/operations/MediaCleanupPanel";
+import { ADMIN_OPERATION_SECTION_IDS } from "../components/admin/navigation";
 import type { UnresolvedMediaCleanupItem } from "../generated";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import {
-  MEDIA_CLEANUP_BUCKET,
   type AdminOperationsApi,
+  MEDIA_CLEANUP_BUCKET,
 } from "../services/contracts/admin_operations";
 import { setLocaleSignal, setTexts } from "../state/i18n";
 
@@ -56,10 +57,16 @@ describe("media cleanup operations", () => {
 
     const result = render(() => <MediaCleanupPanel service={service} />);
 
+    expect(
+      result.container.querySelector(
+        `#${ADMIN_OPERATION_SECTION_IDS.mediaCleanup}`,
+      ),
+    ).not.toBeNull();
     expect(await screen.findByText(RECORD.original_url)).toBeTruthy();
     expect(resolve).not.toHaveBeenCalled();
     expect(result.container.querySelector("img")).toBeNull();
-    expect(result.container.querySelector(`a[href="${RECORD.original_url}"]`)).toBeNull();
+    expect(result.container.querySelector(`a[href="${RECORD.original_url}"]`))
+      .toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reconcile" }));
 
     const dialog = await screen.findByRole("dialog");

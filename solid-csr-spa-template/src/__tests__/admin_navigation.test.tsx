@@ -1,17 +1,17 @@
 import { cleanup, render } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import AdminNavigation, {
-  ADMIN_NAVIGATION_LINKS,
-} from "../components/AdminNavigation";
+import AdminNavigation from "../components/AdminNavigation";
+import { ADMIN_DEFAULT_HREF } from "../components/admin/navigation";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import { handleAdminForbiddenResponse } from "../services/api";
 import { isSuperuser, setAuthenticated, setSuperuser } from "../state/auth";
 import { setLocaleSignal, setTexts } from "../state/i18n";
 
 const renderedHrefs = (container: HTMLElement): ReadonlyArray<string> =>
-  Array.from(container.querySelectorAll("a"), (link) =>
-    link.getAttribute("href"),
+  Array.from(
+    container.querySelectorAll("a"),
+    (link) => link.getAttribute("href"),
   ).filter((href): href is string => href !== null);
 
 describe("administration navigation", () => {
@@ -23,12 +23,6 @@ describe("administration navigation", () => {
   });
 
   afterEach(() => cleanup());
-
-  it("keeps operations and OpenAPI in the privileged inventory", () => {
-    const hrefs = ADMIN_NAVIGATION_LINKS.map((link) => link.href);
-    expect(hrefs).toContain("/admin/operations");
-    expect(hrefs).toContain("/swagger-ui");
-  });
 
   it("drops stale admin controls after an authoritative admin denial", async () => {
     setSuperuser(true);
@@ -47,7 +41,10 @@ describe("administration navigation", () => {
   it("stays absent until authentication confirms superuser access", () => {
     setAuthenticated(true);
     const result = render(() => (
-      <AdminNavigation variant="desktop" isActive={() => false} />
+      <AdminNavigation
+        variant="desktop"
+        isActive={() => false}
+      />
     ));
 
     expect(renderedHrefs(result.container)).toEqual([]);
@@ -58,18 +55,36 @@ describe("administration navigation", () => {
   });
 
   it.each(["desktop", "mobile"] as const)(
-    "exposes every privileged surface in the %s menu",
+    "renders one plain admin link in the %s navigation",
     (variant) => {
       setAuthenticated(true);
       setSuperuser(true);
 
       const result = render(() => (
-        <AdminNavigation variant={variant} isActive={() => false} />
+        <AdminNavigation
+          variant={variant}
+          isActive={() => false}
+        />
       ));
 
-      expect(renderedHrefs(result.container)).toEqual(
-        ADMIN_NAVIGATION_LINKS.map((link) => link.href),
-      );
+      expect(renderedHrefs(result.container)).toEqual([ADMIN_DEFAULT_HREF]);
+      expect(result.container.querySelector("details")).toBeNull();
+      expect(result.container.querySelector("summary")).toBeNull();
     },
   );
+
+  it("marks the single link active across admin routes", () => {
+    setAuthenticated(true);
+    setSuperuser(true);
+
+    const result = render(() => (
+      <AdminNavigation
+        variant="desktop"
+        isActive={(href) => href === "/admin/authorization"}
+      />
+    ));
+
+    expect(result.container.querySelector("a")?.getAttribute("aria-current"))
+      .toBe("page");
+  });
 });
