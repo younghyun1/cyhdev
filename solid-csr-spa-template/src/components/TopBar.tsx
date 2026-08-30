@@ -2,7 +2,6 @@ import { Show, createSignal, For, onCleanup } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
   isAuthenticated,
-  isSuperuser,
   setSuperuser,
   user,
   setAuthenticated,
@@ -14,6 +13,7 @@ import LanguageSelect from "./LanguageSelect";
 import ThemeToggle from "./ThemeToggle";
 import type { UiTextKey } from "../i18n/keys";
 import { t } from "../state/i18n";
+import AdminNavigation from "./AdminNavigation";
 
 const [menuOpen, setMenuOpen] = createSignal(false);
 const [sidebarOpen, setSidebarOpen] = createSignal(false);
@@ -164,6 +164,7 @@ const TopBar = () => {
                       </li>
                     )}
                   </For>
+                  <AdminNavigation variant="desktop" isActive={isActive} />
                 </ul>
               </nav>
             </div>
@@ -251,15 +252,6 @@ const TopBar = () => {
                           {t("top_bar.profile.edit")}
                         </a>
 
-                        <Show when={isSuperuser() === true}>
-                          <a
-                            href="/admin/authorization"
-                            class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
-                          >
-                            {t("top_bar.profile.authorization")}
-                          </a>
-                        </Show>
-
                         <button
                           class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                           onClick={handleLogout}
@@ -341,6 +333,11 @@ const TopBar = () => {
                     </li>
                   )}
                 </For>
+                <AdminNavigation
+                  variant="mobile"
+                  isActive={isActive}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
               </ul>
             </nav>
           </aside>
