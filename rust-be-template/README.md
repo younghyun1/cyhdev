@@ -125,7 +125,10 @@ diesel migration run
 # Development
 cargo xtask backend
 
-# Development image with embedded frontend assets
+# Optimized host-side glibc artifact with embedded, precompressed frontend assets
+cargo xtask build
+
+# Optimized musl deployment image with embedded frontend assets
 cargo xtask image
 ```
 
