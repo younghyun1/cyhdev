@@ -8,15 +8,14 @@ easy to miss when reading only the file tree.
 
 - Crate: `rust-be-template`
 - Rust edition: `2024`
-- Toolchain: `nightly` via `toolchain.toml`
+- Toolchain: rolling `nightly` via the root `rust-toolchain.toml`
 - Main binary: `src/main.rs`
 - Web stack: Axum 0.8, Tokio, Tower middleware, `axum-server` with rustls TLS
 - Persistence: PostgreSQL with Diesel and `diesel-async` over a `bb8` pool
 - OpenAPI: `utoipa` plus `utoipa-swagger-ui`
 - Logging: `tracing`, pretty console output, daily JSON log files under `logs/`
 - Allocator: `mimalloc`
-- Generated file: `src/build_info.rs` is written by `build.rs`; do not edit it
-  by hand.
+- Generated metadata: `build.rs` writes package metadata under Cargo's `OUT_DIR`; `src/build_info.rs` only includes that generated file.
 
 The app is a backend for `cyhdev.com` with auth, blog posts/comments/votes,
 country/language dropdown data, i18n text bundles, GeoIP lookup, visitor board
@@ -645,14 +644,7 @@ OpenAPI does not discover routes from Axum automatically.
 
 ## Build, Docker, and Tooling
 
-Useful commands:
-
-- `cargo check`
-- `cargo clippy`
-- `cargo test`
-- `cargo run`
-- `diesel migration run`
-- `docker compose up --build`
+Run build and development commands from the monorepo root through `cargo xtask`. `cargo xtask clippy` is the implementation-stage gate; `cargo xtask build`, `cargo xtask frontend-build`, `cargo xtask wasm-build`, `cargo xtask image`, and `cargo xtask test` cover the locked build and final-review paths.
 
 The local clippy configuration warns on `unwrap_used` and `expect_used`.
 Existing code still contains some generated/build-time `expect` usage, but new
@@ -660,13 +652,10 @@ runtime code should avoid `unwrap` and `expect`.
 
 Docker notes:
 
-- `Dockerfile` uses `rust:<RUST_VERSION>-alpine`, builds release, compresses the
-  binary with `upx`, then copies into a `scratch` final image.
-- The build stage bind-mounts `src`, `fe`, `Cargo.toml`, and `Cargo.lock`.
+- `Dockerfile` builds the frontend from `package-lock.json`, uses the rolling nightly Alpine Rust image with `rust-src`, rebuilds `std`, and applies the root release profile before copying the binary into a `scratch` image.
+- Local `dist`, `target`, and package output directories are excluded from the build context; generated frontend output moves only between Docker stages.
 - The final image expects GeoIP bundle files copied into `/bin/`.
-- `compose.yaml` exposes host port `30737` to container port `30737`, but the
-  Dockerfile exposes `443` and sets `HOST_PORT=443`; verify this before relying
-  on compose as-is.
+- `compose.yaml` pulls the latest builder images before rebuilding.
 
 ## Testing State
 
@@ -746,8 +735,6 @@ Changing live chat:
 
 ## Known Sharp Edges
 
-- `src/build_info.rs` is generated in the source tree and may appear modified
-  after builds.
 - API key middleware is present but commented out in `main_router.rs`.
 - OpenAPI docs require manual registration and are not fully synchronized with
   all current routes.

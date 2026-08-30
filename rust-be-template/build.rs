@@ -8,6 +8,9 @@ use std::{
 
 use serde_json::Value;
 
+const SOURCE_DATE_EPOCH: &str = "SOURCE_DATE_EPOCH";
+const DEFAULT_SOURCE_DATE_EPOCH: i64 = 0;
+
 fn main() -> ExitCode {
     match generate_build_info() {
         Ok(()) => ExitCode::SUCCESS,
@@ -26,7 +29,7 @@ fn generate_build_info() -> Result<(), String> {
     let package_version = required_env("CARGO_PKG_VERSION")?;
     let rust_version = rustc_version()?;
     let metadata = dependency_metadata(&manifest_path)?;
-    let build_time = chrono::Utc::now().to_rfc3339();
+    let build_time = build_time_utc()?;
     let generated = render_build_info(
         &package_name,
         &package_version,
@@ -48,6 +51,7 @@ fn generate_build_info() -> Result<(), String> {
         "cargo:rerun-if-changed={}",
         metadata.workspace_root.join("Cargo.lock").display()
     );
+    println!("cargo:rerun-if-env-changed={SOURCE_DATE_EPOCH}");
     Ok(())
 }
 
@@ -56,6 +60,28 @@ fn required_env(key: &str) -> Result<String, String> {
         Ok(value) => Ok(value),
         Err(error) => Err(format!(
             "required environment variable {key} is unavailable: {error}"
+        )),
+    }
+}
+
+fn build_time_utc() -> Result<String, String> {
+    let seconds = match env::var(SOURCE_DATE_EPOCH) {
+        Ok(value) => value.parse::<i64>().map_err(|error| {
+            format!("{SOURCE_DATE_EPOCH} must be an integer Unix timestamp: {error}")
+        })?,
+        Err(env::VarError::NotPresent) => DEFAULT_SOURCE_DATE_EPOCH,
+        Err(env::VarError::NotUnicode(_)) => {
+            return Err(format!("{SOURCE_DATE_EPOCH} must contain valid UTF-8"));
+        }
+    };
+    if seconds < 0 {
+        return Err(format!("{SOURCE_DATE_EPOCH} must not be negative"));
+    }
+
+    match chrono::DateTime::<chrono::Utc>::from_timestamp(seconds, 0) {
+        Some(timestamp) => Ok(timestamp.to_rfc3339()),
+        None => Err(format!(
+            "{SOURCE_DATE_EPOCH} value {seconds} is outside Chrono's supported range"
         )),
     }
 }
@@ -94,7 +120,13 @@ struct LibVersion {
 fn dependency_metadata(manifest_path: &Path) -> Result<DependencyMetadata, String> {
     let cargo = required_env("CARGO")?;
     let output = Command::new(&cargo)
-        .args(["metadata", "--format-version", "1", "--manifest-path"])
+        .args([
+            "metadata",
+            "--format-version",
+            "1",
+            "--locked",
+            "--manifest-path",
+        ])
         .arg(manifest_path)
         .output()
         .map_err(|error| format!("could not execute {cargo} metadata: {error}"))?;
