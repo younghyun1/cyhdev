@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -14,8 +18,8 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::error::{BlogOperation, map_blog_error};
 use super::bounded_json::BlogJson;
+use super::error::{BlogOperation, map_blog_error};
 
 #[utoipa::path(
     patch,
@@ -39,21 +43,29 @@ pub async fn update_post(
     BlogJson(request): BlogJson<UpdatePostRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    let post = state.blog_service().save_post(SavePostInput {
-        actor_user_id: user_id,
-        post_id: Some(post_id),
-        title: request.post_title,
-        markdown: request.post_content,
-        tags: request.post_tags,
-        published: request.post_is_published,
-        owner_required: false,
-    }).await.map_err(|error| map_blog_error(error, BlogOperation::Update))?;
-    Ok(http_resp(SubmitPostResponse {
-        post_id: post.post_id,
-        post_title: post.post_title,
-        post_slug: post.post_slug,
-        post_created_at: post.post_created_at,
-        post_updated_at: post.post_updated_at,
-        post_is_published: post.post_is_published,
-    }, (), start))
+    let post = state
+        .blog_service()
+        .save_post(SavePostInput {
+            actor_user_id: user_id,
+            post_id: Some(post_id),
+            title: request.post_title,
+            markdown: request.post_content,
+            tags: request.post_tags,
+            published: request.post_is_published,
+            owner_required: false,
+        })
+        .await
+        .map_err(|error| map_blog_error(error, BlogOperation::Update))?;
+    Ok(http_resp(
+        SubmitPostResponse {
+            post_id: post.post_id,
+            post_title: post.post_title,
+            post_slug: post.post_slug,
+            post_created_at: post.post_created_at,
+            post_updated_at: post.post_updated_at,
+            post_is_published: post.post_is_published,
+        },
+        (),
+        start,
+    ))
 }

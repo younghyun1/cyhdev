@@ -21,15 +21,14 @@ use rust_be_template::{
 };
 
 use support::{
-    database::{BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
-    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
-    lifecycle::{
-        PROFILE_OBJECT_URL, require_authored_content_retained, seed_authored_content,
+    database::{
+        BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
+    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
+    lifecycle::{PROFILE_OBJECT_URL, require_authored_content_retained, seed_authored_content},
     lifecycle_assertions::{
         require_account_authority_cleared, require_login_rejected, require_permanent_tombstone,
-        require_public_identity_is_generic,
-        retained_and_tombstone_identity,
+        require_public_identity_is_generic, retained_and_tombstone_identity,
     },
 };
 
@@ -288,7 +287,10 @@ fn lifecycle_migration_round_trip_case(database: &TestDatabase) -> DatabaseTestF
         })
         .await??;
 
-        require(summary.applied_before > 0, "no migrations existed before lifecycle rollback")?;
+        require(
+            summary.applied_before > 0,
+            "no migrations existed before lifecycle rollback",
+        )?;
         require(
             summary.reverted == summary.applied_before,
             "migration harness did not revert the complete lifecycle chain",
@@ -301,6 +303,9 @@ fn lifecycle_migration_round_trip_case(database: &TestDatabase) -> DatabaseTestF
             summary.applied_after == summary.applied_before,
             "migration count changed after lifecycle round trip",
         )?;
-        require(summary.pending_after == 0, "lifecycle round trip left a pending migration")
+        require(
+            summary.pending_after == 0,
+            "lifecycle round trip left a pending migration",
+        )
     })
 }

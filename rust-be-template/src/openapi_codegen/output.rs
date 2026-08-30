@@ -122,9 +122,7 @@ fn render_api_types_index() -> String {
 }
 
 fn render_root_index() -> String {
-    format!(
-        "{GENERATED_HEADER}export * from \"./api-client\";\nexport * from \"./api-types\";\n"
-    )
+    format!("{GENERATED_HEADER}export * from \"./api-client\";\nexport * from \"./api-types\";\n")
 }
 
 fn insert_file(

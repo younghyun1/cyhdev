@@ -13,11 +13,15 @@ pub(super) async fn has_current_blog_authority(
     connection: &mut AsyncPgConnection,
     user_id: Option<Uuid>,
 ) -> Result<bool, BlogError> {
-    let Some(user_id) = user_id else { return Ok(false) };
+    let Some(user_id) = user_id else {
+        return Ok(false);
+    };
     let current_authority = user_roles::table
         .inner_join(users::table)
         .inner_join(role_permissions::table.on(role_permissions::role_id.eq(user_roles::role_id)))
-        .inner_join(permissions::table.on(permissions::permission_id.eq(role_permissions::permission_id)))
+        .inner_join(
+            permissions::table.on(permissions::permission_id.eq(role_permissions::permission_id)),
+        )
         .filter(user_roles::user_id.eq(user_id))
         .filter(users::user_deleted_at.is_null())
         .filter(users::user_hard_purged_at.is_null())

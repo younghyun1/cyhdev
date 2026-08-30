@@ -41,14 +41,22 @@ impl SystemInfoState {
         if history.len() == SYSTEM_HISTORY_MAX_SAMPLES {
             history.pop_front();
         }
-        history.push_back(SystemInfo { cpu_usage, memory_usage });
+        history.push_back(SystemInfo {
+            cpu_usage,
+            memory_usage,
+        });
     }
 
     pub async fn latest(&self) -> SystemInfo {
-        self.history.read().await.back().copied().unwrap_or(SystemInfo {
-            cpu_usage: 0.0,
-            memory_usage: 0,
-        })
+        self.history
+            .read()
+            .await
+            .back()
+            .copied()
+            .unwrap_or(SystemInfo {
+                cpu_usage: 0.0,
+                memory_usage: 0,
+            })
     }
 
     pub const fn total_memory(&self) -> u64 {

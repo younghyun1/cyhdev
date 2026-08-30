@@ -64,16 +64,18 @@ impl PostSearchIndex {
         let writer = index.writer(50_000_000)?;
         let reader = index.reader()?;
 
-        Ok(Self { inner: Arc::new(PostSearchIndexInner {
-            index,
-            reader,
-            writer: RwLock::new(writer),
-            index_path: None,
-            mutation: tokio::sync::RwLock::new(()),
-            post_id_field,
-            title_field,
-            tags_field,
-        }) })
+        Ok(Self {
+            inner: Arc::new(PostSearchIndexInner {
+                index,
+                reader,
+                writer: RwLock::new(writer),
+                index_path: None,
+                mutation: tokio::sync::RwLock::new(()),
+                post_id_field,
+                title_field,
+                tags_field,
+            }),
+        })
     }
 
     /// Open or create a disk-persisted search index.
@@ -117,16 +119,18 @@ impl PostSearchIndex {
         let writer = index.writer(50_000_000)?;
         let reader = index.reader()?;
 
-        Ok(Self { inner: Arc::new(PostSearchIndexInner {
-            index,
-            reader,
-            writer: RwLock::new(writer),
-            index_path: Some(path.to_path_buf()),
-            mutation: tokio::sync::RwLock::new(()),
-            post_id_field,
-            title_field,
-            tags_field,
-        }) })
+        Ok(Self {
+            inner: Arc::new(PostSearchIndexInner {
+                index,
+                reader,
+                writer: RwLock::new(writer),
+                index_path: Some(path.to_path_buf()),
+                mutation: tokio::sync::RwLock::new(()),
+                post_id_field,
+                title_field,
+                tags_field,
+            }),
+        })
     }
 
     pub async fn lock_mutation(&self) -> tokio::sync::RwLockWriteGuard<'_, ()> {
@@ -202,7 +206,8 @@ impl PostSearchIndex {
         }
 
         let writer = self
-            .inner.writer
+            .inner
+            .writer
             .write()
             .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {}", e))?;
         writer.add_document(doc)?;
@@ -214,7 +219,8 @@ impl PostSearchIndex {
     pub fn remove_post(&self, post_id: Uuid) -> anyhow::Result<()> {
         let term = tantivy::Term::from_field_text(self.inner.post_id_field, &post_id.to_string());
         let writer = self
-            .inner.writer
+            .inner
+            .writer
             .write()
             .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {}", e))?;
         writer.delete_term(term);
@@ -224,7 +230,8 @@ impl PostSearchIndex {
     /// Commit pending changes to the index and persist to disk.
     pub fn commit(&self) -> anyhow::Result<()> {
         let mut writer = self
-            .inner.writer
+            .inner
+            .writer
             .write()
             .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {}", e))?;
         writer.commit()?;
@@ -232,5 +239,4 @@ impl PostSearchIndex {
         self.inner.reader.reload()?;
         Ok(())
     }
-
 }

@@ -15,10 +15,7 @@ use crate::{
         },
         domain::retention_notifications::RetentionNotificationSchedule,
         error::AccountError,
-        service::{
-            account_service::AccountService,
-            authentication::password_within_auth_bound,
-        },
+        service::{account_service::AccountService, authentication::password_within_auth_bound},
     },
     util::{
         crypto::verify_pw::verify_pw,
@@ -117,14 +114,13 @@ impl AccountService {
     ) -> Result<HardPurgeAccountOutcome, AccountError> {
         let receipt = self.hard_purge_account(requester_id, user_id).await?;
         let store = Arc::clone(&self.media_object_store);
-        let cleanup_results = stream::iter(receipt.profile_objects.into_iter().map(
-            |profile_object| {
+        let cleanup_results =
+            stream::iter(receipt.profile_objects.into_iter().map(|profile_object| {
                 delete_profile_object(Arc::clone(&store), user_id, profile_object)
-            },
-        ))
-        .buffer_unordered(PROFILE_OBJECT_DELETE_CONCURRENCY)
-        .collect::<Vec<_>>()
-        .await;
+            }))
+            .buffer_unordered(PROFILE_OBJECT_DELETE_CONCURRENCY)
+            .collect::<Vec<_>>()
+            .await;
         let mut deleted_profile_ids = Vec::with_capacity(cleanup_results.len());
         let mut failures = Vec::new();
         for result in cleanup_results {
@@ -155,8 +151,10 @@ impl AccountService {
         requester_id: Uuid,
         user_id: Uuid,
         profile_picture_ids: &[Uuid],
-    ) -> Result<crate::features::accounts::domain::lifecycle::ProfileCleanupFinalization, AccountError>
-    {
+    ) -> Result<
+        crate::features::accounts::domain::lifecycle::ProfileCleanupFinalization,
+        AccountError,
+    > {
         let session_consistency = self.session_consistency.read().await;
         let finalization = self
             .repository
@@ -172,18 +170,22 @@ async fn delete_profile_object(
     user_id: Uuid,
     profile_object: ProfileObjectCleanup,
 ) -> Result<Uuid, ProfileObjectCleanupFailure> {
-    let object_url = profile_object.object_url.ok_or_else(|| ProfileObjectCleanupFailure {
-        profile_picture_id: profile_object.profile_picture_id,
-        object_url: None,
-        reason: "profile metadata has no object URL".to_owned(),
-        retryable: false,
-    })?;
-    let location = ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, &object_url)
+    let object_url = profile_object
+        .object_url
         .ok_or_else(|| ProfileObjectCleanupFailure {
             profile_picture_id: profile_object.profile_picture_id,
-            object_url: Some(object_url.clone()),
-            reason: "profile metadata has an invalid object URL".to_owned(),
+            object_url: None,
+            reason: "profile metadata has no object URL".to_owned(),
             retryable: false,
+        })?;
+    let location =
+        ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, &object_url).ok_or_else(|| {
+            ProfileObjectCleanupFailure {
+                profile_picture_id: profile_object.profile_picture_id,
+                object_url: Some(object_url.clone()),
+                reason: "profile metadata has an invalid object URL".to_owned(),
+                retryable: false,
+            }
         })?;
     match store.delete(location).await {
         Ok(()) => Ok(profile_object.profile_picture_id),

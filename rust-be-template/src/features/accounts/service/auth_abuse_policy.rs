@@ -2,9 +2,7 @@
 
 use std::time::Duration;
 
-use crate::features::accounts::domain::auth_abuse::{
-    AuthEndpoint, AuthThrottleDimension,
-};
+use crate::features::accounts::domain::auth_abuse::{AuthEndpoint, AuthThrottleDimension};
 
 const MINUTE: Duration = Duration::from_secs(60);
 const FIFTEEN_MINUTES: Duration = Duration::from_secs(15 * 60);
@@ -16,10 +14,7 @@ const LOGIN_IDENTITY: [FixedWindowLimit; 1] = [limit(5, FIFTEEN_MINUTES)];
 const SIGNUP_IP: [FixedWindowLimit; 2] = [limit(3, HOUR), limit(10, DAY)];
 const SIGNUP_IDENTITY: [FixedWindowLimit; 1] = [limit(2, DAY)];
 const RESET_REQUEST_IP: [FixedWindowLimit; 2] = [limit(5, HOUR), limit(20, DAY)];
-const RESET_REQUEST_IDENTITY: [FixedWindowLimit; 2] = [
-    limit(1, FIFTEEN_MINUTES),
-    limit(3, DAY),
-];
+const RESET_REQUEST_IDENTITY: [FixedWindowLimit; 2] = [limit(1, FIFTEEN_MINUTES), limit(3, DAY)];
 const RESET_SUBMIT_IP: [FixedWindowLimit; 1] = [limit(10, FIFTEEN_MINUTES)];
 const RESET_SUBMIT_TOKEN: [FixedWindowLimit; 1] = [limit(5, FIFTEEN_MINUTES)];
 const VERIFY_IP: [FixedWindowLimit; 1] = [limit(20, HOUR)];

@@ -101,16 +101,18 @@ fn normalize_reader(
     let gz_bytes = encoder.finish()?;
     let max_encoded_size = max_decompressed_size.saturating_add(FILE_BUFFER_BYTES);
     if gz_bytes.len() > max_encoded_size {
-        return Err(anyhow!("Normalized bundle exceeds {max_encoded_size} bytes"));
+        return Err(anyhow!(
+            "Normalized bundle exceeds {max_encoded_size} bytes"
+        ));
     }
     Ok(NormalizedWasmBundle { gz_bytes, kind })
 }
 
 fn validate_prefix(prefix: &[u8], kind: WasmBundleKind) -> anyhow::Result<()> {
     match kind {
-        WasmBundleKind::Html if !looks_like_html(prefix) => {
-            Err(anyhow!("Bundle marked as HTML but contents do not look like HTML"))
-        }
+        WasmBundleKind::Html if !looks_like_html(prefix) => Err(anyhow!(
+            "Bundle marked as HTML but contents do not look like HTML"
+        )),
         WasmBundleKind::WebAssembly if !is_wasm_magic(prefix) => {
             Err(anyhow!("Invalid WASM file (missing magic number)"))
         }
@@ -121,7 +123,9 @@ fn validate_prefix(prefix: &[u8], kind: WasmBundleKind) -> anyhow::Result<()> {
 pub fn sniff_kind_from_gzip_bytes(data: &[u8]) -> anyhow::Result<WasmBundleKind> {
     let decoder = GzDecoder::new(data);
     let mut head = Vec::with_capacity(BUNDLE_PREFIX_BYTES);
-    decoder.take(BUNDLE_PREFIX_BYTES as u64).read_to_end(&mut head)?;
+    decoder
+        .take(BUNDLE_PREFIX_BYTES as u64)
+        .read_to_end(&mut head)?;
     if is_wasm_magic(&head) {
         Ok(WasmBundleKind::WebAssembly)
     } else if looks_like_html(&head) {

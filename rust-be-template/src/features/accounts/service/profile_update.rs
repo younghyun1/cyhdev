@@ -12,10 +12,7 @@ use crate::{
             authentication::{MAX_USER_NAME_BYTES, password_within_auth_bound},
         },
     },
-    util::{
-        crypto::verify_pw::verify_pw,
-        string::validations::validate_username,
-    },
+    util::{crypto::verify_pw::verify_pw, string::validations::validate_username},
 };
 
 impl AccountService {
@@ -29,9 +26,7 @@ impl AccountService {
         if !password_within_auth_bound(current_password) {
             return Err(AccountError::InvalidPassword);
         }
-        if command.user_name.len() > MAX_USER_NAME_BYTES
-            || !validate_username(&command.user_name)
-        {
+        if command.user_name.len() > MAX_USER_NAME_BYTES || !validate_username(&command.user_name) {
             return Err(AccountError::InvalidUserName);
         }
 

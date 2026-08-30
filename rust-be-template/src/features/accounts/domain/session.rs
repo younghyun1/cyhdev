@@ -111,9 +111,7 @@ mod tests {
     use chrono::{Duration, Utc};
     use uuid::Uuid;
 
-    use super::{
-        SESSION_SECRET_BYTES, SESSION_TOKEN_LENGTH, Session, SessionKey, SessionToken,
-    };
+    use super::{SESSION_SECRET_BYTES, SESSION_TOKEN_LENGTH, Session, SessionKey, SessionToken};
     use crate::features::accounts::domain::role::RoleType;
 
     fn session(created_at: chrono::DateTime<Utc>, expires_at: chrono::DateTime<Utc>) -> Session {
@@ -146,9 +144,7 @@ mod tests {
 
         assert_eq!(token.expose().len(), SESSION_TOKEN_LENGTH);
         assert!(!token.expose().contains('='));
-        assert!(
-            SessionKey::from_token(token.expose()) == Some(SessionKey::from_secret(&secret))
-        );
+        assert!(SessionKey::from_token(token.expose()) == Some(SessionKey::from_secret(&secret)));
         assert_eq!(format!("{token:?}"), "SessionToken([REDACTED])");
     }
 

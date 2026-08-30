@@ -8,14 +8,14 @@ use uuid::Uuid;
 
 use crate::util::media::persistence::{MediaWriteError, PersistedMedia, persist_media_objects};
 
+use super::super::{
+    domain::module::{WasmAssetUpdate, WasmModuleMetadata},
+    error::WasmError,
+};
 use super::{
     asset_inputs::StagedWasmAssets,
     assets::{prepare_bundle, prepare_thumbnail},
     wasm_service::WasmService,
-};
-use super::super::{
-    domain::module::{WasmAssetUpdate, WasmModuleMetadata},
-    error::WasmError,
 };
 
 impl WasmService {
@@ -74,7 +74,10 @@ impl WasmService {
                 .await?;
             // Durable cleanup is settled after cache publication so object-store
             // latency never extends the module's publication critical section.
-            Ok(PersistedMedia::new((updated, cleanup, publication), Vec::new()))
+            Ok(PersistedMedia::new(
+                (updated, cleanup, publication),
+                Vec::new(),
+            ))
         })
         .await;
         drop(prepared_thumbnail);

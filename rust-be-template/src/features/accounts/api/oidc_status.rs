@@ -5,10 +5,7 @@ use std::sync::Arc;
 use axum::{Extension, extract::State, response::IntoResponse};
 
 use crate::{
-    dto::responses::{
-        auth::oidc_response::OidcStatusResponse,
-        response_data::http_resp_sensitive,
-    },
+    dto::responses::{auth::oidc_response::OidcStatusResponse, response_data::http_resp_sensitive},
     errors::code_error::HandlerResponse,
     features::accounts::api::account_error::{AccountMutation, map_account_error},
     init::state::ServerState,

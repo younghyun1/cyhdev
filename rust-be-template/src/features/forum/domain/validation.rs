@@ -102,7 +102,9 @@ mod tests {
     #[test]
     fn search_work_is_token_bounded() {
         assert!(ForumSearch::try_new("one two three").is_ok());
-        assert!(ForumSearch::try_new((0..17).map(|_| "term").collect::<Vec<_>>().join(" ")).is_err());
+        assert!(
+            ForumSearch::try_new((0..17).map(|_| "term").collect::<Vec<_>>().join(" ")).is_err()
+        );
         assert!(ForumSearch::try_new("valid\0query").is_err());
     }
 }

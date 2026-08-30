@@ -1,10 +1,16 @@
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
-    dto::responses::{blog::delete_comment_response::DeleteCommentResponse, response_data::http_resp},
+    dto::responses::{
+        blog::delete_comment_response::DeleteCommentResponse, response_data::http_resp,
+    },
     errors::code_error::{CodeErrorResp, HandlerResponse},
     features::accounts::domain::role::RoleType,
     init::state::ServerState,
@@ -36,7 +42,16 @@ pub async fn delete_comment(
     Path((_post_id, comment_id)): Path<(Uuid, Uuid)>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    state.blog_service().delete_comment(requester_id, comment_id).await
+    state
+        .blog_service()
+        .delete_comment(requester_id, comment_id)
+        .await
         .map_err(|error| map_blog_error(error, BlogOperation::Delete))?;
-    Ok(http_resp(DeleteCommentResponse { deleted_comment_id: comment_id }, (), start))
+    Ok(http_resp(
+        DeleteCommentResponse {
+            deleted_comment_id: comment_id,
+        },
+        (),
+        start,
+    ))
 }

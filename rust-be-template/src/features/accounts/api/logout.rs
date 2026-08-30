@@ -34,11 +34,7 @@ pub async fn logout(
     let cookie = removal_cookie();
 
     if let Some(session_cookie) = cookie_jar.get(SESSION_COOKIE_NAME) {
-        if state
-            .account_service()
-            .logout(session_cookie.value())
-            .await
-        {
+        if state.account_service().logout(session_cookie.value()).await {
             info!("User logout; session removed");
         } else {
             warn!("Logout session was absent or malformed");

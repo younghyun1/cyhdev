@@ -1,4 +1,7 @@
-use std::{collections::HashSet, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
+use std::{
+    collections::HashSet,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+};
 
 use super::*;
 
@@ -9,7 +12,10 @@ fn nickname_word_space_is_large_and_unique() {
     assert!(GUEST_NICKNAME_ADJECTIVES.len() * GUEST_NICKNAME_NOUNS.len() >= 16_000);
     let mut adjectives = HashSet::new();
     for adjective in GUEST_NICKNAME_ADJECTIVES {
-        assert!(adjectives.insert(*adjective), "duplicate adjective: {adjective}");
+        assert!(
+            adjectives.insert(*adjective),
+            "duplicate adjective: {adjective}"
+        );
     }
     let mut nouns = HashSet::new();
     for noun in GUEST_NICKNAME_NOUNS {

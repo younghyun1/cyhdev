@@ -1,6 +1,9 @@
 use ansi_to_html::convert;
 use chrono::{DateTime, Utc};
-use tokio::{process::Command, sync::{Mutex, RwLock}};
+use tokio::{
+    process::Command,
+    sync::{Mutex, RwLock},
+};
 
 use crate::errors::code_error::CodeError;
 

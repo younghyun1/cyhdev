@@ -42,9 +42,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::SystemActorMissing
         | AccountError::RetainedIdentityMissing
         | AccountError::RetentionScheduleOverflow
-        | AccountError::ProfileCleanupCountOverflow => {
-            CodeError::DB_QUERY_ERROR
-        }
+        | AccountError::ProfileCleanupCountOverflow => CodeError::DB_QUERY_ERROR,
         AccountError::EmailVerificationTokenNotFound => CodeError::INVALID_EMAIL_VERIFICATION_TOKEN,
         AccountError::PasswordResetTokenNotFound => CodeError::DB_QUERY_ERROR,
         AccountError::TokenAlreadyConsumed => CodeError::INVALID_REQUEST,

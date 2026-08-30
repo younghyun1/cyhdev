@@ -115,9 +115,7 @@ pub struct RetentionNotificationRunReport {
 
 /// Capped exponential delay after the attempt already recorded by the claim.
 pub fn retention_notification_retry_delay(attempt_count: i32) -> TimeDelta {
-    let bounded_exponent = attempt_count
-        .saturating_sub(1)
-        .clamp(0, RETRY_MAX_EXPONENT);
+    let bounded_exponent = attempt_count.saturating_sub(1).clamp(0, RETRY_MAX_EXPONENT);
     let exponent = match u32::try_from(bounded_exponent) {
         Ok(exponent) => exponent,
         Err(error) => {
@@ -136,9 +134,7 @@ pub fn retention_notification_retry_delay(attempt_count: i32) -> TimeDelta {
 mod tests {
     use chrono::{TimeZone, Utc};
 
-    use super::{
-        RetentionNotificationSchedule, retention_notification_retry_delay,
-    };
+    use super::{RetentionNotificationSchedule, retention_notification_retry_delay};
 
     #[test]
     fn schedule_and_retry_bounds_are_exact() -> Result<(), &'static str> {
@@ -158,7 +154,10 @@ mod tests {
         );
         assert_eq!(retention_notification_retry_delay(1).num_minutes(), 5);
         assert_eq!(retention_notification_retry_delay(2).num_minutes(), 10);
-        assert_eq!(retention_notification_retry_delay(i32::MAX).num_minutes(), 1_280);
+        assert_eq!(
+            retention_notification_retry_delay(i32::MAX).num_minutes(),
+            1_280
+        );
         Ok(())
     }
 }

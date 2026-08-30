@@ -33,7 +33,11 @@ pub async fn root_handler(
     let start = tokio_now();
     let status = state
         .server_status_service()
-        .state(state.server_status_service().runtime(state.session_service().len()))
+        .state(
+            state
+                .server_status_service()
+                .runtime(state.session_service().len()),
+        )
         .await
         .map_err(|error| code_err(CodeError::DB_QUERY_ERROR, error))?;
     Ok(http_resp(

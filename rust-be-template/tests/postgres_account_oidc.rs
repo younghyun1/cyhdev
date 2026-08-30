@@ -1,12 +1,11 @@
 mod support;
 
-use rust_be_template::features::accounts::{
-    domain::oidc::OidcIdentityClaims,
-    error::AccountError,
-};
+use rust_be_template::features::accounts::{domain::oidc::OidcIdentityClaims, error::AccountError};
 
 use support::{
-    database::{BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    database::{
+        BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
+    },
     fixtures::{VALID_PASSWORD, account_test_context, seed_account},
 };
 
@@ -21,8 +20,14 @@ fn oidc_identity_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let context = account_test_context(database)?;
         let first = seed_account(&context, "OidcFirst").await?;
         let second = seed_account(&context, "OidcSecond").await?;
-        context.accounts.verify_email(first.verification_token).await?;
-        context.accounts.verify_email(second.verification_token).await?;
+        context
+            .accounts
+            .verify_email(first.verification_token)
+            .await?;
+        context
+            .accounts
+            .verify_email(second.verification_token)
+            .await?;
         let identity = OidcIdentityClaims {
             issuer: "https://id.example.test".to_owned(),
             subject: "provider-subject-1".to_owned(),

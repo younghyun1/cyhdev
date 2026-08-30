@@ -58,10 +58,10 @@ impl WasmModuleCache {
         let mut eviction_order = self.inner.eviction_order.lock().await;
         let retained_bytes = Self::retained_bytes_for_payload(bundle.bytes.len());
         if retained_bytes > self.inner.max_bytes {
-            let _ = self.invalidate_locked(&module_id, &mut eviction_order).await;
-            self.inner
-                .rejected_entries
-                .fetch_add(1, Ordering::Relaxed);
+            let _ = self
+                .invalidate_locked(&module_id, &mut eviction_order)
+                .await;
+            self.inner.rejected_entries.fetch_add(1, Ordering::Relaxed);
             return false;
         }
 

@@ -6,23 +6,25 @@ use std::sync::Arc;
 use crate::features::accounts::{
     repository::account_repository::AccountRepository,
     service::{
-        account_service::{AccountService, AccountServiceDependencies}, auth_abuse::AuthAbuseService,
+        account_service::{AccountService, AccountServiceDependencies},
+        auth_abuse::AuthAbuseService,
         oidc::provider::OidcService,
         session_service::SessionService,
     },
-};
-use crate::features::forum::{repository::forum_repository::ForumRepository, service::forum_service::ForumService};
-use crate::features::geo::{
-    repository::{geo_ip_database::GeoIpDatabases, geo_repository::GeoRepository},
-    service::geo_service::{GeoCountryFlagPort, GeoService},
 };
 use crate::features::blog::{
     repository::blog_repository::BlogRepository,
     service::{blog_service::BlogService, search::search_index::PostSearchIndex},
 };
+use crate::features::forum::{
+    repository::forum_repository::ForumRepository, service::forum_service::ForumService,
+};
+use crate::features::geo::{
+    repository::{geo_ip_database::GeoIpDatabases, geo_repository::GeoRepository},
+    service::geo_service::{GeoCountryFlagPort, GeoService},
+};
 use crate::features::i18n::{
-    repository::i18n_repository::I18nRepository,
-    service::i18n_service::I18nService,
+    repository::i18n_repository::I18nRepository, service::i18n_service::I18nService,
 };
 use crate::features::live_chat::{
     repository::live_chat_repository::LiveChatRepository,
@@ -47,8 +49,7 @@ use crate::features::server_status::{
     service::server_status_service::ServerStatusService,
 };
 use crate::features::visitor::{
-    repository::visitor_repository::VisitorRepository,
-    service::visitor_service::VisitorService,
+    repository::visitor_repository::VisitorRepository, service::visitor_service::VisitorService,
 };
 use crate::features::wasm::{
     repository::wasm_repository::WasmRepository,
@@ -58,8 +59,8 @@ use crate::util::media::object_store::{MediaObjectStore, S3MediaObjectStore};
 use tracing::{error, info};
 use zeroize::Zeroizing;
 
-use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
 use super::server_state::ServerState;
+use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
 
 const DUMMY_PASSWORD: &str = "AuthTimingOnly4791";
 
@@ -147,11 +148,12 @@ impl ServerStateBuilder {
         );
         let live_chat_cache = Arc::new(LiveChatCache::default());
         let live_chat_lifecycle: Arc<dyn LiveChatAccountLifecyclePort> = live_chat_cache.clone();
-        let dummy_password_hash = crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(
-            DUMMY_PASSWORD.to_owned(),
-        ))
-        .await
-        .map_err(|error| anyhow::anyhow!("failed to initialize dummy password hash: {error}"))?;
+        let dummy_password_hash =
+            crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(DUMMY_PASSWORD.to_owned()))
+                .await
+                .map_err(|error| {
+                    anyhow::anyhow!("failed to initialize dummy password hash: {error}")
+                })?;
         let account_service = Arc::new(AccountService::new(AccountServiceDependencies {
             repository: account_repository,
             sessions: Arc::clone(&session_service),
@@ -173,11 +175,9 @@ impl ServerStateBuilder {
         let reference_data_service = Arc::new(ReferenceDataService::new(Arc::new(
             ReferenceDataRepository::new(pool.clone()),
         )));
-        let search_index_path = std::env::var("SEARCH_INDEX_PATH")
-            .unwrap_or_else(|_| "./data/search_index".to_owned());
-        let post_search_index = Arc::new(PostSearchIndex::open_or_create(
-            &search_index_path,
-        )?);
+        let search_index_path =
+            std::env::var("SEARCH_INDEX_PATH").unwrap_or_else(|_| "./data/search_index".to_owned());
+        let post_search_index = Arc::new(PostSearchIndex::open_or_create(&search_index_path)?);
         info!(path = %search_index_path, "Search index initialized");
         let blog_country_flags: Arc<
             dyn crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort,
@@ -249,11 +249,10 @@ impl ServerStateBuilder {
         let live_chat_country_flags: Arc<
             dyn crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort,
         > = reference_data_service.clone();
-        let live_chat_alpha2_flags: Arc<dyn CountryAlpha2FlagPort> = Arc::new(
-            ReferenceDataAlpha2Flags {
+        let live_chat_alpha2_flags: Arc<dyn CountryAlpha2FlagPort> =
+            Arc::new(ReferenceDataAlpha2Flags {
                 reference_data: Arc::clone(&reference_data_service),
-            },
-        );
+            });
         let live_chat_geo_ip: Arc<dyn GeoIpLookupPort> = geo_service.clone();
         let live_chat_service = Arc::new(LiveChatService::new(
             live_chat_repository,

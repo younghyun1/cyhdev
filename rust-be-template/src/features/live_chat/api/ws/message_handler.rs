@@ -102,7 +102,8 @@ async fn handle_send_message(
         return false;
     }
 
-    if service.cache
+    if service
+        .cache
         .record_message_attempt(actor.user_id, client_ip, now)
         .await
     {
@@ -121,7 +122,13 @@ async fn handle_send_message(
 
     let body = body.trim().to_string();
     if body.is_empty() {
-        send_error(out, "empty_message", "Message cannot be empty.", wire_protocol).await;
+        send_error(
+            out,
+            "empty_message",
+            "Message cannot be empty.",
+            wire_protocol,
+        )
+        .await;
         return true;
     }
     if body.chars().count() > LIVE_CHAT_MAX_MESSAGE_CHARS {
@@ -133,11 +140,18 @@ async fn handle_send_message(
     let persisted = match persist_message(Arc::clone(&service), &actor, body).await {
         Some(message) => message,
         None => {
-            send_error(out, "persist_failed", "Message could not be saved.", wire_protocol).await;
+            send_error(
+                out,
+                "persist_failed",
+                "Message could not be saved.",
+                wire_protocol,
+            )
+            .await;
             return true;
         }
     };
-    service.cache
+    service
+        .cache
         .append_persisted_chat_message(persisted.clone())
         .await;
     if service.cache.clear_typing(&actor.actor_key).await {
@@ -154,7 +168,9 @@ async fn handle_send_message(
         wire_protocol,
     )
     .await;
-    service.cache.broadcast(LiveChatServerEvent::Message { message: persisted });
+    service
+        .cache
+        .broadcast(LiveChatServerEvent::Message { message: persisted });
     true
 }
 

@@ -3,6 +3,6 @@
 import type { AuthorizationUserItem } from "./authorization-user-item";
 
 export type AuthorizationUsersResponse = {
-  readonly users: ReadonlyArray<AuthorizationUserItem>;
   readonly next_cursor?: string | null;
+  readonly users: ReadonlyArray<AuthorizationUserItem>;
 };

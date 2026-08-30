@@ -51,7 +51,8 @@ impl AccountRepository {
                         account_oidc_identities::account_oidc_identity_issuer.eq(&identity.issuer),
                     )
                     .filter(
-                        account_oidc_identities::account_oidc_identity_subject.eq(&identity.subject),
+                        account_oidc_identities::account_oidc_identity_subject
+                            .eq(&identity.subject),
                     )
                     .filter(users::user_deleted_at.is_null())
                     .filter(users::user_is_email_verified.eq(true))
@@ -72,11 +73,9 @@ impl AccountRepository {
                     Some(record) => record,
                     None => return Ok(None),
                 };
-                diesel::update(
-                    account_oidc_identities::table.filter(
-                        account_oidc_identities::account_oidc_identity_id.eq(record.oidc_identity_id),
-                    ),
-                )
+                diesel::update(account_oidc_identities::table.filter(
+                    account_oidc_identities::account_oidc_identity_id.eq(record.oidc_identity_id),
+                ))
                 .set((
                     account_oidc_identities::account_oidc_identity_provider_email
                         .eq(&identity.provider_email),
@@ -226,9 +225,10 @@ async fn lock_verified_account(
 
 fn classify_identity_insert(error: diesel::result::Error) -> AccountError {
     match &error {
-        diesel::result::Error::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, info)
-            if info.constraint_name() == Some(ISSUER_SUBJECT_UNIQUE) =>
-        {
+        diesel::result::Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::UniqueViolation,
+            info,
+        ) if info.constraint_name() == Some(ISSUER_SUBJECT_UNIQUE) => {
             AccountError::OidcIdentityConflict(error)
         }
         _ => AccountError::Mutation(error),

@@ -158,9 +158,7 @@ impl AccountRepository {
                         deleted_account_retention::deleted_account_retention_created_at
                             .eq(deleted_at),
                     ))
-                    .returning(
-                        deleted_account_retention::deleted_account_retention_id,
-                    )
+                    .returning(deleted_account_retention::deleted_account_retention_id)
                     .get_result::<Uuid>(&mut *connection)
                     .await?;
 
@@ -202,7 +200,6 @@ impl AccountRepository {
             })
             .await
     }
-
 }
 
 async fn clear_account_authority(
@@ -210,23 +207,20 @@ async fn clear_account_authority(
     user_id: Uuid,
 ) -> Result<(), AccountError> {
     diesel::delete(
-        forum_notifications::table.filter(
-            forum_notifications::forum_notification_recipient_user_id.eq(user_id),
-        ),
+        forum_notifications::table
+            .filter(forum_notifications::forum_notification_recipient_user_id.eq(user_id)),
     )
     .execute(&mut *connection)
     .await?;
     diesel::delete(
-        forum_topic_subscriptions::table.filter(
-            forum_topic_subscriptions::forum_topic_subscription_user_id.eq(user_id),
-        ),
+        forum_topic_subscriptions::table
+            .filter(forum_topic_subscriptions::forum_topic_subscription_user_id.eq(user_id)),
     )
     .execute(&mut *connection)
     .await?;
     diesel::delete(
-        account_oidc_identities::table.filter(
-            account_oidc_identities::account_oidc_identity_user_id.eq(user_id),
-        ),
+        account_oidc_identities::table
+            .filter(account_oidc_identities::account_oidc_identity_user_id.eq(user_id)),
     )
     .execute(&mut *connection)
     .await?;
@@ -238,11 +232,9 @@ async fn clear_account_authority(
     )
     .execute(&mut *connection)
     .await?;
-    diesel::delete(
-        password_reset_tokens::table.filter(password_reset_tokens::user_id.eq(user_id)),
-    )
-    .execute(&mut *connection)
-    .await?;
+    diesel::delete(password_reset_tokens::table.filter(password_reset_tokens::user_id.eq(user_id)))
+        .execute(&mut *connection)
+        .await?;
     Ok(())
 }
 
@@ -255,8 +247,7 @@ pub(super) async fn anonymize_live_chat_history(
         .execute(&mut *connection)
         .await?;
     diesel::update(
-        live_chat_call_participants::table
-            .filter(live_chat_call_participants::user_id.eq(user_id)),
+        live_chat_call_participants::table.filter(live_chat_call_participants::user_id.eq(user_id)),
     )
     .set(live_chat_call_participants::participant_display_name.eq(DELETED_USER_DISPLAY_NAME))
     .execute(&mut *connection)

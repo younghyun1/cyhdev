@@ -32,10 +32,7 @@ fn add_meta_schema(openapi: &mut OpenApi) {
             ObjectBuilder::new().schema_type(Type::String),
         )
         .required("time_to_process")
-        .property(
-            "timestamp",
-            ObjectBuilder::new().schema_type(Type::String),
-        )
+        .property("timestamp", ObjectBuilder::new().schema_type(Type::String))
         .required("timestamp")
         .property(
             "metadata",
@@ -94,10 +91,7 @@ fn wrap_operation(operation: &mut Operation) {
 fn envelope_schema(data: RefOr<Schema>) -> RefOr<Schema> {
     ObjectBuilder::new()
         .schema_type(Type::Object)
-        .property(
-            "success",
-            ObjectBuilder::new().schema_type(Type::Boolean),
-        )
+        .property("success", ObjectBuilder::new().schema_type(Type::Boolean))
         .required("success")
         .property("data", data)
         .required("data")

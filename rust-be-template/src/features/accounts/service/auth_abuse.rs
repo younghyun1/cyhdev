@@ -10,8 +10,7 @@ use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
 use crate::features::accounts::domain::auth_abuse::{
-    AuthAbusePruneReport, AuthEndpoint, AuthIdentity, AuthThrottleDimension,
-    AuthThrottleRejection,
+    AuthAbusePruneReport, AuthEndpoint, AuthIdentity, AuthThrottleDimension, AuthThrottleRejection,
 };
 use crate::features::accounts::service::auth_abuse_policy::{
     FixedWindowLimit, identity_limits, ip_limits,
@@ -106,10 +105,9 @@ impl AuthAbuseService {
                     self.digest(b"user-name", normalized.as_bytes()),
                 )
             }
-            AuthIdentity::Token(value) => (
-                AuthThrottleDimension::Token,
-                self.digest(b"token", value),
-            ),
+            AuthIdentity::Token(value) => {
+                (AuthThrottleDimension::Token, self.digest(b"token", value))
+            }
         };
         let limits = identity_limits(endpoint, dimension);
         if limits.is_empty() {

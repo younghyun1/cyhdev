@@ -5,9 +5,7 @@ use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::{
-        domain::role::RoleType,
-    },
+    features::accounts::domain::role::RoleType,
     persistence::media_cleanup::enqueue_media_cleanup,
     schema::{user_roles, users, wasm_module},
     util::media::cleanup::{
@@ -16,18 +14,18 @@ use crate::{
     },
 };
 
+use super::super::{
+    domain::module::{
+        NewWasmModule, WasmAssetUpdate, WasmMetadataUpdate, WasmModule, WasmModuleMetadata,
+    },
+    error::WasmError,
+};
 use super::{
     records::{
         NewWasmModuleRecord, WasmAssetChangeset, WasmMetadataChangeset, WasmModuleMetadataRecord,
         WasmModuleRecord,
     },
     wasm_repository::WasmRepository,
-};
-use super::super::{
-    domain::module::{
-        NewWasmModule, WasmAssetUpdate, WasmMetadataUpdate, WasmModule, WasmModuleMetadata,
-    },
-    error::WasmError,
 };
 
 impl WasmRepository {

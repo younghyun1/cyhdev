@@ -5,6 +5,7 @@ import { createAccountClient } from "./clients/account";
 import { createAuthorizationClient } from "./clients/authorization";
 import { createBlogPostsClient } from "./clients/blog-posts";
 import { createBlogSocialClient } from "./clients/blog-social";
+import { createForumClient } from "./clients/forum";
 import { createI18nClient } from "./clients/i18n";
 import { createLiveChatClient } from "./clients/live-chat";
 import { createOidcClient } from "./clients/oidc";
@@ -22,6 +23,7 @@ export function createApiClient(transport: ApiTransport) {
     ...createAuthorizationClient(transport),
     ...createBlogPostsClient(transport),
     ...createBlogSocialClient(transport),
+    ...createForumClient(transport),
     ...createI18nClient(transport),
     ...createLiveChatClient(transport),
     ...createOidcClient(transport),

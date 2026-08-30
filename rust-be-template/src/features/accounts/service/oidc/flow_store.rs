@@ -57,10 +57,7 @@ impl Default for OidcFlowStores {
     fn default() -> Self {
         Self {
             pending: OneTimeStore::new(MAX_PENDING_OIDC_FLOWS, OIDC_FLOW_TTL),
-            completed_links: OneTimeStore::new(
-                MAX_PENDING_OIDC_FLOWS,
-                OIDC_LINK_COMPLETION_TTL,
-            ),
+            completed_links: OneTimeStore::new(MAX_PENDING_OIDC_FLOWS, OIDC_LINK_COMPLETION_TTL),
         }
     }
 }

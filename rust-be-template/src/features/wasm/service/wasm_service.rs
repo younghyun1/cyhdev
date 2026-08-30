@@ -7,8 +7,8 @@ use crate::{
     util::media::object_store::MediaObjectStore,
 };
 
-use super::{cache::WasmModuleCache, coordination::WasmCoordination};
 use super::super::repository::wasm_repository::WasmRepository;
+use super::{cache::WasmModuleCache, coordination::WasmCoordination};
 
 #[derive(Clone)]
 pub struct WasmService {

@@ -8,11 +8,11 @@ use super::{
     LiveChatServerEvent, TypingState,
 };
 use crate::{
+    features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
     features::live_chat::domain::{
         message::LIVE_CHAT_SENDER_KIND_USER,
         rtc::{RtcPeerPhase, RtcServerSignal},
     },
-    features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
 };
 
 #[tokio::test]

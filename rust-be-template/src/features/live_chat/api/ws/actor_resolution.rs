@@ -15,23 +15,18 @@ pub(super) async fn resolve_actor(
     client_ip: IpAddr,
 ) -> ChatActor {
     match auth_status {
-        AuthStatus::LoggedIn(user_id) => {
-            match auth_session {
-                Some(session) if session.user_id == user_id => {
-                    match service.user_actor(
-                        user_id,
-                        session.user_name,
-                        session.user_country,
-                    ).await {
-                        Ok(actor) => actor,
-                        Err(_) => ChatActor::user(user_id, format!("user@{user_id}"), None, None),
-                    }
+        AuthStatus::LoggedIn(user_id) => match auth_session {
+            Some(session) if session.user_id == user_id => {
+                match service
+                    .user_actor(user_id, session.user_name, session.user_country)
+                    .await
+                {
+                    Ok(actor) => actor,
+                    Err(_) => ChatActor::user(user_id, format!("user@{user_id}"), None, None),
                 }
-                _ => ChatActor::user(user_id, format!("user@{user_id}"), None, None),
             }
-        }
-        AuthStatus::LoggedOut => {
-            service.guest_actor(client_ip).await
-        }
+            _ => ChatActor::user(user_id, format!("user@{user_id}"), None, None),
+        },
+        AuthStatus::LoggedOut => service.guest_actor(client_ip).await,
     }
 }

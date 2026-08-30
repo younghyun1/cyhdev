@@ -1,6 +1,13 @@
-use std::{net::{IpAddr, SocketAddr}, sync::Arc};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 
-use axum::{extract::{ConnectInfo, Path, State}, http::HeaderMap, response::IntoResponse};
+use axum::{
+    extract::{ConnectInfo, Path, State},
+    http::HeaderMap,
+    response::IntoResponse,
+};
 
 use crate::{
     dto::responses::response_data::http_resp,
@@ -64,15 +71,18 @@ pub async fn lookup_my_ip_info(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let client_ip = extract_client_ip(&headers, socket).unwrap_or_else(|| socket.ip());
-    let info = state.geo_service().lookup(client_ip).unwrap_or_else(|| IpInfo {
-        ip: client_ip.to_string(),
-        country_code: "XX".to_owned(),
-        country_name: "Unknown".to_owned(),
-        state: String::new(),
-        city: String::new(),
-        postal: String::new(),
-        latitude: 0.0,
-        longitude: 0.0,
-    });
+    let info = state
+        .geo_service()
+        .lookup(client_ip)
+        .unwrap_or_else(|| IpInfo {
+            ip: client_ip.to_string(),
+            country_code: "XX".to_owned(),
+            country_name: "Unknown".to_owned(),
+            state: String::new(),
+            city: String::new(),
+            postal: String::new(),
+            latitude: 0.0,
+            longitude: 0.0,
+        });
     Ok(http_resp(info, (), start))
 }

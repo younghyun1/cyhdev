@@ -39,7 +39,10 @@ impl VisitorService {
             }
             Entry::Vacant(vacant) => {
                 if try_reserve(&self.buffer_entries, VISITOR_LOG_BUFFER_MAX_ENTRIES) {
-                    vacant.insert_entry(VisitorLogBatch { count: 1, visited_at: chrono::Utc::now() });
+                    vacant.insert_entry(VisitorLogBatch {
+                        count: 1,
+                        visited_at: chrono::Utc::now(),
+                    });
                 } else {
                     self.pending_events.fetch_sub(1, Ordering::SeqCst);
                     rejection(&self.buffer_rejections, "visitor_log_buffer");
@@ -89,8 +92,10 @@ impl VisitorService {
                 return Err(error);
             }
         };
-        self.buffer_entries.fetch_sub(drained_entries, Ordering::SeqCst);
-        self.pending_events.fetch_sub(drained_events, Ordering::SeqCst);
+        self.buffer_entries
+            .fetch_sub(drained_entries, Ordering::SeqCst);
+        self.pending_events
+            .fetch_sub(drained_events, Ordering::SeqCst);
         tracing::info!(
             rows_flushed = inserted,
             visit_count = drained_events,

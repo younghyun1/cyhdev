@@ -1,4 +1,7 @@
-use diesel_async::{AsyncPgConnection, pooled_connection::bb8::{Pool, PooledConnection}};
+use diesel_async::{
+    AsyncPgConnection,
+    pooled_connection::bb8::{Pool, PooledConnection},
+};
 
 use super::super::error::BlogError;
 

@@ -2,11 +2,11 @@ use std::net::IpAddr;
 
 use uuid::Uuid;
 
+use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 use crate::features::live_chat::domain::{
     guest_nickname::guest_nickname_for_ip,
     message::{LIVE_CHAT_SENDER_KIND_GUEST, LIVE_CHAT_SENDER_KIND_USER},
 };
-use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum ChatActorKey {

@@ -3,8 +3,7 @@
 use uuid::Uuid;
 
 use crate::features::accounts::{
-    authorization_error::AuthorizationError,
-    domain::forum_authority::ForumActorAuthority,
+    authorization_error::AuthorizationError, domain::forum_authority::ForumActorAuthority,
     service::account_service::AccountService,
 };
 
@@ -14,7 +13,9 @@ pub struct ForumAuthorityLease<'a> {
 }
 
 impl ForumAuthorityLease<'_> {
-    pub fn authority(&self) -> ForumActorAuthority { self.authority }
+    pub fn authority(&self) -> ForumActorAuthority {
+        self.authority
+    }
 }
 
 impl AccountService {
@@ -24,6 +25,9 @@ impl AccountService {
     ) -> Result<ForumAuthorityLease<'_>, AuthorizationError> {
         let guard = self.session_consistency.read().await;
         let authority = self.repository.forum_actor_authority(user_id).await?;
-        Ok(ForumAuthorityLease { _guard: guard, authority })
+        Ok(ForumAuthorityLease {
+            _guard: guard,
+            authority,
+        })
     }
 }

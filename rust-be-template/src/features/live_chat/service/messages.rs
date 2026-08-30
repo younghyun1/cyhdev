@@ -4,12 +4,12 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use super::{
+    super::error::LiveChatError,
     cache::{
         BanCacheLookup, CachedChatMessage, CachedLiveChatBan, ChatActor,
         LIVE_CHAT_BAN_INDEX_MAX_ENTRIES,
     },
     live_chat_service::LiveChatService,
-    super::error::LiveChatError,
 };
 
 impl LiveChatService {
@@ -18,10 +18,20 @@ impl LiveChatService {
         self.cache.clear_expired_typing(now).await;
     }
 
-    pub async fn enrich_messages(&self, messages: &mut [CachedChatMessage]) -> Result<(), LiveChatError> {
-        let user_ids = messages.iter().filter_map(|message| message.user_id).collect::<Vec<_>>();
+    pub async fn enrich_messages(
+        &self,
+        messages: &mut [CachedChatMessage],
+    ) -> Result<(), LiveChatError> {
+        let user_ids = messages
+            .iter()
+            .filter_map(|message| message.user_id)
+            .collect::<Vec<_>>();
         let presentation = self.repository.user_presentation(&user_ids).await?;
-        let country_codes = presentation.country_codes.values().copied().collect::<Vec<_>>();
+        let country_codes = presentation
+            .country_codes
+            .values()
+            .copied()
+            .collect::<Vec<_>>();
         let flags = self.country_flags.country_flags(&country_codes).await;
         for message in messages {
             if let Some(user_id) = message.user_id
@@ -36,7 +46,10 @@ impl LiveChatService {
                         Some(code) => flags.get(code).cloned(),
                         None => None,
                     },
-                    None => match message.guest_ip.and_then(|ip| self.geo_ip.country_alpha2(ip)) {
+                    None => match message
+                        .guest_ip
+                        .and_then(|ip| self.geo_ip.country_alpha2(ip))
+                    {
                         Some(code) => self.alpha2_flags.flag(&code).await,
                         None => None,
                     },
@@ -59,8 +72,13 @@ impl LiveChatService {
     ) -> Result<Vec<CachedChatMessage>, LiveChatError> {
         let limit = limit.clamp(1, 100);
         let mut messages = match before {
-            Some(before) => self.repository.messages_before(before, limit).await?
-                .into_iter().map(CachedChatMessage::from).collect(),
+            Some(before) => self
+                .repository
+                .messages_before(before, limit)
+                .await?
+                .into_iter()
+                .map(CachedChatMessage::from)
+                .collect(),
             None => self.cache.get_recent_chat_messages(limit).await,
         };
         self.enrich_messages(&mut messages).await?;
@@ -71,18 +89,29 @@ impl LiveChatService {
         let rows = self.repository.recent_messages(50_000).await?;
         self.cache.clear_messages().await;
         let count = rows.len();
-        let mut messages = rows.into_iter().map(CachedChatMessage::from).collect::<Vec<_>>();
+        let mut messages = rows
+            .into_iter()
+            .map(CachedChatMessage::from)
+            .collect::<Vec<_>>();
         self.enrich_messages(&mut messages).await?;
-        for message in messages { self.cache.append_persisted_chat_message(message).await; }
+        for message in messages {
+            self.cache.append_persisted_chat_message(message).await;
+        }
         info!(rows_synchronized = count, "Synchronized live chat cache");
         Ok(count)
     }
 
     pub async fn synchronize_bans(&self) -> Result<usize, LiveChatError> {
-        let mut bans = self.repository.active_bans((LIVE_CHAT_BAN_INDEX_MAX_ENTRIES + 1) as i64).await?;
+        let mut bans = self
+            .repository
+            .active_bans((LIVE_CHAT_BAN_INDEX_MAX_ENTRIES + 1) as i64)
+            .await?;
         let source_complete = bans.len() <= LIVE_CHAT_BAN_INDEX_MAX_ENTRIES;
-        if !source_complete { bans.truncate(LIVE_CHAT_BAN_INDEX_MAX_ENTRIES); }
-        let count = bans.len(); self.cache.sync_bans(bans, source_complete).await;
+        if !source_complete {
+            bans.truncate(LIVE_CHAT_BAN_INDEX_MAX_ENTRIES);
+        }
+        let count = bans.len();
+        self.cache.sync_bans(bans, source_complete).await;
         Ok(count)
     }
 
@@ -95,16 +124,22 @@ impl LiveChatService {
         self.cache.record_ban_database_read_through();
         match self.repository.active_ban_for(user_id, ip).await {
             Ok(Some(ban)) => {
-                let _ = self.cache.cache_ban(CachedLiveChatBan::from(ban)).await; true
+                let _ = self.cache.cache_ban(CachedLiveChatBan::from(ban)).await;
+                true
             }
             Ok(None) => false,
             Err(error_value) => {
-                error!(error = %error_value, user_id = ?user_id, client_ip = %ip, "Live chat ban read-through failed closed"); true
+                error!(error = %error_value, user_id = ?user_id, client_ip = %ip, "Live chat ban read-through failed closed");
+                true
             }
         }
     }
 
-    pub async fn persist_message(&self, actor: &ChatActor, body: String) -> Option<CachedChatMessage> {
+    pub async fn persist_message(
+        &self,
+        actor: &ChatActor,
+        body: String,
+    ) -> Option<CachedChatMessage> {
         match self.repository.insert_message(actor, body).await {
             Ok(message) => {
                 let mut cached = CachedChatMessage::from(message);
@@ -112,17 +147,29 @@ impl LiveChatService {
                 cached.user_profile_picture_url = actor.user_profile_picture_url.clone();
                 if let Some(user_id) = cached.user_id
                     && self.cache.is_connected_user_disabled(user_id)
-                { let _ = cached.anonymize_deleted_user(user_id); }
+                {
+                    let _ = cached.anonymize_deleted_user(user_id);
+                }
                 Some(cached)
             }
-            Err(error_value) => { error!(error = %error_value, user_id = ?actor.user_id, "Failed to persist live chat message"); None }
+            Err(error_value) => {
+                error!(error = %error_value, user_id = ?actor.user_id, "Failed to persist live chat message");
+                None
+            }
         }
     }
 
-    pub async fn persist_abuse_ban(&self, actor: &ChatActor, ip: IpAddr) -> Option<CachedLiveChatBan> {
+    pub async fn persist_abuse_ban(
+        &self,
+        actor: &ChatActor,
+        ip: IpAddr,
+    ) -> Option<CachedLiveChatBan> {
         match self.repository.insert_abuse_ban(actor, ip).await {
             Ok(ban) => Some(CachedLiveChatBan::from(ban)),
-            Err(error_value) => { error!(error = %error_value, user_id = ?actor.user_id, client_ip = %ip, "Failed to persist live chat ban"); None }
+            Err(error_value) => {
+                error!(error = %error_value, user_id = ?actor.user_id, client_ip = %ip, "Failed to persist live chat ban");
+                None
+            }
         }
     }
 }

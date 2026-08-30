@@ -41,7 +41,11 @@ impl OidcConfig {
         let provider_name = required(values.provider_name, "OIDC_PROVIDER_NAME")?;
         let issuer = required(values.issuer, "OIDC_ISSUER_URL")?;
         let client_id = required(values.client_id, "OIDC_CLIENT_ID")?;
-        validate_text("OIDC_PROVIDER_NAME", &provider_name, PROVIDER_NAME_MAX_BYTES)?;
+        validate_text(
+            "OIDC_PROVIDER_NAME",
+            &provider_name,
+            PROVIDER_NAME_MAX_BYTES,
+        )?;
         validate_text("OIDC_CLIENT_ID", &client_id, CLIENT_ID_MAX_BYTES)?;
         if let Some(secret) = &values.client_secret {
             validate_text("OIDC_CLIENT_SECRET", secret, CLIENT_SECRET_MAX_BYTES)?;
@@ -64,11 +68,9 @@ impl OidcConfig {
         let issuer = IssuerUrl::new(issuer_url.to_string())
             .map_err(|error| anyhow::anyhow!("OIDC_ISSUER_URL is invalid: {error}"))?;
 
-        let redirect_url = RedirectUrl::new(format!(
-            "{}/api/auth/oidc/callback",
-            public_origin.as_str()
-        ))
-        .map_err(|error| anyhow::anyhow!("OIDC callback URL is invalid: {error}"))?;
+        let redirect_url =
+            RedirectUrl::new(format!("{}/api/auth/oidc/callback", public_origin.as_str()))
+                .map_err(|error| anyhow::anyhow!("OIDC callback URL is invalid: {error}"))?;
 
         Ok(Some(Self {
             provider_name: Arc::from(provider_name),
@@ -97,7 +99,9 @@ pub(super) fn validate_remote_url(
     field: &str,
 ) -> anyhow::Result<()> {
     if !url.username().is_empty() || url.password().is_some() || url.host_str().is_none() {
-        return Err(anyhow::anyhow!("{field} must contain a host and no user information"));
+        return Err(anyhow::anyhow!(
+            "{field} must contain a host and no user information"
+        ));
     }
     match url.scheme() {
         "https" => Ok(()),
@@ -114,7 +118,9 @@ fn has_loopback_host(url: &reqwest::Url) -> bool {
         None => return false,
     };
     host.eq_ignore_ascii_case("localhost")
-        || host.parse::<IpAddr>().is_ok_and(|address| address.is_loopback())
+        || host
+            .parse::<IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
 }
 
 fn required(value: Option<String>, key: &str) -> anyhow::Result<String> {
@@ -179,7 +185,14 @@ mod tests {
     #[test]
     fn absence_disables_oidc_cleanly() -> anyhow::Result<()> {
         let origin = PublicAppOrigin::parse(None, DeploymentEnvironment::Prod)?;
-        assert!(OidcConfig::parse(OidcEnvironmentValues::default(), DeploymentEnvironment::Prod, &origin)?.is_none());
+        assert!(
+            OidcConfig::parse(
+                OidcEnvironmentValues::default(),
+                DeploymentEnvironment::Prod,
+                &origin
+            )?
+            .is_none()
+        );
         Ok(())
     }
 
@@ -203,7 +216,7 @@ mod tests {
             DeploymentEnvironment::Prod,
         )?;
         let config = OidcConfig::parse(configured(), DeploymentEnvironment::Prod, &origin)?
-        .ok_or_else(|| anyhow::anyhow!("configuration unexpectedly disabled"))?;
+            .ok_or_else(|| anyhow::anyhow!("configuration unexpectedly disabled"))?;
         assert_eq!(
             config.redirect_url.as_str(),
             "https://app.example.test/api/auth/oidc/callback"
@@ -220,7 +233,9 @@ mod tests {
         let local_origin = PublicAppOrigin::parse(None, DeploymentEnvironment::Local)?;
         let mut loopback_http = configured();
         loopback_http.issuer = Some("http://localhost:8080".to_owned());
-        assert!(OidcConfig::parse(loopback_http, DeploymentEnvironment::Local, &local_origin).is_ok());
+        assert!(
+            OidcConfig::parse(loopback_http, DeploymentEnvironment::Local, &local_origin).is_ok()
+        );
         Ok(())
     }
 

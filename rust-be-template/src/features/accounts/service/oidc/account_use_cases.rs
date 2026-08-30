@@ -10,10 +10,7 @@ use crate::{
             role::RoleType,
         },
         error::AccountError,
-        service::{
-            account_service::AccountService,
-            authentication::password_within_auth_bound,
-        },
+        service::{account_service::AccountService, authentication::password_within_auth_bound},
     },
     util::crypto::verify_pw::verify_pw,
 };

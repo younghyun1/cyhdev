@@ -1,11 +1,8 @@
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::{
-    blog_service::BlogService,
-    cache_policy::BLOG_POST_CACHE_MAX_ENTRIES,
-};
 use super::super::domain::cache::CachedPostInfo;
+use super::{blog_service::BlogService, cache_policy::BLOG_POST_CACHE_MAX_ENTRIES};
 
 impl BlogService {
     fn normalize_slug(slug: &str) -> Option<String> {
@@ -80,7 +77,10 @@ impl BlogService {
             {
                 let _ = self.remove_cached(post.post_id).await;
             }
-            let _ = self.posts_cache.upsert_async(post.post_id, post.clone()).await;
+            let _ = self
+                .posts_cache
+                .upsert_async(post.post_id, post.clone())
+                .await;
             if let Some(slug) = Self::normalize_slug(&post.post_slug) {
                 if self.slug_cache.contains_async(&slug).await
                     || self.slug_cache.len() < BLOG_POST_CACHE_MAX_ENTRIES
@@ -186,10 +186,9 @@ impl BlogService {
         drop(mutation);
         self.rebuild_order().await;
         let index = self.search_index.clone();
-        if let Err(error_value) = super::search::tasks::run_search_task(move || {
-            index.remove_post_and_commit(post_id)
-        })
-        .await
+        if let Err(error_value) =
+            super::search::tasks::run_search_task(move || index.remove_post_and_commit(post_id))
+                .await
         {
             error!(error = %error_value, post_id = %post_id, "Failed to remove post from search index");
         }
@@ -197,33 +196,52 @@ impl BlogService {
     }
 
     pub async fn update_cached_votes(&self, post_id: Uuid, upvotes: i64, downvotes: i64) {
-        let _ = self.posts_cache.update_async(&post_id, |_, post| {
-            post.total_upvotes = upvotes;
-            post.total_downvotes = downvotes;
-        }).await;
+        let _ = self
+            .posts_cache
+            .update_async(&post_id, |_, post| {
+                post.total_upvotes = upvotes;
+                post.total_downvotes = downvotes;
+            })
+            .await;
     }
 
     pub async fn update_cached_views(&self, post_id: Uuid, view_count: i64) {
-        let _ = self.posts_cache.update_async(&post_id, |_, post| {
-            post.post_view_count = view_count;
-        }).await;
+        let _ = self
+            .posts_cache
+            .update_async(&post_id, |_, post| {
+                post.post_view_count = view_count;
+            })
+            .await;
     }
 
     pub async fn cached_post(&self, post_id: &Uuid) -> Option<CachedPostInfo> {
-        let post = self.posts_cache.read_async(post_id, |_, post| post.clone()).await;
-        if post.is_some() { self.metrics.record_hit(); } else { self.metrics.record_miss(); }
+        let post = self
+            .posts_cache
+            .read_async(post_id, |_, post| post.clone())
+            .await;
+        if post.is_some() {
+            self.metrics.record_hit();
+        } else {
+            self.metrics.record_miss();
+        }
         post
     }
 
     pub async fn cached_post_id_by_slug(&self, slug: &str) -> Option<Uuid> {
         let slug = Self::normalize_slug(slug)?;
         let post_id = self.slug_cache.read_async(&slug, |_, id| *id).await;
-        if post_id.is_some() { self.metrics.record_hit(); } else { self.metrics.record_miss(); }
+        if post_id.is_some() {
+            self.metrics.record_hit();
+        } else {
+            self.metrics.record_miss();
+        }
         post_id
     }
 
     pub async fn cache_slug(&self, slug: &str, post_id: Uuid) {
-        let Some(slug) = Self::normalize_slug(slug) else { return };
+        let Some(slug) = Self::normalize_slug(slug) else {
+            return;
+        };
         let mutation = self.cache_mutation.lock().await;
         if !self.posts_cache.contains_async(&post_id).await {
             self.metrics.record_rejected_admission();

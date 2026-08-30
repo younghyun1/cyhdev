@@ -1,6 +1,9 @@
 //! Filename-only runtime credential classification; file contents are never read.
 
-use std::{ffi::OsStr, path::{Component, Path}};
+use std::{
+    ffi::OsStr,
+    path::{Component, Path},
+};
 
 pub(super) const RUNTIME_CREDENTIAL_PATHS: [&str; 10] = [
     ":(glob)**/.env",
@@ -49,10 +52,16 @@ mod tests {
 
     #[test]
     fn recognizes_private_runtime_credentials_without_reading_them() {
-        assert!(is_runtime_credential_path(Path::new("rust-be-template/.env")));
-        assert!(is_runtime_credential_path(Path::new("rust-be-template/certs/key.pem")));
+        assert!(is_runtime_credential_path(Path::new(
+            "rust-be-template/.env"
+        )));
+        assert!(is_runtime_credential_path(Path::new(
+            "rust-be-template/certs/key.pem"
+        )));
         assert!(is_runtime_credential_path(Path::new("db/password.txt")));
-        assert!(!is_runtime_credential_path(Path::new("rust-be-template/.env.example")));
+        assert!(!is_runtime_credential_path(Path::new(
+            "rust-be-template/.env.example"
+        )));
         assert!(!is_runtime_credential_path(Path::new("src/credentials.rs")));
     }
 }

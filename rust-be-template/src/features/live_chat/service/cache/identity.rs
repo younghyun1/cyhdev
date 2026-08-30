@@ -7,9 +7,7 @@ use uuid::Uuid;
 
 use crate::features::live_chat::domain::rtc::RtcServerSignal;
 
-use super::{
-    ChatActorKey, LIVE_CHAT_MAX_CONNECTIONS, LiveChatCache, LiveChatServerEvent,
-};
+use super::{ChatActorKey, LIVE_CHAT_MAX_CONNECTIONS, LiveChatCache, LiveChatServerEvent};
 
 impl LiveChatCache {
     /// Rewrite every cached presentation of one deleted account.

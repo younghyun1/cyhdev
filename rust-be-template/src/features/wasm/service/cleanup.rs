@@ -4,9 +4,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::util::media::{
-    cleanup::{
-        EnqueuedMediaCleanup, REASON_DELETED_WASM_THUMBNAIL, settle_durable_cleanup,
-    },
+    cleanup::{EnqueuedMediaCleanup, REASON_DELETED_WASM_THUMBNAIL, settle_durable_cleanup},
     persistence::{CleanupFailure, cleanup_committed_objects},
 };
 
@@ -39,13 +37,8 @@ impl WasmService {
             WASM_CLEANUP_CONCURRENCY,
         )
         .await;
-        let settlement = settle_durable_cleanup(
-            &self.accounts,
-            cleanup.resolved,
-            &cleaned,
-            &failures,
-        )
-        .await;
+        let settlement =
+            settle_durable_cleanup(&self.accounts, cleanup.resolved, &cleaned, &failures).await;
         log_cleanup_failures(module_id, &failures);
         CleanupOutcome {
             deleted_count: cleaned.len(),
@@ -66,11 +59,7 @@ impl WasmService {
         }
         match self
             .accounts
-            .enqueue_media_cleanup_failures(
-                module_id,
-                REASON_DELETED_WASM_THUMBNAIL,
-                failures,
-            )
+            .enqueue_media_cleanup_failures(module_id, REASON_DELETED_WASM_THUMBNAIL, failures)
             .await
         {
             Ok(report) => info!(

@@ -14,10 +14,15 @@ use crate::features::live_chat::{
 
 use super::LIVE_CHAT_TYPING_TTL_SECONDS;
 
-pub(super) async fn handle_typing(service: Arc<LiveChatService>, actor: ChatActor, is_typing: bool) {
+pub(super) async fn handle_typing(
+    service: Arc<LiveChatService>,
+    actor: ChatActor,
+    is_typing: bool,
+) {
     let expires_at = Utc::now() + ChronoDuration::seconds(LIVE_CHAT_TYPING_TTL_SECONDS);
     let changed = if is_typing {
-        service.cache
+        service
+            .cache
             .set_typing(TypingState {
                 actor: actor.clone(),
                 room_key: DEFAULT_LIVE_CHAT_ROOM.to_string(),
@@ -38,7 +43,9 @@ pub(super) async fn broadcast_typing_set(
     expires_at: chrono::DateTime<Utc>,
 ) {
     let actors = service.cache.active_typing_actors(Utc::now()).await;
-    service.cache.broadcast(LiveChatServerEvent::TypingSet { actors, expires_at });
+    service
+        .cache
+        .broadcast(LiveChatServerEvent::TypingSet { actors, expires_at });
 }
 
 pub(super) async fn cleanup_live_chat_connection(
@@ -53,7 +60,7 @@ pub(super) async fn cleanup_live_chat_connection(
         broadcast_typing_set(Arc::clone(&service), expires_at).await;
     }
     service.cache.broadcast(LiveChatServerEvent::Presence {
-            connected_count: service.cache.connected_count(),
-        });
+        connected_count: service.cache.connected_count(),
+    });
     info!(connection_id = %connection_id, "Live chat WebSocket disconnected");
 }

@@ -12,7 +12,9 @@ use rust_be_template::{
 };
 
 use support::{
-    database::{BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    database::{
+        BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
+    },
     fixtures::{VALID_PASSWORD, account_test_context, seed_account},
 };
 
@@ -71,7 +73,10 @@ fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .login(&fixture.email, VALID_PASSWORD, None)
             .await?;
-        let session = context.sessions.lookup(receipt.session_token.expose()).await;
+        let session = context
+            .sessions
+            .lookup(receipt.session_token.expose())
+            .await;
         let session = match session {
             Some(session) => session,
             None => return require(false, "successful login did not create a session"),
@@ -140,7 +145,11 @@ fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .assign_role(fixture.user_id, RoleType::Moderator)
             .await?;
-        let session = match context.sessions.lookup(receipt.session_token.expose()).await {
+        let session = match context
+            .sessions
+            .lookup(receipt.session_token.expose())
+            .await
+        {
             Some(session) => session,
             None => return require(false, "session disappeared during refresh"),
         };
@@ -157,7 +166,10 @@ fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "session retained stale role",
         )?;
         require(
-            context.accounts.logout(receipt.session_token.expose()).await,
+            context
+                .accounts
+                .logout(receipt.session_token.expose())
+                .await,
             "logout did not revoke the session",
         )?;
         require(
@@ -169,7 +181,10 @@ fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "revoked session remained in the cache",
         )?;
         require(
-            !context.accounts.logout(receipt.session_token.expose()).await,
+            !context
+                .accounts
+                .logout(receipt.session_token.expose())
+                .await,
             "second logout reported a nonexistent revocation",
         )?;
         require(context.sessions.is_empty(), "session cache was not empty")
@@ -197,12 +212,9 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let fabricated = seed_account(&context, "VerifyFuture").await?;
         let now = Utc::now();
         let mut connection = context.pool.get().await?;
-        diesel::update(
-            email_verification_tokens::table.filter(
-                email_verification_tokens::email_verification_token
-                    .eq(expired.verification_token),
-            ),
-        )
+        diesel::update(email_verification_tokens::table.filter(
+            email_verification_tokens::email_verification_token.eq(expired.verification_token),
+        ))
         .set((
             email_verification_tokens::email_verification_token_created_at
                 .eq(now - Duration::hours(2)),
@@ -211,12 +223,9 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         ))
         .execute(&mut connection)
         .await?;
-        diesel::update(
-            email_verification_tokens::table.filter(
-                email_verification_tokens::email_verification_token
-                    .eq(fabricated.verification_token),
-            ),
-        )
+        diesel::update(email_verification_tokens::table.filter(
+            email_verification_tokens::email_verification_token.eq(fabricated.verification_token),
+        ))
         .set((
             email_verification_tokens::email_verification_token_created_at
                 .eq(now + Duration::hours(1)),

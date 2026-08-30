@@ -59,5 +59,4 @@ impl AccountService {
             .delete_profile_picture(user_id, profile_picture_id)
             .await
     }
-
 }

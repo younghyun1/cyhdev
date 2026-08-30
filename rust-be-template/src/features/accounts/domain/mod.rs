@@ -1,10 +1,10 @@
 pub mod account;
 pub mod auth_abuse;
-pub mod forum_authority;
 pub mod authorization;
-pub mod public_author;
-pub mod retention_notifications;
+pub mod forum_authority;
 pub mod lifecycle;
 pub mod oidc;
+pub mod public_author;
+pub mod retention_notifications;
 pub mod role;
 pub mod session;

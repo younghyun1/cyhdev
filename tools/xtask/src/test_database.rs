@@ -14,7 +14,9 @@ pub(crate) fn validate() -> TaskResult<()> {
             return Err(TaskError("TEST_DATABASE_URL is required".to_owned()));
         }
         Err(env::VarError::NotUnicode(_)) => {
-            return Err(TaskError("TEST_DATABASE_URL must contain valid UTF-8".to_owned()));
+            return Err(TaskError(
+                "TEST_DATABASE_URL must contain valid UTF-8".to_owned(),
+            ));
         }
     };
     if !database_url.starts_with("postgres://") && !database_url.starts_with("postgresql://") {
@@ -50,12 +52,19 @@ pub(crate) fn validate() -> TaskResult<()> {
     let fields = stdout.trim().split('|').map(str::trim).collect::<Vec<_>>();
     let (version, database_name, server_address) = match fields.as_slice() {
         [version, database_name, server_address] => (*version, *database_name, *server_address),
-        _ => return Err(TaskError("test database validation returned an unexpected row".to_owned())),
+        _ => {
+            return Err(TaskError(
+                "test database validation returned an unexpected row".to_owned(),
+            ));
+        }
     };
-    let version = version.parse::<u32>()
+    let version = version
+        .parse::<u32>()
         .map_err(|_| TaskError("PostgreSQL returned an invalid server_version_num".to_owned()))?;
     if !(180_000..190_000).contains(&version) {
-        return Err(TaskError(format!("PostgreSQL 18 is required; server_version_num is {version}")));
+        return Err(TaskError(format!(
+            "PostgreSQL 18 is required; server_version_num is {version}"
+        )));
     }
     if database_name != DISPOSABLE_MAINTENANCE_DATABASE {
         return Err(TaskError(format!(
@@ -69,13 +78,15 @@ fn validate_server_address(server_address: &str) -> TaskResult<()> {
     if server_address.is_empty() {
         return Ok(());
     }
-    let address = server_address.parse::<IpAddr>()
+    let address = server_address
+        .parse::<IpAddr>()
         .map_err(|_| TaskError("PostgreSQL returned an invalid server address".to_owned()))?;
     if address.is_loopback() {
         return Ok(());
     }
     let override_enabled = matches!(env::var(REMOTE_OVERRIDE_ENV), Ok(value) if value == "1");
-    let ci_enabled = matches!(env::var("CI"), Ok(value) if value == "1" || value.eq_ignore_ascii_case("true"));
+    let ci_enabled =
+        matches!(env::var("CI"), Ok(value) if value == "1" || value.eq_ignore_ascii_case("true"));
     if override_enabled && ci_enabled {
         Ok(())
     } else {

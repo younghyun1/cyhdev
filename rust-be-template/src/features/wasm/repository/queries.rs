@@ -1,17 +1,16 @@
 //! Bounded WebAssembly module reads.
 
 use chrono::{DateTime, Utc};
-use diesel::{BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
-use crate::{
-    persistence::public_authors::load_public_authors,
-    schema::wasm_module,
-};
+use crate::{persistence::public_authors::load_public_authors, schema::wasm_module};
 
-use super::{records::WasmModuleMetadataRecord, wasm_repository::WasmRepository};
 use super::super::{domain::module::WasmModuleMetadata, error::WasmError};
+use super::{records::WasmModuleMetadataRecord, wasm_repository::WasmRepository};
 
 const CACHE_SYNC_QUERY_ROWS: i64 = 1;
 pub const MAX_COMPATIBILITY_MODULE_LIST: usize = 1_024;
@@ -90,11 +89,11 @@ impl WasmRepository {
             .into_boxed();
         if let Some((updated_at, module_id)) = after {
             query = query.filter(
-                wasm_module::wasm_module_updated_at
-                    .lt(updated_at)
-                    .or(wasm_module::wasm_module_updated_at
+                wasm_module::wasm_module_updated_at.lt(updated_at).or(
+                    wasm_module::wasm_module_updated_at
                         .eq(updated_at)
-                        .and(wasm_module::wasm_module_id.lt(module_id))),
+                        .and(wasm_module::wasm_module_id.lt(module_id)),
+                ),
             );
         }
         query

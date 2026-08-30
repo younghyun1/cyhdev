@@ -2,9 +2,7 @@ use std::sync::atomic::Ordering;
 
 use scc::hash_map::Entry;
 
-use super::visitor_service::{
-    VISITOR_BOARD_MAX_ENTRIES, VisitorService, rejection, try_reserve,
-};
+use super::visitor_service::{VISITOR_BOARD_MAX_ENTRIES, VisitorService, rejection, try_reserve};
 
 impl VisitorService {
     pub async fn synchronize_board(&self) -> anyhow::Result<usize> {

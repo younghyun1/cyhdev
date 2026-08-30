@@ -75,4 +75,3 @@ impl CodeError {
         log_level: Level::WARN,
     };
 }
-

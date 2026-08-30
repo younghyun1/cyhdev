@@ -4,11 +4,8 @@ use uuid::Uuid;
 
 use crate::schema::{comment_votes, comments, post_votes, posts};
 
-use super::{
-    authority::lock_active_user,
-    blog_repository::BlogRepository,
-};
 use super::super::{domain::vote::VoteCounts, error::BlogError};
+use super::{authority::lock_active_user, blog_repository::BlogRepository};
 
 impl BlogRepository {
     pub async fn vote_post(

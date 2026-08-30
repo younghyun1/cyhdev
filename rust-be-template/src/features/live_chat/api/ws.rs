@@ -10,14 +10,14 @@ use crate::features::live_chat::{
     service::{cache::LiveChatServerEvent, live_chat_service::LiveChatService},
 };
 
+mod actor_resolution;
+mod message_handler;
 mod persistence;
 mod presence;
 mod protocol;
+mod registration;
 mod rtc;
 mod rtc_teardown;
-mod message_handler;
-mod actor_resolution;
-mod registration;
 mod upgrade;
 
 use message_handler::handle_client_message;
@@ -57,7 +57,8 @@ pub(super) async fn handle_live_chat_socket(
 
     // Send the initial Hello synchronously on the sink before the writer task
     // takes ownership, so it is guaranteed to be the first frame the client sees.
-    let recent_messages = service.cache
+    let recent_messages = service
+        .cache
         .get_recent_chat_messages(LIVE_CHAT_INITIAL_MESSAGES)
         .await;
     let mut hello = LiveChatServerEvent::Hello {
@@ -136,8 +137,8 @@ pub(super) async fn handle_live_chat_socket(
     });
 
     service.cache.broadcast(LiveChatServerEvent::Presence {
-            connected_count: service.cache.connected_count(),
-        });
+        connected_count: service.cache.connected_count(),
+    });
 
     // Per-connection RTC signaling state, sharing the outbound queue with chat.
     let rtc_session = Arc::new(RtcSession::new(

@@ -1,14 +1,16 @@
 //! Superuser-only authorization catalog and account reads.
 
-use axum::{Extension, extract::{Query, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Query, State},
+    response::IntoResponse,
+};
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     dto::{
-        requests::admin::authorization_request::{
-            AuthorizationPageQuery, AuthorizationUsersQuery,
-        },
+        requests::admin::authorization_request::{AuthorizationPageQuery, AuthorizationUsersQuery},
         responses::{
             admin::authorization_response::{
                 AuthorizationPermissionItem, AuthorizationPermissionsResponse,
@@ -49,7 +51,11 @@ pub async fn list_authorization_users(
         .map_err(map_authorization_error)?;
     Ok(http_resp(
         AuthorizationUsersResponse {
-            users: page.items.into_iter().map(AuthorizationUserItem::from).collect(),
+            users: page
+                .items
+                .into_iter()
+                .map(AuthorizationUserItem::from)
+                .collect(),
             next_cursor: page.next_cursor,
         },
         (),
@@ -140,7 +146,11 @@ pub async fn list_role_permissions(
         .map_err(map_authorization_error)?;
     Ok(http_resp(
         RolePermissionsResponse {
-            bindings: page.items.into_iter().map(RolePermissionItem::from).collect(),
+            bindings: page
+                .items
+                .into_iter()
+                .map(RolePermissionItem::from)
+                .collect(),
             next_cursor: page.next_cursor,
         },
         (),

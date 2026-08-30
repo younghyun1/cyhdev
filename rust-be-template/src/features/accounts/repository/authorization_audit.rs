@@ -14,8 +14,7 @@ use crate::{
             AuthorizationPageSize, PermissionName,
         },
         repository::{
-            account_repository::AccountRepository,
-            authorization_guard::ensure_current_younghyun,
+            account_repository::AccountRepository, authorization_guard::ensure_current_younghyun,
             authorization_records::AuthorizationAuditEventRow,
         },
     },
@@ -41,12 +40,14 @@ impl AccountRepository {
             query = query.filter(
                 authorization_audit_events::authorization_audit_event_created_at
                     .lt(before.created_at)
-                    .or(authorization_audit_events::authorization_audit_event_created_at
-                        .eq(before.created_at)
-                        .and(
-                            authorization_audit_events::authorization_audit_event_id
-                                .lt(before.audit_event_id),
-                        )),
+                    .or(
+                        authorization_audit_events::authorization_audit_event_created_at
+                            .eq(before.created_at)
+                            .and(
+                                authorization_audit_events::authorization_audit_event_id
+                                    .lt(before.audit_event_id),
+                            ),
+                    ),
             );
         }
         let mut rows = query

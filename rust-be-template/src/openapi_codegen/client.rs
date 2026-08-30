@@ -4,16 +4,11 @@ use super::{
     error::CodegenError,
     model::{Operation, ParameterLocation, RequestBody},
     naming::{method_name, property_name},
-    typescript::{
-        GENERATED_HEADER, enveloped_data_schema, referenced_type_names, render_schema,
-    },
+    typescript::{GENERATED_HEADER, enveloped_data_schema, referenced_type_names, render_schema},
 };
 
 /// Renders one transport-injected client group.
-pub fn render_client(
-    operations: &[Operation],
-    factory_name: &str,
-) -> Result<String, CodegenError> {
+pub fn render_client(operations: &[Operation], factory_name: &str) -> Result<String, CodegenError> {
     validate_method_names(operations)?;
     let imports = collect_imports(operations);
     let mut output = String::from(GENERATED_HEADER);
@@ -49,7 +44,10 @@ pub fn render_client(
 
 fn render_operation(output: &mut String, operation: &Operation) -> Result<(), CodegenError> {
     let has_input = !operation.parameters.is_empty() || operation.request_body.is_some();
-    let input_required = operation.parameters.iter().any(|parameter| parameter.required)
+    let input_required = operation
+        .parameters
+        .iter()
+        .any(|parameter| parameter.required)
         || operation
             .request_body
             .as_ref()

@@ -1,31 +1,31 @@
 mod account_error;
+pub mod auth_abuse;
+#[cfg(test)]
+mod auth_abuse_tests;
 pub mod authorization_audit;
 mod authorization_error;
 pub mod authorization_mutations;
 pub mod authorization_queries;
-pub mod auth_abuse;
 pub mod delete_account;
 pub mod hard_purge_account;
 pub mod is_superuser;
 pub mod login;
 pub mod logout;
-pub mod media_cleanup;
 pub mod me;
+pub mod media_cleanup;
 pub mod oidc_callback;
 pub mod oidc_link;
 pub mod oidc_start;
 pub mod oidc_status;
-pub mod public_user;
 pub mod profile_picture_history;
+pub mod public_user;
 pub mod resend_email_verification_email;
 pub mod reset_password;
 pub mod reset_password_request;
 pub mod retention_notifications;
+#[cfg(test)]
+mod session_service_tests;
 pub mod signup;
 pub mod update_profile;
 pub mod upload_profile_picture;
 pub mod verify_user_email;
-#[cfg(test)]
-mod auth_abuse_tests;
-#[cfg(test)]
-mod session_service_tests;

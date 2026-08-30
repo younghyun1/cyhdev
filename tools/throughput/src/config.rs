@@ -1,11 +1,6 @@
 //! Checked-in workload, environment, and threshold configuration.
 
-use std::{
-    collections::BTreeMap,
-    fs::File,
-    io::Read,
-    path::Path,
-};
+use std::{collections::BTreeMap, fs::File, io::Read, path::Path};
 
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 

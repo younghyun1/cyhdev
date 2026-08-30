@@ -105,13 +105,12 @@ impl AccountService {
                 log_cleanup_failures(user_id, &success.cleanup_failures);
                 Ok(())
             }
-            Err(MediaWriteError::Upload { source, compensation_failures }) => {
-                enqueue_compensation_failures(
-                    &account_service,
-                    image_id,
-                    &compensation_failures,
-                )
-                .await;
+            Err(MediaWriteError::Upload {
+                source,
+                compensation_failures,
+            }) => {
+                enqueue_compensation_failures(&account_service, image_id, &compensation_failures)
+                    .await;
                 log_cleanup_failures(user_id, &compensation_failures);
                 error!(
                     user_id = %user_id,
@@ -123,13 +122,12 @@ impl AccountService {
                 );
                 Err(ProfilePictureUploadError::Upload(source))
             }
-            Err(MediaWriteError::Persistence { source, compensation_failures }) => {
-                enqueue_compensation_failures(
-                    &account_service,
-                    image_id,
-                    &compensation_failures,
-                )
-                .await;
+            Err(MediaWriteError::Persistence {
+                source,
+                compensation_failures,
+            }) => {
+                enqueue_compensation_failures(&account_service, image_id, &compensation_failures)
+                    .await;
                 log_cleanup_failures(user_id, &compensation_failures);
                 error!(error = %source, user_id = %user_id, "Failed to commit profile-picture metadata");
                 Err(ProfilePictureUploadError::Persistence(source))
@@ -144,11 +142,7 @@ async fn enqueue_compensation_failures(
     failures: &[CleanupFailure],
 ) {
     if let Err(error_value) = account_service
-        .enqueue_media_cleanup_failures(
-            source_id,
-            REASON_SUPERSEDED_PROFILE_PICTURE,
-            failures,
-        )
+        .enqueue_media_cleanup_failures(source_id, REASON_SUPERSEDED_PROFILE_PICTURE, failures)
         .await
     {
         error!(

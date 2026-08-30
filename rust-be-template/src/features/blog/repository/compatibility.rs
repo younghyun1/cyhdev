@@ -51,7 +51,11 @@ pub struct NewPostVote<'a> {
 
 impl<'a> NewPostVote<'a> {
     pub fn new(post_id: &'a Uuid, user_id: &'a Uuid, is_upvote: bool) -> Self {
-        Self { post_id, user_id, is_upvote }
+        Self {
+            post_id,
+            user_id,
+            is_upvote,
+        }
     }
 }
 
@@ -65,6 +69,10 @@ pub struct NewCommentVote<'a> {
 
 impl<'a> NewCommentVote<'a> {
     pub fn new(comment_id: &'a Uuid, user_id: &'a Uuid, is_upvote: bool) -> Self {
-        Self { comment_id, user_id, is_upvote }
+        Self {
+            comment_id,
+            user_id,
+            is_upvote,
+        }
     }
 }

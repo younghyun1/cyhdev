@@ -41,11 +41,13 @@ fn concurrent_vote_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 photographs::photograph_image_type.eq(4),
                 photographs::photograph_context.eq(DbPhotographContext::Photography),
                 photographs::photograph_is_on_cloud.eq(true),
-                photographs::photograph_link.eq("https://objects.example.test/photography/vote.avif"),
+                photographs::photograph_link
+                    .eq("https://objects.example.test/photography/vote.avif"),
                 photographs::photograph_comments.eq("vote fixture"),
                 photographs::photograph_lat.eq(0.0),
                 photographs::photograph_lon.eq(0.0),
-                photographs::photograph_thumbnail_link.eq("https://objects.example.test/photography/vote-thumb.avif"),
+                photographs::photograph_thumbnail_link
+                    .eq("https://objects.example.test/photography/vote-thumb.avif"),
             ))
             .returning(photographs::photograph_id)
             .get_result::<Uuid>(&mut connection)
@@ -62,8 +64,20 @@ fn concurrent_vote_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         drop(connection);
 
         let repository = Arc::new(PhotographyRepository::new(context.pool.clone()));
-        race_photograph_votes(Arc::clone(&repository), photograph_id, first_voter.user_id, second_voter.user_id).await?;
-        race_comment_votes(Arc::clone(&repository), comment_id, first_voter.user_id, second_voter.user_id).await?;
+        race_photograph_votes(
+            Arc::clone(&repository),
+            photograph_id,
+            first_voter.user_id,
+            second_voter.user_id,
+        )
+        .await?;
+        race_comment_votes(
+            Arc::clone(&repository),
+            comment_id,
+            first_voter.user_id,
+            second_voter.user_id,
+        )
+        .await?;
 
         let mut connection = context.pool.get().await?;
         let stored_photograph_total = photographs::table
@@ -77,8 +91,10 @@ fn concurrent_vote_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .count()
             .get_result::<i64>(&mut connection)
             .await?;
-        require(stored_photograph_total == photograph_vote_rows && photograph_vote_rows == 2,
-            "concurrent photograph votes left a stale denormalized total")?;
+        require(
+            stored_photograph_total == photograph_vote_rows && photograph_vote_rows == 2,
+            "concurrent photograph votes left a stale denormalized total",
+        )?;
 
         let stored_comment_total = photograph_comments::table
             .find(comment_id)
@@ -91,8 +107,10 @@ fn concurrent_vote_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .count()
             .get_result::<i64>(&mut connection)
             .await?;
-        require(stored_comment_total == comment_vote_rows && comment_vote_rows == 2,
-            "concurrent photograph-comment votes left a stale denormalized total")
+        require(
+            stored_comment_total == comment_vote_rows && comment_vote_rows == 2,
+            "concurrent photograph-comment votes left a stale denormalized total",
+        )
     })
 }
 
@@ -103,8 +121,18 @@ async fn race_photograph_votes(
     second_user_id: Uuid,
 ) -> TestResult {
     let barrier = Arc::new(Barrier::new(3));
-    let first = spawn_photograph_vote(Arc::clone(&repository), Arc::clone(&barrier), photograph_id, first_user_id);
-    let second = spawn_photograph_vote(repository, Arc::clone(&barrier), photograph_id, second_user_id);
+    let first = spawn_photograph_vote(
+        Arc::clone(&repository),
+        Arc::clone(&barrier),
+        photograph_id,
+        first_user_id,
+    );
+    let second = spawn_photograph_vote(
+        repository,
+        Arc::clone(&barrier),
+        photograph_id,
+        second_user_id,
+    );
     barrier.wait().await;
     first.await??;
     second.await??;
@@ -116,10 +144,14 @@ fn spawn_photograph_vote(
     barrier: Arc<Barrier>,
     photograph_id: Uuid,
     user_id: Uuid,
-) -> tokio::task::JoinHandle<Result<(), rust_be_template::features::photography::error::PhotographyError>> {
+) -> tokio::task::JoinHandle<
+    Result<(), rust_be_template::features::photography::error::PhotographyError>,
+> {
     tokio::spawn(async move {
         barrier.wait().await;
-        repository.vote_photograph(user_id, photograph_id, true).await?;
+        repository
+            .vote_photograph(user_id, photograph_id, true)
+            .await?;
         Ok(())
     })
 }
@@ -135,12 +167,16 @@ async fn race_comment_votes(
     let first_barrier = Arc::clone(&barrier);
     let first = tokio::spawn(async move {
         first_barrier.wait().await;
-        first_repository.vote_comment(first_user_id, comment_id, true).await
+        first_repository
+            .vote_comment(first_user_id, comment_id, true)
+            .await
     });
     let second_barrier = Arc::clone(&barrier);
     let second = tokio::spawn(async move {
         second_barrier.wait().await;
-        repository.vote_comment(second_user_id, comment_id, true).await
+        repository
+            .vote_comment(second_user_id, comment_id, true)
+            .await
     });
     barrier.wait().await;
     first.await??;

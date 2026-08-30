@@ -7,8 +7,7 @@ use crate::{
     init::state::ServerState,
     jobs::{
         auth::{
-            invalidate_sessions::invalidate_sessions,
-            update_system_stats::update_system_stats,
+            invalidate_sessions::invalidate_sessions, update_system_stats::update_system_stats,
         },
         job_funcs::{
             every_day::schedule_task_every_day_at, every_hour::schedule_task_every_hour_at,
@@ -17,9 +16,9 @@ use crate::{
         },
         maintenance::{
             compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
-            flush_visitor_logs::flush_visitor_logs, prune_live_chat::prune_live_chat_state,
-            prune_auth_abuse::prune_auth_abuse,
+            flush_visitor_logs::flush_visitor_logs, prune_auth_abuse::prune_auth_abuse,
             prune_forum_notifications::prune_forum_notifications,
+            prune_live_chat::prune_live_chat_state,
             prune_photograph_batches::prune_photograph_batches,
             retry_media_cleanup::retry_media_object_cleanup,
             send_retention_notifications::send_retention_notifications,

@@ -23,7 +23,11 @@ pub struct HttpExecutor {
 }
 
 impl HttpExecutor {
-    pub fn new(raw_target: &str, timeout: Duration, max_response_bytes: usize) -> HarnessResult<Self> {
+    pub fn new(
+        raw_target: &str,
+        timeout: Duration,
+        max_response_bytes: usize,
+    ) -> HarnessResult<Self> {
         let target = parse_target(raw_target)?;
         let mut addresses = (target.host.as_str(), target.port)
             .to_socket_addrs()
@@ -153,7 +157,10 @@ fn remaining(deadline: Instant) -> Result<Duration, RequestFailure> {
 }
 
 fn classify_io(error: &io::Error, fallback: RequestFailure) -> RequestFailure {
-    if matches!(error.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock) {
+    if matches!(
+        error.kind(),
+        io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock
+    ) {
         RequestFailure::Timeout
     } else {
         fallback
@@ -197,11 +204,8 @@ mod tests {
 
     #[test]
     fn canonical_root_target_matches_environment_template() -> Result<(), String> {
-        let executor = HttpExecutor::new(
-            "http://127.0.0.1:3000",
-            Duration::from_secs(1),
-            1_024,
-        ).map_err(|error| error.to_string())?;
+        let executor = HttpExecutor::new("http://127.0.0.1:3000", Duration::from_secs(1), 1_024)
+            .map_err(|error| error.to_string())?;
         assert_eq!(executor.label(), "http://127.0.0.1:3000");
         Ok(())
     }
@@ -220,13 +224,20 @@ mod tests {
             &format!("http://{address}"),
             Duration::from_millis(10),
             1_024,
-        ).map_err(|error| error.to_string())?;
+        )
+        .map_err(|error| error.to_string())?;
         let request = RequestSpec {
-            name: "deadline".to_owned(), method: "GET".to_owned(), path: "/".to_owned(),
-            expected_status: 200, weight: 1, fixture_work_units: 1,
+            name: "deadline".to_owned(),
+            method: "GET".to_owned(),
+            path: "/".to_owned(),
+            expected_status: 200,
+            weight: 1,
+            fixture_work_units: 1,
         };
         let outcome = executor.execute(&request);
-        server.join().map_err(|_payload| "deadline test server panicked".to_owned())?;
+        server
+            .join()
+            .map_err(|_payload| "deadline test server panicked".to_owned())?;
         if matches!(outcome, Err(RequestFailure::Timeout)) {
             Ok(())
         } else {

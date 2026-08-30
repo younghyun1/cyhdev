@@ -11,8 +11,7 @@ use crate::{
     dto::{
         requests::auth::oidc_request::{OidcLinkCompleteRequest, OidcUnlinkRequest},
         responses::{
-            auth::oidc_response::OidcLinkResponse,
-            response_data::http_resp_with_cookies_sensitive,
+            auth::oidc_response::OidcLinkResponse, response_data::http_resp_with_cookies_sensitive,
         },
     },
     errors::code_error::HandlerResponse,
@@ -98,12 +97,12 @@ pub async fn unlink_oidc(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let oidc = state.oidc_service();
-    let issuer = oidc
-        .issuer()
-        .ok_or_else(|| map_account_error(
+    let issuer = oidc.issuer().ok_or_else(|| {
+        map_account_error(
             crate::features::accounts::error::AccountError::OidcDisabled,
             AccountMutation::Update,
-        ))?;
+        )
+    })?;
     let result = state
         .account_service()
         .unlink_oidc(

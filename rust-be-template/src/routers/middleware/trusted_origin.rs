@@ -45,10 +45,7 @@ impl TrustedOrigins {
             }
         }
 
-        Self::from_origin_strings(
-            origins,
-            matches!(environment, DeploymentEnvironment::Local),
-        )
+        Self::from_origin_strings(origins, matches!(environment, DeploymentEnvironment::Local))
     }
 
     /// Returns the validated values used by both CORS and request-origin enforcement.
@@ -120,11 +117,7 @@ fn is_websocket_upgrade(headers: &HeaderMap) -> bool {
         .get_all(header::UPGRADE)
         .iter()
         .flat_map(|value| value.as_bytes().split(|byte| *byte == b','))
-        .any(|protocol| {
-            protocol
-                .trim_ascii()
-                .eq_ignore_ascii_case(b"websocket")
-        })
+        .any(|protocol| protocol.trim_ascii().eq_ignore_ascii_case(b"websocket"))
 }
 
 fn validate_origin(origin: &str, allow_loopback_http: bool) -> Result<HeaderValue, &'static str> {
@@ -171,10 +164,7 @@ mod tests {
     use super::*;
 
     fn trusted_origins() -> anyhow::Result<TrustedOrigins> {
-        TrustedOrigins::from_origin_strings(
-            vec!["https://cyhdev.com".to_string()],
-            true,
-        )
+        TrustedOrigins::from_origin_strings(vec!["https://cyhdev.com".to_string()], true)
     }
 
     #[test]
@@ -212,9 +202,7 @@ mod tests {
             .header(header::UPGRADE, "websocket")
             .header(header::ORIGIN, "https://attacker.example")
             .body(Body::empty())?;
-        let ordinary_get = Request::builder()
-            .method(Method::GET)
-            .body(Body::empty())?;
+        let ordinary_get = Request::builder().method(Method::GET).body(Body::empty())?;
 
         assert!(!origins.authorizes(&websocket));
         assert!(origins.authorizes(&ordinary_get));

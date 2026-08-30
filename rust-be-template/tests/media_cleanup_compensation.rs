@@ -149,10 +149,7 @@ async fn successful_superseded_delete_is_reported_for_ledger_finalization() -> R
     let pending = [pending("new-profile.avif")];
     let outcome = persist_media_objects(&store, &pending, async {
         events.lock().await.push(Event::Persist);
-        Ok::<_, &'static str>(PersistedMedia::new(
-            (),
-            vec![location("old-profile.avif")],
-        ))
+        Ok::<_, &'static str>(PersistedMedia::new((), vec![location("old-profile.avif")]))
     })
     .await
     .map_err(|_| "expected successful database commit".to_string())?;

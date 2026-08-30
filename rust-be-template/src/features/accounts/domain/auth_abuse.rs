@@ -34,9 +34,7 @@ impl AuthEndpoint {
             "/api/auth/reset-password-request" => Some(Self::PasswordResetRequest),
             "/api/auth/reset-password" => Some(Self::PasswordResetSubmit),
             "/api/auth/verify-user-email" => Some(Self::EmailVerification),
-            "/api/auth/oidc/login/start" | "/api/auth/oidc/link/start" => {
-                Some(Self::OidcStart)
-            }
+            "/api/auth/oidc/login/start" | "/api/auth/oidc/link/start" => Some(Self::OidcStart),
             _ => None,
         }
     }

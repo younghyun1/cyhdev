@@ -1,17 +1,23 @@
 //! Persistence-independent photograph values.
 
-use chrono::{DateTime, Utc};
-use serde_derive::{Deserialize, Serialize};
-use utoipa::ToSchema;
-use uuid::Uuid;
-use std::collections::HashMap;
-use crate::{features::blog::domain::vote::VoteState, features::accounts::domain::public_author::PublicAuthor};
 use super::social::PhotographComment;
 use super::social::PhotographCommentResponse;
 use crate::features::blog::domain::post::UserBadgeInfo;
+use crate::{
+    features::accounts::domain::public_author::PublicAuthor,
+    features::blog::domain::vote::VoteState,
+};
+use chrono::{DateTime, Utc};
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
-pub enum PhotographContext { Photography, Post }
+pub enum PhotographContext {
+    Photography,
+    Post,
+}
 
 impl PhotographContext {
     pub fn parse(value: &str) -> Option<Self> {
@@ -22,7 +28,9 @@ impl PhotographContext {
         }
     }
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(value: &str) -> Option<Self> { Self::parse(value) }
+    pub fn from_str(value: &str) -> Option<Self> {
+        Self::parse(value)
+    }
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]

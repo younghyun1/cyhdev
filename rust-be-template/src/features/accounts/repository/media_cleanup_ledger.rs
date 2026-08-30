@@ -8,17 +8,13 @@ use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::{
-        error::AccountError,
-        repository::account_repository::AccountRepository,
-    },
+    features::accounts::{error::AccountError, repository::account_repository::AccountRepository},
     schema::media_object_cleanup,
     util::media::{
         cleanup::{
             DurableMediaCleanup, MEDIA_CLEANUP_DATABASE_CHUNK_SIZE,
             MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT, MEDIA_CLEANUP_RETRY_SCAN_LIMIT,
-            MediaCleanupFailureRegistration, MediaCleanupFailureUpdate,
-            MediaCleanupRetryCandidate,
+            MediaCleanupFailureRegistration, MediaCleanupFailureUpdate, MediaCleanupRetryCandidate,
         },
         object_store::ObjectLocation,
     },
@@ -53,14 +49,16 @@ impl AccountRepository {
             .map_err(AccountError::Query)?;
         let mut candidates = never_attempted
             .into_iter()
-            .map(|(cleanup_id, bucket, key, attempt_count)| MediaCleanupRetryCandidate {
-                cleanup: DurableMediaCleanup {
-                    cleanup_id,
-                    location: ObjectLocation::new(bucket, key),
-                    attempt_count,
+            .map(
+                |(cleanup_id, bucket, key, attempt_count)| MediaCleanupRetryCandidate {
+                    cleanup: DurableMediaCleanup {
+                        cleanup_id,
+                        location: ObjectLocation::new(bucket, key),
+                        attempt_count,
+                    },
+                    last_attempt_at: None,
                 },
-                last_attempt_at: None,
-            })
+            )
             .collect::<Vec<_>>();
         if candidates.len() >= MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT {
             return Ok(candidates);
@@ -115,15 +113,14 @@ impl AccountRepository {
             .transaction::<usize, diesel::result::Error, _>(async move |connection| {
                 let mut deleted = 0_usize;
                 for chunk in cleanup_ids.chunks(MEDIA_CLEANUP_DATABASE_CHUNK_SIZE) {
-                    deleted = deleted.saturating_add(
-                        diesel::delete(
-                            media_object_cleanup::table.filter(
+                    deleted =
+                        deleted.saturating_add(
+                            diesel::delete(media_object_cleanup::table.filter(
                                 media_object_cleanup::media_object_cleanup_id.eq_any(chunk),
-                            ),
-                        )
-                        .execute(&mut *connection)
-                        .await?,
-                    );
+                            ))
+                            .execute(&mut *connection)
+                            .await?,
+                        );
                 }
                 Ok(deleted)
             })
@@ -137,9 +134,8 @@ impl AccountRepository {
         failures: &[MediaCleanupFailureUpdate],
     ) -> Result<usize, AccountError> {
         let mut failures = failures.to_vec();
-        failures.sort_unstable_by_key(|failure| {
-            (failure.cleanup_id, failure.expected_attempt_count)
-        });
+        failures
+            .sort_unstable_by_key(|failure| (failure.cleanup_id, failure.expected_attempt_count));
         failures.dedup_by_key(|failure| failure.cleanup_id);
         let mut connection = self.connection().await?;
         connection
@@ -173,31 +169,30 @@ impl AccountRepository {
                     if retries.is_empty() {
                         continue;
                     }
-                    updated = updated.saturating_add(
-                        diesel::insert_into(media_object_cleanup::table)
-                            .values(&retries)
-                            .on_conflict(media_object_cleanup::media_object_cleanup_id)
-                            .do_update()
-                            .set((
-                                media_object_cleanup::media_object_cleanup_attempt_count.eq(
-                                    diesel::upsert::excluded(
+                    updated =
+                        updated.saturating_add(
+                            diesel::insert_into(media_object_cleanup::table)
+                                .values(&retries)
+                                .on_conflict(media_object_cleanup::media_object_cleanup_id)
+                                .do_update()
+                                .set((
+                                    media_object_cleanup::media_object_cleanup_attempt_count
+                                        .eq(diesel::upsert::excluded(
                                         media_object_cleanup::media_object_cleanup_attempt_count,
-                                    ),
-                                ),
-                                media_object_cleanup::media_object_cleanup_last_attempt_at.eq(
-                                    diesel::upsert::excluded(
+                                    )),
+                                    media_object_cleanup::media_object_cleanup_last_attempt_at
+                                        .eq(diesel::upsert::excluded(
                                         media_object_cleanup::media_object_cleanup_last_attempt_at,
+                                    )),
+                                    media_object_cleanup::media_object_cleanup_last_error.eq(
+                                        diesel::upsert::excluded(
+                                            media_object_cleanup::media_object_cleanup_last_error,
+                                        ),
                                     ),
-                                ),
-                                media_object_cleanup::media_object_cleanup_last_error.eq(
-                                    diesel::upsert::excluded(
-                                        media_object_cleanup::media_object_cleanup_last_error,
-                                    ),
-                                ),
-                            ))
-                            .execute(&mut *connection)
-                            .await?,
-                    );
+                                ))
+                                .execute(&mut *connection)
+                                .await?,
+                        );
                 }
                 Ok(updated)
             })

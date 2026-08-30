@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
-use super::blog_service::BlogService;
 use super::super::{domain::vote::VoteCounts, error::BlogError};
+use super::blog_service::BlogService;
 
 impl BlogService {
     pub async fn vote_post(
@@ -11,7 +11,10 @@ impl BlogService {
         is_upvote: bool,
     ) -> Result<VoteCounts, BlogError> {
         let post_use_case = self.lock_post_use_case(post_id).await;
-        let counts = self.repository.vote_post(user_id, post_id, is_upvote).await?;
+        let counts = self
+            .repository
+            .vote_post(user_id, post_id, is_upvote)
+            .await?;
         self.update_cached_votes(post_id, counts.upvotes, counts.downvotes)
             .await;
         drop(post_use_case);
@@ -37,7 +40,9 @@ impl BlogService {
         comment_id: Uuid,
         is_upvote: bool,
     ) -> Result<VoteCounts, BlogError> {
-        self.repository.vote_comment(user_id, comment_id, is_upvote).await
+        self.repository
+            .vote_comment(user_id, comment_id, is_upvote)
+            .await
     }
 
     pub async fn rescind_comment_vote(
@@ -45,6 +50,8 @@ impl BlogService {
         user_id: Uuid,
         comment_id: Uuid,
     ) -> Result<VoteCounts, BlogError> {
-        self.repository.rescind_comment_vote(user_id, comment_id).await
+        self.repository
+            .rescind_comment_vote(user_id, comment_id)
+            .await
     }
 }

@@ -125,15 +125,14 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 seven_day.next_attempt_at - Duration::seconds(1),
             )
             .await?;
-        require(early.claimed == 0, "notification retried before next-attempt time")?;
+        require(
+            early.claimed == 0,
+            "notification retried before next-attempt time",
+        )?;
         let manual_retry_at = first_due + Duration::minutes(1);
         let retry = context
             .repository
-            .retry_retention_notification(
-                admin.user_id,
-                seven_day.notification_id,
-                manual_retry_at,
-            )
+            .retry_retention_notification(admin.user_id, seven_day.notification_id, manual_retry_at)
             .await?;
         require(
             retry.next_attempt_at == manual_retry_at,
@@ -181,7 +180,9 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .await?;
         require(
             retained_status.len() == 2
-                && retained_status.iter().all(|status| status.sent_at.is_some()),
+                && retained_status
+                    .iter()
+                    .all(|status| status.sent_at.is_some()),
             "hard purge erased sent notification audit evidence",
         )
     })
@@ -232,8 +233,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .ok_or(AccountError::AccountChanged)?;
         require(
             reclaimed.notifications.len() == 1
-                && reclaimed_notification.notification_id
-                    == first_notification.notification_id
+                && reclaimed_notification.notification_id == first_notification.notification_id
                 && reclaimed_notification.attempt_count == 2,
             "expired claim was not reclaimed with durable attempt state",
         )?;
@@ -268,10 +268,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .retention_notification_status(admin.user_id, None, 100)
             .await?;
         require(
-            statuses.len() == 2
-                && statuses
-                    .iter()
-                    .all(|status| status.cancelled_at.is_some()),
+            statuses.len() == 2 && statuses.iter().all(|status| status.cancelled_at.is_some()),
             "hard purge did not preserve cancelled notification audit rows",
         )
     })

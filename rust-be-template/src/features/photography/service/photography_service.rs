@@ -1,13 +1,19 @@
 use super::super::repository::photography_repository::PhotographyRepository;
-use super::views::PhotographViewBuffer;
 use super::batch::BatchRegistry;
 use super::media::MediaPorts;
-use std::sync::Arc;
+use super::views::PhotographViewBuffer;
 use crate::features::accounts::service::account_service::AccountService;
 use crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort;
 use crate::util::media::object_store::MediaObjectStore;
+use std::sync::Arc;
 
-pub struct PhotographyService { pub(super) repository: PhotographyRepository, pub(super) views: PhotographViewBuffer, pub(super) batches: BatchRegistry, pub(super) media: MediaPorts, pub(super) flags: Arc<dyn CountryFlagLookupPort> }
+pub struct PhotographyService {
+    pub(super) repository: PhotographyRepository,
+    pub(super) views: PhotographViewBuffer,
+    pub(super) batches: BatchRegistry,
+    pub(super) media: MediaPorts,
+    pub(super) flags: Arc<dyn CountryFlagLookupPort>,
+}
 
 impl PhotographyService {
     pub fn new(

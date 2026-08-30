@@ -27,7 +27,11 @@ impl From<Vec<IsoCurrency>> for IsoCurrencyTable {
             by_code.insert(row.currency_code, index);
             by_alpha3.insert(row.currency_alpha3.clone(), index);
         }
-        Self { rows, by_code, by_alpha3 }
+        Self {
+            rows,
+            by_code,
+            by_alpha3,
+        }
     }
 }
 

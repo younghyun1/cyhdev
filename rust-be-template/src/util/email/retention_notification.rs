@@ -5,8 +5,7 @@ use lettre::message::Mailbox;
 use uuid::Uuid;
 
 use crate::{
-    DOMAIN_NAME,
-    features::accounts::domain::retention_notifications::RetentionNotificationStage,
+    DOMAIN_NAME, features::accounts::domain::retention_notifications::RetentionNotificationStage,
 };
 
 const TEMPLATE: &str = include_str!("account_retention_notification.html");
@@ -24,14 +23,12 @@ impl AccountRetentionNotificationEmail {
         purge_after: DateTime<Utc>,
     ) -> Self {
         let (remaining, subject) = match stage {
-            RetentionNotificationStage::SevenDaysBeforePurge => (
-                "7 days",
-                "Account data retention: 7 days remaining",
-            ),
-            RetentionNotificationStage::OneDayBeforePurge => (
-                "24 hours",
-                "Account data retention: 24 hours remaining",
-            ),
+            RetentionNotificationStage::SevenDaysBeforePurge => {
+                ("7 days", "Account data retention: 7 days remaining")
+            }
+            RetentionNotificationStage::OneDayBeforePurge => {
+                ("24 hours", "Account data retention: 24 hours remaining")
+            }
         };
         Self {
             body: TEMPLATE
@@ -46,8 +43,7 @@ impl AccountRetentionNotificationEmail {
     }
 
     pub fn to_message(self, retained_email: &str) -> anyhow::Result<lettre::Message> {
-        let from = format!("cyhdev.com <donotreply@{DOMAIN_NAME}>")
-            .parse::<Mailbox>()?;
+        let from = format!("cyhdev.com <donotreply@{DOMAIN_NAME}>").parse::<Mailbox>()?;
         let to = retained_email.parse::<Mailbox>()?;
         Ok(lettre::Message::builder()
             .from(from)

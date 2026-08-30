@@ -6,9 +6,7 @@ use tokio::sync::RwLock;
 use tracing::info;
 
 use crate::features::i18n::{
-    domain::{
-        source::source_bundles,
-    },
+    domain::source::source_bundles,
     repository::i18n_repository::I18nRepository,
     service::cache::{I18N_CACHE_MAX_BYTES, I18N_CACHE_MAX_ENTRIES, I18nCache},
 };
@@ -20,7 +18,10 @@ pub struct I18nService {
 
 impl I18nService {
     pub fn new(repository: Arc<I18nRepository>) -> Self {
-        Self { repository, cache: RwLock::new(I18nCache::new()) }
+        Self {
+            repository,
+            cache: RwLock::new(I18nCache::new()),
+        }
     }
 
     pub async fn synchronize_cache(&self) -> anyhow::Result<usize> {

@@ -10,9 +10,7 @@ use rust_be_template::{
     schema::{media_object_cleanup, user_profile_pictures},
     util::{
         media::{
-            cleanup::{
-                MediaCleanupFailureUpdate, REASON_DELETED_WASM_THUMBNAIL,
-            },
+            cleanup::{MediaCleanupFailureUpdate, REASON_DELETED_WASM_THUMBNAIL},
             object_store::{ObjectLocation, ObjectStoreError, ObjectStoreOperation},
             persistence::CleanupFailure,
         },
@@ -57,11 +55,7 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .collect::<Vec<_>>();
         let inserted = context
             .accounts
-            .enqueue_media_cleanup_failures(
-                source_id,
-                REASON_DELETED_WASM_THUMBNAIL,
-                &failures,
-            )
+            .enqueue_media_cleanup_failures(source_id, REASON_DELETED_WASM_THUMBNAIL, &failures)
             .await?;
         require(
             inserted.inserted == 2 && inserted.already_registered == 0,
@@ -69,11 +63,7 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         let duplicate = context
             .accounts
-            .enqueue_media_cleanup_failures(
-                source_id,
-                REASON_DELETED_WASM_THUMBNAIL,
-                &failures,
-            )
+            .enqueue_media_cleanup_failures(source_id, REASON_DELETED_WASM_THUMBNAIL, &failures)
             .await?;
         require(
             duplicate.inserted == 0 && duplicate.already_registered == 2,
@@ -95,9 +85,10 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             rows.len() == 2
                 && rows.iter().all(|(_, attempts, error)| {
-                    *attempts == 1 && error.as_deref().is_some_and(|value| {
-                        value.contains("injected retry source")
-                    })
+                    *attempts == 1
+                        && error
+                            .as_deref()
+                            .is_some_and(|value| value.contains("injected retry source"))
                 }),
             "registered failures did not preserve their initial retry source",
         )?;
@@ -133,8 +124,7 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         drop(connection);
         require(
             retried.iter().all(|(attempts, error)| {
-                *attempts == 2
-                    && error.as_deref() == Some("bounded second retry source")
+                *attempts == 2 && error.as_deref() == Some("bounded second retry source")
             }),
             "bulk failure recording did not preserve the retry source",
         )?;
@@ -180,7 +170,10 @@ fn profile_picture_history_case(database: &TestDatabase) -> DatabaseTestFuture<'
             .repository
             .profile_picture_history(account.user_id)
             .await?;
-        require(history.len() == 8, "profile-picture history exceeded its cap")?;
+        require(
+            history.len() == 8,
+            "profile-picture history exceeded its cap",
+        )?;
         let newest_id = match inserted_ids.last() {
             Some(newest_id) => *newest_id,
             None => return require(false, "profile-picture fixture inserted no rows"),
@@ -198,8 +191,7 @@ fn profile_picture_history_case(database: &TestDatabase) -> DatabaseTestFuture<'
             None => false,
         };
         require(
-            history.iter().filter(|picture| picture.is_active).count() == 1
-                && newest_is_active,
+            history.iter().filter(|picture| picture.is_active).count() == 1 && newest_is_active,
             "newest uploaded profile picture was not uniquely active",
         )?;
 
@@ -211,7 +203,10 @@ fn profile_picture_history_case(database: &TestDatabase) -> DatabaseTestFuture<'
             Some(selected) => selected,
             None => return require(false, "owned history entry was not selectable"),
         };
-        require(selected.is_active, "selected profile picture was not activated")?;
+        require(
+            selected.is_active,
+            "selected profile picture was not activated",
+        )?;
 
         let deleted = context
             .repository
@@ -247,8 +242,17 @@ fn profile_picture_history_case(database: &TestDatabase) -> DatabaseTestFuture<'
             .get_result::<i64>(&mut connection)
             .await?;
         drop(connection);
-        require(metadata_count == 7, "history metadata count was incorrect after delete")?;
-        require(active_count == 1, "history mutation did not preserve one active row")?;
-        require(cleanup_count == 2, "retired profile objects were not durably enqueued")
+        require(
+            metadata_count == 7,
+            "history metadata count was incorrect after delete",
+        )?;
+        require(
+            active_count == 1,
+            "history mutation did not preserve one active row",
+        )?;
+        require(
+            cleanup_count == 2,
+            "retired profile objects were not durably enqueued",
+        )
     })
 }

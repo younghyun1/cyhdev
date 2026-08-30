@@ -1,11 +1,15 @@
 use tracing::warn;
 use uuid::Uuid;
 
-use super::blog_service::BlogService;
 use super::super::{
-    domain::{comment::{BlogCommentBody, CommentResponse}, post::UserBadgeInfo, vote::VoteState},
+    domain::{
+        comment::{BlogCommentBody, CommentResponse},
+        post::UserBadgeInfo,
+        vote::VoteState,
+    },
     error::BlogError,
 };
+use super::blog_service::BlogService;
 
 impl BlogService {
     pub async fn submit_comment(
@@ -15,7 +19,9 @@ impl BlogService {
         parent_comment_id: Option<Uuid>,
         content: String,
     ) -> Result<CommentResponse, BlogError> {
-        let content = BlogCommentBody::parse(content).map_err(|_| BlogError::InvalidInput)?.into_inner();
+        let content = BlogCommentBody::parse(content)
+            .map_err(|_| BlogError::InvalidInput)?
+            .into_inner();
         let comment = self
             .repository
             .insert_comment(user_id, post_id, parent_comment_id, &content)
@@ -29,7 +35,9 @@ impl BlogService {
         comment_id: Uuid,
         content: String,
     ) -> Result<CommentResponse, BlogError> {
-        let content = BlogCommentBody::parse(content).map_err(|_| BlogError::InvalidInput)?.into_inner();
+        let content = BlogCommentBody::parse(content)
+            .map_err(|_| BlogError::InvalidInput)?
+            .into_inner();
         let comment = self
             .repository
             .update_comment(requester_id, comment_id, &content)
@@ -42,7 +50,9 @@ impl BlogService {
         requester_id: Uuid,
         comment_id: Uuid,
     ) -> Result<(), BlogError> {
-        self.repository.delete_comment(requester_id, comment_id).await
+        self.repository
+            .delete_comment(requester_id, comment_id)
+            .await
     }
 
     async fn present_committed_comment(

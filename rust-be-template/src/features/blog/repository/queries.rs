@@ -10,10 +10,12 @@ use crate::{
     schema::{comment_votes, post_tags, post_votes, posts, tags},
 };
 
-use super::{authority::has_current_blog_authority, blog_repository::BlogRepository, records::PostInfoRecord};
 use super::super::{
     domain::{cache::CachedPostInfo, post::PostInfo, vote::VoteState},
     error::BlogError,
+};
+use super::{
+    authority::has_current_blog_authority, blog_repository::BlogRepository, records::PostInfoRecord,
 };
 
 pub struct PostPage {
@@ -32,7 +34,9 @@ impl BlogRepository {
         post_id: Uuid,
         viewer_id: Option<Uuid>,
     ) -> Result<VoteState, BlogError> {
-        let Some(viewer_id) = viewer_id else { return Ok(VoteState::DidNotVote) };
+        let Some(viewer_id) = viewer_id else {
+            return Ok(VoteState::DidNotVote);
+        };
         let mut connection = self.connection().await?;
         post_votes::table
             .filter(post_votes::post_id.eq(post_id))
@@ -62,7 +66,9 @@ impl BlogRepository {
             count_query = count_query.filter(posts::post_is_published.eq(true));
         }
         let total_rows = count_query.first::<i64>(&mut connection).await?;
-        let mut query = posts::table.select(PostInfoRecord::as_select()).into_boxed();
+        let mut query = posts::table
+            .select(PostInfoRecord::as_select())
+            .into_boxed();
         if !include_unpublished {
             query = query.filter(posts::post_is_published.eq(true));
         }
@@ -75,7 +81,10 @@ impl BlogRepository {
             .into_iter()
             .map(PostInfo::from)
             .collect::<Vec<_>>();
-        let post_ids = post_info.iter().map(|post| post.post_id).collect::<Vec<_>>();
+        let post_ids = post_info
+            .iter()
+            .map(|post| post.post_id)
+            .collect::<Vec<_>>();
         let tag_rows = load_tag_rows(&mut connection, &post_ids).await?;
         let total_rows = usize::try_from(total_rows).unwrap_or_default();
         Ok(PostPage {
@@ -84,10 +93,7 @@ impl BlogRepository {
         })
     }
 
-    pub async fn posts_by_ids(
-        &self,
-        post_ids: &[Uuid],
-    ) -> Result<Vec<CachedPostInfo>, BlogError> {
+    pub async fn posts_by_ids(&self, post_ids: &[Uuid]) -> Result<Vec<CachedPostInfo>, BlogError> {
         if post_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -115,7 +121,10 @@ impl BlogRepository {
             .into_iter()
             .map(PostInfo::from)
             .collect::<Vec<_>>();
-        let ids = post_info.iter().map(|post| post.post_id).collect::<Vec<_>>();
+        let ids = post_info
+            .iter()
+            .map(|post| post.post_id)
+            .collect::<Vec<_>>();
         let tag_rows = load_tag_rows(&mut connection, &ids).await?;
         Ok(combine_posts(post_info, tag_rows))
     }
@@ -151,7 +160,9 @@ impl BlogRepository {
         comment_ids: &[Uuid],
         viewer_id: Option<Uuid>,
     ) -> Result<HashMap<Uuid, VoteState>, BlogError> {
-        let Some(viewer_id) = viewer_id else { return Ok(HashMap::new()) };
+        let Some(viewer_id) = viewer_id else {
+            return Ok(HashMap::new());
+        };
         if comment_ids.is_empty() {
             return Ok(HashMap::new());
         }
@@ -162,7 +173,11 @@ impl BlogRepository {
             .select((comment_votes::comment_id, comment_votes::is_upvote))
             .load::<(Uuid, bool)>(&mut connection)
             .await
-            .map(|rows| rows.into_iter().map(|(id, up)| (id, vote_state(up))).collect())
+            .map(|rows| {
+                rows.into_iter()
+                    .map(|(id, up)| (id, vote_state(up)))
+                    .collect()
+            })
             .map_err(BlogError::Database)
     }
 }
@@ -197,5 +212,9 @@ fn combine_posts(posts: Vec<PostInfo>, tag_rows: Vec<(Uuid, String)>) -> Vec<Cac
 }
 
 fn vote_state(upvote: bool) -> VoteState {
-    if upvote { VoteState::Upvoted } else { VoteState::Downvoted }
+    if upvote {
+        VoteState::Upvoted
+    } else {
+        VoteState::Downvoted
+    }
 }

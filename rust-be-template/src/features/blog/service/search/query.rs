@@ -81,7 +81,8 @@ impl PostSearchIndex {
             .ok_or_else(|| anyhow::anyhow!("Title field is not indexed; cannot tokenize query"))?;
         let tokenizer_name = indexing_options.tokenizer();
         let mut text_analyzer = self
-            .inner.index
+            .inner
+            .index
             .tokenizers()
             .get(tokenizer_name)
             .ok_or_else(|| anyhow::anyhow!("Unknown tokenizer: {}", tokenizer_name))?;
@@ -97,7 +98,9 @@ impl PostSearchIndex {
 
     fn build_title_query(&self, query_str: &str) -> anyhow::Result<Box<dyn tantivy::query::Query>> {
         if query_str.chars().count() > BLOG_SEARCH_MAX_QUERY_CHARS {
-            return Err(anyhow::anyhow!("title query exceeds the bounded character limit"));
+            return Err(anyhow::anyhow!(
+                "title query exceeds the bounded character limit"
+            ));
         }
         let query_parser = QueryParser::for_index(&self.inner.index, vec![self.inner.title_field]);
         if query_str.split_whitespace().count() == 1 {
@@ -110,11 +113,16 @@ impl PostSearchIndex {
         Ok(query_parser.parse_query(query_str)?)
     }
 
-    fn build_tag_queries(&self, tags: &[String]) -> anyhow::Result<Vec<Box<dyn tantivy::query::Query>>> {
+    fn build_tag_queries(
+        &self,
+        tags: &[String],
+    ) -> anyhow::Result<Vec<Box<dyn tantivy::query::Query>>> {
         validate_tags(tags)?;
-        Ok(tags.iter()
+        Ok(tags
+            .iter()
             .map(|tag| {
-                let term = tantivy::Term::from_field_text(self.inner.tags_field, &tag.to_lowercase());
+                let term =
+                    tantivy::Term::from_field_text(self.inner.tags_field, &tag.to_lowercase());
                 Box::new(TermQuery::new(term, IndexRecordOption::Basic))
                     as Box<dyn tantivy::query::Query>
             })
@@ -174,7 +182,9 @@ impl PostSearchIndex {
         limit: usize,
     ) -> anyhow::Result<(Vec<Uuid>, usize)> {
         if tag.chars().count() > BLOG_SEARCH_MAX_TAG_CHARS {
-            return Err(anyhow::anyhow!("tag query exceeds the bounded character limit"));
+            return Err(anyhow::anyhow!(
+                "tag query exceeds the bounded character limit"
+            ));
         }
         // Use exact term query for tags (lowercased)
         let term = tantivy::Term::from_field_text(self.inner.tags_field, &tag.to_lowercase());
@@ -212,7 +222,9 @@ impl PostSearchIndex {
 
 fn validate_tags(tags: &[String]) -> anyhow::Result<()> {
     if tags.len() > BLOG_SEARCH_MAX_TAGS
-        || tags.iter().any(|tag| tag.chars().count() > BLOG_SEARCH_MAX_TAG_CHARS)
+        || tags
+            .iter()
+            .any(|tag| tag.chars().count() > BLOG_SEARCH_MAX_TAG_CHARS)
     {
         Err(anyhow::anyhow!("tag query exceeds bounded tag limits"))
     } else {

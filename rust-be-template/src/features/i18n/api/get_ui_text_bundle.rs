@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
-use axum::{extract::{Query, State}, response::IntoResponse};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+};
 
 use crate::{
-    features::i18n::domain::keys::REQUIRED_UI_TEXT_KEYS,
     dto::{
         requests::i18n::get_ui_text_bundle_request::GetUiTextBundleRequest,
         responses::{
-            i18n::ui_text_bundle_response::UiTextBundleResponse,
-            response_data::http_resp,
+            i18n::ui_text_bundle_response::UiTextBundleResponse, response_data::http_resp,
         },
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
-    features::i18n::domain::locale::{
-        EN_US_COUNTRY_CODE, EN_US_LANGUAGE_CODE, UiLocale,
-    },
+    features::i18n::domain::keys::REQUIRED_UI_TEXT_KEYS,
+    features::i18n::domain::locale::{EN_US_COUNTRY_CODE, EN_US_LANGUAGE_CODE, UiLocale},
     init::state::ServerState,
     util::time::now::tokio_now,
 };

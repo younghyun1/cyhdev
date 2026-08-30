@@ -2,10 +2,10 @@
 
 use std::{collections::BTreeMap, fs::File, net::IpAddr, path::Path};
 
+use crate::features::geo::domain::geo_ip::IpInfo;
 use bitcode::Decode;
 use internment::Intern;
 use memmap2::MmapOptions;
-use crate::features::geo::domain::geo_ip::IpInfo;
 
 #[derive(Decode, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum IpRangeKey {

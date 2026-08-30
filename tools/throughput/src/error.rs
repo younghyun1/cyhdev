@@ -26,10 +26,7 @@ pub enum HarnessError {
         source: serde_json::Error,
     },
     #[error("input {path} exceeds the {maximum_bytes}-byte limit")]
-    InputTooLarge {
-        path: PathBuf,
-        maximum_bytes: u64,
-    },
+    InputTooLarge { path: PathBuf, maximum_bytes: u64 },
     #[error("could not initialize structured logging: {0}")]
     Logging(String),
     #[error("could not resolve HTTP target `{target}`: {source}")]

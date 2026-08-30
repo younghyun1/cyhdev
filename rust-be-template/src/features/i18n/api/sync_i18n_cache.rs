@@ -4,8 +4,7 @@ use axum::{extract::State, response::IntoResponse};
 
 use crate::{
     dto::responses::{
-        admin::sync_i18n_cache_response::SyncI18nCacheResponse,
-        response_data::http_resp,
+        admin::sync_i18n_cache_response::SyncI18nCacheResponse, response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     init::state::ServerState,

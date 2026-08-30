@@ -4,11 +4,11 @@ use chrono::Utc;
 use tracing::info;
 use uuid::Uuid;
 
-use super::wasm_service::WasmService;
 use super::super::{
     domain::module::{WasmMetadataUpdate, WasmModuleMetadata},
     error::WasmError,
 };
+use super::wasm_service::WasmService;
 
 impl WasmService {
     pub async fn update_metadata(

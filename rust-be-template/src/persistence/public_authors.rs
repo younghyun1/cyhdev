@@ -29,11 +29,11 @@ pub async fn load_public_authors(
     }
 
     let rows: Vec<PublicAuthorRow> = users::table
-        .left_join(user_profile_pictures::table.on(
-            user_profile_pictures::user_id
+        .left_join(
+            user_profile_pictures::table.on(user_profile_pictures::user_id
                 .eq(users::user_id)
-                .and(user_profile_pictures::user_profile_picture_is_active.eq(true)),
-        ))
+                .and(user_profile_pictures::user_profile_picture_is_active.eq(true))),
+        )
         .filter(users::user_id.eq_any(&requested_user_ids))
         .select((
             users::user_id,

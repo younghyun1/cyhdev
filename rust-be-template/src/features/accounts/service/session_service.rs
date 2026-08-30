@@ -1,10 +1,8 @@
 //! Fixed-capacity, process-local session authority.
 
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicUsize, Ordering},
-    },
+use std::sync::{
+    Arc,
+    atomic::{AtomicUsize, Ordering},
 };
 
 use zeroize::Zeroizing;
@@ -203,9 +201,7 @@ impl SessionService {
         (pruned, self.sessions.len())
     }
 
-    async fn generate_unique_credential(
-        &self,
-    ) -> Result<(SessionToken, SessionKey), AccountError> {
+    async fn generate_unique_credential(&self) -> Result<(SessionToken, SessionKey), AccountError> {
         for _ in 0..MAX_TOKEN_GENERATION_ATTEMPTS {
             let mut secret = Zeroizing::new([0_u8; SESSION_SECRET_BYTES]);
             getrandom::fill(secret.as_mut()).map_err(AccountError::SessionEntropy)?;

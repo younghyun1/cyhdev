@@ -9,8 +9,7 @@ use uuid::Uuid;
 use crate::features::live_chat::domain::{
     actor::{ChatActor, ChatActorKey},
     rtc::{
-        MediaKind, RtcClientSignal, RtcIceCandidate, RtcParticipant, RtcPeerPhase,
-        RtcServerSignal,
+        MediaKind, RtcClientSignal, RtcIceCandidate, RtcParticipant, RtcPeerPhase, RtcServerSignal,
     },
 };
 

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort;
-use super::rtc::coordinator::RtcCoordinator;
 use super::ports::{CountryAlpha2FlagPort, GeoIpLookupPort};
-use super::{cache::LiveChatCache, super::repository::live_chat_repository::LiveChatRepository};
+use super::rtc::coordinator::RtcCoordinator;
+use super::{super::repository::live_chat_repository::LiveChatRepository, cache::LiveChatCache};
+use crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort;
 
 pub struct LiveChatService {
     pub(super) repository: Arc<LiveChatRepository>,
@@ -23,8 +23,17 @@ impl LiveChatService {
         geo_ip: Arc<dyn GeoIpLookupPort>,
         rtc: Arc<RtcCoordinator>,
     ) -> Self {
-        Self { repository, cache, country_flags, alpha2_flags, geo_ip, rtc }
+        Self {
+            repository,
+            cache,
+            country_flags,
+            alpha2_flags,
+            geo_ip,
+            rtc,
+        }
     }
 
-    pub fn rtc(&self) -> Arc<RtcCoordinator> { Arc::clone(&self.rtc) }
+    pub fn rtc(&self) -> Arc<RtcCoordinator> {
+        Arc::clone(&self.rtc)
+    }
 }

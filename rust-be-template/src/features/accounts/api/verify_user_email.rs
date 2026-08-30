@@ -102,10 +102,7 @@ mod tests {
     use axum::http::StatusCode;
 
     use super::map_verification_error;
-    use crate::{
-        errors::code_error::CodeError,
-        features::accounts::error::AccountError,
-    };
+    use crate::{errors::code_error::CodeError, features::accounts::error::AccountError};
 
     #[test]
     fn public_token_failures_share_one_response_contract() {
@@ -118,7 +115,10 @@ mod tests {
             AccountError::EmailAlreadyVerified,
         ] {
             let response = map_verification_error(error);
-            assert_eq!(response.error_code, CodeError::INVALID_EMAIL_VERIFICATION_TOKEN.error_code);
+            assert_eq!(
+                response.error_code,
+                CodeError::INVALID_EMAIL_VERIFICATION_TOKEN.error_code
+            );
             assert_eq!(response.http_status_code, StatusCode::BAD_REQUEST);
             assert_eq!(
                 response.message,

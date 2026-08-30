@@ -2,22 +2,23 @@
 
 use std::sync::Arc;
 
-use axum::{Extension, extract::{Path, State}, response::IntoResponse};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
 use uuid::Uuid;
 
 use crate::{
     dto::responses::{
         response_data::http_resp,
         user::profile_picture_history_response::{
-            DeleteProfilePictureResponse, ProfilePictureHistoryItem,
-            ProfilePictureHistoryResponse, SelectProfilePictureResponse,
+            DeleteProfilePictureResponse, ProfilePictureHistoryItem, ProfilePictureHistoryResponse,
+            SelectProfilePictureResponse,
         },
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
-    features::accounts::{
-        error::AccountError,
-        service::profiles::MAX_PROFILE_PICTURE_HISTORY,
-    },
+    features::accounts::{error::AccountError, service::profiles::MAX_PROFILE_PICTURE_HISTORY},
     init::state::ServerState,
     util::time::now::tokio_now,
 };
@@ -113,10 +114,7 @@ pub async fn delete_profile_picture(
     let start = tokio_now();
     let deletion = state
         .account_service()
-        .delete_profile_picture_and_cleanup(
-            user_id,
-            profile_picture_id,
-        )
+        .delete_profile_picture_and_cleanup(user_id, profile_picture_id)
         .await
         .map_err(map_profile_mutation_error)?
         .ok_or_else(|| {

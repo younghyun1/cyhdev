@@ -1,7 +1,4 @@
-use std::{
-    net::IpAddr,
-    sync::atomic::Ordering,
-};
+use std::{net::IpAddr, sync::atomic::Ordering};
 
 use chrono::Utc;
 use uuid::Uuid;
@@ -131,7 +128,11 @@ impl LiveChatCache {
             }
         }
 
-        match self.bans_by_ip.read_async(&ip, |_, ban| ban.is_active(now)).await {
+        match self
+            .bans_by_ip
+            .read_async(&ip, |_, ban| ban.is_active(now))
+            .await
+        {
             Some(true) => {
                 self.ban_cache_hits.fetch_add(1, Ordering::Relaxed);
                 return BanCacheLookup::Banned;

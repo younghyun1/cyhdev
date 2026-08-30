@@ -6,8 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     features::accounts::{
-        authorization_error::AuthorizationError,
-        domain::forum_authority::ForumActorAuthority,
+        authorization_error::AuthorizationError, domain::forum_authority::ForumActorAuthority,
         repository::account_repository::AccountRepository,
     },
     schema::{permissions, role_permissions, user_roles, users},
@@ -30,12 +29,13 @@ impl AccountRepository {
         ))
         .get_result::<bool>(&mut connection)
         .await?;
-        if !active { return Err(AuthorizationError::AccountNotFound); }
+        if !active {
+            return Err(AuthorizationError::AccountNotFound);
+        }
 
         let permission = user_roles::table
             .inner_join(
-                role_permissions::table
-                    .on(role_permissions::role_id.eq(user_roles::role_id)),
+                role_permissions::table.on(role_permissions::role_id.eq(user_roles::role_id)),
             )
             .inner_join(
                 permissions::table
@@ -46,6 +46,9 @@ impl AccountRepository {
         let can_moderate = diesel::select(exists(permission))
             .get_result::<bool>(&mut connection)
             .await?;
-        Ok(ForumActorAuthority { user_id, can_moderate })
+        Ok(ForumActorAuthority {
+            user_id,
+            can_moderate,
+        })
     }
 }

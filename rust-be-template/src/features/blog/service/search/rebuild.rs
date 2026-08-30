@@ -1,7 +1,7 @@
 use tracing::{error, info};
 
-use super::super::blog_service::BlogService;
 use super::super::super::error::BlogError;
+use super::super::blog_service::BlogService;
 
 impl BlogService {
     pub async fn rebuild_search_index(&self) -> Result<usize, BlogError> {
@@ -19,7 +19,10 @@ impl BlogService {
                     let _ = super::tasks::run_search_task(move || index.abort_rebuild()).await;
                     return Err(error_value);
                 }
-                info!(posts_indexed = indexed, "Complete post search index rebuilt");
+                info!(
+                    posts_indexed = indexed,
+                    "Complete post search index rebuilt"
+                );
                 drop(mutation);
                 Ok(indexed)
             }

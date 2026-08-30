@@ -106,7 +106,10 @@ pub fn write(path: &Path, report: &ThroughputReport) -> HarnessResult<()> {
         path: path.to_path_buf(),
         source,
     })?;
-    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
         fs::create_dir_all(parent).map_err(|source| HarnessError::Io {
             operation: "create report directory",
             path: parent.to_path_buf(),

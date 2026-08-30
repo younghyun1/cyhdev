@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use axum::{extract::{Path, State}, response::IntoResponse};
+use axum::{
+    extract::{Path, State},
+    response::IntoResponse,
+};
 
 use crate::{
     dto::responses::response_data::http_resp,

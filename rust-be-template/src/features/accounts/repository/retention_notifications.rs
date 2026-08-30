@@ -16,8 +16,7 @@ use crate::{
         },
         error::AccountError,
         repository::{
-            account_repository::AccountRepository,
-            sql_enums::StoredRetentionNotificationStage,
+            account_repository::AccountRepository, sql_enums::StoredRetentionNotificationStage,
         },
     },
     schema::{account_retention_notifications, deleted_account_retention, users},
@@ -43,8 +42,8 @@ pub(super) async fn insert_retention_notification_schedule(
     let notifications = [
         NewRetentionNotification {
             account_retention_notification_user_id: user_id,
-            account_retention_notification_stage:
-                RetentionNotificationStage::SevenDaysBeforePurge.into(),
+            account_retention_notification_stage: RetentionNotificationStage::SevenDaysBeforePurge
+                .into(),
             account_retention_notification_scheduled_for: schedule.seven_days_before_purge,
             account_retention_notification_next_attempt_at: schedule.seven_days_before_purge,
             account_retention_notification_created_at: created_at,
@@ -52,8 +51,8 @@ pub(super) async fn insert_retention_notification_schedule(
         },
         NewRetentionNotification {
             account_retention_notification_user_id: user_id,
-            account_retention_notification_stage:
-                RetentionNotificationStage::OneDayBeforePurge.into(),
+            account_retention_notification_stage: RetentionNotificationStage::OneDayBeforePurge
+                .into(),
             account_retention_notification_scheduled_for: schedule.one_day_before_purge,
             account_retention_notification_next_attempt_at: schedule.one_day_before_purge,
             account_retention_notification_created_at: created_at,
@@ -207,9 +206,8 @@ impl AccountRepository {
                 ),
             )
             .inner_join(
-                users::table.on(users::user_id.eq(
-                    account_retention_notifications::account_retention_notification_user_id,
-                )),
+                users::table.on(users::user_id
+                    .eq(account_retention_notifications::account_retention_notification_user_id)),
             )
             .filter(
                 account_retention_notifications::account_retention_notification_id
@@ -241,9 +239,13 @@ impl AccountRepository {
                 account_retention_notifications::account_retention_notification_attempt_count,
             ))
             .order(account_retention_notifications::account_retention_notification_id.asc())
-            .load::<(Uuid, StoredRetentionNotificationStage, String, Option<DateTime<Utc>>, i32)>(
-                &mut connection,
-            )
+            .load::<(
+                Uuid,
+                StoredRetentionNotificationStage,
+                String,
+                Option<DateTime<Utc>>,
+                i32,
+            )>(&mut connection)
             .await?;
         Ok(rows
             .into_iter()
@@ -260,5 +262,4 @@ impl AccountRepository {
             )
             .collect())
     }
-
 }

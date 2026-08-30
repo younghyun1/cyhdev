@@ -20,7 +20,8 @@ pub(super) fn parse_target(raw_target: &str) -> HarnessResult<ParsedTarget> {
             ));
         }
     };
-    if without_scheme.contains('@') || without_scheme.contains('?') || without_scheme.contains('#') {
+    if without_scheme.contains('@') || without_scheme.contains('?') || without_scheme.contains('#')
+    {
         return Err(HarnessError::Arguments(
             "--target must not contain credentials, a query, a fragment, or control characters"
                 .to_owned(),
@@ -122,7 +123,10 @@ mod tests {
     fn parses_host_port_and_base_path() {
         let result = parse_target("http://127.0.0.1:3000/api/");
         assert!(result.is_ok(), "target should parse: {result:?}");
-        let target = match result { Ok(target) => target, Err(_error) => return };
+        let target = match result {
+            Ok(target) => target,
+            Err(_error) => return,
+        };
         assert_eq!(target.host, "127.0.0.1");
         assert_eq!(target.port, 3000);
         assert_eq!(target.base_path, "/api");

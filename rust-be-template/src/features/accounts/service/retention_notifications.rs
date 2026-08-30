@@ -8,11 +8,11 @@ use lettre::AsyncTransport;
 use crate::{
     features::accounts::{
         domain::retention_notifications::{
-            RETENTION_NOTIFICATION_DELIVERY_CONCURRENCY,
-            RETENTION_NOTIFICATION_ERROR_CHARS, RetentionNotificationDeliveryItem,
+            RETENTION_NOTIFICATION_DELIVERY_CONCURRENCY, RETENTION_NOTIFICATION_ERROR_CHARS,
             RETENTION_NOTIFICATION_STATUS_LIMIT, RetentionNotificationCursor,
-            RetentionNotificationRetryReceipt, RetentionNotificationRunReport,
-            RetentionNotificationStatus, retention_notification_retry_delay,
+            RetentionNotificationDeliveryItem, RetentionNotificationRetryReceipt,
+            RetentionNotificationRunReport, RetentionNotificationStatus,
+            retention_notification_retry_delay,
         },
         error::AccountError,
         service::account_service::AccountService,
@@ -113,11 +113,7 @@ impl AccountService {
             .collect::<Vec<_>>();
         let deliveries = self
             .repository
-            .revalidate_retention_notification_claim(
-                batch.claim_token,
-                &notification_ids,
-                now,
-            )
+            .revalidate_retention_notification_claim(batch.claim_token, &notification_ids, now)
             .await?;
         report.skipped = report.claimed.saturating_sub(deliveries.len());
         let claim_token = batch.claim_token;
@@ -125,16 +121,15 @@ impl AccountService {
         let outcomes = stream::iter(deliveries.into_iter().map(|notification| async move {
             let delivery = sender.send_retention_notification(&notification).await;
             let persisted = match delivery {
-                Ok(()) => {
-                    self.repository
-                        .mark_retention_notification_sent(
-                            notification.notification_id,
-                            claim_token,
-                            now,
-                        )
-                        .await
-                        .map(|updated| (updated, true))
-                }
+                Ok(()) => self
+                    .repository
+                    .mark_retention_notification_sent(
+                        notification.notification_id,
+                        claim_token,
+                        now,
+                    )
+                    .await
+                    .map(|updated| (updated, true)),
                 Err(error) => {
                     let next_attempt_at = now
                         .checked_add_signed(retention_notification_retry_delay(

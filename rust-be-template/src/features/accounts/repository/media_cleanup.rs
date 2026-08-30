@@ -17,8 +17,7 @@ use crate::{
 
 use super::hard_purge::lock_hard_purge_requester;
 
-const RESOLVED_OBJECT_UNIQUE_CONSTRAINT: &str =
-    "media_object_cleanup_resolved_object_unique";
+const RESOLVED_OBJECT_UNIQUE_CONSTRAINT: &str = "media_object_cleanup_resolved_object_unique";
 
 impl AccountRepository {
     pub async fn unresolved_media_cleanup(
@@ -27,44 +26,42 @@ impl AccountRepository {
     ) -> Result<Vec<UnresolvedMediaCleanup>, AccountError> {
         let mut connection = self.connection().await?;
         connection
-            .transaction::<Vec<UnresolvedMediaCleanup>, AccountError, _>(
-                async move |connection| {
-                    lock_hard_purge_requester(connection, requester_id).await?;
-                    let rows = media_object_cleanup::table
-                        .filter(media_object_cleanup::media_object_cleanup_bucket.is_null())
-                        .filter(media_object_cleanup::media_object_cleanup_key.is_null())
-                        .order((
-                            media_object_cleanup::media_object_cleanup_created_at.asc(),
-                            media_object_cleanup::media_object_cleanup_id.asc(),
-                        ))
-                        .limit(MEDIA_CLEANUP_RECONCILIATION_LIMIT)
-                        .select((
-                            media_object_cleanup::media_object_cleanup_id,
-                            media_object_cleanup::media_object_cleanup_original_url,
-                            media_object_cleanup::media_object_cleanup_reason,
-                            media_object_cleanup::media_object_cleanup_source_id,
-                            media_object_cleanup::media_object_cleanup_created_at,
-                        ))
-                        .load::<(Uuid, String, String, Uuid, chrono::DateTime<chrono::Utc>)>(
-                            &mut *connection,
-                        )
-                        .await?;
-                    Ok(rows
-                        .into_iter()
-                        .map(
-                            |(cleanup_id, original_url, reason, source_id, created_at)| {
-                                UnresolvedMediaCleanup {
-                                    cleanup_id,
-                                    original_url,
-                                    reason,
-                                    source_id,
-                                    created_at,
-                                }
-                            },
-                        )
-                        .collect())
-                },
-            )
+            .transaction::<Vec<UnresolvedMediaCleanup>, AccountError, _>(async move |connection| {
+                lock_hard_purge_requester(connection, requester_id).await?;
+                let rows = media_object_cleanup::table
+                    .filter(media_object_cleanup::media_object_cleanup_bucket.is_null())
+                    .filter(media_object_cleanup::media_object_cleanup_key.is_null())
+                    .order((
+                        media_object_cleanup::media_object_cleanup_created_at.asc(),
+                        media_object_cleanup::media_object_cleanup_id.asc(),
+                    ))
+                    .limit(MEDIA_CLEANUP_RECONCILIATION_LIMIT)
+                    .select((
+                        media_object_cleanup::media_object_cleanup_id,
+                        media_object_cleanup::media_object_cleanup_original_url,
+                        media_object_cleanup::media_object_cleanup_reason,
+                        media_object_cleanup::media_object_cleanup_source_id,
+                        media_object_cleanup::media_object_cleanup_created_at,
+                    ))
+                    .load::<(Uuid, String, String, Uuid, chrono::DateTime<chrono::Utc>)>(
+                        &mut *connection,
+                    )
+                    .await?;
+                Ok(rows
+                    .into_iter()
+                    .map(
+                        |(cleanup_id, original_url, reason, source_id, created_at)| {
+                            UnresolvedMediaCleanup {
+                                cleanup_id,
+                                original_url,
+                                reason,
+                                source_id,
+                                created_at,
+                            }
+                        },
+                    )
+                    .collect())
+            })
             .await
     }
 

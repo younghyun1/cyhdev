@@ -20,7 +20,11 @@ struct I18nCacheKey {
 
 impl I18nCacheKey {
     fn new(reference_key: &str, country_code: i32, language_code: i32) -> Self {
-        Self { reference_key: reference_key.to_owned(), country_code, language_code }
+        Self {
+            reference_key: reference_key.to_owned(),
+            country_code,
+            language_code,
+        }
     }
 }
 
@@ -86,7 +90,9 @@ impl I18nCache {
             row.i18n_string_country_code,
             row.i18n_string_language_code,
         );
-        let estimated_bytes = key.reference_key.len()
+        let estimated_bytes = key
+            .reference_key
+            .len()
             .saturating_add(row.i18n_string_content.len())
             .saturating_add(I18N_CACHE_ENTRY_OVERHEAD_BYTES);
         if let Some(previous) = self.entries.remove(&key) {
@@ -127,12 +133,13 @@ impl I18nCache {
         let mut texts = HashMap::with_capacity(required_keys.len());
         for reference_key in required_keys {
             let primary = I18nCacheKey::new(reference_key, country_code, language_code);
-            let fallback = I18nCacheKey::new(
-                reference_key,
-                fallback_country_code,
-                fallback_language_code,
-            );
-            match self.entries.get(&primary).or_else(|| self.entries.get(&fallback)) {
+            let fallback =
+                I18nCacheKey::new(reference_key, fallback_country_code, fallback_language_code);
+            match self
+                .entries
+                .get(&primary)
+                .or_else(|| self.entries.get(&fallback))
+            {
                 Some(text) => {
                     self.hits.fetch_add(1, Ordering::Relaxed);
                     texts.insert((*reference_key).to_owned(), text.clone());
@@ -169,11 +176,8 @@ impl I18nCache {
         let mut texts = HashMap::with_capacity(required_keys.len());
         for reference_key in required_keys {
             let primary = I18nCacheKey::new(reference_key, country_code, language_code);
-            let fallback = I18nCacheKey::new(
-                reference_key,
-                fallback_country_code,
-                fallback_language_code,
-            );
+            let fallback =
+                I18nCacheKey::new(reference_key, fallback_country_code, fallback_language_code);
             if let Some(text) = entries.get(&primary).or_else(|| entries.get(&fallback)) {
                 texts.insert((*reference_key).to_owned(), text.clone());
             }
@@ -220,13 +224,13 @@ mod tests {
 
     #[test]
     fn requested_locale_wins_and_fallback_fills_a_miss() {
-        let cache = I18nCache::from_rows(
-            vec![row(840, 41, "Save"), row(410, 86, "저장")],
-            true,
-        );
+        let cache = I18nCache::from_rows(vec![row(840, 41, "Save"), row(410, 86, "저장")], true);
         let korean = cache.ui_text_bundle(410, 86, 840, 41, &["common.save"]);
         let fallback = cache.ui_text_bundle(124, 41, 840, 41, &["common.save"]);
         assert_eq!(korean.get("common.save").map(String::as_str), Some("저장"));
-        assert_eq!(fallback.get("common.save").map(String::as_str), Some("Save"));
+        assert_eq!(
+            fallback.get("common.save").map(String::as_str),
+            Some("Save")
+        );
     }
 }

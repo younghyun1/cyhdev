@@ -8,7 +8,8 @@ use super::search_index::PostSearchIndex;
 impl PostSearchIndex {
     pub(crate) fn begin_rebuild(&self) -> anyhow::Result<()> {
         let writer = self
-            .inner.writer
+            .inner
+            .writer
             .write()
             .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {e}"))?;
         writer.delete_all_documents()?;
@@ -21,7 +22,8 @@ impl PostSearchIndex {
 
     pub(crate) fn abort_rebuild(&self) -> anyhow::Result<()> {
         let mut writer = self
-            .inner.writer
+            .inner
+            .writer
             .write()
             .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {e}"))?;
         writer.rollback()?;
@@ -65,7 +67,11 @@ impl PostSearchIndex {
         }
         if !missing.is_empty() || !extra.is_empty() {
             self.commit()?;
-            info!(added = missing.len(), removed = extra.len(), "Search index synchronized");
+            info!(
+                added = missing.len(),
+                removed = extra.len(),
+                "Search index synchronized"
+            );
         }
         Ok((missing.len(), extra.len()))
     }

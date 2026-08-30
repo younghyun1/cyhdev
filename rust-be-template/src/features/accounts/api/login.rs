@@ -8,16 +8,12 @@ use crate::{
     dto::{
         requests::auth::login_request::LoginRequest,
         responses::{
-            auth::login_response::LoginResponse,
-            response_data::http_resp_with_cookies_sensitive,
+            auth::login_response::LoginResponse, response_data::http_resp_with_cookies_sensitive,
         },
     },
     errors::code_error::HandlerResponse,
     features::accounts::{
-        api::{
-            account_error::map_login_error,
-            auth_abuse::map_auth_throttle_rejection,
-        },
+        api::{account_error::map_login_error, auth_abuse::map_auth_throttle_rejection},
         domain::{
             auth_abuse::{AuthEndpoint, AuthIdentity},
             session::{SESSION_COOKIE_NAME, SessionToken},

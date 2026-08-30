@@ -97,7 +97,10 @@ pub fn validate_environment(path: &Path, environment: &EnvironmentConfig) -> Har
         validate_text(path, "environment configuration value", value, 256)?;
     }
     if environment.notes.len() > 32 {
-        return invalid(path, "environment notes must contain <= 32 entries".to_owned());
+        return invalid(
+            path,
+            "environment notes must contain <= 32 entries".to_owned(),
+        );
     }
     for note in &environment.notes {
         validate_text(path, "environment note", note, 512)?;
@@ -107,19 +110,26 @@ pub fn validate_environment(path: &Path, environment: &EnvironmentConfig) -> Har
 
 pub fn validate_thresholds(path: &Path, thresholds: &ThresholdConfig) -> HarnessResult<()> {
     validate_schema(path, thresholds.schema_version, THRESHOLD_SCHEMA_VERSION)?;
-    validate_text(path, "threshold workload_name", &thresholds.workload_name, 128)?;
+    validate_text(
+        path,
+        "threshold workload_name",
+        &thresholds.workload_name,
+        128,
+    )?;
     validate_digest(path, "workload_digest", &thresholds.workload_digest)?;
-    validate_text(path, "environment_label", &thresholds.environment_label, 128)?;
+    validate_text(
+        path,
+        "environment_label",
+        &thresholds.environment_label,
+        128,
+    )?;
     validate_digest(path, "environment_digest", &thresholds.environment_digest)?;
     if let Some(digest) = &thresholds.observed_environment_digest {
         validate_digest(path, "observed_environment_digest", digest)?;
     }
     validate_text(path, "compiled_profile", &thresholds.compiled_profile, 32)?;
     if !matches!(thresholds.executor_kind.as_str(), "fixture" | "http") {
-        return invalid(
-            path,
-            "executor_kind must be `fixture` or `http`".to_owned(),
-        );
+        return invalid(path, "executor_kind must be `fixture` or `http`".to_owned());
     }
     if thresholds.executor_kind == "http" && thresholds.observed_environment_digest.is_none() {
         return invalid(
@@ -129,17 +139,28 @@ pub fn validate_thresholds(path: &Path, thresholds: &ThresholdConfig) -> Harness
     }
     if thresholds.executor_kind == "http" {
         let implementation = thresholds.implementation_digest.as_ref().ok_or_else(|| {
-            HarnessError::Configuration { path: path.to_path_buf(), detail: "HTTP thresholds must pin implementation_digest".to_owned() }
+            HarnessError::Configuration {
+                path: path.to_path_buf(),
+                detail: "HTTP thresholds must pin implementation_digest".to_owned(),
+            }
         })?;
         validate_sha256_digest(path, "implementation_digest", implementation)?;
-        let address = thresholds.resolved_address.as_ref().ok_or_else(|| {
-            HarnessError::Configuration { path: path.to_path_buf(), detail: "HTTP thresholds must pin resolved_address".to_owned() }
-        })?;
+        let address =
+            thresholds
+                .resolved_address
+                .as_ref()
+                .ok_or_else(|| HarnessError::Configuration {
+                    path: path.to_path_buf(),
+                    detail: "HTTP thresholds must pin resolved_address".to_owned(),
+                })?;
         if address.parse::<SocketAddr>().is_err() {
             return invalid(path, "resolved_address must be a socket address".to_owned());
         }
     } else if thresholds.implementation_digest.is_some() || thresholds.resolved_address.is_some() {
-        return invalid(path, "fixture thresholds must omit implementation_digest and resolved_address".to_owned());
+        return invalid(
+            path,
+            "fixture thresholds must omit implementation_digest and resolved_address".to_owned(),
+        );
     }
     if !thresholds.minimum_requests_per_second.is_finite()
         || thresholds.minimum_requests_per_second <= 0.0
@@ -241,8 +262,14 @@ fn validate_digest(path: &Path, field: &str, value: &str) -> HarnessResult<()> {
 fn validate_sha256_digest(path: &Path, field: &str, value: &str) -> HarnessResult<()> {
     let valid = value.len() == 71
         && value.starts_with("sha256:")
-        && value[7..].bytes().all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
-    if valid { Ok(()) } else { invalid(path, format!("{field} must be a lowercase sha256 digest")) }
+        && value[7..]
+            .bytes()
+            .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
+    if valid {
+        Ok(())
+    } else {
+        invalid(path, format!("{field} must be a lowercase sha256 digest"))
+    }
 }
 
 fn validate_text(path: &Path, field: &str, value: &str, max: usize) -> HarnessResult<()> {

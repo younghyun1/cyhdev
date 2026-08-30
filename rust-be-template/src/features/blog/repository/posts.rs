@@ -7,12 +7,15 @@ use uuid::Uuid;
 
 use crate::schema::{post_tags, posts, tags};
 
+use super::super::{
+    domain::post::{Post, PostLookup, SavePostCommand},
+    error::BlogError,
+};
 use super::{
     authority::{has_current_blog_authority, lock_active_superuser, require_owner_or_superuser},
     blog_repository::BlogRepository,
     records::{NewPostRecord, NewPostTagRecord, NewTagRecord, PostRecord},
 };
-use super::super::{domain::post::{Post, PostLookup, SavePostCommand}, error::BlogError};
 
 impl BlogRepository {
     pub async fn save_post(&self, command: SavePostCommand) -> Result<Post, BlogError> {
@@ -83,11 +86,7 @@ impl BlogRepository {
             .await
     }
 
-    pub async fn delete_post(
-        &self,
-        requester_id: Uuid,
-        post_id: Uuid,
-    ) -> Result<(), BlogError> {
+    pub async fn delete_post(&self, requester_id: Uuid, post_id: Uuid) -> Result<(), BlogError> {
         let mut connection = self.connection().await?;
         connection
             .transaction::<(), BlogError, _>(async move |connection| {
@@ -132,7 +131,8 @@ impl BlogRepository {
         let mut connection = self.connection().await?;
         let include_unpublished = has_current_blog_authority(&mut connection, viewer_id).await?;
         let record = if include_unpublished {
-            posts::table.find(post_id)
+            posts::table
+                .find(post_id)
                 .select(PostRecord::as_select())
                 .first::<PostRecord>(&mut connection)
                 .await

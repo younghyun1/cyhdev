@@ -40,8 +40,7 @@ impl AccountRepository {
         let current_authority = user_roles::table
             .inner_join(users::table)
             .inner_join(
-                role_permissions::table
-                    .on(role_permissions::role_id.eq(user_roles::role_id)),
+                role_permissions::table.on(role_permissions::role_id.eq(user_roles::role_id)),
             )
             .inner_join(
                 permissions::table
@@ -191,7 +190,6 @@ impl AccountRepository {
             .collect::<Result<Vec<_>, AuthorizationError>>()?;
         Ok(AuthorizationPage { items, next_cursor })
     }
-
 }
 
 fn map_user_page(
@@ -227,5 +225,8 @@ fn take_next_cursor<T>(
 }
 
 fn escape_like(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_")
+    value
+        .replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
 }

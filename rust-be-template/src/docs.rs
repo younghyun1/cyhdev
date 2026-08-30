@@ -1,6 +1,6 @@
 //! OpenAPI documentation registration for Swagger UI.
-use utoipa::OpenApi;
 use crate::docs_registry::*;
+use utoipa::OpenApi;
 
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]

@@ -61,11 +61,9 @@ impl OidcHttpClient {
 
         let status = response.status();
         let headers = response.headers().clone();
-        let mut body = Vec::with_capacity(
-            response
-                .content_length()
-                .map_or(0, |length| length.min(MAX_OIDC_RESPONSE_BYTES as u64) as usize),
-        );
+        let mut body = Vec::with_capacity(response.content_length().map_or(0, |length| {
+            length.min(MAX_OIDC_RESPONSE_BYTES as u64) as usize
+        }));
         while let Some(chunk) = response.chunk().await.map_err(io::Error::other)? {
             if body.len().saturating_add(chunk.len()) > MAX_OIDC_RESPONSE_BYTES {
                 return Err(io::Error::other("OIDC response body exceeded fixed limit"));
@@ -78,20 +76,16 @@ impl OidcHttpClient {
             .headers_mut()
             .ok_or_else(|| io::Error::other("could not construct OIDC response headers"))?;
         *result_headers = headers;
-        result
-            .body(body)
-            .map_err(|error| io::Error::other(format!("could not construct OIDC response: {error}")))
+        result.body(body).map_err(|error| {
+            io::Error::other(format!("could not construct OIDC response: {error}"))
+        })
     }
 }
 
 impl<'client> AsyncHttpClient<'client> for OidcHttpClient {
     type Error = io::Error;
     type Future = Pin<
-        Box<
-            dyn Future<Output = Result<http::Response<Vec<u8>>, Self::Error>>
-                + Send
-                + 'client,
-        >,
+        Box<dyn Future<Output = Result<http::Response<Vec<u8>>, Self::Error>> + Send + 'client>,
     >;
 
     fn call(&'client self, request: http::Request<Vec<u8>>) -> Self::Future {
