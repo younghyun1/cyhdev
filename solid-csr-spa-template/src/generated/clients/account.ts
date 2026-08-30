@@ -19,6 +19,8 @@ import type {
   ResetPasswordResponse,
   ResolveMediaCleanupRequest,
   ResolveMediaCleanupResponse,
+  RetentionNotificationStatusResponse,
+  RetryRetentionNotificationResponse,
   SelectProfilePictureResponse,
   SignupRequest,
   SignupResponse,
@@ -29,6 +31,7 @@ import type {
   VerifyUserEmailResponse,
 } from "../api-types";
 import {
+  appendQuery,
   interpolatePath,
   requestHeaders,
   requestJson,
@@ -174,6 +177,34 @@ export function createAccountClient(transport: ApiTransport) {
         headers: requestHeaders(options.headers, true),
         signal: options.signal,
         body: JSON.stringify(input.body),
+      });
+    },
+    retentionNotificationStatus: async (input: {
+      readonly query?: {
+        readonly after_next_attempt_at?: string;
+        readonly after_notification_id?: string;
+        readonly limit?: number;
+      };
+    } = {}, options: ApiRequestOptions = {}) => {
+      const path = "/api/admin/account-retention-notifications";
+      const url = appendQuery(path, input.query);
+      return requestJson<ApiResponse<RetentionNotificationStatusResponse>>(transport, url, {
+        method: "GET",
+        headers: requestHeaders(options.headers, false),
+        signal: options.signal,
+      });
+    },
+    retryRetentionNotification: async (input: {
+      readonly path: {
+        readonly notification_id: string;
+      };
+    }, options: ApiRequestOptions = {}) => {
+      const path = interpolatePath("/api/admin/account-retention-notifications/{notification_id}/retry", input.path);
+      const url = path;
+      return requestJson<ApiResponse<RetryRetentionNotificationResponse>>(transport, url, {
+        method: "POST",
+        headers: requestHeaders(options.headers, false),
+        signal: options.signal,
       });
     },
     selectProfilePicture: async (input: {

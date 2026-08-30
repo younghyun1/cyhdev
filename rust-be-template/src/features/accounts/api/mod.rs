@@ -4,6 +4,7 @@ pub mod auth_abuse;
 mod auth_abuse_tests;
 pub mod authorization_audit;
 mod authorization_error;
+pub(crate) use authorization_error::map_authorization_error;
 pub mod authorization_mutations;
 pub mod authorization_queries;
 pub mod delete_account;

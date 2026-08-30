@@ -16,7 +16,27 @@ use crate::features::accounts::{
     service::account_service::AccountService,
 };
 
+/// Read lease proving database-current Younghyun authority for an external side effect.
+#[must_use = "the authority lease must remain alive through the privileged operation"]
+pub struct YounghyunAuthorityLease<'a> {
+    _session_consistency: tokio::sync::RwLockReadGuard<'a, ()>,
+}
+
 impl AccountService {
+    /// Rechecks PostgreSQL authority while excluding concurrent service role changes.
+    pub async fn acquire_current_younghyun_authority(
+        &self,
+        actor_user_id: Uuid,
+    ) -> Result<YounghyunAuthorityLease<'_>, AuthorizationError> {
+        let session_consistency = self.session_consistency.read().await;
+        self.repository
+            .ensure_current_younghyun_authority(actor_user_id)
+            .await?;
+        Ok(YounghyunAuthorityLease {
+            _session_consistency: session_consistency,
+        })
+    }
+
     pub async fn authorization_users(
         &self,
         actor_user_id: Uuid,

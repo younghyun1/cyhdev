@@ -93,11 +93,11 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             state.auth_abuse_service(),
             enforce_auth_ip_throttle,
         ))
-        .layer(from_fn(sensitive_auth_response_headers));
+        .layer(from_fn(sensitive_response_headers));
 
     let oidc_callback_router = Router::new()
         .route("/api/auth/oidc/callback", get(oidc_callback))
-        .layer(from_fn(sensitive_auth_response_headers));
+        .layer(from_fn(sensitive_response_headers));
 
     let protected_oidc_router = Router::new()
         .route("/api/auth/oidc/link/start", post(start_oidc_link))
@@ -109,7 +109,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             state.auth_abuse_service(),
             enforce_auth_ip_throttle,
         ))
-        .layer(from_fn(sensitive_auth_response_headers));
+        .layer(from_fn(sensitive_response_headers));
 
     let protected_forum_router = Router::new()
         .route("/api/forum/topics", post(create_forum_topic))
@@ -246,12 +246,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         )
         .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
 
-    let superuser_router = Router::new()
-        .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
-        .route(
-            "/api/admin/users/{user_id}/hard-purge",
-            post(hard_purge_account),
-        )
+    let media_cleanup_admin_router = Router::new()
         .route(
             "/api/admin/media-cleanup/unresolved",
             get(unresolved_media_cleanup),
@@ -259,6 +254,14 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route(
             "/api/admin/media-cleanup/{cleanup_id}/resolve",
             post(resolve_media_cleanup),
+        )
+        .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
+
+    let superuser_router = Router::new()
+        .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
+        .route(
+            "/api/admin/users/{user_id}/hard-purge",
+            post(hard_purge_account),
         )
         .route(
             "/api/admin/account-retention-notifications",
@@ -289,6 +292,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         )
         .merge(batch_upload_router)
         .merge(authorization_admin_router)
+        .merge(media_cleanup_admin_router)
         .layer(require_superuser_middleware.clone())
         .layer(auth_middleware.clone());
 
@@ -304,6 +308,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .layer(log_middleware)
         .layer(DefaultBodyLimit::max(MAX_REQUEST_SIZE))
         .layer(cors_layer)
+        // This path-aware outer layer also covers origin, auth, role, and extractor errors.
+        .layer(from_fn(sensitive_admin_response_headers))
         .with_state(state.clone());
 
     let router = Router::new().merge(api_router);

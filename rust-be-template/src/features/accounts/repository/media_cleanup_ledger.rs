@@ -18,6 +18,7 @@ use crate::{
         },
         object_store::ObjectLocation,
     },
+    util::s3::AWS_S3_BUCKET_NAME,
 };
 
 use super::media_cleanup_records::{
@@ -239,6 +240,7 @@ impl AccountRepository {
 
 fn resolved_cleanup_query() -> media_object_cleanup::BoxedQuery<'static, diesel::pg::Pg> {
     media_object_cleanup::table
+        .filter(media_object_cleanup::media_object_cleanup_bucket.eq(AWS_S3_BUCKET_NAME))
         .filter(media_object_cleanup::media_object_cleanup_bucket.is_not_null())
         .filter(media_object_cleanup::media_object_cleanup_key.is_not_null())
         .into_boxed()
