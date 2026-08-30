@@ -11,18 +11,27 @@ RUN npm ci --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
 RUN npm run build
 
-# The rolling tag intentionally tracks the latest nightly toolchain. The root
-# image command always uses --pull so a cached base cannot pin an older nightly.
-FROM rustlang/rust:nightly-alpine AS build
+# The rolling tag intentionally tracks the latest nightly toolchain. Root image
+# commands use --pull so a cached base cannot pin an older nightly.
+FROM rustlang/rust:nightly-alpine AS rust-base
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
-ARG SOURCE_DATE_EPOCH=0
 WORKDIR /workspace
 
 # Install native build dependencies required by the bundled C libraries.
 RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
     && rustup component add rust-src
 
+# Validate the current build context, lockfile, rolling nightly, and rust-src
+# installation without compiling the release-only runtime image.
+FROM rust-base AS smoke
+COPY . ./
+RUN cargo metadata --locked --no-deps --format-version 1 >/dev/null
+
+FROM rust-base AS build
+ARG APP_NAME
+ARG RUST_TARGET=x86_64-unknown-linux-musl
+ARG SOURCE_DATE_EPOCH=0
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 
