@@ -4,7 +4,6 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 
 ## Contents
 
-- `AGENTS.md` - copied workspace coding instructions.
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.

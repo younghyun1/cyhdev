@@ -30,7 +30,7 @@ function normalizeRepositorySourceBaseUrl(
 
 export const repositorySourceBaseUrl = normalizeRepositorySourceBaseUrl(
   import.meta.env.VITE_REPOSITORY_SOURCE_BASE_URL,
-);
+) ?? "https://github.com/younghyun1/cyhdev/blob/main";
 
 export const repositorySourcePaths = {
   accountApi: "rust-be-template/src/features/accounts/api/mod.rs",
@@ -45,13 +45,13 @@ export const repositorySourcePaths = {
   staticAssetServer:
     "rust-be-template/src/routers/main_router/static_assets.rs",
   databaseSchema: "rust-be-template/src/schema.rs",
-  blogBackend: "rust-be-template/src/handlers/blog/mod.rs",
+  blogBackend: "rust-be-template/src/features/blog/api/mod.rs",
   blogFrontend: "solid-csr-spa-template/src/pages/posts/List.tsx",
-  photographyBackend: "rust-be-template/src/handlers/photography/mod.rs",
+  photographyBackend: "rust-be-template/src/features/photography/api/mod.rs",
   photographyFrontend: "solid-csr-spa-template/src/pages/photographs.tsx",
-  liveChatBackend: "rust-be-template/src/domain/live_chat/mod.rs",
+  liveChatBackend: "rust-be-template/src/features/live_chat/api/mod.rs",
   liveChatFrontend: "solid-csr-spa-template/src/services/live_chat.ts",
-  backendI18n: "rust-be-template/src/domain/i18n/mod.rs",
+  backendI18n: "rust-be-template/src/features/i18n/api/mod.rs",
   frontendI18n: "solid-csr-spa-template/src/i18n/keys.ts",
   containerBuild: "rust-be-template/Dockerfile",
   rootCommands: "tools/xtask/src/main.rs",
