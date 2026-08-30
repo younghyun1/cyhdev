@@ -5,6 +5,7 @@ use rust_be_template::{
     openapi_codegen::{
         error::CodegenError,
         output::{OutputMode, apply_files, generate_files},
+        router_surface,
     },
 };
 use utoipa::OpenApi;
@@ -32,6 +33,7 @@ fn run() -> Result<(), CodegenError> {
         }
     };
     let spec = serde_json::to_value(ApiDoc::openapi())?;
+    router_surface::validate(&spec)?;
     let generated = generate_files(&spec)?;
     let output = frontend_output_directory()?;
     apply_files(&output, &generated, mode)

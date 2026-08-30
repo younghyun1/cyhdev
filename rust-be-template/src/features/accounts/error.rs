@@ -36,6 +36,10 @@ pub enum AccountError {
     MediaCleanupAlreadyResolved,
     #[error("media cleanup object is already represented by another record")]
     MediaCleanupObjectConflict,
+    #[error("media cleanup failure batch exceeds its {max_items}-item limit")]
+    MediaCleanupBatchTooLarge { max_items: usize },
+    #[error("media cleanup reason is not supported by the durable ledger")]
+    InvalidMediaCleanupReason,
     #[error("account has already been deleted")]
     AccountAlreadyDeleted,
     #[error("account must be deleted before retained identity can be purged")]

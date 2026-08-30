@@ -7,7 +7,7 @@ use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::domain::photography::batch::status::ProcessingStatus;
+use crate::features::photography::domain::batch::ProcessingStatus;
 
 /// One item as echoed back from the initial batch-upload acceptance.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

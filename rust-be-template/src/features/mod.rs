@@ -1,1 +1,11 @@
 pub mod accounts;
+pub mod blog;
+pub mod forum;
+pub mod geo;
+pub mod i18n;
+pub mod live_chat;
+pub mod photography;
+pub mod reference_data;
+pub mod server_status;
+pub mod visitor;
+pub mod wasm;

@@ -5,15 +5,15 @@
 
 pub mod build_info;
 pub mod docs;
-pub mod domain;
+mod docs_registry;
 pub mod dto;
 pub mod errors;
 pub mod features;
-pub mod handlers;
 pub mod init;
 pub mod jobs;
 pub mod openapi_codegen;
 pub mod openapi_envelope;
+pub mod persistence;
 pub mod routers;
 pub mod schema;
 pub mod util;

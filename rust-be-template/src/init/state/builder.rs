@@ -1,34 +1,65 @@
-use std::sync::atomic::{AtomicU64, AtomicUsize};
-
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::bb8::Pool;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use std::sync::Arc;
 
-use crate::domain::country::{CountryAndSubdivisionsTable, IsoCurrencyTable, IsoLanguageTable};
-use crate::domain::i18n::i18n_cache::I18nCache;
-use crate::domain::live_chat::cache::LiveChatCache;
-use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine};
 use crate::features::accounts::{
     repository::account_repository::AccountRepository,
     service::{
-        account_service::AccountService, auth_abuse::AuthAbuseService,
+        account_service::{AccountService, AccountServiceDependencies}, auth_abuse::AuthAbuseService,
         oidc::provider::OidcService,
         session_service::SessionService,
     },
 };
-use crate::init::load_cache::fastfetch_cache::FastFetchCache;
-use crate::init::load_cache::system_info::SystemInfoState;
-use crate::init::load_cache::wasm_module_cache::WasmModuleCache;
-use crate::init::search::PostSearchIndex;
-use crate::util::geographic::ip_info_lookup::decompress_and_deserialize;
-use tokio::sync::RwLock;
+use crate::features::forum::{repository::forum_repository::ForumRepository, service::forum_service::ForumService};
+use crate::features::geo::{
+    repository::{geo_ip_database::GeoIpDatabases, geo_repository::GeoRepository},
+    service::geo_service::{GeoCountryFlagPort, GeoService},
+};
+use crate::features::blog::{
+    repository::blog_repository::BlogRepository,
+    service::{blog_service::BlogService, search::search_index::PostSearchIndex},
+};
+use crate::features::i18n::{
+    repository::i18n_repository::I18nRepository,
+    service::i18n_service::I18nService,
+};
+use crate::features::live_chat::{
+    repository::live_chat_repository::LiveChatRepository,
+    service::{
+        cache::LiveChatCache,
+        lifecycle::LiveChatAccountLifecyclePort,
+        live_chat_service::LiveChatService,
+        ports::{CountryAlpha2FlagPort, GeoIpLookupPort, ReferenceDataAlpha2Flags},
+        rtc::{config::RtcConfig, coordinator::RtcCoordinator, engine::RtcEngine},
+    },
+};
+use crate::features::photography::{
+    repository::photography_repository::PhotographyRepository,
+    service::photography_service::PhotographyService,
+};
+use crate::features::reference_data::{
+    repository::reference_data_repository::ReferenceDataRepository,
+    service::reference_data_service::ReferenceDataService,
+};
+use crate::features::server_status::{
+    repository::server_status_repository::ServerStatusRepository,
+    service::server_status_service::ServerStatusService,
+};
+use crate::features::visitor::{
+    repository::visitor_repository::VisitorRepository,
+    service::visitor_service::VisitorService,
+};
+use crate::features::wasm::{
+    repository::wasm_repository::WasmRepository,
+    service::{cache::WasmModuleCache, wasm_service::WasmService},
+};
+use crate::util::media::object_store::{MediaObjectStore, S3MediaObjectStore};
 use tracing::{error, info};
 use zeroize::Zeroizing;
 
 use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
 use super::server_state::ServerState;
-use super::server_state::blog_cache_policy::BlogCacheMetrics;
 
 const DUMMY_PASSWORD: &str = "AuthTimingOnly4791";
 
@@ -70,30 +101,13 @@ impl ServerStateBuilder {
         let email_client = self
             .email_client
             .ok_or_else(|| anyhow::anyhow!("email_client is required"))?;
-        let account_repository = Arc::new(AccountRepository::new(pool.clone()));
-        let auth_abuse_service = Arc::new(AuthAbuseService::new().map_err(|error| {
-            anyhow::anyhow!("operating-system entropy unavailable for auth limiter: {error}")
-        })?);
-        let session_service = Arc::new(SessionService::new());
-        let oidc_service = Arc::new(
-            OidcService::from_environment(deployment_environment, &public_app_origin).await?,
-        );
-        let live_chat_cache = Arc::new(LiveChatCache::default());
-        let dummy_password_hash = crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(
-            DUMMY_PASSWORD.to_owned(),
-        ))
-        .await
-        .map_err(|error| anyhow::anyhow!("failed to initialize dummy password hash: {error}"))?;
-        let account_service = Arc::new(AccountService::new(
-            account_repository,
-            Arc::clone(&session_service),
-            Arc::clone(&live_chat_cache),
-            email_client,
-            public_app_origin.as_arc(),
-            dummy_password_hash,
-        ));
-
-        let aws_profile_picture_config = {
+        let app_name_version = self
+            .app_name_version
+            .ok_or_else(|| anyhow::anyhow!("app_name_version is required"))?;
+        let server_start_time = self
+            .server_start_time
+            .ok_or_else(|| anyhow::anyhow!("server_start_time is required"))?;
+        let media_config = {
             use aws_config::BehaviorVersion;
             use aws_config::meta::region::RegionProviderChain;
 
@@ -104,11 +118,10 @@ impl ServerStateBuilder {
             let credentials = aws_sdk_s3::config::Credentials::new(
                 aws_key,
                 aws_secret,
-                None,                     // token
-                None,                     // expiration
-                "cyhdev-profile-picture", // provider name
+                None,
+                None,
+                "cyhdev-media",
             );
-            // Use default region chain or fallback if not set.
             let region_provider = RegionProviderChain::default_provider().or_else("us-west-1");
             aws_config::defaults(BehaviorVersion::latest())
                 .region(region_provider)
@@ -116,8 +129,100 @@ impl ServerStateBuilder {
                 .load()
                 .await
         };
+        let media_region: Arc<str> = Arc::from(
+            media_config
+                .region()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| "us-west-1".to_owned()),
+        );
+        let media_object_store: Arc<dyn MediaObjectStore> =
+            Arc::new(S3MediaObjectStore::from_config(&media_config));
+        let account_repository = Arc::new(AccountRepository::new(pool.clone()));
+        let auth_abuse_service = Arc::new(AuthAbuseService::new().map_err(|error| {
+            anyhow::anyhow!("operating-system entropy unavailable for auth limiter: {error}")
+        })?);
+        let session_service = Arc::new(SessionService::new());
+        let oidc_service = Arc::new(
+            OidcService::from_environment(deployment_environment, &public_app_origin).await?,
+        );
+        let live_chat_cache = Arc::new(LiveChatCache::default());
+        let live_chat_lifecycle: Arc<dyn LiveChatAccountLifecyclePort> = live_chat_cache.clone();
+        let dummy_password_hash = crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(
+            DUMMY_PASSWORD.to_owned(),
+        ))
+        .await
+        .map_err(|error| anyhow::anyhow!("failed to initialize dummy password hash: {error}"))?;
+        let account_service = Arc::new(AccountService::new(AccountServiceDependencies {
+            repository: account_repository,
+            sessions: Arc::clone(&session_service),
+            live_chat_lifecycle,
+            media_object_store: Arc::clone(&media_object_store),
+            media_region: Arc::clone(&media_region),
+            email_client,
+            public_app_origin: public_app_origin.as_arc(),
+            dummy_password_hash,
+        }));
+        let forum_repository = Arc::new(ForumRepository::new(pool.clone()));
+        let forum_service = Arc::new(ForumService::new(
+            forum_repository,
+            Arc::clone(&account_service),
+        ));
+        let i18n_service = Arc::new(I18nService::new(Arc::new(I18nRepository::new(
+            pool.clone(),
+        ))));
+        let reference_data_service = Arc::new(ReferenceDataService::new(Arc::new(
+            ReferenceDataRepository::new(pool.clone()),
+        )));
+        let search_index_path = std::env::var("SEARCH_INDEX_PATH")
+            .unwrap_or_else(|_| "./data/search_index".to_owned());
+        let post_search_index = Arc::new(PostSearchIndex::open_or_create(
+            &search_index_path,
+        )?);
+        info!(path = %search_index_path, "Search index initialized");
+        let blog_country_flags: Arc<
+            dyn crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort,
+        > = reference_data_service.clone();
+        let blog_service = Arc::new(BlogService::new(
+            Arc::new(BlogRepository::new(pool.clone())),
+            post_search_index,
+            blog_country_flags,
+        ));
+        let (geo_databases, geo_load_duration) = GeoIpDatabases::load_default()?;
+        info!(elapsed = ?geo_load_duration, "Geo-IP databases loaded");
+        let geo_country_flags: Arc<dyn GeoCountryFlagPort> = reference_data_service.clone();
+        let geo_service = Arc::new(GeoService::new(
+            geo_databases,
+            geo_country_flags,
+            Arc::new(GeoRepository::new(pool.clone())),
+        ));
+        let visitor_service = Arc::new(VisitorService::new(
+            Arc::new(VisitorRepository::new(pool.clone())),
+            Arc::clone(&geo_service),
+        ));
+        let server_status_service = Arc::new(ServerStatusService::new(
+            Arc::new(ServerStatusRepository::new(pool.clone())),
+            app_name_version,
+            server_start_time,
+        ));
+        server_status_service.initialize().await;
 
-        let fastfetch_cache = FastFetchCache::init().await;
+        let wasm_service = Arc::new(WasmService::new(
+            Arc::new(WasmRepository::new(pool.clone())),
+            WasmModuleCache::default(),
+            Arc::clone(&media_object_store),
+            Arc::clone(&media_region),
+            Arc::clone(&account_service),
+        ));
+        let photography_country_flags: Arc<
+            dyn crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort,
+        > = reference_data_service.clone();
+        let photography_service = Arc::new(PhotographyService::new(
+            PhotographyRepository::new(pool.clone()),
+            media_object_store,
+            media_region,
+            Arc::clone(&account_service),
+            photography_country_flags,
+        ));
 
         // Build the SFU engine once if enabled. A bind/init failure disables RTC
         // but does not abort startup.
@@ -134,66 +239,48 @@ impl ServerStateBuilder {
             info!("RTC SFU disabled (RTC_ENABLE not set)");
             None
         };
+        let live_chat_repository = Arc::new(LiveChatRepository::new(pool.clone()));
+        let rtc_service = Arc::new(RtcCoordinator::new(
+            rtc_engine,
+            rtc_config.max_participants,
+            Arc::clone(&live_chat_cache),
+            Arc::clone(&live_chat_repository),
+        ));
+        let live_chat_country_flags: Arc<
+            dyn crate::features::reference_data::service::reference_data_service::CountryFlagLookupPort,
+        > = reference_data_service.clone();
+        let live_chat_alpha2_flags: Arc<dyn CountryAlpha2FlagPort> = Arc::new(
+            ReferenceDataAlpha2Flags {
+                reference_data: Arc::clone(&reference_data_service),
+            },
+        );
+        let live_chat_geo_ip: Arc<dyn GeoIpLookupPort> = geo_service.clone();
+        let live_chat_service = Arc::new(LiveChatService::new(
+            live_chat_repository,
+            live_chat_cache,
+            live_chat_country_flags,
+            live_chat_alpha2_flags,
+            live_chat_geo_ip,
+            rtc_service,
+        ));
 
         Ok(ServerState {
-            app_name_version: self
-                .app_name_version
-                .ok_or_else(|| anyhow::anyhow!("app_name_version is required"))?,
-            server_start_time: self
-                .server_start_time
-                .ok_or_else(|| anyhow::anyhow!("server_start_time is required"))?,
-            pool,
-            responses_handled: AtomicU64::new(0u64),
             account_service,
+            blog_service,
+            forum_service,
+            geo_service,
+            i18n_service,
+            live_chat_service,
+            photography_service,
+            reference_data_service,
+            server_status_service,
+            visitor_service,
+            wasm_service,
             auth_abuse_service,
             oidc_service,
             session_service,
-            blog_posts_cache: scc::HashMap::new(),
-            blog_post_slug_cache: scc::HashMap::new(),
-            blog_post_order_cache: RwLock::new(Vec::new()),
-            blog_cache_mutation: tokio::sync::Mutex::new(()),
-            blog_cache_metrics: BlogCacheMetrics::default(),
-            search_index: {
-                // Use disk-persisted index, configurable via env var
-                let index_path = std::env::var("SEARCH_INDEX_PATH")
-                    .unwrap_or_else(|_| "./data/search_index".to_string());
-                let index = PostSearchIndex::open_or_create(&index_path)?;
-                info!(path = %index_path, "Search index initialized");
-                index
-            },
-            geo_ip_db: {
-                let (dbs, dur) = decompress_and_deserialize()?;
-                info!(elapsed=%format!("{dur:?}"), "Geo-IP database loaded and interned.");
-                dbs
-            },
-            country_map: RwLock::new(CountryAndSubdivisionsTable::new_empty()),
-            languages_map: RwLock::new(IsoLanguageTable::new_empty()),
-            currency_map: RwLock::new(IsoCurrencyTable::new_empty()),
-            i18n_cache: RwLock::new(I18nCache::new()),
             deployment_environment,
             public_app_origin,
-            request_client: reqwest::Client::builder()
-                .user_agent("cyhdev.com")
-                .build()?,
-            visitor_board_map: scc::HashMap::new(),
-            visitor_board_entry_count: AtomicUsize::new(0),
-            visitor_board_rejected_entries: AtomicU64::new(0),
-            visitor_log_buffer: scc::HashMap::new(),
-            visitor_log_entry_count: AtomicUsize::new(0),
-            visitor_log_pending_events: AtomicUsize::new(0),
-            visitor_log_rejected_admissions: AtomicU64::new(0),
-            system_info_state: SystemInfoState::new(),
-            aws_profile_picture_config,
-            fastfetch: fastfetch_cache,
-            wasm_module_cache: WasmModuleCache::default(),
-            live_chat_cache,
-            rtc_config,
-            rtc_engine,
-            rtc_rooms: scc::HashMap::new(),
-            photograph_batches: scc::HashMap::new(),
-            photograph_batch_count: AtomicUsize::new(0),
-            photograph_view_buffer: tokio::sync::RwLock::new(std::collections::HashMap::new()),
-            photograph_view_rejected_events: AtomicU64::new(0),
         })
     }
 }

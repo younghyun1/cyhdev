@@ -1,4 +1,5 @@
 import type { UiTextKey } from "../keys";
+import { EN_US_FORUM_TEXTS } from "./forum-en-us";
 
 export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "common.close": "Close",
@@ -135,6 +136,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "authorization.audit.request": "Request ID",
   "authorization.audit.empty": "No authorization changes have been recorded.",
   "authorization.error.unknown": "Authorization administration failed.",
+  ...EN_US_FORUM_TEXTS,
   "home.hero.role": "Experienced backend, infrastructure, and data engineer.",
   "home.hero.summary": "Passionate about creating secure and high-performance servers and infrastructure. I also enjoy photography and have dabbled in journalism, translation/interpretation, soldiering, manual labor, activism, and various misadventures.",
   "home.hero.principle": "I hold craftsmanship and good governance to be sacred.",

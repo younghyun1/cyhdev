@@ -78,7 +78,7 @@ pub async fn log_middleware(
     let start = Instant::now();
     let now = Utc::now(); // earliest possible timestamp of server-received request
 
-    state.add_responses_handled();
+    state.server_status_service().record_response();
 
     let method = request.method().clone();
     let path = request.uri().path().to_owned();
@@ -91,7 +91,7 @@ pub async fn log_middleware(
         | DeploymentEnvironment::Staging
         | DeploymentEnvironment::Dev => (),
         DeploymentEnvironment::Prod => {
-            state.enqueue_visitor_log(client_ip).await;
+            state.visitor_service().enqueue(client_ip).await;
         }
     }
 

@@ -49,13 +49,23 @@ pub fn environment_digest(
     declared_digest: &str,
     hardware: &ObservedHardware,
     compiled_profile: &str,
+    implementation_digest: &str,
+    executor_kind: &str,
+    target: &str,
+    resolved_address: Option<&str>,
 ) -> HarnessResult<String> {
-    let bytes = serde_json::to_vec(&(declared_digest, hardware, compiled_profile)).map_err(
-        |source| HarnessError::Json {
-            path: Path::new("<observed-environment>").to_path_buf(),
-            source,
-        },
-    )?;
+    let bytes = serde_json::to_vec(&(
+        declared_digest,
+        hardware,
+        compiled_profile,
+        implementation_digest,
+        executor_kind,
+        target,
+        resolved_address,
+    )).map_err(|source| HarnessError::Json {
+        path: Path::new("<observed-environment>").to_path_buf(),
+        source,
+    })?;
     Ok(fnv1a64_hex(&bytes))
 }
 
@@ -148,10 +158,18 @@ mod tests {
             memory_bytes: Some(16 * 1024 * 1024 * 1024),
             rustc_version: Some("rustc nightly-a".to_owned()),
         };
-        let first = environment_digest("fnv1a64:0000000000000000", &hardware, "debug")
+        let first = environment_digest(
+            "fnv1a64:0000000000000000", &hardware, "debug",
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "http", "http://127.0.0.1:3000", Some("127.0.0.1:3000"),
+        )
             .map_err(|error| error.to_string())?;
         hardware.rustc_version = Some("rustc nightly-b".to_owned());
-        let second = environment_digest("fnv1a64:0000000000000000", &hardware, "debug")
+        let second = environment_digest(
+            "fnv1a64:0000000000000000", &hardware, "debug",
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "http", "http://127.0.0.1:3000", Some("127.0.0.1:3000"),
+        )
             .map_err(|error| error.to_string())?;
 
         if first == second {

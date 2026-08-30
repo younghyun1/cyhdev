@@ -9,7 +9,7 @@ workspace = true
 
 [[bin]]
 name = "process_ip2location_dbs"
-path = "src/util/geographic/process_ip2location_dbs.rs"
+path = "src/bin/process-ip2location.rs"
 
 [[bin]]
 name = "openapi-contracts"
@@ -154,6 +154,7 @@ mime_guess = "2.0.5"
 
 # internment
 internment = "0.8.6"
+memmap2 = "0.9.9"
 
 # aws
 aws-sdk-s3 = { version = "1.143.0", features = ["behavior-version-latest"] }

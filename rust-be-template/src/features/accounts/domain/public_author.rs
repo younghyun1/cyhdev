@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use super::account::DELETED_USER_DISPLAY_NAME;
 
+#[derive(Clone)]
 pub struct PublicAuthor {
     public_user_id: Uuid,
     user_name: String,

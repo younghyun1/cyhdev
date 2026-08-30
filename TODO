@@ -13,18 +13,10 @@
 - [ ] **W0-B: Publish or configure the stable source-link target.** The source map uses stable monorepo-relative paths and intentionally renders them without links until `VITE_REPOSITORY_SOURCE_BASE_URL` identifies an existing published repository. Provide that URL through deployment configuration after publication; do not create an external repository automatically.
 - [ ] **W0-C: Promote the SolidJS 2 release-candidate pins after upstream stable release.** The frontend is migrated to exact `solid-js`/`@solidjs/web` 2.0 RC and official `@solidjs/vite-plugin` prerelease packages because no stable SolidJS 2 release exists yet. Replace those exact prerelease pins with compatible stable releases when upstream publishes them; never depend on a mutable branch.
 
-## Wave 2: Engineering foundations, concurrent
-
-- [ ] **W2-A: Establish backend boundaries, then continue incrementally.** Refactor by feature into `api`, `service`, `repository`, and `domain` boundaries. Migrate authentication and accounts first as the reference slice; that slice is the foundation gate for account work. Handlers should only parse, authorize, and map HTTP data; services should own use cases, transactions, and cache coordination; repositories should own Diesel queries; domain types should not depend on Axum or persistence. Replace business methods on `ServerState` with explicit dependencies and split files over 300 lines. Continue the remaining feature migrations alongside Waves 3 through 7 without overlapping active feature work.
-
 ## Wave 3: Verification and measurement, concurrent
 
 - [ ] **W3-A: Establish integration coverage.** Add a database-backed integration test harness and cover current authentication, role gates, session refresh and revocation, cache consistency, media cleanup, and migration rollback boundaries. Extend the suite with soft-deletion cases when W5-B lands. Build the harness during implementation; execute it in Wave 8.
 - [ ] **W3-D: Add reproducible throughput measurement.** Build a throughput demo with a recorded workload, hardware and configuration, latency percentiles, and regression thresholds. Establish the benchmark independently, then wire its threshold command into Wave 8.
-
-## Wave 7: Dependent product work
-
-- [ ] **W7-A: Add a forum.** Define moderation, pagination, search, notification, and retention behavior instead of reusing blog comments implicitly. W5-B and W6-B are prerequisites.
 
 ## Wave 8: Deferred heavy review
 

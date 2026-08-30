@@ -19,6 +19,7 @@ use crate::{
             compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
             flush_visitor_logs::flush_visitor_logs, prune_live_chat::prune_live_chat_state,
             prune_auth_abuse::prune_auth_abuse,
+            prune_forum_notifications::prune_forum_notifications,
             prune_photograph_batches::prune_photograph_batches,
             retry_media_cleanup::retry_media_object_cleanup,
             send_retention_notifications::send_retention_notifications,
@@ -216,7 +217,7 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
             schedule_task_every_minute_at(
                 state,
                 move |coroutine_state: Arc<ServerState>| async move {
-                    retry_media_object_cleanup(coroutine_state).await
+                    retry_media_object_cleanup(coroutine_state.account_service()).await
                 },
                 String::from("RETRY_MEDIA_OBJECT_CLEANUP"),
                 20,
@@ -236,6 +237,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("SEND_RETENTION_NOTIFICATIONS"),
                 40,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("PRUNE_FORUM_NOTIFICATIONS", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_hour_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    prune_forum_notifications(coroutine_state).await
+                },
+                String::from("PRUNE_FORUM_NOTIFICATIONS"),
+                50,
                 0,
             )
         });

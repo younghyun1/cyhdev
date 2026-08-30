@@ -16,12 +16,16 @@ pub mod oidc_link;
 pub mod oidc_start;
 pub mod oidc_status;
 pub mod public_user;
+pub mod profile_picture_history;
 pub mod resend_email_verification_email;
 pub mod reset_password;
 pub mod reset_password_request;
 pub mod retention_notifications;
 pub mod signup;
 pub mod update_profile;
+pub mod upload_profile_picture;
 pub mod verify_user_email;
 #[cfg(test)]
 mod auth_abuse_tests;
+#[cfg(test)]
+mod session_service_tests;

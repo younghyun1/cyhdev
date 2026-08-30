@@ -29,6 +29,7 @@ pub struct ExecutionOutcome {
 pub enum RequestFailure {
     Connect,
     ConfigureSocket,
+    Timeout,
     Write,
     Read,
     ResponseTooLarge,
@@ -41,6 +42,7 @@ impl RequestFailure {
         match self {
             Self::Connect => "connect",
             Self::ConfigureSocket => "configure_socket",
+            Self::Timeout => "timeout",
             Self::Write => "write",
             Self::Read => "read",
             Self::ResponseTooLarge => "response_too_large",

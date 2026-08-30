@@ -5,19 +5,18 @@ mod support;
 use std::{sync::Arc, time::Duration};
 
 use chrono::Utc;
-use diesel::{QueryDsl, SelectableHelper};
+use diesel::QueryDsl;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use rust_be_template::{
-    domain::live_chat::message::{
-        LIVE_CHAT_SENDER_KIND_USER, LiveChatMessage, LiveChatMessageInsertable,
+    features::live_chat::{
+        domain::message::LIVE_CHAT_SENDER_KIND_USER,
+        repository::compatibility::LiveChatMessageInsertable,
     },
-    features::accounts::{
-        domain::account::DELETED_USER_DISPLAY_NAME,
-        repository::active_user::{ActiveUserWriteError, lock_active_user},
-    },
+    features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
+    persistence::active_user::{ActiveUserWriteError, lock_active_user},
     schema::live_chat_messages,
 };
 
@@ -37,7 +36,7 @@ fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFutu
         let context = account_test_context(database)?;
         let account = seed_account(&context, "ContentWriteLinearization").await?;
         let pool = context.pool.clone();
-        let accounts = Arc::new(context.accounts);
+        let accounts = Arc::clone(&context.accounts);
         let user_id = account.user_id;
         let message_id = Uuid::now_v7();
         let original_name = account.user_name.clone();
@@ -90,13 +89,13 @@ fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFutu
         deletion.await??;
 
         let mut connection = pool.get().await?;
-        let retained = live_chat_messages::table
+        let retained_name = live_chat_messages::table
             .find(message_id)
-            .select(LiveChatMessage::as_select())
-            .first::<LiveChatMessage>(&mut connection)
+            .select(live_chat_messages::sender_display_name)
+            .first::<String>(&mut connection)
             .await?;
         require(
-            retained.sender_display_name == DELETED_USER_DISPLAY_NAME,
+            retained_name == DELETED_USER_DISPLAY_NAME,
             "deletion did not scrub the write that serialized before it",
         )?;
 

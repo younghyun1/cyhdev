@@ -54,7 +54,15 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_content_write_linearization",
                 "--test",
+                "postgres_cache_consistency",
+                "--test",
                 "postgres_profile_picture_history",
+                "--test",
+                "postgres_forum",
+                "--test",
+                "postgres_photography_invariants",
+                "--test",
+                "postgres_wasm",
                 "--test",
                 "postgres_retention_notifications",
                 "--test",
@@ -106,6 +114,21 @@ pub(crate) fn run_migration_rollback(root: &Path) -> TaskResult<()> {
                 "--test-threads=1",
             ])
             .current_dir(root),
+    )?;
+    run_command(
+        Command::new("cargo")
+            .args([
+                "test",
+                "--locked",
+                "--package",
+                "rust-be-template",
+                "--test",
+                "postgres_migration_guards",
+                "--",
+                "--ignored",
+                "--test-threads=1",
+            ])
+            .current_dir(root),
     )
 }
 
@@ -150,8 +173,8 @@ pub(crate) fn run_frontend_checks(root: &Path) -> TaskResult<()> {
 }
 
 pub(crate) fn run_image_smoke(root: &Path) -> TaskResult<()> {
-    // The smoke target stops after locked metadata validation. The optimized
-    // final target remains outside the review because it performs a release build.
+    // The smoke target compiles current sources in a non-release profile and
+    // validates the runtime image layout without requiring deployment secrets.
     run_command(
         Command::new("docker")
             .args([
@@ -174,7 +197,7 @@ pub(crate) fn run_secret_scan(root: &Path) -> TaskResult<()> {
 }
 
 pub(crate) fn run_final_review(root: &Path) -> TaskResult<()> {
-    let steps: [ReviewStep; 10] = [
+    let steps: [ReviewStep; 11] = [
         ("format", run_format_check),
         ("Clippy", run_clippy),
         ("unit tests", run_unit_tests),
@@ -185,6 +208,7 @@ pub(crate) fn run_final_review(root: &Path) -> TaskResult<()> {
         ("image smoke", run_image_smoke),
         ("throughput thresholds", run_throughput_thresholds),
         ("secret scan", run_secret_scan),
+        ("evidence manifest", crate::evidence_manifest::run),
     ];
     let mut failures = Vec::new();
     for (name, step) in steps {
@@ -204,7 +228,17 @@ fn run_clippy(root: &Path) -> TaskResult<()> {
 fn run_throughput_thresholds(root: &Path) -> TaskResult<()> {
     // Keep the portable fixture as a harness regression, then require the
     // hardware-specific HTTP baseline for an actual backend capacity claim.
-    run_package(root, "throughput-harness", &[])?;
+    let mut failures = Vec::new();
+    if let Err(error) = run_package(root, "throughput-harness", &[]) {
+        failures.push(format!("fixture: {error}"));
+    }
+    if let Err(error) = run_http_throughput_thresholds(root) {
+        failures.push(format!("HTTP: {error}"));
+    }
+    finish_operation("throughput thresholds", failures)
+}
+
+fn run_http_throughput_thresholds(root: &Path) -> TaskResult<()> {
     let target = required_environment_value("THROUGHPUT_HTTP_TARGET")?;
     let environment = required_environment_value("THROUGHPUT_HTTP_ENVIRONMENT")?;
     let thresholds = required_environment_value("THROUGHPUT_HTTP_THRESHOLDS")?;
@@ -249,21 +283,7 @@ fn required_environment_value(key: &'static str) -> TaskResult<String> {
 }
 
 fn require_test_database_url() -> TaskResult<()> {
-    match env::var("TEST_DATABASE_URL") {
-        Ok(value) if value.starts_with("postgres://") || value.starts_with("postgresql://") => {
-            Ok(())
-        }
-        Ok(_) => Err(TaskError(
-            "TEST_DATABASE_URL must use a postgres:// or postgresql:// URL".to_owned(),
-        )),
-        Err(env::VarError::NotPresent) => Err(TaskError(
-            "TEST_DATABASE_URL must name a disposable PostgreSQL 18 maintenance database"
-                .to_owned(),
-        )),
-        Err(env::VarError::NotUnicode(_)) => Err(TaskError(
-            "TEST_DATABASE_URL must contain valid UTF-8".to_owned(),
-        )),
-    }
+    crate::test_database::validate()
 }
 
 fn finish_operation(operation: &str, failures: Vec<String>) -> TaskResult<()> {

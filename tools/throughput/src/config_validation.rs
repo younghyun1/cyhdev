@@ -1,13 +1,14 @@
 //! Bounds and semantic validation for all harness inputs.
 
-use std::path::Path;
+use std::{net::SocketAddr, path::Path};
 
 use crate::{
     config::{EnvironmentConfig, RequestSpec, ThresholdConfig, WorkloadConfig},
     error::{HarnessError, HarnessResult},
 };
 
-const SCHEMA_VERSION: u32 = 1;
+const CONFIG_SCHEMA_VERSION: u32 = 1;
+const THRESHOLD_SCHEMA_VERSION: u32 = 2;
 const MAX_ITERATIONS: u64 = 1_000_000;
 const MAX_WARMUP_ITERATIONS: u64 = 100_000;
 const MAX_CONCURRENCY: usize = 64;
@@ -15,9 +16,10 @@ const MAX_REQUESTS: usize = 256;
 const MAX_TOTAL_WEIGHT: u64 = 1_000_000;
 const MAX_FIXTURE_WORK_UNITS: u64 = 1_000_000;
 const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
+const MAX_AGGREGATE_RESPONSE_BYTES: usize = 64 * 1024 * 1024;
 
 pub fn validate_workload(path: &Path, workload: &WorkloadConfig) -> HarnessResult<()> {
-    validate_schema(path, workload.schema_version)?;
+    validate_schema(path, workload.schema_version, CONFIG_SCHEMA_VERSION)?;
     validate_text(path, "workload name", &workload.name, 128)?;
     if !(1..=MAX_ITERATIONS).contains(&workload.iterations) {
         return invalid(path, format!("iterations must be in 1..={MAX_ITERATIONS}"));
@@ -43,6 +45,21 @@ pub fn validate_workload(path: &Path, workload: &WorkloadConfig) -> HarnessResul
             format!("max_response_bytes must be in 1024..={MAX_RESPONSE_BYTES}"),
         );
     }
+    let aggregate_response_bytes = workload
+        .concurrency
+        .checked_mul(workload.max_response_bytes)
+        .ok_or_else(|| HarnessError::Configuration {
+            path: path.to_path_buf(),
+            detail: "concurrency multiplied by max_response_bytes overflowed".to_owned(),
+        })?;
+    if aggregate_response_bytes > MAX_AGGREGATE_RESPONSE_BYTES {
+        return invalid(
+            path,
+            format!(
+                "concurrency multiplied by max_response_bytes must be <= {MAX_AGGREGATE_RESPONSE_BYTES}"
+            ),
+        );
+    }
     if workload.requests.is_empty() || workload.requests.len() > MAX_REQUESTS {
         return invalid(
             path,
@@ -65,7 +82,7 @@ pub fn validate_workload(path: &Path, workload: &WorkloadConfig) -> HarnessResul
 }
 
 pub fn validate_environment(path: &Path, environment: &EnvironmentConfig) -> HarnessResult<()> {
-    validate_schema(path, environment.schema_version)?;
+    validate_schema(path, environment.schema_version, CONFIG_SCHEMA_VERSION)?;
     validate_text(path, "environment label", &environment.label, 128)?;
     validate_text(path, "power profile", &environment.power_profile, 128)?;
     validate_text(path, "build profile", &environment.build_profile, 128)?;
@@ -89,7 +106,7 @@ pub fn validate_environment(path: &Path, environment: &EnvironmentConfig) -> Har
 }
 
 pub fn validate_thresholds(path: &Path, thresholds: &ThresholdConfig) -> HarnessResult<()> {
-    validate_schema(path, thresholds.schema_version)?;
+    validate_schema(path, thresholds.schema_version, THRESHOLD_SCHEMA_VERSION)?;
     validate_text(path, "threshold workload_name", &thresholds.workload_name, 128)?;
     validate_digest(path, "workload_digest", &thresholds.workload_digest)?;
     validate_text(path, "environment_label", &thresholds.environment_label, 128)?;
@@ -109,6 +126,20 @@ pub fn validate_thresholds(path: &Path, thresholds: &ThresholdConfig) -> Harness
             path,
             "HTTP thresholds must pin observed_environment_digest".to_owned(),
         );
+    }
+    if thresholds.executor_kind == "http" {
+        let implementation = thresholds.implementation_digest.as_ref().ok_or_else(|| {
+            HarnessError::Configuration { path: path.to_path_buf(), detail: "HTTP thresholds must pin implementation_digest".to_owned() }
+        })?;
+        validate_sha256_digest(path, "implementation_digest", implementation)?;
+        let address = thresholds.resolved_address.as_ref().ok_or_else(|| {
+            HarnessError::Configuration { path: path.to_path_buf(), detail: "HTTP thresholds must pin resolved_address".to_owned() }
+        })?;
+        if address.parse::<SocketAddr>().is_err() {
+            return invalid(path, "resolved_address must be a socket address".to_owned());
+        }
+    } else if thresholds.implementation_digest.is_some() || thresholds.resolved_address.is_some() {
+        return invalid(path, "fixture thresholds must omit implementation_digest and resolved_address".to_owned());
     }
     if !thresholds.minimum_requests_per_second.is_finite()
         || thresholds.minimum_requests_per_second <= 0.0
@@ -147,10 +178,11 @@ fn validate_request(path: &Path, request: &RequestSpec) -> HarnessResult<()> {
         );
     }
     if !request.path.starts_with('/')
-        || request.path.contains('\r')
-        || request.path.contains('\n')
         || !request.path.is_ascii()
-        || request.path.contains(' ')
+        || request
+            .path
+            .bytes()
+            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
         || request.path.chars().count() > 2_048
     {
         return invalid(
@@ -182,13 +214,13 @@ fn validate_request(path: &Path, request: &RequestSpec) -> HarnessResult<()> {
     Ok(())
 }
 
-fn validate_schema(path: &Path, version: u32) -> HarnessResult<()> {
-    if version == SCHEMA_VERSION {
+fn validate_schema(path: &Path, version: u32, expected: u32) -> HarnessResult<()> {
+    if version == expected {
         Ok(())
     } else {
         invalid(
             path,
-            format!("schema_version must be {SCHEMA_VERSION}, got {version}"),
+            format!("schema_version must be {expected}, got {version}"),
         )
     }
 }
@@ -204,6 +236,13 @@ fn validate_digest(path: &Path, field: &str, value: &str) -> HarnessResult<()> {
     } else {
         invalid(path, format!("{field} must be a lowercase fnv1a64 digest"))
     }
+}
+
+fn validate_sha256_digest(path: &Path, field: &str, value: &str) -> HarnessResult<()> {
+    let valid = value.len() == 71
+        && value.starts_with("sha256:")
+        && value[7..].bytes().all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
+    if valid { Ok(()) } else { invalid(path, format!("{field} must be a lowercase sha256 digest")) }
 }
 
 fn validate_text(path: &Path, field: &str, value: &str, max: usize) -> HarnessResult<()> {

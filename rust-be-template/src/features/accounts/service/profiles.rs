@@ -1,15 +1,18 @@
 //! Current-account and profile-picture use cases.
 
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 use crate::features::accounts::{
     domain::account::{
         CurrentAccount, ProfilePicture, ProfilePictureDeletion, ProfilePictureReplacement,
     },
     error::AccountError,
+    repository::profile_pictures::PROFILE_PICTURE_HISTORY_LIMIT,
     service::account_service::AccountService,
 };
+
+/// Maximum retained and returned profile-picture versions per account.
+pub const MAX_PROFILE_PICTURE_HISTORY: usize = PROFILE_PICTURE_HISTORY_LIMIT as usize;
 
 impl AccountService {
     pub async fn current_account(
@@ -57,29 +60,4 @@ impl AccountService {
             .await
     }
 
-    pub async fn complete_media_object_cleanup(
-        &self,
-        cleanup_id: Uuid,
-    ) -> Result<bool, AccountError> {
-        self.repository
-            .complete_media_object_cleanup(cleanup_id)
-            .await
-    }
-
-    pub async fn record_media_object_cleanup_failure(
-        &self,
-        cleanup_id: Uuid,
-        expected_attempt_count: i32,
-        attempted_at: DateTime<Utc>,
-        error: &str,
-    ) -> Result<bool, AccountError> {
-        self.repository
-            .record_media_object_cleanup_failure(
-                cleanup_id,
-                expected_attempt_count,
-                attempted_at,
-                error,
-            )
-            .await
-    }
 }

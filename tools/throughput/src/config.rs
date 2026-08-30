@@ -63,7 +63,11 @@ pub struct ThresholdConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observed_environment_digest: Option<String>,
     pub compiled_profile: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub implementation_digest: Option<String>,
     pub executor_kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resolved_address: Option<String>,
     pub minimum_requests_per_second: f64,
     pub maximum_error_rate_percent: f64,
     pub maximum_p50_latency_us: u64,
@@ -78,9 +82,18 @@ pub fn load_workload(path: &Path) -> HarnessResult<(WorkloadConfig, String)> {
 }
 
 pub fn load_environment(path: &Path) -> HarnessResult<(EnvironmentConfig, String)> {
-    let (environment, digest) = load_json(path)?;
+    let (environment, _raw_digest) = load_json(path)?;
     validate_environment(path, &environment)?;
+    let digest = environment_config_digest(&environment)?;
     Ok((environment, digest))
+}
+
+pub fn environment_config_digest(environment: &EnvironmentConfig) -> HarnessResult<String> {
+    let bytes = serde_json::to_vec(environment).map_err(|source| HarnessError::Json {
+        path: Path::new("<declared-environment>").to_path_buf(),
+        source,
+    })?;
+    Ok(fnv1a64_hex(&bytes))
 }
 
 pub fn load_thresholds(path: &Path) -> HarnessResult<(ThresholdConfig, String)> {

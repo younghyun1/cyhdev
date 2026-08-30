@@ -61,7 +61,8 @@ impl AccountRepository {
                     connection,
                     NewAuthorizationAuditEventRecord {
                         authorization_audit_event_actor_user_id: actor.user_id,
-                        authorization_audit_event_kind: AuthorizationAuditKind::UserRoleAssigned,
+                        authorization_audit_event_kind:
+                            AuthorizationAuditKind::UserRoleAssigned.into(),
                         authorization_audit_event_target_user_id: Some(target_user_id),
                         authorization_audit_event_role_id: role_type.id(),
                         authorization_audit_event_role_name: role_type.name(),
@@ -276,7 +277,7 @@ async fn insert_permission_audit(
         connection,
         NewAuthorizationAuditEventRecord {
             authorization_audit_event_actor_user_id: actor.user_id,
-            authorization_audit_event_kind: kind,
+            authorization_audit_event_kind: kind.into(),
             authorization_audit_event_target_user_id: None,
             authorization_audit_event_role_id: role_type.id(),
             authorization_audit_event_role_name: role_type.name(),

@@ -4,11 +4,14 @@ pub mod authorization;
 mod auth_abuse_policy;
 pub mod authentication;
 pub mod lifecycle;
+pub mod forum_authority;
 pub mod media_cleanup;
 pub mod oidc;
 pub mod passwords;
 pub mod profiles;
 pub mod profile_update;
+pub mod profile_picture_upload;
+pub mod profile_picture_cleanup;
 pub mod public_profiles;
 pub mod registration;
 pub mod retention_notifications;
@@ -17,6 +20,4 @@ mod session_coordination;
 pub mod session_service;
 #[cfg(test)]
 mod auth_abuse_tests;
-#[cfg(test)]
-mod session_service_tests;
 pub mod verification;

@@ -12,6 +12,25 @@ pub mod sql_types {
     #[derive(diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "photograph_context"))]
     pub struct PhotographContext;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "forum_content_state"))]
+    pub struct ForumContentState;
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "forum_topic_access_state"))]
+    pub struct ForumTopicAccessState;
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "forum_moderation_action"))]
+    pub struct ForumModerationAction;
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "forum_notification_kind"))]
+    pub struct ForumNotificationKind;
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "tsvector", schema = "pg_catalog"))]
+    pub struct ForumSearchVector;
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "tsquery", schema = "pg_catalog"))]
+    pub struct ForumSearchQuery;
 }
 
 diesel::table! {
@@ -86,6 +105,89 @@ diesel::table! {
         user_id -> Uuid,
         created_at -> Timestamptz,
         is_upvote -> Bool,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::{ForumContentState, ForumSearchVector, ForumTopicAccessState};
+    forum_topics (forum_topic_id) {
+        forum_topic_id -> Uuid,
+        forum_topic_author_user_id -> Uuid,
+        #[max_length = 512]
+        forum_topic_title -> Varchar,
+        forum_topic_body -> Text,
+        forum_topic_content_state -> ForumContentState,
+        forum_topic_access_state -> ForumTopicAccessState,
+        forum_topic_is_pinned -> Bool,
+        forum_topic_revision -> Int4,
+        forum_topic_reply_count -> Int8,
+        forum_topic_created_at -> Timestamptz,
+        forum_topic_updated_at -> Timestamptz,
+        forum_topic_last_activity_at -> Timestamptz,
+        forum_topic_edited_at -> Nullable<Timestamptz>,
+        forum_topic_hidden_at -> Nullable<Timestamptz>,
+        forum_topic_deleted_at -> Nullable<Timestamptz>,
+        forum_topic_search_vector -> ForumSearchVector,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ForumContentState;
+    forum_replies (forum_reply_id) {
+        forum_reply_id -> Uuid,
+        forum_reply_topic_id -> Uuid,
+        forum_reply_author_user_id -> Uuid,
+        forum_reply_body -> Text,
+        forum_reply_content_state -> ForumContentState,
+        forum_reply_revision -> Int4,
+        forum_reply_created_at -> Timestamptz,
+        forum_reply_updated_at -> Timestamptz,
+        forum_reply_edited_at -> Nullable<Timestamptz>,
+        forum_reply_hidden_at -> Nullable<Timestamptz>,
+        forum_reply_deleted_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    forum_topic_subscriptions (forum_topic_subscription_id) {
+        forum_topic_subscription_id -> Uuid,
+        forum_topic_subscription_topic_id -> Uuid,
+        forum_topic_subscription_user_id -> Uuid,
+        forum_topic_subscription_created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ForumNotificationKind;
+    forum_notifications (forum_notification_id) {
+        forum_notification_id -> Uuid,
+        forum_notification_recipient_user_id -> Uuid,
+        forum_notification_actor_user_id -> Uuid,
+        forum_notification_topic_id -> Uuid,
+        forum_notification_reply_id -> Uuid,
+        forum_notification_kind -> ForumNotificationKind,
+        forum_notification_created_at -> Timestamptz,
+        forum_notification_expires_at -> Timestamptz,
+        forum_notification_read_at -> Nullable<Timestamptz>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ForumModerationAction;
+    forum_moderation_audit_events (forum_moderation_audit_event_id) {
+        forum_moderation_audit_event_id -> Uuid,
+        forum_moderation_audit_event_actor_user_id -> Uuid,
+        forum_moderation_audit_event_topic_id -> Nullable<Uuid>,
+        forum_moderation_audit_event_reply_id -> Nullable<Uuid>,
+        forum_moderation_audit_event_action -> ForumModerationAction,
+        #[max_length = 2000]
+        forum_moderation_audit_event_reason -> Varchar,
+        forum_moderation_audit_event_request_id -> Nullable<Uuid>,
+        forum_moderation_audit_event_created_at -> Timestamptz,
     }
 }
 
@@ -483,6 +585,13 @@ diesel::joinable!(deleted_account_retention -> iso_country_subdivision (deleted_
 diesel::joinable!(deleted_account_retention -> iso_language (deleted_account_retention_language));
 diesel::joinable!(deleted_account_retention -> users (deleted_account_retention_user_id));
 diesel::joinable!(email_verification_tokens -> users (user_id));
+diesel::joinable!(forum_topics -> users (forum_topic_author_user_id));
+diesel::joinable!(forum_replies -> forum_topics (forum_reply_topic_id));
+diesel::joinable!(forum_replies -> users (forum_reply_author_user_id));
+diesel::joinable!(forum_topic_subscriptions -> forum_topics (forum_topic_subscription_topic_id));
+diesel::joinable!(forum_topic_subscriptions -> users (forum_topic_subscription_user_id));
+diesel::joinable!(forum_notifications -> users (forum_notification_recipient_user_id));
+diesel::joinable!(forum_moderation_audit_events -> users (forum_moderation_audit_event_actor_user_id));
 diesel::joinable!(i18n_strings -> iso_country (i18n_string_country_code));
 diesel::joinable!(i18n_strings -> iso_language (i18n_string_language_code));
 diesel::joinable!(iso_country -> iso_currency (country_currency));
@@ -525,6 +634,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     comments,
     deleted_account_retention,
     email_verification_tokens,
+    forum_topics,
+    forum_replies,
+    forum_topic_subscriptions,
+    forum_notifications,
+    forum_moderation_audit_events,
     i18n_strings,
     iso_country,
     iso_country_subdivision,

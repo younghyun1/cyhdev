@@ -22,11 +22,35 @@ WORKDIR /workspace
 RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
     && rustup component add rust-src
 
-# Validate the current build context, lockfile, rolling nightly, and rust-src
-# installation without compiling the release-only runtime image.
-FROM rust-base AS smoke
+# Compile the current backend in the development profile. This stage also
+# consumes the frontend output because the backend embeds that directory.
+FROM rust-base AS smoke-build
+ARG APP_NAME
 COPY . ./
-RUN cargo metadata --locked --no-deps --format-version 1 >/dev/null
+COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+RUN --mount=type=cache,target=/workspace/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/usr/local/cargo/registry/ \
+    cargo build --locked --package "$APP_NAME" && \
+    cp "./target/debug/$APP_NAME" /bin/server
+
+# A runnable development-profile layout used by the Wave 8 image smoke gate.
+# Runtime secrets remain injected by the caller; the build only verifies that
+# the executable and immutable Geo-IP assets land at their runtime paths.
+FROM alpine:3.23 AS smoke
+RUN apk add --no-cache ca-certificates libgcc libpq
+WORKDIR /app
+COPY --from=smoke-build /bin/server /app/server
+COPY rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /app/
+RUN test -x /app/server \
+    && test -s /app/new_bundle_ipv4.db \
+    && test -s /app/new_bundle_ipv6.db \
+    && (ldd /app/server >/tmp/server-ldd.txt 2>&1 || true) \
+    && ! grep -q "not found" /tmp/server-ldd.txt
+ENV HOST_IP="0.0.0.0"
+ENV HOST_PORT="443"
+ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+CMD ["/app/server"]
 
 FROM rust-base AS build
 ARG APP_NAME
@@ -48,6 +72,8 @@ RUN --mount=type=cache,target=/workspace/target/ \
 
 # --- Final Stage ---
 FROM scratch AS final
+
+WORKDIR /bin
 
 # Copy the server executable from the build stage
 COPY --from=build /bin/server /bin/

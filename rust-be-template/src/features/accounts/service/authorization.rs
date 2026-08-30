@@ -123,6 +123,7 @@ impl AccountService {
             .ok_or(AuthorizationError::InvalidRoleId(role_id))?;
         let reason = AuthorizationReason::try_new(reason)
             .map_err(|_| AuthorizationError::InvalidReason)?;
+        let _session_consistency = self.session_consistency.write().await;
         self.repository
             .set_role_permission_with_audit(
                 actor_user_id,

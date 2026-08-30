@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "workload_name": "public-read-v1",
   "workload_digest": "fnv1a64:14e98174871193f3",
   "environment_label": "portable-development-fixture",
-  "environment_digest": "fnv1a64:04d84b2483bf8af3",
+  "environment_digest": "fnv1a64:61640ae42505dd6d",
   "compiled_profile": "debug",
+  "implementation_digest": null,
   "executor_kind": "fixture",
   "minimum_requests_per_second": 5000.0,
   "maximum_error_rate_percent": 0.0,

@@ -69,6 +69,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/about", labelKey: "top_bar.nav.about" },
   { href: "/about-blog", labelKey: "top_bar.nav.about_blog" },
   { href: "/blog", labelKey: "top_bar.nav.blog" },
+  { href: "/forum", labelKey: "top_bar.nav.forum" },
   { href: "/photographs", labelKey: "top_bar.nav.photographs" },
   { href: "/live-chat", labelKey: "top_bar.nav.live_chat" },
   { href: "/projects", labelKey: "top_bar.nav.projects" },

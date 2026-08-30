@@ -5,21 +5,34 @@ use std::sync::Arc;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 
 use crate::{
-    domain::live_chat::cache::LiveChatCache,
-    features::accounts::{
+    features::{accounts::{
         repository::account_repository::AccountRepository,
         service::session_service::SessionService,
-    },
+    }, live_chat::service::lifecycle::LiveChatAccountLifecyclePort},
+    util::media::object_store::MediaObjectStore,
 };
 
 pub const MAX_PASSWORD_JOBS: usize = 4;
 pub const MAX_EMAIL_JOBS: usize = 16;
 
+pub struct AccountServiceDependencies {
+    pub repository: Arc<AccountRepository>,
+    pub sessions: Arc<SessionService>,
+    pub live_chat_lifecycle: Arc<dyn LiveChatAccountLifecyclePort>,
+    pub media_object_store: Arc<dyn MediaObjectStore>,
+    pub media_region: Arc<str>,
+    pub email_client: AsyncSmtpTransport<Tokio1Executor>,
+    pub public_app_origin: Arc<str>,
+    pub dummy_password_hash: String,
+}
+
 /// Coordinates account use cases across persistence, sessions, and email delivery.
 pub struct AccountService {
     pub(super) repository: Arc<AccountRepository>,
     pub(super) sessions: Arc<SessionService>,
-    pub(super) live_chat_cache: Arc<LiveChatCache>,
+    pub(super) live_chat_lifecycle: Arc<dyn LiveChatAccountLifecyclePort>,
+    pub(super) media_object_store: Arc<dyn MediaObjectStore>,
+    pub(super) media_region: Arc<str>,
     pub(super) email_client: Arc<AsyncSmtpTransport<Tokio1Executor>>,
     pub(super) public_app_origin: Arc<str>,
     pub(super) dummy_password_hash: Arc<str>,
@@ -34,18 +47,23 @@ pub struct AccountService {
 }
 
 impl AccountService {
-    pub fn new(
-        repository: Arc<AccountRepository>,
-        sessions: Arc<SessionService>,
-        live_chat_cache: Arc<LiveChatCache>,
-        email_client: AsyncSmtpTransport<Tokio1Executor>,
-        public_app_origin: Arc<str>,
-        dummy_password_hash: String,
-    ) -> Self {
+    pub fn new(dependencies: AccountServiceDependencies) -> Self {
+        let AccountServiceDependencies {
+            repository,
+            sessions,
+            live_chat_lifecycle,
+            media_object_store,
+            media_region,
+            email_client,
+            public_app_origin,
+            dummy_password_hash,
+        } = dependencies;
         Self {
             repository,
             sessions,
-            live_chat_cache,
+            live_chat_lifecycle,
+            media_object_store,
+            media_region,
             email_client: Arc::new(email_client),
             public_app_origin,
             dummy_password_hash: Arc::from(dummy_password_hash),

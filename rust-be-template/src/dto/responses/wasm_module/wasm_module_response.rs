@@ -3,7 +3,7 @@ use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::domain::wasm_module::wasm_module::{WasmModule, WasmModuleMetadata};
+use crate::features::wasm::domain::module::{WasmModule, WasmModuleMetadata};
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct WasmModuleItem {

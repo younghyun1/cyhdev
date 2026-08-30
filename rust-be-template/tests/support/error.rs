@@ -19,6 +19,14 @@ pub enum HarnessError {
     UnsupportedDatabaseScheme { scheme: String },
     #[error("TEST_DATABASE_URL must include a maintenance database name")]
     MissingMaintenanceDatabase,
+    #[error("TEST_DATABASE_URL must select the disposable maintenance database {required:?}, not {actual:?}")]
+    UnsafeMaintenanceDatabase { required: &'static str, actual: String },
+    #[error("PostgreSQL 18 is required; server_version_num is {version}")]
+    UnsupportedPostgresVersion { version: i64 },
+    #[error("remote PostgreSQL server {address} is forbidden without an explicit CI override")]
+    RemoteDatabaseForbidden { address: String },
+    #[error("PostgreSQL returned an invalid server address: {address}")]
+    InvalidServerAddress { address: String },
     #[error("generated integration database name is invalid: {database_name}")]
     InvalidGeneratedDatabaseName { database_name: String },
     #[error("could not connect to PostgreSQL while attempting to {action}")]

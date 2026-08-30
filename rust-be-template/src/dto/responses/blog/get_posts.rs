@@ -1,7 +1,7 @@
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 
-use crate::domain::blog::blog::PostInfoWithVote;
+use crate::features::blog::domain::post::PostInfoWithVote;
 
 #[derive(Serialize, ToSchema)]
 pub struct GetPostsResponse {

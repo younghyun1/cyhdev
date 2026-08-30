@@ -98,7 +98,7 @@ fn account_lifecycle_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "public tombstone retained private identity",
         )?;
         require_account_authority_cleared(&context, account.user_id).await?;
-        require_public_identity_is_generic(&context, account.user_id, &account.user_name).await?;
+        require_public_identity_is_generic(&context, &account.user_name).await?;
         require_authored_content_retained(
             &context,
             &content,

@@ -12,22 +12,40 @@ use tracing::info;
 use crate::{
     check,
     cli::RunOptions,
-    config::{RequestSpec, WorkloadConfig, load_environment, load_thresholds, load_workload},
+    config::{
+        EnvironmentConfig, RequestSpec, WorkloadConfig, load_environment, load_thresholds,
+        load_workload,
+    },
     error::{HarnessError, HarnessResult},
     executor::engine::Executor,
     hardware,
     report::{
         EnvironmentMetadata, ExecutorMetadata, REPORT_SCHEMA_VERSION, RunConfiguration,
-        ThresholdEvidence, ThroughputReport, Verdict, WorkloadMetadata, compiled_profile,
+        ThresholdEvidence, ThroughputReport, WorkloadMetadata, compiled_profile,
     },
     statistics::{Sample, aggregate, duration_ns},
 };
 
+struct CompletionSignal {
+    barrier: Arc<Barrier>,
+}
+
+impl Drop for CompletionSignal {
+    fn drop(&mut self) {
+        let _result = self.barrier.wait();
+    }
+}
+
 pub fn run(options: &RunOptions) -> HarnessResult<ThroughputReport> {
     let (workload, workload_digest) = load_workload(&options.workload)?;
     let (environment, environment_digest) = load_environment(&options.environment)?;
-    let (thresholds, threshold_digest) = load_thresholds(&options.thresholds)?;
+    let threshold_input = options
+        .thresholds
+        .as_deref()
+        .map(load_thresholds)
+        .transpose()?;
     let executor = Executor::new(options.target.as_deref(), &workload)?;
+    validate_executor_declaration(&options.environment, &environment, &executor)?;
     let schedule = build_schedule(&workload)?;
 
     info!(
@@ -42,10 +60,18 @@ pub fn run(options: &RunOptions) -> HarnessResult<ThroughputReport> {
     let metrics = aggregate(samples, elapsed, workload.iterations);
 
     let hardware = hardware::observe();
+    let executor_kind = executor.kind();
+    let executor_target = executor.label();
+    let resolved_address = executor.resolved_address();
+    let implementation_digest = crate::implementation::digest();
     let observed_environment_digest = hardware::environment_digest(
         &environment_digest,
         &hardware,
         compiled_profile(),
+        implementation_digest,
+        executor_kind.as_str(),
+        &executor_target,
+        resolved_address.as_deref(),
     )?;
     let mut report = ThroughputReport {
         schema_version: REPORT_SCHEMA_VERSION,
@@ -54,9 +80,9 @@ pub fn run(options: &RunOptions) -> HarnessResult<ThroughputReport> {
             digest: workload_digest,
         },
         executor: ExecutorMetadata {
-            kind: executor.kind(),
-            target: executor.label(),
-            resolved_address: executor.resolved_address(),
+            kind: executor_kind,
+            target: executor_target,
+            resolved_address,
         },
         environment: EnvironmentMetadata {
             digest: environment_digest,
@@ -67,6 +93,7 @@ pub fn run(options: &RunOptions) -> HarnessResult<ThroughputReport> {
         configuration: RunConfiguration {
             harness_version: env!("CARGO_PKG_VERSION").to_owned(),
             compiled_profile: compiled_profile().to_owned(),
+            implementation_digest: implementation_digest.to_owned(),
             iterations: workload.iterations,
             warmup_iterations: workload.warmup_iterations,
             concurrency: workload.concurrency,
@@ -74,17 +101,43 @@ pub fn run(options: &RunOptions) -> HarnessResult<ThroughputReport> {
             max_response_bytes: workload.max_response_bytes,
         },
         metrics,
-        thresholds: ThresholdEvidence {
-            digest: threshold_digest,
-            configured: thresholds.clone(),
-        },
-        verdict: Verdict {
-            passed: false,
-            violations: Vec::new(),
-        },
+        thresholds: threshold_input
+            .as_ref()
+            .map(|(configured, digest)| ThresholdEvidence {
+                digest: digest.clone(),
+                configured: configured.clone(),
+            }),
+        verdict: None,
     };
-    report.verdict = check::evaluate(&report, &thresholds);
+    if let Some((thresholds, _)) = &threshold_input {
+        report.verdict = Some(check::evaluate(&report, thresholds));
+    }
     Ok(report)
+}
+
+fn validate_executor_declaration(
+    environment_path: &std::path::Path,
+    environment: &EnvironmentConfig,
+    executor: &Executor,
+) -> HarnessResult<()> {
+    if executor.kind() != crate::executor::types::ExecutorKind::Http {
+        return Ok(());
+    }
+    crate::environment_evidence::validate(environment_path, environment)?;
+    let actual = executor.label();
+    match environment.configuration.get("target") {
+        Some(expected) if expected == &actual => Ok(()),
+        Some(expected) => Err(HarnessError::Configuration {
+            path: environment_path.to_path_buf(),
+            detail: format!(
+                "declared target `{expected}` does not match executor target `{actual}`"
+            ),
+        }),
+        None => Err(HarnessError::Configuration {
+            path: environment_path.to_path_buf(),
+            detail: "HTTP environments must declare the exact `target`".to_owned(),
+        }),
+    }
 }
 
 fn build_schedule(workload: &WorkloadConfig) -> HarnessResult<Vec<usize>> {
@@ -126,19 +179,25 @@ fn replay(
     let executor = Arc::new(executor);
     let requests = Arc::new(workload.requests.clone());
     let schedule = Arc::new(schedule);
-    let barrier = Arc::new(Barrier::new(workload.concurrency.saturating_add(1)));
+    let ready_barrier = Arc::new(Barrier::new(workload.concurrency.saturating_add(1)));
+    let start_barrier = Arc::new(Barrier::new(workload.concurrency.saturating_add(1)));
+    let completion_barrier = Arc::new(Barrier::new(workload.concurrency.saturating_add(1)));
     let mut workers = Vec::with_capacity(workload.concurrency);
 
     for worker in 0..workload.concurrency {
         let executor = Arc::clone(&executor);
         let requests = Arc::clone(&requests);
         let schedule = Arc::clone(&schedule);
-        let barrier = Arc::clone(&barrier);
+        let ready_barrier = Arc::clone(&ready_barrier);
+        let start_barrier = Arc::clone(&start_barrier);
+        let completion_barrier = Arc::clone(&completion_barrier);
         let concurrency = workload.concurrency;
         let handle = thread::Builder::new()
             .name(format!("throughput-{worker}"))
             .spawn(move || {
-                barrier.wait();
+                ready_barrier.wait();
+                start_barrier.wait();
+                let _completion = CompletionSignal { barrier: completion_barrier };
                 measure_worker(
                     worker,
                     concurrency,
@@ -152,8 +211,13 @@ fn replay(
         workers.push((worker, handle));
     }
 
+    // Do not charge thread creation or joins to the service. Prepared workers
+    // start together; the completion barrier stops time at the last request.
+    ready_barrier.wait();
     let started = Instant::now();
-    barrier.wait();
+    start_barrier.wait();
+    completion_barrier.wait();
+    let elapsed = started.elapsed();
     let mut samples = Vec::with_capacity(iterations);
     for (worker, handle) in workers {
         let worker_result = handle
@@ -162,7 +226,6 @@ fn replay(
         let mut worker_samples = worker_result?;
         samples.append(&mut worker_samples);
     }
-    let elapsed = started.elapsed();
     samples.sort_unstable_by_key(|sample| sample.index);
     Ok((samples, elapsed))
 }

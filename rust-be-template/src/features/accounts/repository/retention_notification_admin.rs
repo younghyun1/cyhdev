@@ -11,12 +11,13 @@ use crate::{
     features::accounts::{
         domain::retention_notifications::{
             RetentionNotificationCursor, RetentionNotificationRetryReceipt,
-            RetentionNotificationStage, RetentionNotificationStatus,
+            RetentionNotificationStatus,
         },
         error::AccountError,
         repository::{
             account_repository::AccountRepository,
             hard_purge::lock_hard_purge_requester,
+            sql_enums::StoredRetentionNotificationStage,
         },
     },
     schema::{account_retention_notifications, deleted_account_retention, users},
@@ -68,7 +69,7 @@ impl AccountRepository {
                         .load::<(
                             Uuid,
                             Uuid,
-                            RetentionNotificationStage,
+                            StoredRetentionNotificationStage,
                             DateTime<Utc>,
                             DateTime<Utc>,
                             i32,
@@ -95,7 +96,7 @@ impl AccountRepository {
                             )| RetentionNotificationStatus {
                                 notification_id,
                                 user_id,
-                                stage,
+                                stage: stage.into_domain(),
                                 scheduled_for,
                                 next_attempt_at,
                                 attempt_count,

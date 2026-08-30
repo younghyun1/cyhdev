@@ -39,7 +39,10 @@ pub async fn get_user_info(
         .public_account(&user_name)
         .await
         .map_err(|error| map_account_error(error, AccountMutation::Update))?;
-    let user_country_flag = state.country_flag_for_country_code(account.country).await;
+    let user_country_flag = state
+        .reference_data_service()
+        .country_flag(account.country)
+        .await;
 
     Ok(http_resp(
         PublicUserInfoResponse {

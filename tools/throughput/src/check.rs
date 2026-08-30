@@ -2,9 +2,11 @@
 
 use crate::{
     cli::CheckOptions,
-    config::{ThresholdConfig, load_report, load_thresholds},
+    config::{ThresholdConfig, environment_config_digest, load_report, load_thresholds},
     error::{HarnessError, HarnessResult},
     executor::types::ExecutorKind,
+    hardware,
+    implementation,
     report::{REPORT_SCHEMA_VERSION, ThresholdEvidence, ThroughputReport, Verdict},
 };
 
@@ -15,6 +17,37 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
             "report schema is {}, expected {REPORT_SCHEMA_VERSION}",
             report.schema_version
         ));
+    }
+    if report.configuration.implementation_digest != implementation::digest() {
+        violations.push(format!(
+            "harness implementation is `{}`, expected `{}`",
+            report.configuration.implementation_digest,
+            implementation::digest()
+        ));
+    }
+    match environment_config_digest(&report.environment.declared) {
+        Ok(digest) if digest == report.environment.digest => {}
+        Ok(digest) => violations.push(format!(
+            "declared environment digest is `{}`, recomputed `{digest}`",
+            report.environment.digest
+        )),
+        Err(error) => violations.push(format!("could not recompute environment digest: {error}")),
+    }
+    match hardware::environment_digest(
+        &report.environment.digest,
+        &report.hardware,
+        &report.configuration.compiled_profile,
+        &report.configuration.implementation_digest,
+        report.executor.kind.as_str(),
+        &report.executor.target,
+        report.executor.resolved_address.as_deref(),
+    ) {
+        Ok(digest) if digest == report.environment.observed_digest => {}
+        Ok(digest) => violations.push(format!(
+            "observed environment digest is `{}`, recomputed `{digest}`",
+            report.environment.observed_digest
+        )),
+        Err(error) => violations.push(format!("could not recompute observed digest: {error}")),
     }
     if report.metrics.requests != report.configuration.iterations {
         violations.push(format!(
@@ -103,11 +136,25 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
             report.configuration.compiled_profile, thresholds.compiled_profile
         ));
     }
+    if let Some(expected) = &thresholds.implementation_digest
+        && report.configuration.implementation_digest.as_str() != expected.as_str()
+    {
+        violations.push(format!(
+            "implementation digest is `{}`, expected `{expected}`",
+            report.configuration.implementation_digest
+        ));
+    }
     if report.executor.kind.as_str() != thresholds.executor_kind {
         violations.push(format!(
             "executor is `{}`, expected `{}`",
             report.executor.kind.as_str(),
             thresholds.executor_kind
+        ));
+    }
+    if report.executor.resolved_address != thresholds.resolved_address {
+        violations.push(format!(
+            "resolved address is `{:?}`, expected `{:?}`",
+            report.executor.resolved_address, thresholds.resolved_address
         ));
     }
     if report.metrics.throughput_requests_per_second < thresholds.minimum_requests_per_second {
@@ -150,11 +197,11 @@ pub fn evaluate(report: &ThroughputReport, thresholds: &ThresholdConfig) -> Verd
 pub fn check_saved_report(options: &CheckOptions) -> HarnessResult<ThroughputReport> {
     let mut report: ThroughputReport = load_report(&options.report)?;
     let (thresholds, digest) = load_thresholds(&options.thresholds)?;
-    report.verdict = evaluate(&report, &thresholds);
-    report.thresholds = ThresholdEvidence {
+    report.verdict = Some(evaluate(&report, &thresholds));
+    report.thresholds = Some(ThresholdEvidence {
         digest,
         configured: thresholds,
-    };
+    });
     Ok(report)
 }
 

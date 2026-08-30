@@ -15,7 +15,10 @@ use crate::{
             RetentionNotificationStage,
         },
         error::AccountError,
-        repository::account_repository::AccountRepository,
+        repository::{
+            account_repository::AccountRepository,
+            sql_enums::StoredRetentionNotificationStage,
+        },
     },
     schema::{account_retention_notifications, deleted_account_retention, users},
 };
@@ -24,7 +27,7 @@ use crate::{
 #[diesel(table_name = account_retention_notifications)]
 struct NewRetentionNotification {
     account_retention_notification_user_id: Uuid,
-    account_retention_notification_stage: RetentionNotificationStage,
+    account_retention_notification_stage: StoredRetentionNotificationStage,
     account_retention_notification_scheduled_for: DateTime<Utc>,
     account_retention_notification_next_attempt_at: DateTime<Utc>,
     account_retention_notification_created_at: DateTime<Utc>,
@@ -41,7 +44,7 @@ pub(super) async fn insert_retention_notification_schedule(
         NewRetentionNotification {
             account_retention_notification_user_id: user_id,
             account_retention_notification_stage:
-                RetentionNotificationStage::SevenDaysBeforePurge,
+                RetentionNotificationStage::SevenDaysBeforePurge.into(),
             account_retention_notification_scheduled_for: schedule.seven_days_before_purge,
             account_retention_notification_next_attempt_at: schedule.seven_days_before_purge,
             account_retention_notification_created_at: created_at,
@@ -50,7 +53,7 @@ pub(super) async fn insert_retention_notification_schedule(
         NewRetentionNotification {
             account_retention_notification_user_id: user_id,
             account_retention_notification_stage:
-                RetentionNotificationStage::OneDayBeforePurge,
+                RetentionNotificationStage::OneDayBeforePurge.into(),
             account_retention_notification_scheduled_for: schedule.one_day_before_purge,
             account_retention_notification_next_attempt_at: schedule.one_day_before_purge,
             account_retention_notification_created_at: created_at,
@@ -126,7 +129,7 @@ impl AccountRepository {
                         .limit(RETENTION_NOTIFICATION_BATCH_SIZE)
                         .for_update()
                         .skip_locked()
-                        .load::<(Uuid, RetentionNotificationStage, DateTime<Utc>, i32)>(
+                        .load::<(Uuid, StoredRetentionNotificationStage, DateTime<Utc>, i32)>(
                             &mut *connection,
                         )
                         .await?;
@@ -171,7 +174,7 @@ impl AccountRepository {
                                 |(notification_id, stage, next_attempt_at, attempt_count)| {
                                     ClaimedRetentionNotification {
                                         notification_id,
-                                        stage,
+                                        stage: stage.into_domain(),
                                         next_attempt_at,
                                         attempt_count: attempt_count.saturating_add(1),
                                     }
@@ -238,7 +241,7 @@ impl AccountRepository {
                 account_retention_notifications::account_retention_notification_attempt_count,
             ))
             .order(account_retention_notifications::account_retention_notification_id.asc())
-            .load::<(Uuid, RetentionNotificationStage, String, Option<DateTime<Utc>>, i32)>(
+            .load::<(Uuid, StoredRetentionNotificationStage, String, Option<DateTime<Utc>>, i32)>(
                 &mut connection,
             )
             .await?;
@@ -248,7 +251,7 @@ impl AccountRepository {
                 |(notification_id, stage, retained_email, purge_after, attempt_count)| {
                     purge_after.map(|purge_after| RetentionNotificationDeliveryItem {
                         notification_id,
-                        stage,
+                        stage: stage.into_domain(),
                         retained_email: Zeroizing::new(retained_email),
                         purge_after,
                         attempt_count,

@@ -1,3 +1,5 @@
+import { FORUM_UI_TEXT_KEYS } from "./forum_keys";
+
 export const UI_TEXT_KEYS = [
   "common.close",
   "common.close_esc",
@@ -133,6 +135,7 @@ export const UI_TEXT_KEYS = [
   "authorization.audit.request",
   "authorization.audit.empty",
   "authorization.error.unknown",
+  ...FORUM_UI_TEXT_KEYS,
   "home.hero.role",
   "home.hero.summary",
   "home.hero.principle",

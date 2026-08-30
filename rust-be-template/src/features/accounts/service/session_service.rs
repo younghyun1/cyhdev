@@ -41,7 +41,7 @@ impl SessionService {
         Self::with_max_sessions(MAX_SESSIONS)
     }
 
-    pub(super) fn with_max_sessions(max_sessions: usize) -> Self {
+    pub(crate) fn with_max_sessions(max_sessions: usize) -> Self {
         Self {
             sessions: scc::HashMap::with_capacity(max_sessions),
             active_slots: AtomicUsize::new(0),
