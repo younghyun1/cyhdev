@@ -1,0 +1,518 @@
+use std::sync::Arc;
+
+use axum::{
+    Extension,
+    extract::{Multipart, State},
+    response::IntoResponse,
+};
+use diesel_async::RunQueryDsl;
+use tracing::{error, info, warn};
+use uuid::Uuid;
+
+use crate::{
+    domain::photography::photographs::{Photograph, PhotographContext, PhotographInsertable},
+    dto::responses::response_data::http_resp,
+    errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    init::state::ServerState,
+    schema::photographs,
+    util::{
+        image::{
+            exif_utils::extract_exif_shot_at,
+            map_image_format_to_db_enum::map_image_format_to_str,
+            process_uploaded_images::{
+                CyhdevImageType, IMAGE_ENCODING_FORMAT, format_size, process_uploaded_image,
+            },
+        },
+        time::now::tokio_now,
+    },
+};
+
+const MAX_SIZE_OF_UPLOADABLE_PHOTOGRPAH: usize = 1024 * 1024 * 150; // 150MB
+const ALLOWED_MIME_TYPES: [&str; 16] = [
+    "image/png",                // PNG
+    "image/jpeg",               // JPEG
+    "image/gif",                // GIF
+    "image/webp",               // WebP
+    "image/x-portable-anymap",  // PNM (general format including PBM, PGM, PPM)
+    "image/tiff",               // TIFF
+    "image/x-tga",              // TGA
+    "image/vnd-ms.dds",         // DDS
+    "image/bmp",                // BMP
+    "image/vnd.microsoft.icon", // ICO
+    "image/vnd.radiance",       // HDR
+    "image/x-exr",              // OpenEXR
+    "image/farbfeld",           // Farbfeld
+    "image/avif",               // AVIF
+    "image/qoi",                // QOI
+    "image/vnd.zbrush.pcx",     // PCX
+];
+
+use crate::util::s3::AWS_S3_BUCKET_NAME;
+
+// TODO: STREAM to file, don't keep the whole damn thing around
+#[utoipa::path(
+    post,
+    path = "/api/photographs/upload",
+    tag = "photography",
+    request_body(content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Photograph uploaded successfully", body = Photograph),
+        (status = 400, description = "Invalid upload payload", body = CodeErrorResp),
+        (status = 401, description = "Unauthorized", body = CodeErrorResp),
+        (status = 403, description = "Forbidden (not superuser)", body = CodeErrorResp),
+        (status = 500, description = "Internal server error", body = CodeErrorResp)
+    )
+)]
+pub async fn upload_photograph(
+    Extension(user_id): Extension<Uuid>,
+    State(state): State<Arc<ServerState>>,
+    mut multipart: Multipart,
+) -> HandlerResponse<impl IntoResponse> {
+    let start = tokio_now();
+
+    let mut uploaded_file: Vec<u8> = Vec::new();
+
+    let mut mime: Option<String> = None;
+
+    let mut _extension: String = String::new();
+    let mut uploaded_file_name: Option<String> = None;
+
+    // Additional metadata fields provided in the multipart body (all required)
+
+    let mut photograph_comments: Option<String> = None;
+
+    let mut photograph_lat: Option<f64> = None;
+
+    let mut photograph_lon: Option<f64> = None;
+
+    let mut photograph_context: PhotographContext = PhotographContext::Photography;
+
+    // Process the multipart fields
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        error!(error = ?e, user_id = %user_id, "Failed to fetch next multipart field");
+        code_err(CodeError::FILE_UPLOAD_ERROR, e)
+    })? {
+        let name = field.name().map(str::to_owned);
+
+        match name.as_deref() {
+            // Image file field (default / "file")
+            Some("file") | None => {
+                // For the first file field, extract metadata (file name and MIME type)
+                if uploaded_file.is_empty() {
+                    let file_name = field.file_name().map(|name| name.to_string());
+                    uploaded_file_name = file_name.clone();
+                    _extension = file_name
+                        .as_deref()
+                        .and_then(|name| name.rsplit('.').next().map(|ext| ext.to_string()))
+                        .ok_or_else(|| {
+                            warn!(user_id = %user_id, "Missing file extension in uploaded filename");
+                            code_err(
+                                CodeError::FILE_UPLOAD_ERROR,
+                                "No extensions, that's illegal!",
+                            )
+                        })?;
+                    mime = Some(
+                        field
+                            .content_type()
+                            .map(|mime| mime.to_string())
+                            .ok_or_else(|| {
+                                warn!(user_id = %user_id, "No MIME content type on uploaded file");
+                                code_err(
+                                    CodeError::FILE_UPLOAD_ERROR,
+                                    "No MIME extensions, that's illegal!",
+                                )
+                            })?,
+                    );
+                    if !mime
+                        .as_ref()
+                        .map(|m| ALLOWED_MIME_TYPES.contains(&m.as_str()))
+                        .unwrap_or(false)
+                    {
+                        warn!(
+                            user_id = %user_id,
+                            mime = ?mime,
+                            "Unsupported image type; rejecting upload"
+                        );
+                        return Err(code_err(
+                            CodeError::FILE_UPLOAD_ERROR,
+                            "Unsupported image type; no PSDs!",
+                        ));
+                    }
+                }
+                // Read and accumulate the file bytes.
+                let bytes = field.bytes().await.map_err(|e| {
+                    error!(error = ?e, user_id = %user_id, "Failed reading multipart field bytes");
+                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                })?;
+                if uploaded_file.len() + bytes.len() > MAX_SIZE_OF_UPLOADABLE_PHOTOGRPAH {
+                    warn!(
+                        user_id = %user_id,
+                        limit_bytes = MAX_SIZE_OF_UPLOADABLE_PHOTOGRPAH,
+                        "Uploaded photograph exceeds maximum allowed size"
+                    );
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Uploaded file exceeds maximum allowed size",
+                    ));
+                }
+                uploaded_file.extend_from_slice(&bytes);
+            }
+
+            // Comments field (required)
+            Some("comments") => {
+                let text = field.text().await.map_err(|e| {
+                    error!(error = ?e, user_id = %user_id, "Failed reading comments field");
+
+                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                })?;
+
+                photograph_comments = Some(text);
+            }
+
+            // Latitude field (required)
+            Some("lat") => {
+                let text = field.text().await.map_err(|e| {
+                    error!(error = ?e, user_id = %user_id, "Failed reading lat field");
+
+                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                })?;
+
+                match text.parse::<f64>() {
+                    Ok(v) => photograph_lat = Some(v),
+
+                    Err(_) => {
+                        warn!(user_id = %user_id, value = %text, "Invalid lat value");
+                        return Err(code_err(
+                            CodeError::FILE_UPLOAD_ERROR,
+                            "Invalid latitude value",
+                        ));
+                    }
+                }
+            }
+
+            // Longitude field (required)
+            Some("lon") => {
+                let text = field.text().await.map_err(|e| {
+                    error!(error = ?e, user_id = %user_id, "Failed reading lon field");
+                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                })?;
+                match text.parse::<f64>() {
+                    Ok(v) => photograph_lon = Some(v),
+                    Err(_) => {
+                        warn!(user_id = %user_id, value = %text, "Invalid lon value");
+                        return Err(code_err(
+                            CodeError::FILE_UPLOAD_ERROR,
+                            "Invalid longitude value",
+                        ));
+                    }
+                }
+            }
+
+            Some("context") | Some("photograph_context") => {
+                let text = field.text().await.map_err(|e| {
+                    error!(error = ?e, user_id = %user_id, "Failed reading context field");
+                    code_err(CodeError::FILE_UPLOAD_ERROR, e)
+                })?;
+                match PhotographContext::from_str(&text) {
+                    Some(ctx) => photograph_context = ctx,
+                    None => {
+                        warn!(user_id = %user_id, value = %text, "Invalid photograph context");
+                        return Err(code_err(
+                            CodeError::FILE_UPLOAD_ERROR,
+                            "Invalid photograph context",
+                        ));
+                    }
+                }
+            }
+
+            // Unknown fields: log and ignore
+            Some(other) => {
+                warn!(user_id = %user_id, field = other, "Unexpected multipart field");
+            }
+        }
+    }
+
+    if uploaded_file.is_empty() {
+        warn!(user_id = %user_id, "Uploaded file is empty");
+
+        return Err(code_err(CodeError::FILE_UPLOAD_ERROR, "File is empty!"));
+    }
+
+    let original_size_bytes = uploaded_file.len() as u64;
+    info!(
+        user_id = %user_id,
+        original_size_bytes,
+        "Received uploaded photograph bytes"
+    );
+
+    // Ensure required metadata fields are present for photography uploads
+    let (photograph_comments, photograph_lat, photograph_lon) = match photograph_context {
+        PhotographContext::Photography => {
+            let comments = match photograph_comments {
+                Some(c) if !c.is_empty() => c,
+                _ => {
+                    warn!(user_id = %user_id, "Missing required comments field");
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Missing required comments field",
+                    ));
+                }
+            };
+
+            let lat = match photograph_lat {
+                Some(v) => v,
+                None => {
+                    warn!(user_id = %user_id, "Missing required lat field");
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Missing required latitude field",
+                    ));
+                }
+            };
+
+            let lon = match photograph_lon {
+                Some(v) => v,
+                None => {
+                    warn!(user_id = %user_id, "Missing required lon field");
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Missing required longitude field",
+                    ));
+                }
+            };
+
+            (comments, lat, lon)
+        }
+        PhotographContext::Post => {
+            let fallback_comment = uploaded_file_name
+                .clone()
+                .unwrap_or_else(|| "post image".to_string());
+            let comments = photograph_comments.unwrap_or(fallback_comment);
+            let lat = photograph_lat.unwrap_or(0.0);
+            let lon = photograph_lon.unwrap_or(0.0);
+            (comments, lat, lon)
+        }
+    };
+
+    // Try to extract EXIF shot date from the original bytes on a blocking
+    // thread so the synchronous EXIF container parse does not stall a Tokio
+    // worker (mirrors the spawn_blocking offload used for image processing).
+    let exif_bytes = uploaded_file.clone();
+    let photograph_shot_at =
+        match tokio::task::spawn_blocking(move || extract_exif_shot_at(&exif_bytes)).await {
+            Ok(Ok(dt_opt)) => dt_opt,
+            Ok(Err(e)) => {
+                error!(
+                    error = ?e,
+                    user_id = %user_id,
+                    "Failed to parse EXIF shot-at datetime from uploaded photograph"
+                );
+                None
+            }
+            Err(e) => {
+                error!(
+                    error = ?e,
+                    user_id = %user_id,
+                    "EXIF extraction blocking task panicked"
+                );
+                None
+            }
+        };
+
+    // compress and process image here in a blocking thread
+    let uploaded_file_clone = uploaded_file.clone();
+
+    let process_photograph_future =
+        process_uploaded_image(uploaded_file, None, CyhdevImageType::Photograph);
+
+    let process_thumbnail_future =
+        process_uploaded_image(uploaded_file_clone, None, CyhdevImageType::Thumbnail);
+
+    let (processed_image_res, processed_thumbnail_res) =
+        tokio::join!(process_photograph_future, process_thumbnail_future);
+
+    let processed_image: Vec<u8> = processed_image_res.map_err(|e| {
+        error!(error = ?e, user_id = %user_id, "Failed to process uploaded photograph");
+        code_err(CodeError::COULD_NOT_PROCESS_IMAGE, e)
+    })?;
+
+    let processed_thumbnail: Vec<u8> = processed_thumbnail_res.map_err(|e| {
+        error!(error = ?e, user_id = %user_id, "Failed to process uploaded thumbnail");
+        code_err(CodeError::COULD_NOT_PROCESS_IMAGE, e)
+    })?;
+
+    // Sizes of processed images for logging
+    let main_size_bytes: usize = processed_image.len();
+    let thumb_size_bytes: usize = processed_thumbnail.len();
+
+    // store in filesystem or S3
+    let image_id: Uuid = uuid::Uuid::new_v4();
+    let (extension, image_type_db_id) = map_image_format_to_str(IMAGE_ENCODING_FORMAT);
+
+    let image_path = format!("images/{image_id}.{extension}");
+    let thumbnail_path = format!("thumbnails/{image_id}.{extension}");
+
+    // upload to S3 here
+    // Initialize AWS S3 client from environment and upload the image
+    let s3_client = aws_sdk_s3::Client::new(&state.aws_profile_picture_config);
+
+    // Upload main photograph
+    s3_client
+        .put_object()
+        .bucket(AWS_S3_BUCKET_NAME)
+        .key(&image_path)
+        .content_type(mime.as_deref().unwrap_or("application/octet-stream"))
+        .body(aws_sdk_s3::primitives::ByteStream::from(processed_image))
+        .send()
+        .await
+        .map_err(|e| {
+            error!(
+                error = ?e,
+                user_id = %user_id,
+                bucket = AWS_S3_BUCKET_NAME,
+                key = %image_path,
+                "Failed to upload profile picture to S3"
+            );
+            code_err(CodeError::FILE_UPLOAD_ERROR, e)
+        })?;
+
+    info!(
+        user_id = %user_id,
+        bucket = AWS_S3_BUCKET_NAME,
+        key = %image_path,
+        main_size_bytes,
+        main_size_human = %format_size(main_size_bytes),
+        "Uploaded main photograph to S3"
+    );
+
+    // Upload thumbnail
+
+    if let Err(e) = s3_client
+        .put_object()
+        .bucket(AWS_S3_BUCKET_NAME)
+        .key(&thumbnail_path)
+        .content_type(mime.as_deref().unwrap_or("application/octet-stream"))
+        .body(aws_sdk_s3::primitives::ByteStream::from(
+            processed_thumbnail,
+        ))
+        .send()
+        .await
+    {
+        error!(
+            error = ?e,
+            user_id = %user_id,
+            bucket = AWS_S3_BUCKET_NAME,
+            key = %thumbnail_path,
+            "Failed to upload thumbnail to S3"
+        );
+        // Clean up the orphaned main object that was already uploaded.
+        match s3_client
+            .delete_object()
+            .bucket(AWS_S3_BUCKET_NAME)
+            .key(&image_path)
+            .send()
+            .await
+        {
+            Ok(_) => info!(
+                user_id = %user_id,
+                bucket = AWS_S3_BUCKET_NAME,
+                key = %image_path,
+                "Cleaned up orphaned main photograph after thumbnail upload failure"
+            ),
+            Err(cleanup_err) => error!(
+                error = ?cleanup_err,
+                user_id = %user_id,
+                bucket = AWS_S3_BUCKET_NAME,
+                key = %image_path,
+                "Failed to clean up orphaned main photograph after thumbnail upload failure"
+            ),
+        }
+        return Err(code_err(CodeError::FILE_UPLOAD_ERROR, e));
+    }
+
+    info!(
+        user_id = %user_id,
+        bucket = AWS_S3_BUCKET_NAME,
+        key = %thumbnail_path,
+        thumb_size_bytes,
+        thumb_size_human = %format_size(thumb_size_bytes),
+        "Uploaded thumbnail photograph to S3"
+    );
+
+    // Assemble the public S3 object URL
+    // Replace `<region>` below with your actual AWS region as appropriate
+    let s3_region: String = state
+        .aws_profile_picture_config
+        .region()
+        .map(|r| r.to_string())
+        .unwrap_or_else(|| "us-west-1".to_string());
+
+    let object_url: String = format!(
+        "https://{}.s3.{}.amazonaws.com/{}",
+        AWS_S3_BUCKET_NAME, s3_region, image_path
+    );
+
+    let thumbnail_url: String = format!(
+        "https://{}.s3.{}.amazonaws.com/{}",
+        AWS_S3_BUCKET_NAME, s3_region, thumbnail_path
+    );
+
+    let mut conn = state.get_conn().await.map_err(|e| {
+        error!(error = ?e, user_id = %user_id, "Failed to get DB connection from pool");
+        code_err(CodeError::POOL_ERROR, e)
+    })?;
+
+    let db_result: Result<Photograph, diesel::result::Error> =
+        diesel::insert_into(photographs::table)
+            .values(PhotographInsertable {
+                user_id,
+                photograph_shot_at,
+                photograph_image_type: image_type_db_id,
+                photograph_context,
+                photograph_is_on_cloud: true,
+                photograph_link: object_url.clone(),
+                photograph_comments,
+                photograph_lat,
+                photograph_lon,
+                photograph_thumbnail_link: thumbnail_url.clone(),
+            })
+            .get_result(&mut conn)
+            .await;
+
+    let photograph: Photograph = match db_result {
+        Err(e) => {
+            error!(
+                error = ?e,
+                user_id = %user_id,
+                key = %image_path,
+                "Failed to insert photograph row into DB"
+            );
+            // DB insertion failed after both S3 uploads succeeded; delete the
+            // orphaned objects so the bucket does not accumulate untracked files.
+            for key in [image_path.as_str(), thumbnail_path.as_str()] {
+                if let Err(cleanup_err) = s3_client
+                    .delete_object()
+                    .bucket(AWS_S3_BUCKET_NAME)
+                    .key(key)
+                    .send()
+                    .await
+                {
+                    error!(
+                        error = ?cleanup_err,
+                        user_id = %user_id,
+                        bucket = AWS_S3_BUCKET_NAME,
+                        key = %key,
+                        "Failed to delete orphaned S3 object after DB insertion failure"
+                    );
+                }
+            }
+            return Err(code_err(CodeError::DB_INSERTION_ERROR, e));
+        }
+        Ok(photograph) => photograph,
+    };
+
+    drop(conn);
+
+    // TODO: define response dto later
+    Ok(http_resp(photograph, (), start))
+}

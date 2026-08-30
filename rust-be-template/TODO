@@ -1,0 +1,54 @@
+# Goals
+
+## Execution rules
+
+- Complete local implementation waves in numeric order. Work items in the same wave can proceed concurrently unless a dependency says otherwise. External deployment gates do not block local implementation.
+- A foundation gate must land before dependent work starts. Continuous items begin in their listed wave and continue feature by feature without blocking unrelated later work.
+- Give each work item one owner. Serialize repository-wide integration and overlapping schema changes; keep feature-level changes isolated by module.
+- Run only `cargo clippy --workspace --all-targets --all-features -- -D warnings` as the stage code check. Defer broader test, build, benchmark, and review work until Wave 8.
+
+## Wave 0: External deployment gate
+
+- [ ] **W0-A: Rotate exposed credentials and invalidate old build artifacts.** The current source and Docker build context no longer contain the PostgreSQL credential, and runtime secrets are injected through the deployment environment. Before the next deployment, revoke the historical database password and former browser API keys if they were ever valid; retire externally stored images or remote build caches that received the old context. This is an external operational action and does not block local implementation.
+
+## Wave 1: Repository foundation gate
+
+
+## Wave 2: Engineering foundations, concurrent
+
+- [ ] **W2-A: Establish backend boundaries, then continue incrementally.** Refactor by feature into `api`, `service`, `repository`, and `domain` boundaries. Migrate authentication and accounts first as the reference slice; that slice is the foundation gate for account work. Handlers should only parse, authorize, and map HTTP data; services should own use cases, transactions, and cache coordination; repositories should own Diesel queries; domain types should not depend on Axum or persistence. Replace business methods on `ServerState` with explicit dependencies and split files over 300 lines. Continue the remaining feature migrations alongside Waves 3 through 7 without overlapping active feature work.
+- [ ] **W2-B: Make builds reproducible and non-mutating.** Remove `git pull`, `npm update`, and `cargo update` from build scripts; build locked inputs from the monorepo root; stop copying frontend output between sibling repositories.
+- [ ] **W2-C: Generate frontend API contracts.** Generate the TypeScript API types and client from the OpenAPI contract, and provide a deterministic drift-check command for W3-B.
+- [ ] **W2-D: Add stable source links.** Add source links for major site components, especially authentication, using paths or commit permalinks that are stable after W1-A.
+
+## Wave 3: Verification and measurement, concurrent
+
+- [ ] **W3-A: Establish integration coverage.** Add a database-backed integration test harness and cover current authentication, role gates, session refresh and revocation, cache consistency, media cleanup, and migration rollback boundaries. Extend the suite with soft-deletion cases when W5-B lands. Build the harness during implementation; execute it in Wave 8.
+- [ ] **W3-B: Add lightweight root CI.** Run Clippy only during implementation. Provide deterministic root commands for formatting, unit and integration tests, migrations, OpenAPI drift, frontend checks, development image smoke tests, and the final review without placing them in the per-stage CI path. W2-B and W2-C are prerequisites; consume W3-A tests as they land.
+- [ ] **W3-C: Remove obsolete paths.** Remove obsolete code and unsupported platform paths, including the unused OSM lookup service and Windows-only scripts and dependencies. Start after W2-B so build changes do not overlap.
+- [ ] **W3-D: Add reproducible throughput measurement.** Build a throughput demo with a recorded workload, hardware and configuration, latency percentiles, and regression thresholds. Establish the benchmark independently, then wire its threshold command into Wave 8.
+
+## Wave 4: Independent backend vertical slices, concurrent
+
+- [ ] **W4-A: Centralize account mutations.** Route every user, email, password, and role mutation through the account service established by W2-A; refresh or revoke all affected sessions.
+- [ ] **W4-B: Bound and validate caches.** Inventory every in-memory cache and give each one a size or memory bound, eviction policy, invalidation contract, and metrics. Use W3-D measurements before adding response caching to explicitly public, authentication-independent GET endpoints; never cache personalized responses through a global catch-all layer.
+- [ ] **W4-C: Stream media persistence.** Stream media uploads and image processing through bounded buffers instead of retaining entire uploads in memory. Delete superseded S3 objects and make database/object-store failure recovery explicit.
+
+## Wave 5: Account and data foundations, concurrent
+
+- [ ] **W5-A: Make sessions durable.** Replace the process-local session map with durable, revocable server-side sessions that survive restarts and have bounded cleanup. Store only hashed session secrets and define expiry, rotation, and multi-device behavior. W4-A is a prerequisite.
+- [ ] **W5-B: Implement soft deletion and retention.** Preserve authored posts, comments, photographs, and chat history under an anonymized actor; avoid user foreign-key cascades; define retention; provide a separately authorized hard-purge path. Coordinate user-schema changes with W5-A, but the implementations can otherwise proceed concurrently.
+
+## Wave 6: Account capabilities, concurrent
+
+- [ ] **W6-A: Add OAuth/OIDC.** Add login and account linking without weakening the session and email-verification controls. W5-A is a prerequisite.
+- [ ] **W6-B: Add role and permission administration.** Add an authorized administration API and UI for assigning roles and permissions, with an audit trail for every change. W4-A and W5-A are prerequisites.
+- [ ] **W6-C: Notify users before automatic purge.** Add idempotent delivery, retries, and a defined grace period. W5-B is a prerequisite.
+
+## Wave 7: Dependent product work
+
+- [ ] **W7-A: Add a forum.** Define moderation, pagination, search, notification, and retention behavior instead of reusing blog comments implicitly. W5-B and W6-B are prerequisites.
+
+## Wave 8: Deferred heavy review
+
+- [ ] **W8-A: Run the full repository review once.** Run formatting, unit and database-backed integration tests, migration rollback coverage, OpenAPI drift, frontend checks, development image smoke tests, throughput thresholds, and a redacted current-tree and history secret scan. Review every TODO requirement against direct evidence, fix all findings, and rerun affected checks. Do not run a release build.

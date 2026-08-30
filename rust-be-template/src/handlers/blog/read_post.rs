@@ -1,0 +1,389 @@
+use std::{collections::HashMap, sync::Arc};
+
+use axum::{
+    Extension,
+    extract::{Path, State},
+    response::IntoResponse,
+};
+use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
+use diesel_async::RunQueryDsl;
+use serde::{Deserialize, Deserializer, de::Error as DeError};
+use uuid::Uuid;
+
+use crate::{
+    domain::blog::blog::{
+        CachedPostInfo, Comment, CommentResponse, PostInfo, UserBadgeInfo, VoteState,
+    },
+    dto::responses::{blog::read_post_response::ReadPostResponse, response_data::http_resp},
+    errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    init::state::ServerState,
+    routers::middleware::is_logged_in::{AuthSession, AuthStatus},
+    schema::{
+        comment_votes, comments, post_tags, post_votes, posts, tags, user_profile_pictures, users,
+    },
+    util::time::now::tokio_now,
+};
+
+#[derive(Clone, Debug)]
+pub enum PostLookupKey {
+    Id(Uuid),
+    Slug(String),
+}
+
+impl<'de> Deserialize<'de> for PostLookupKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        if let Ok(post_id) = Uuid::parse_str(&raw) {
+            return Ok(Self::Id(post_id));
+        }
+
+        let slug = raw.trim().to_lowercase();
+        if slug.is_empty() {
+            return Err(D::Error::custom("post identifier cannot be empty"));
+        }
+        Ok(Self::Slug(slug))
+    }
+}
+
+// TODO: Get comments too.
+#[utoipa::path(
+    get,
+    path = "/api/blog/posts/{post_id}",
+    tag = "blog",
+    params(
+        ("post_id" = String, Path, description = "Post UUID or slug")
+    ),
+    responses(
+        (status = 200, description = "Post details and comments", body = ReadPostResponse),
+        (status = 404, description = "Post not found", body = CodeErrorResp),
+        (status = 500, description = "Internal server error", body = CodeErrorResp)
+    )
+)]
+pub async fn read_post(
+    Extension(is_logged_in): Extension<AuthStatus>,
+    Extension(auth_session): Extension<Option<AuthSession>>,
+    State(state): State<Arc<ServerState>>,
+    Path(post_lookup_key): Path<PostLookupKey>,
+) -> HandlerResponse<impl IntoResponse> {
+    let start = tokio_now();
+
+    let post_id: Uuid = match post_lookup_key {
+        PostLookupKey::Id(post_id) => post_id,
+        PostLookupKey::Slug(post_slug) => {
+            match state.get_post_id_by_slug_from_cache(&post_slug).await {
+                Some(post_id) => post_id,
+                None => {
+                    let mut conn = state
+                        .get_conn()
+                        .await
+                        .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+                    let post_id_opt: Option<Uuid> = posts::table
+                        .filter(posts::post_slug.eq(&post_slug))
+                        .select(posts::post_id)
+                        .first(&mut conn)
+                        .await
+                        .optional()
+                        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+
+                    drop(conn);
+
+                    let post_id = post_id_opt
+                        .ok_or_else(|| code_err(CodeError::POST_NOT_FOUND, "Post not found"))?;
+                    state.cache_post_slug_mapping(&post_slug, post_id).await;
+                    post_id
+                }
+            }
+        }
+    };
+
+    let include_unpublished = match auth_session {
+        Some(auth_session) => auth_session.role_type.is_superuser(),
+        None => false,
+    };
+
+    let post_handle = {
+        let state = Arc::clone(&state);
+        tokio::spawn(async move {
+            let mut conn = state
+                .get_conn()
+                .await
+                .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+            let update_result = if include_unpublished {
+                diesel::update(posts::table.filter(posts::post_id.eq(post_id)))
+                    .set(posts::post_view_count.eq(posts::post_view_count + 1))
+                    .returning(posts::all_columns)
+                    .get_result(&mut conn)
+                    .await
+            } else {
+                diesel::update(
+                    posts::table
+                        .filter(posts::post_id.eq(post_id))
+                        .filter(posts::post_is_published.eq(true)),
+                )
+                .set(posts::post_view_count.eq(posts::post_view_count + 1))
+                .returning(posts::all_columns)
+                .get_result(&mut conn)
+                .await
+            };
+
+            update_result.map_err(|e| match e {
+                diesel::result::Error::NotFound => code_err(CodeError::POST_NOT_FOUND, e),
+                _ => code_err(CodeError::DB_QUERY_ERROR, e),
+            })
+        })
+    };
+
+    let comments_handle = {
+        let state = Arc::clone(&state);
+        tokio::spawn(async move {
+            let mut conn = state
+                .get_conn()
+                .await
+                .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+            comments::table
+                .filter(comments::post_id.eq(post_id))
+                .load::<Comment>(&mut conn)
+                .await
+                .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))
+        })
+    };
+
+    let (post_result, comments_result) = tokio::join!(post_handle, comments_handle);
+
+    let mut post: crate::domain::blog::blog::Post =
+        post_result.map_err(|e| code_err(CodeError::JOIN_ERROR, e))??;
+
+    // Pick the markdown source while preserving the original branch semantics:
+    // prefer post_metadata["markdown_content"]; else fall back to post_content
+    // only when it is not already HTML (does not contain '<').
+    let markdown_src: Option<String> = if let Some(markdown) = post
+        .post_metadata
+        .get("markdown_content")
+        .and_then(|value| value.as_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        Some(markdown.to_string())
+    } else if !post.post_content.contains('<') {
+        Some(post.post_content.clone())
+    } else {
+        None
+    };
+
+    // comrak is CPU-bound; render off the async worker thread.
+    if let Some(src) = markdown_src {
+        post.post_content = tokio::task::spawn_blocking(move || {
+            comrak::markdown_to_html(&src, &comrak::Options::default())
+        })
+        .await
+        .map_err(|e| code_err(CodeError::JOIN_ERROR, e))?;
+    }
+
+    // Get tags from cache or DB
+    let post_tags_list: Vec<String> =
+        if let Some(cached) = state.get_post_from_cache(&post.post_id).await {
+            cached.post_tags
+        } else {
+            // Fetch from DB if not in cache
+            let mut conn = state
+                .get_conn()
+                .await
+                .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+            let tag_names: Vec<String> = post_tags::table
+                .inner_join(tags::table)
+                .filter(post_tags::post_id.eq(post.post_id))
+                .select(tags::tag_name)
+                .load(&mut conn)
+                .await
+                .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+
+            drop(conn);
+            tag_names
+        };
+
+    let post_info = PostInfo::from(post.clone());
+    let cached_post = CachedPostInfo::from_post_info_with_tags(post_info, post_tags_list.clone());
+    state
+        .insert_post_to_cache_without_search_sync(&cached_post)
+        .await;
+
+    let comments: Vec<Comment> =
+        comments_result.map_err(|e| code_err(CodeError::JOIN_ERROR, e))??;
+
+    let mut relevant_user_ids: Vec<Uuid> = comments.iter().map(|c| c.user_id).collect();
+    relevant_user_ids.push(post.user_id);
+    relevant_user_ids.sort();
+    relevant_user_ids.dedup();
+
+    let mut conn = state
+        .get_conn()
+        .await
+        .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+    // Fetch user names and country codes
+    let users_info: Vec<(Uuid, String, i32)> = users::table
+        .filter(users::user_id.eq_any(&relevant_user_ids))
+        .select((users::user_id, users::user_name, users::user_country))
+        .load(&mut conn)
+        .await
+        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+
+    let mut user_name_map: HashMap<Uuid, String> = HashMap::new();
+    let mut user_country_map: HashMap<Uuid, i32> = HashMap::new();
+    for (uid, name, country) in users_info {
+        user_name_map.insert(uid, name);
+        user_country_map.insert(uid, country);
+    }
+
+    // Fetch profile pictures
+    let user_pics: Vec<(Uuid, Option<String>)> = user_profile_pictures::table
+        .filter(user_profile_pictures::user_id.eq_any(&relevant_user_ids))
+        .distinct_on(user_profile_pictures::user_id)
+        .order((
+            user_profile_pictures::user_id,
+            user_profile_pictures::user_profile_picture_updated_at.desc(),
+        ))
+        .select((
+            user_profile_pictures::user_id,
+            user_profile_pictures::user_profile_picture_link,
+        ))
+        .load(&mut conn)
+        .await
+        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+
+    let mut user_pic_map: HashMap<Uuid, String> = HashMap::new();
+    for (uid, link) in user_pics {
+        if !user_pic_map.contains_key(&uid)
+            && let Some(l) = link
+        {
+            user_pic_map.insert(uid, l);
+        }
+    }
+
+    drop(conn);
+
+    // Fetch vote state for comments if logged in
+    let vote_map = if let AuthStatus::LoggedIn(user_id) = is_logged_in {
+        let comment_ids: Vec<Uuid> = comments.iter().map(|c| c.comment_id).collect();
+        let mut conn = state
+            .get_conn()
+            .await
+            .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+        let user_votes: Vec<(Uuid, bool)> = comment_votes::table
+            .filter(comment_votes::comment_id.eq_any(&comment_ids))
+            .filter(comment_votes::user_id.eq(user_id))
+            .select((comment_votes::comment_id, comment_votes::is_upvote))
+            .load::<(Uuid, bool)>(&mut conn)
+            .await
+            .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+
+        user_votes
+            .into_iter()
+            .map(|(cid, is_upvote)| {
+                let vs = if is_upvote {
+                    VoteState::Upvoted
+                } else {
+                    VoteState::Downvoted
+                };
+                (cid, vs)
+            })
+            .collect::<HashMap<Uuid, VoteState>>()
+    } else {
+        HashMap::new()
+    };
+
+    // Get country flag lookup from cache
+    let country_map = state.country_map.read().await;
+
+    // Transform comments into CommentResponse
+    let mut comment_responses: Vec<CommentResponse> = comments
+        .into_iter()
+        .map(|comment| {
+            let vs = vote_map
+                .get(&comment.comment_id)
+                .cloned()
+                .unwrap_or(VoteState::DidNotVote);
+
+            let user_name = user_name_map
+                .get(&comment.user_id)
+                .cloned()
+                .unwrap_or_else(|| "Unknown".to_string());
+            let user_profile_picture_url = user_pic_map
+                .get(&comment.user_id)
+                .cloned()
+                .unwrap_or_default();
+            let user_country_flag = user_country_map
+                .get(&comment.user_id)
+                .and_then(|&code| country_map.get_flag_by_code(code));
+
+            CommentResponse::from_comment_votestate_and_badge_info(
+                comment,
+                vs,
+                UserBadgeInfo {
+                    user_name,
+                    user_profile_picture_url,
+                    user_country_flag,
+                },
+            )
+        })
+        .collect();
+
+    comment_responses.sort_by_key(|c| -(c.total_upvotes - c.total_downvotes));
+
+    let post_author_name = user_name_map
+        .get(&post.user_id)
+        .cloned()
+        .unwrap_or_else(|| "Unknown".to_string());
+    let post_author_pic = user_pic_map.get(&post.user_id).cloned().unwrap_or_default();
+    let post_author_country_flag = user_country_map
+        .get(&post.user_id)
+        .and_then(|&code| country_map.get_flag_by_code(code));
+
+    drop(country_map);
+
+    let post_vote_state = if let AuthStatus::LoggedIn(user_id) = is_logged_in {
+        let mut conn = state
+            .get_conn()
+            .await
+            .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+        let opt = post_votes::table
+            .filter(post_votes::post_id.eq(post_id))
+            .filter(post_votes::user_id.eq(user_id))
+            .select(post_votes::is_upvote)
+            .first::<bool>(&mut conn)
+            .await
+            .optional()
+            .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+        match opt {
+            Some(true) => VoteState::Upvoted,
+            Some(false) => VoteState::Downvoted,
+            None => VoteState::DidNotVote,
+        }
+    } else {
+        VoteState::DidNotVote
+    };
+
+    Ok(http_resp(
+        ReadPostResponse {
+            post,
+            post_tags: post_tags_list,
+            comments: comment_responses,
+            vote_state: post_vote_state,
+            user_badge_info: UserBadgeInfo {
+                user_name: post_author_name,
+                user_profile_picture_url: post_author_pic,
+                user_country_flag: post_author_country_flag,
+            },
+        },
+        (),
+        start,
+    ))
+}

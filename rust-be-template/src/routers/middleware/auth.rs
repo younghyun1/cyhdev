@@ -1,0 +1,71 @@
+use std::{str::FromStr, sync::Arc};
+
+use axum::{
+    body::Body,
+    extract::{Request, State},
+    middleware::Next,
+    response::IntoResponse,
+};
+use axum_extra::extract::CookieJar;
+use uuid::Uuid;
+
+use crate::{
+    errors::code_error::{CodeError, HandlerResponse, code_err},
+    init::state::ServerState,
+};
+
+pub async fn auth_middleware(
+    State(state): State<Arc<ServerState>>,
+    cookie_jar: CookieJar,
+    mut request: Request<Body>,
+    next: Next,
+) -> HandlerResponse<impl IntoResponse> {
+    let session_id = match cookie_jar.get("session_id") {
+        Some(session_cookie) => match Uuid::from_str(session_cookie.value()) {
+            Ok(session_id) => session_id,
+            Err(e) => {
+                return Err(code_err(
+                    CodeError::UNAUTHORIZED_ACCESS,
+                    format!("Failed to parse session cookie: {e}"),
+                ));
+            }
+        },
+        None => {
+            return Err(code_err(
+                CodeError::UNAUTHORIZED_ACCESS,
+                "Session cookie is missing".to_string(),
+            ));
+        }
+    };
+
+    let session: crate::init::state::Session = match state.get_session(&session_id).await {
+        Ok(session) => session,
+        Err(e) => {
+            return Err(code_err(
+                CodeError::UNAUTHORIZED_ACCESS,
+                format!("Failed to retrieve session: {e}"),
+            ));
+        }
+    };
+
+    if !session.is_unexpired() {
+        return Err(code_err(
+            CodeError::UNAUTHORIZED_ACCESS,
+            "Session has expired".to_string(),
+        ));
+    }
+
+    if !session.get_is_email_verified() {
+        return Err(code_err(
+            CodeError::EMAIL_NOT_VERIFIED,
+            "Email is not verified".to_string(),
+        ));
+    }
+
+    request.extensions_mut().insert(session.get_user_id());
+    request.extensions_mut().insert(session.get_role_type());
+
+    let response = next.run(request).await;
+
+    Ok(response)
+}

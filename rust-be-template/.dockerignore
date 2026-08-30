@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+!.env.example
+target
+**/target
+node_modules
+**/node_modules
+certs
+**/certs
+*.pem
+*.key
+*.p12
+*.pfx
+db/password.txt
+secrets.*
+values.*
