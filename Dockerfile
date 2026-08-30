@@ -1,25 +1,34 @@
-ARG RUST_VERSION=1.90.0
 ARG APP_NAME=rust-be-template
 
 # --- Build Stage ---
-FROM rust:${RUST_VERSION}-alpine AS build
+FROM rustlang/rust:nightly-alpine AS build
 ARG APP_NAME
+ARG RUST_TARGET=x86_64-unknown-linux-musl
 WORKDIR /app
 
 # Install build dependencies, including tools for vendored OpenSSL
-RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl
+RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
+    && rustup component add rust-src
 
-# Build the application, ensuring the `fe` directory is mounted for rust-embed
-RUN --mount=type=bind,source=src,target=src \
+# Rebuild the standard library with the release profile from Cargo.toml so the
+# application and sysroot share the same optimization, LTO, and panic settings.
+RUN --mount=type=bind,source=.cargo,target=.cargo \
+    --mount=type=bind,source=rust-toolchain.toml,target=rust-toolchain.toml \
+    --mount=type=bind,source=build.rs,target=build.rs \
+    --mount=type=bind,source=src,target=src,rw \
     --mount=type=bind,source=fe,target=fe \
+    --mount=type=bind,source=i18n,target=i18n \
+    --mount=type=bind,source=migrations,target=migrations \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=cache,target=/app/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-    cargo build --locked --release && \
-    upx --lzma --best ./target/release/$APP_NAME && \
-    cp ./target/release/$APP_NAME /bin/server
+    cargo build --locked --release --target "$RUST_TARGET" \
+        -Z build-std=core,alloc,std,panic_unwind \
+        -Z build-std-features=backtrace && \
+    upx --lzma --best "./target/$RUST_TARGET/release/$APP_NAME" && \
+    cp "./target/$RUST_TARGET/release/$APP_NAME" /bin/server
 
 # --- Final Stage ---
 FROM scratch AS final
@@ -31,11 +40,10 @@ COPY --from=build /bin/server /bin/
 COPY new_bundle_ipv4.db /bin/
 COPY new_bundle_ipv6.db /bin/
 
-# Set environment variables for the application
+# Set non-secret defaults. Inject database and service credentials at runtime.
 ENV CURR_ENV="dev"
 ENV HOST_IP="127.0.0.1"
 ENV HOST_PORT="443"
-ENV DB_URL="postgres://be_admin:!1^CnhVBB7vfSFzlQ@host.docker.internal/be_db"
 
 # Expose the application port
 EXPOSE 443

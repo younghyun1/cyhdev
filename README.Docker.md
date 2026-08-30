@@ -1,22 +1,21 @@
-### Building and running your application
+### Building and running the application
 
-When you're ready, start your application by running:
-`docker compose up --build`.
+Copy `.env.example` to `.env`, replace every placeholder, then run `docker compose up --build`. Compose injects `.env` into the container at runtime; the file is excluded from Git and the Docker build context.
 
-Your application will be available at http://localhost:30737.
+Never pass database, SMTP, object-store, or API credentials as Docker build arguments or bake them into the image. Production deployments must provide the same environment variables through the deployment platform's runtime secret mechanism.
+
+The application will be available at http://localhost:30737.
 
 ### Deploying your application to the cloud
 
-First, build your image, e.g.: `docker build -t myapp .`.
-If your cloud uses a different CPU architecture than your development
-machine (e.g., you are on a Mac M1 and your cloud provider is amd64),
-you'll want to build the image for that platform, e.g.:
-`docker build --platform=linux/amd64 -t myapp .`.
+Build the image without credentials, for example: `docker build -t myapp .`.
 
-Then, push it to your registry, e.g. `docker push myregistry.com/myapp`.
+If the deployment uses a different CPU architecture than the development machine, build for that platform: `docker build --platform=linux/amd64 -t myapp .`.
 
-Consult Docker's [getting started](https://docs.docker.com/go/get-started-sharing/)
-docs for more detail on building and pushing.
+Then push it to the registry, for example: `docker push myregistry.com/myapp`.
+
+Consult Docker's [getting started](https://docs.docker.com/go/get-started-sharing/) documentation for more detail on building and pushing.
 
 ### References
+
 * [Docker's Rust guide](https://docs.docker.com/language/rust/)
