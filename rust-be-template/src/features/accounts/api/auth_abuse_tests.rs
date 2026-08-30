@@ -2,13 +2,19 @@ use std::{error::Error, sync::Arc};
 
 use axum::{
     Json, Router,
+    extract::DefaultBodyLimit,
     http::{StatusCode, header},
     middleware::{from_fn, from_fn_with_state},
     routing::post,
 };
 
-use super::auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_headers};
-use crate::features::accounts::service::auth_abuse::AuthAbuseService;
+use super::auth_abuse::enforce_auth_ip_throttle;
+use crate::{
+    features::accounts::service::auth_abuse::AuthAbuseService,
+    routers::middleware::sensitive_response::sensitive_response_headers,
+};
+
+const TEST_PRIVATE_JSON_LIMIT: usize = 8 * 1024;
 
 #[tokio::test]
 async fn auth_route_headers_cover_extractor_and_throttle_rejections() -> Result<(), Box<dyn Error>>
@@ -16,8 +22,9 @@ async fn auth_route_headers_cover_extractor_and_throttle_rejections() -> Result<
     let limiter = Arc::new(AuthAbuseService::new()?);
     let router = Router::new()
         .route("/api/auth/login", post(accept_json))
+        .layer(DefaultBodyLimit::max(TEST_PRIVATE_JSON_LIMIT))
         .layer(from_fn_with_state(limiter, enforce_auth_ip_throttle))
-        .layer(from_fn(sensitive_auth_response_headers));
+        .layer(from_fn(sensitive_response_headers));
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
     let address = listener.local_addr()?;
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
@@ -41,7 +48,19 @@ async fn auth_route_headers_cover_extractor_and_throttle_rejections() -> Result<
     assert!(malformed.status().is_client_error());
     assert_private_headers(malformed.headers());
 
-    for _ in 0..9 {
+    let oversized = client
+        .post(&url)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(format!(
+            "{{\"value\":\"{}\"}}",
+            "a".repeat(TEST_PRIVATE_JSON_LIMIT)
+        ))
+        .send()
+        .await?;
+    assert_eq!(oversized.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_private_headers(oversized.headers());
+
+    for _ in 0..8 {
         let admitted = client
             .post(&url)
             .header(header::CONTENT_TYPE, "application/json")

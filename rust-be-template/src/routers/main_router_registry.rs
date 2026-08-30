@@ -19,7 +19,7 @@ pub(super) use utoipa_swagger_ui::SwaggerUi;
 pub(super) use crate::{
     docs::ApiDoc,
     features::accounts::api::{
-        auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_headers},
+        auth_abuse::enforce_auth_ip_throttle,
         authorization_audit::list_authorization_audit,
         authorization_mutations::{assign_authorization_role, set_authorization_role_permission},
         authorization_queries::{
@@ -110,5 +110,6 @@ pub(super) use super::middleware::{
     is_logged_in::is_logged_in_middleware,
     logging::log_middleware,
     role::require_superuser_middleware,
+    sensitive_response::{sensitive_admin_response_headers, sensitive_response_headers},
     trusted_origin::{TrustedOrigins, require_trusted_origin},
 };

@@ -11,13 +11,16 @@ use crate::features::accounts::{
     error::AccountError,
     service::account_service::AccountService,
 };
-use crate::util::media::{
-    cleanup::{
-        MEDIA_CLEANUP_ENQUEUE_LIMIT, MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT, MediaCleanupEnqueueReport,
-        MediaCleanupFailureRegistration, MediaCleanupFailureUpdate, MediaCleanupRetryReport,
-        is_supported_media_cleanup_reason, settle_durable_cleanup,
+use crate::util::{
+    media::{
+        cleanup::{
+            MEDIA_CLEANUP_ENQUEUE_LIMIT, MEDIA_CLEANUP_RETRY_ATTEMPT_LIMIT,
+            MediaCleanupEnqueueReport, MediaCleanupFailureRegistration, MediaCleanupFailureUpdate,
+            MediaCleanupRetryReport, is_supported_media_cleanup_reason, settle_durable_cleanup,
+        },
+        persistence::{CleanupFailure, MAX_CLEANUP_ERROR_CHARS, bounded_cleanup_error},
     },
-    persistence::{CleanupFailure, MAX_CLEANUP_ERROR_CHARS, bounded_cleanup_error},
+    s3::AWS_S3_BUCKET_NAME,
 };
 
 const CLEANUP_DELETE_CONCURRENCY: usize = 4;
@@ -222,8 +225,7 @@ fn retry_backoff(attempt_count: i32) -> Duration {
 fn validate_location(original_url: &str, bucket: &str, key: &str) -> Result<(), AccountError> {
     let valid = !original_url.is_empty()
         && original_url.len() <= 4_096
-        && !bucket.is_empty()
-        && bucket.len() <= 255
+        && bucket == AWS_S3_BUCKET_NAME
         && !key.is_empty()
         && key.len() <= 1_024;
     if valid {
@@ -235,7 +237,8 @@ fn validate_location(original_url: &str, bucket: &str, key: &str) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{bounded_failure_message, retry_backoff, retry_is_due};
+    use super::{bounded_failure_message, retry_backoff, retry_is_due, validate_location};
+    use crate::{features::accounts::error::AccountError, util::s3::AWS_S3_BUCKET_NAME};
     use chrono::{Duration, Utc};
 
     #[test]
@@ -260,5 +263,17 @@ mod tests {
             bounded_failure_message(&"🙂".repeat(3_000)).chars().count(),
             2_048
         );
+    }
+
+    #[test]
+    fn reconciliation_accepts_only_the_configured_media_bucket() {
+        let original_url = format!("s3://{AWS_S3_BUCKET_NAME}/images/example.avif");
+        assert!(
+            validate_location(&original_url, AWS_S3_BUCKET_NAME, "images/example.avif").is_ok()
+        );
+        assert!(matches!(
+            validate_location(&original_url, "attacker-controlled", "images/example.avif"),
+            Err(AccountError::InvalidMediaCleanupLocation)
+        ));
     }
 }

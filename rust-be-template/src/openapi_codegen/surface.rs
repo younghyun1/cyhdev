@@ -47,6 +47,11 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("oidc", "GET", "/api/auth/oidc/status"),
     operation!("account", "POST", "/api/auth/verify-user-email"),
     operation!("account", "GET", "/api/users/{user_name}"),
+    operation!(
+        "account",
+        "GET",
+        "/api/admin/account-retention-notifications"
+    ),
     operation!("account", "GET", "/api/admin/media-cleanup/unresolved"),
     operation!("account", "POST", "/api/auth/login"),
     operation!("oidc", "POST", "/api/auth/oidc/login/start"),
@@ -58,6 +63,11 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("account", "POST", "/api/auth/reset-password-request"),
     operation!("account", "POST", "/api/auth/signup"),
     operation!("account", "PATCH", "/api/auth/profile"),
+    operation!(
+        "account",
+        "POST",
+        "/api/admin/account-retention-notifications/{notification_id}/retry"
+    ),
     operation!(
         "account",
         "POST",
@@ -197,3 +207,53 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("wasm", "POST", "/api/wasm-modules/{wasm_module_id}/assets"),
     operation!("wasm", "DELETE", "/api/wasm-modules/{wasm_module_id}"),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::{FRONTEND_OPERATIONS, FrontendOperation};
+
+    #[test]
+    fn selects_every_admin_operations_panel_contract() {
+        let expected = [
+            FrontendOperation {
+                client_group: "account",
+                method: "GET",
+                path: "/api/admin/account-retention-notifications",
+            },
+            FrontendOperation {
+                client_group: "account",
+                method: "POST",
+                path: "/api/admin/account-retention-notifications/{notification_id}/retry",
+            },
+            FrontendOperation {
+                client_group: "account",
+                method: "POST",
+                path: "/api/admin/users/{user_id}/hard-purge",
+            },
+            FrontendOperation {
+                client_group: "account",
+                method: "GET",
+                path: "/api/admin/media-cleanup/unresolved",
+            },
+            FrontendOperation {
+                client_group: "account",
+                method: "POST",
+                path: "/api/admin/media-cleanup/{cleanup_id}/resolve",
+            },
+            FrontendOperation {
+                client_group: "i18n",
+                method: "POST",
+                path: "/api/admin/sync-i18n-cache",
+            },
+        ];
+
+        for operation in expected {
+            assert!(
+                FRONTEND_OPERATIONS.contains(&operation),
+                "missing generated frontend operation: {} {}",
+                operation.method,
+                operation.path,
+            );
+        }
+    }
+}

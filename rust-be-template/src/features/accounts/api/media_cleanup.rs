@@ -76,6 +76,7 @@ pub async fn unresolved_media_cleanup(
         (status = 403, description = "Current database role is not superuser", body = CodeErrorResp),
         (status = 404, description = "Cleanup record not found", body = CodeErrorResp),
         (status = 409, description = "Stored cleanup state conflicts with reconciliation", body = CodeErrorResp),
+        (status = 413, description = "Reconciliation request exceeds the private JSON limit", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]

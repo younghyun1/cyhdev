@@ -1,11 +1,11 @@
-//! HTTP admission and response helpers for authentication-abuse controls.
+//! HTTP admission controls for authentication abuse.
 
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     body::Body,
     extract::{ConnectInfo, State},
-    http::{HeaderValue, Method, Request, Response, header},
+    http::{Method, Request, Response},
     middleware::Next,
     response::IntoResponse,
 };
@@ -41,20 +41,6 @@ pub async fn enforce_auth_ip_throttle(
         Ok(()) => next.run(request).await,
         Err(rejection) => map_auth_throttle_rejection(rejection).into_response(),
     }
-}
-
-/// Apply sensitive response policy to successes, extractor failures, and throttles.
-pub async fn sensitive_auth_response_headers(request: Request<Body>, next: Next) -> Response<Body> {
-    let mut response = next.run(request).await;
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("no-store, max-age=0"),
-    );
-    response.headers_mut().insert(
-        header::REFERRER_POLICY,
-        HeaderValue::from_static("no-referrer"),
-    );
-    response
 }
 
 pub fn map_auth_throttle_rejection(rejection: AuthThrottleRejection) -> CodeErrorResp {

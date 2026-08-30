@@ -1,5 +1,7 @@
 mod support;
 
+use std::sync::Arc;
+
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -36,10 +38,24 @@ fn role_and_permission_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let context = account_test_context(database)?;
         let actor = seed_account(&context, "AuthorizationActor").await?;
         let target = seed_account(&context, "AuthorizationTarget").await?;
+        match context
+            .accounts
+            .acquire_current_younghyun_authority(actor.user_id)
+            .await
+        {
+            Err(AuthorizationError::Unauthorized) => {}
+            Err(error) => return Err(Box::new(error) as BoxError),
+            Ok(_lease) => return require(false, "ordinary user passed current Younghyun check"),
+        }
         context
             .accounts
             .assign_role(actor.user_id, RoleType::Younghyun)
             .await?;
+        let authority_lease = context
+            .accounts
+            .acquire_current_younghyun_authority(actor.user_id)
+            .await?;
+        drop(authority_lease);
         context
             .accounts
             .verify_email(target.verification_token)
@@ -139,8 +155,37 @@ fn role_and_permission_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                     && event.request_id == Some(request_id)),
             "audit read did not resolve the current privacy-safe display name",
         )?;
-        assert_audit_guards(&context, receipt.audit_event_id).await
+        assert_audit_guards(&context, receipt.audit_event_id).await?;
+        assert_authority_lease_serializes_role_change(&context, actor.user_id).await
     })
+}
+
+async fn assert_authority_lease_serializes_role_change(
+    context: &support::fixtures::AccountTestContext,
+    actor_user_id: Uuid,
+) -> TestResult {
+    let authority_lease = context
+        .accounts
+        .acquire_current_younghyun_authority(actor_user_id)
+        .await?;
+    let accounts = Arc::clone(&context.accounts);
+    let (started_tx, started_rx) = tokio::sync::oneshot::channel::<()>();
+    let demotion = tokio::spawn(async move {
+        let _started = started_tx.send(()).is_ok();
+        accounts.assign_role(actor_user_id, RoleType::User).await
+    });
+    started_rx.await?;
+    tokio::task::yield_now().await;
+    require(
+        !demotion.is_finished(),
+        "role mutation bypassed the current-authority read lease",
+    )?;
+    drop(authority_lease);
+    let role_type = demotion.await??;
+    require(
+        role_type == RoleType::User,
+        "role mutation did not resume after the authority lease was released",
+    )
 }
 
 async fn assert_audit_guards(

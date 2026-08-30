@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-pub(super) fn map_authorization_error(error: AuthorizationError) -> CodeErrorResp {
+pub(crate) fn map_authorization_error(error: AuthorizationError) -> CodeErrorResp {
     match error {
         AuthorizationError::AccountRepository(error) => {
             map_account_error(error, AccountMutation::Update)

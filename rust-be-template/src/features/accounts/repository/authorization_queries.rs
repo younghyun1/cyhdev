@@ -31,6 +31,15 @@ use crate::{
 };
 
 impl AccountRepository {
+    /// Rechecks active Younghyun authority against PostgreSQL without cached session state.
+    pub async fn ensure_current_younghyun_authority(
+        &self,
+        actor_user_id: Uuid,
+    ) -> Result<(), AuthorizationError> {
+        let mut connection = self.connection().await?;
+        ensure_current_younghyun(&mut connection, actor_user_id).await
+    }
+
     pub async fn has_current_permission(
         &self,
         user_id: Uuid,
