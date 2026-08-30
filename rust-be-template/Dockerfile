@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
-    cargo +nightly build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
+    cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace \
     && ldd_output="$(ldd "./target/$RUST_TARGET/release/$APP_NAME")" \
