@@ -1,0 +1,48 @@
+# Executable W3/W8 registration and evidence requirements. Fields are tab-separated.
+schema	1
+registration	module:evidence-manifest	tools/xtask/src/main.rs	mod evidence_manifest;
+registration	command:db-integration	tools/xtask/src/main.rs	"db-integration" => review::run_database_integration(&root)
+registration	command:final-review	tools/xtask/src/main.rs	"final-review" => review::run_final_review(&root)
+registration	command:format	tools/xtask/src/main.rs	"fmt" => review::run_format_check(&root)
+registration	command:frontend-check	tools/xtask/src/main.rs	"frontend-check" => review::run_frontend_checks(&root)
+registration	command:image-smoke	tools/xtask/src/main.rs	"image-smoke" => review::run_image_smoke(&root)
+registration	command:migration-rollback	tools/xtask/src/main.rs	"migration-rollback" => review::run_migration_rollback(&root)
+registration	command:openapi	tools/xtask/src/main.rs	"openapi" => review::run_openapi_drift_check(&root)
+registration	command:secret-scan	tools/xtask/src/main.rs	"secret-scan" => review::run_secret_scan(&root)
+registration	command:unit	tools/xtask/src/main.rs	"test" | "unit" => review::run_unit_tests(&root)
+registration	command:evidence	tools/xtask/src/main.rs	"evidence" => evidence_manifest::run(&root)
+registration	review:format	tools/xtask/src/review.rs	("format", run_format_check)
+registration	review:clippy	tools/xtask/src/review.rs	("Clippy", run_clippy)
+registration	review:unit	tools/xtask/src/review.rs	("unit tests", run_unit_tests)
+registration	review:openapi	tools/xtask/src/review.rs	("OpenAPI drift", run_openapi_drift_check)
+registration	review:frontend	tools/xtask/src/review.rs	("frontend checks", run_frontend_checks)
+registration	review:database	tools/xtask/src/review.rs	("database integration", run_database_integration)
+registration	review:cache-consistency	tools/xtask/src/review.rs	"postgres_cache_consistency"
+registration	review:migrations	tools/xtask/src/review.rs	("migration rollback", run_migration_rollback)
+registration	review:migration-guards	tools/xtask/src/review.rs	"postgres_migration_guards"
+registration	review:image	tools/xtask/src/review.rs	("image smoke", run_image_smoke)
+registration	review:throughput	tools/xtask/src/review.rs	("throughput thresholds", run_throughput_thresholds)
+registration	review:secrets	tools/xtask/src/review.rs	("secret scan", run_secret_scan)
+registration	review:evidence	tools/xtask/src/review.rs	("evidence manifest", crate::evidence_manifest::run)
+source	w3-database-harness	rust-be-template/tests/support/database.rs	1	1048576
+source	w3-account-boundaries	rust-be-template/tests/postgres_account_boundaries.rs	1	1048576
+source	w3-account-http	rust-be-template/tests/postgres_account_http_boundaries.rs	1	1048576
+source	w3-account-identity	rust-be-template/tests/postgres_account_identity.rs	1	1048576
+source	w3-account-lifecycle	rust-be-template/tests/postgres_account_lifecycle.rs	1	1048576
+source	w3-account-oidc	rust-be-template/tests/postgres_account_oidc.rs	1	1048576
+source	w3-authorization	rust-be-template/tests/postgres_authorization_admin.rs	1	1048576
+source	w3-content-linearization	rust-be-template/tests/postgres_content_write_linearization.rs	1	1048576
+source	w3-cache-consistency	rust-be-template/tests/postgres_cache_consistency.rs	1	1048576
+source	w3-forum	rust-be-template/tests/postgres_forum.rs	1	1048576
+source	w3-media-cleanup	rust-be-template/tests/media_cleanup_compensation.rs	1	1048576
+source	w3-migration-guards	rust-be-template/tests/postgres_migration_guards.rs	1	1048576
+source	w3-photography	rust-be-template/tests/postgres_photography_invariants.rs	1	1048576
+source	w3-profile-picture	rust-be-template/tests/postgres_profile_picture_history.rs	1	1048576
+source	w3-retention	rust-be-template/tests/postgres_retention_notifications.rs	1	1048576
+source	w3-wasm	rust-be-template/tests/postgres_wasm.rs	1	1048576
+source	w3-throughput-workload	tools/throughput/workloads/public-read-v1.json	1	1048576
+source	w3-throughput-environment	tools/throughput/config/development.json	1	1048576
+source	w8-openapi-router-gate	rust-be-template/src/openapi_codegen/router_surface.rs	1	1048576
+runtime	w8-throughput-report	target/throughput/backend-http.json	2	67108864
+runtime	w8-current-secret-report	target/secret-scan/current.json	2	67108864
+runtime	w8-history-secret-report	target/secret-scan/history.json	2	67108864

@@ -1,4 +1,5 @@
 import type { UiTextKey } from "../keys";
+import { KO_KR_FORUM_TEXTS } from "./forum-ko-kr";
 
 export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "common.close": "닫기",
@@ -135,6 +136,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "authorization.audit.request": "요청 ID",
   "authorization.audit.empty": "기록된 권한 변경이 없습니다.",
   "authorization.error.unknown": "권한 관리 작업에 실패했습니다.",
+  ...KO_KR_FORUM_TEXTS,
   "home.hero.role": "Experienced backend, infrastructure, and data engineer.",
   "home.hero.summary": "Passionate about creating secure and high-performance servers and infrastructure. I also enjoy photography and have dabbled in journalism, translation/interpretation, soldiering, manual labor, activism, and various misadventures.",
   "home.hero.principle": "I hold craftsmanship and good governance to be sacred.",

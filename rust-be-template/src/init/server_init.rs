@@ -118,14 +118,26 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     );
 
     // Failures on these should be fatal.
-    state.synchronize_post_info_cache().await;
-    state.sync_country_data().await?;
-    state.sync_file_backed_ui_text_sources().await?;
-    state.sync_i18n_data().await?;
-    state.sync_visitor_board_data().await?;
-    state.sync_wasm_module_cache().await?;
-    state.sync_live_chat_ban_cache().await?;
-    state.sync_live_chat_cache().await?;
+    state.blog_service().synchronize_cache().await;
+    state.reference_data_service().synchronize().await?;
+    state.i18n_service().synchronize_file_sources().await?;
+    state.i18n_service().synchronize_cache().await?;
+    state.visitor_service().synchronize_board().await?;
+    state
+        .wasm_service()
+        .synchronize_cache()
+        .await
+        .map_err(anyhow::Error::from)?;
+    state
+        .live_chat_service()
+        .synchronize_bans()
+        .await
+        .map_err(anyhow::Error::from)?;
+    state
+        .live_chat_service()
+        .synchronize_messages()
+        .await
+        .map_err(anyhow::Error::from)?;
 
     let router = build_router(Arc::clone(&state))?;
 

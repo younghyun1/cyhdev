@@ -1,109 +1,39 @@
-use std::net::IpAddr;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::AtomicUsize;
 
-use diesel_async::AsyncPgConnection;
-use diesel_async::pooled_connection::bb8::Pool;
-use tokio::sync::RwLock;
-use crate::domain::blog::blog::CachedPostInfo;
-use crate::domain::country::{CountryAndSubdivisionsTable, IsoCurrencyTable, IsoLanguageTable};
-use crate::domain::i18n::i18n_cache::I18nCache;
-use crate::domain::live_chat::cache::LiveChatCache;
-use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine, RtcRoom};
-use crate::domain::photography::batch::session::BatchSession;
 use crate::features::accounts::service::{
     account_service::AccountService, auth_abuse::AuthAbuseService,
     oidc::provider::OidcService,
     session_service::SessionService,
 };
-use crate::init::load_cache::fastfetch_cache::FastFetchCache;
-use crate::init::load_cache::{
-    system_info::SystemInfoState, wasm_module_cache::WasmModuleCache,
-};
-use crate::init::search::PostSearchIndex;
-use crate::util::geographic::ip_info_lookup::GeoIpDatabases;
+use crate::features::forum::service::forum_service::ForumService;
+use crate::features::geo::service::geo_service::GeoService;
+use crate::features::blog::service::blog_service::BlogService;
+use crate::features::i18n::service::i18n_service::I18nService;
+use crate::features::live_chat::service::live_chat_service::LiveChatService;
+use crate::features::photography::service::photography_service::PhotographyService;
+use crate::features::reference_data::service::reference_data_service::ReferenceDataService;
+use crate::features::server_status::service::server_status_service::ServerStatusService;
+use crate::features::visitor::service::visitor_service::VisitorService;
+use crate::features::wasm::service::wasm_service::WasmService;
 
 use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
-pub(crate) mod blog_cache_policy;
 mod core;
-mod geo;
-mod i18n;
-mod live_chat;
-mod photograph_views;
-mod photography_batches;
-mod post_queries;
-mod post_search_sync;
-mod posts;
-mod rtc;
-mod visitors;
-mod visitor_cache_policy;
-mod wasm;
 
 pub struct ServerState {
-    pub(crate) app_name_version: String,
-    pub(crate) server_start_time: tokio::time::Instant,
-    pub(crate) pool: Pool<AsyncPgConnection>,
-    pub(crate) responses_handled: AtomicU64,
     pub(crate) account_service: Arc<AccountService>,
+    pub(crate) blog_service: Arc<BlogService>,
+    pub(crate) forum_service: Arc<ForumService>,
+    pub(crate) geo_service: Arc<GeoService>,
+    pub(crate) i18n_service: Arc<I18nService>,
+    pub(crate) live_chat_service: Arc<LiveChatService>,
+    pub(crate) photography_service: Arc<PhotographyService>,
+    pub(crate) reference_data_service: Arc<ReferenceDataService>,
+    pub(crate) server_status_service: Arc<ServerStatusService>,
+    pub(crate) visitor_service: Arc<VisitorService>,
+    pub(crate) wasm_service: Arc<WasmService>,
     pub(crate) auth_abuse_service: Arc<AuthAbuseService>,
     pub(crate) oidc_service: Arc<OidcService>,
     pub(crate) session_service: Arc<SessionService>,
-    pub(crate) blog_posts_cache: scc::HashMap<uuid::Uuid, CachedPostInfo>,
-    pub(crate) blog_post_slug_cache: scc::HashMap<String, uuid::Uuid>,
-    pub(crate) blog_post_order_cache: RwLock<Vec<uuid::Uuid>>,
-    pub(super) blog_cache_mutation: tokio::sync::Mutex<()>,
-    pub(super) blog_cache_metrics: blog_cache_policy::BlogCacheMetrics,
-    pub(crate) search_index: PostSearchIndex,
-    pub(crate) geo_ip_db: GeoIpDatabases,
-    pub visitor_board_map: scc::HashMap<([u8; 8], [u8; 8]), u64>,
-    pub(crate) visitor_board_entry_count: AtomicUsize,
-    pub(crate) visitor_board_rejected_entries: AtomicU64,
-    pub(crate) visitor_log_buffer: scc::HashMap<VisitorLogKey, VisitorLogBatch>,
-    pub(crate) visitor_log_entry_count: AtomicUsize,
-    pub(crate) visitor_log_pending_events: AtomicUsize,
-    pub(crate) visitor_log_rejected_admissions: AtomicU64,
-    pub country_map: RwLock<CountryAndSubdivisionsTable>,
-    pub languages_map: RwLock<IsoLanguageTable>,
-    pub currency_map: RwLock<IsoCurrencyTable>,
-    pub i18n_cache: RwLock<I18nCache>,
     pub(crate) deployment_environment: DeploymentEnvironment,
     pub(crate) public_app_origin: PublicAppOrigin,
-    pub(crate) request_client: reqwest::Client,
-    pub system_info_state: SystemInfoState,
-    pub aws_profile_picture_config: aws_config::SdkConfig,
-    pub fastfetch: FastFetchCache,
-    pub wasm_module_cache: WasmModuleCache,
-    pub live_chat_cache: Arc<LiveChatCache>,
-    /// SFU runtime configuration (env-derived).
-    pub(crate) rtc_config: RtcConfig,
-    /// The shared webrtc-rs engine; `None` when the SFU is disabled or failed to
-    /// initialize, in which case RTC join requests are rejected.
-    pub(crate) rtc_engine: Option<Arc<RtcEngine>>,
-    /// Active call rooms keyed by `room_key`. Bounded: a room is removed when it
-    /// empties (closing its `live_chat_calls` row).
-    pub(crate) rtc_rooms: scc::HashMap<String, Arc<RtcRoom>>,
-    pub(crate) photograph_batches: scc::HashMap<uuid::Uuid, Arc<BatchSession>>,
-    pub(crate) photograph_batch_count: AtomicUsize,
-    /// Write-through buffer of unflushed photograph view increments (deltas),
-    /// keyed by photograph id. Views accumulate here in RAM and a periodic job
-    /// flushes them to `photographs.photograph_view_count`, so the hot path does
-    /// no per-view DB write. A hard entry cap bounds growth between flushes.
-    pub(crate) photograph_view_buffer: RwLock<std::collections::HashMap<uuid::Uuid, i64>>,
-    pub(crate) photograph_view_rejected_events: AtomicU64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct VisitorLogKey {
-    pub(crate) latitude_bytes: [u8; 8],
-    pub(crate) longitude_bytes: [u8; 8],
-    pub(crate) ip_address: IpAddr,
-    pub(crate) city: String,
-    pub(crate) country: String,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct VisitorLogBatch {
-    pub(crate) count: u64,
-    pub(crate) visited_at: chrono::DateTime<chrono::Utc>,
 }

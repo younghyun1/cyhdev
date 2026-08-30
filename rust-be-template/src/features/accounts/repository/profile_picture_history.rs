@@ -10,12 +10,14 @@ use crate::{
         domain::account::{ProfilePicture, ProfilePictureDeletion},
         error::AccountError,
         repository::{
-            account_repository::AccountRepository, records::ProfilePictureRecord,
+            account_repository::AccountRepository,
+            records::ProfilePictureRecord,
         },
     },
+    persistence::media_cleanup::enqueue_media_cleanup,
     schema::{user_profile_pictures, users},
     util::media::cleanup::{
-        MediaCleanupRequest, REASON_PROFILE_PICTURE_DELETED, enqueue_media_cleanup,
+        MediaCleanupRequest, REASON_PROFILE_PICTURE_DELETED,
     },
 };
 

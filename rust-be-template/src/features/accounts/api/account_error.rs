@@ -28,7 +28,9 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::SystemActorProtected => CodeError::SYSTEM_ACTOR_PROTECTED,
         AccountError::HardPurgeRequesterUnauthorized => CodeError::IS_NOT_SUPERUSER,
         AccountError::MediaCleanupNotFound => CodeError::MEDIA_CLEANUP_NOT_FOUND,
-        AccountError::InvalidMediaCleanupLocation => CodeError::INVALID_REQUEST,
+        AccountError::InvalidMediaCleanupLocation
+        | AccountError::MediaCleanupBatchTooLarge { .. }
+        | AccountError::InvalidMediaCleanupReason => CodeError::INVALID_REQUEST,
         AccountError::MediaCleanupOriginalUrlMismatch
         | AccountError::MediaCleanupAlreadyResolved
         | AccountError::MediaCleanupObjectConflict => CodeError::MEDIA_CLEANUP_CONFLICT,

@@ -189,7 +189,7 @@ pub fn apply_files(
     } else {
         drifted.sort();
         Err(CodegenError::new(format!(
-            "generated frontend contracts have drifted: {}; run `npm run contracts:generate`",
+            "generated frontend contracts have drifted: {}; from the repository root run `cargo run --locked --package rust-be-template --bin openapi-contracts -- generate`",
             drifted.join(", ")
         )))
     }

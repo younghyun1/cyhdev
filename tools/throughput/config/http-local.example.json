@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "label": "localhost-backend-baseline",
+  "power_profile": "performance",
+  "build_profile": "debug backend and debug harness through cargo xtask",
+  "configuration": {
+    "backend_command": "HOST_IP=127.0.0.1 HOST_PORT=8443 cargo xtask backend",
+    "backend_listener": "https://127.0.0.1:8443",
+    "database_dataset_digest": "sha256:REPLACE_WITH_EXACT_DATA_DUMP_DIGEST",
+    "database_schema_digest": "sha256:REPLACE_WITH_EXACT_SCHEMA_DUMP_DIGEST",
+    "database_server_version": "replace with exact server_version from the configured DB_URL",
+    "geo_ipv4_digest": "sha256:REPLACE_WITH_EXACT_IPV4_FILE_DIGEST",
+    "geo_ipv6_digest": "sha256:REPLACE_WITH_EXACT_IPV6_FILE_DIGEST",
+    "harness_transport": "HTTP/1.1; one loopback connection per request; Connection: close",
+    "loopback_bridge": "socat TCP-LISTEN:3000,bind=127.0.0.1,reuseaddr,fork OPENSSL:127.0.0.1:8443,verify=0",
+    "openssl_version": "replace with openssl version output",
+    "process_placement": "default scheduler; no CPU affinity; otherwise idle host",
+    "socat_version": "replace with socat -V output",
+    "working_tree_digest": "sha256:REPLACE_WITH_EXACT_WORKING_TREE_DIGEST",
+    "target": "http://127.0.0.1:3000"
+  },
+  "notes": [
+    "Copy this file under target/throughput and replace every placeholder with the command output documented in the runbook.",
+    "Keep backend, database, bridge, dataset, power profile, and process placement unchanged across calibration and regression runs.",
+    "Run on an idle host; do not use production credentials or production data."
+  ]
+}

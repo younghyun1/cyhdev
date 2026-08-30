@@ -11,7 +11,7 @@ use crate::{
     hardware::ObservedHardware,
 };
 
-pub const REPORT_SCHEMA_VERSION: u32 = 2;
+pub const REPORT_SCHEMA_VERSION: u32 = 4;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -23,8 +23,12 @@ pub struct ThroughputReport {
     pub hardware: ObservedHardware,
     pub configuration: RunConfiguration,
     pub metrics: Metrics,
-    pub thresholds: ThresholdEvidence,
-    pub verdict: Verdict,
+    /// Absent only for a threshold-free calibration record.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thresholds: Option<ThresholdEvidence>,
+    /// Absent only for a threshold-free calibration record.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verdict: Option<Verdict>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -57,6 +61,8 @@ pub struct EnvironmentMetadata {
 pub struct RunConfiguration {
     pub harness_version: String,
     pub compiled_profile: String,
+    #[serde(default)]
+    pub implementation_digest: String,
     pub iterations: u64,
     pub warmup_iterations: u64,
     pub concurrency: usize,

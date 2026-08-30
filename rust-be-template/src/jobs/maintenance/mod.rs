@@ -3,6 +3,7 @@ pub mod flush_photograph_views;
 pub mod flush_visitor_logs;
 pub mod prune_live_chat;
 pub mod prune_auth_abuse;
+pub mod prune_forum_notifications;
 pub mod prune_photograph_batches;
 pub mod retry_media_cleanup;
 pub mod send_retention_notifications;

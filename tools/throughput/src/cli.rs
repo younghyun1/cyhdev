@@ -8,6 +8,7 @@ const DEFAULT_WORKLOAD: &str = "tools/throughput/workloads/public-read-v1.json";
 const DEFAULT_ENVIRONMENT: &str = "tools/throughput/config/development.json";
 const DEFAULT_THRESHOLDS: &str = "tools/throughput/config/fixture-thresholds.json";
 const DEFAULT_OUTPUT: &str = "target/throughput/public-read-v1.json";
+const DEFAULT_RECORD_OUTPUT: &str = "target/throughput/public-read-v1-record.json";
 
 #[derive(Debug)]
 pub enum CliAction {
@@ -18,6 +19,7 @@ pub enum CliAction {
 #[derive(Debug)]
 pub enum Command {
     Run(RunOptions),
+    Record(RunOptions),
     Check(CheckOptions),
 }
 
@@ -25,7 +27,7 @@ pub enum Command {
 pub struct RunOptions {
     pub workload: PathBuf,
     pub environment: PathBuf,
-    pub thresholds: PathBuf,
+    pub thresholds: Option<PathBuf>,
     pub output: PathBuf,
     pub target: Option<String>,
 }
@@ -44,6 +46,10 @@ pub fn parse() -> HarnessResult<CliAction> {
             let _command = arguments.next();
             Command::Check(parse_check(arguments.collect())?)
         }
+        Some("record") => {
+            let _command = arguments.next();
+            Command::Record(parse_record(arguments.collect())?)
+        }
         Some("run") => {
             let _command = arguments.next();
             Command::Run(parse_run(arguments.collect())?)
@@ -60,7 +66,25 @@ pub fn parse() -> HarnessResult<CliAction> {
 }
 
 fn parse_run(arguments: Vec<String>) -> HarnessResult<RunOptions> {
-    let mut options = default_run_options();
+    parse_run_options(arguments, default_run_options(), true)
+}
+
+fn parse_record(arguments: Vec<String>) -> HarnessResult<RunOptions> {
+    let options = parse_run_options(arguments, default_record_options(), false)?;
+    if options.target.is_none() {
+        return Err(HarnessError::Arguments(
+            "record requires an explicit --target so fixture output is not mistaken for a backend baseline"
+                .to_owned(),
+        ));
+    }
+    Ok(options)
+}
+
+fn parse_run_options(
+    arguments: Vec<String>,
+    mut options: RunOptions,
+    allow_thresholds: bool,
+) -> HarnessResult<RunOptions> {
     let mut index = 0;
     while index < arguments.len() {
         let flag = &arguments[index];
@@ -77,7 +101,14 @@ fn parse_run(arguments: Vec<String>) -> HarnessResult<RunOptions> {
         match flag.as_str() {
             "--workload" => options.workload = PathBuf::from(value),
             "--environment" => options.environment = PathBuf::from(value),
-            "--thresholds" => options.thresholds = PathBuf::from(value),
+            "--thresholds" if allow_thresholds => {
+                options.thresholds = Some(PathBuf::from(value));
+            }
+            "--thresholds" => {
+                return Err(HarnessError::Arguments(
+                    "record does not accept --thresholds".to_owned(),
+                ));
+            }
             "--output" => options.output = PathBuf::from(value),
             "--target" => options.target = Some(value),
             unknown => {
@@ -123,14 +154,24 @@ fn default_run_options() -> RunOptions {
     RunOptions {
         workload: PathBuf::from(DEFAULT_WORKLOAD),
         environment: PathBuf::from(DEFAULT_ENVIRONMENT),
-        thresholds: PathBuf::from(DEFAULT_THRESHOLDS),
+        thresholds: Some(PathBuf::from(DEFAULT_THRESHOLDS)),
         output: PathBuf::from(DEFAULT_OUTPUT),
+        target: None,
+    }
+}
+
+fn default_record_options() -> RunOptions {
+    RunOptions {
+        workload: PathBuf::from(DEFAULT_WORKLOAD),
+        environment: PathBuf::from(DEFAULT_ENVIRONMENT),
+        thresholds: None,
+        output: PathBuf::from(DEFAULT_RECORD_OUTPUT),
         target: None,
     }
 }
 
 pub fn print_help() {
     println!(
-        "Usage:\n  cargo xtask throughput [run options]\n  cargo run --locked --package throughput-harness -- check [options]\n\nRun options:\n  --workload PATH     Recorded workload JSON\n  --environment PATH  Declared environment JSON\n  --thresholds PATH   Regression thresholds JSON\n  --output PATH       Report destination\n  --target URL        Optional http:// target; defaults to the in-process fixture\n\nCheck options:\n  --report PATH       Existing report JSON\n  --thresholds PATH   Regression thresholds JSON"
+        "Usage:\n  cargo xtask throughput [run options]\n  cargo xtask throughput record [record options]\n  cargo run --locked --package throughput-harness -- check [options]\n\nRun options:\n  --workload PATH     Recorded workload JSON\n  --environment PATH  Declared environment JSON\n  --thresholds PATH   Regression thresholds JSON\n  --output PATH       Report destination\n  --target URL        Optional http:// target; defaults to the in-process fixture\n\nRecord options:\n  --workload PATH     Recorded workload JSON\n  --environment PATH  Declared environment JSON\n  --output PATH       Calibration report destination\n  --target URL        Required http:// backend target\n\nCheck options:\n  --report PATH       Existing report JSON\n  --thresholds PATH   Regression thresholds JSON"
     );
 }

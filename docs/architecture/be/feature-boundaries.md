@@ -25,7 +25,9 @@ composition root -> api -> service -> repository interface
                            +----> domain <---+
 ```
 
-The composition root constructs infrastructure and service dependencies. `api` may depend on `service` and protocol DTOs. `service` may depend on domain types and narrow repository or infrastructure interfaces. A repository implementation may depend on Diesel, the generated schema, the connection pool, and domain types. `domain` must not depend on Axum, Diesel, the database schema, application state, caches, or session storage. Reverse imports and cross-feature access to another feature's repository are not allowed.
+The composition root constructs infrastructure and service dependencies. `api` may depend on `service` and protocol DTOs. `service` may depend on domain types and narrow repository or infrastructure interfaces. A repository implementation may depend on Diesel, the generated schema, the connection pool, domain types, and the deliberately small adapters under `crate::persistence`. `domain` must not depend on Axum, Diesel, the database schema, application state, caches, or session storage. Reverse imports and cross-feature access to another feature's repository are not allowed.
+
+`crate::persistence` contains only cross-feature relational primitives that must execute inside a caller-owned transaction: active-account row locks, bounded public-author projections, and durable media-cleanup registration. These adapters prevent feature repositories from importing another feature's repository while preserving deletion ordering, privacy projection, and metadata-to-object-store outbox atomicity. They do not own use cases, pools, caches, network calls, or transaction scope; adding an adapter requires a concrete same-transaction invariant that a service port cannot preserve.
 
 ## Layer ownership
 
@@ -78,7 +80,7 @@ Log each failure once at the layer that has enough context to act on it. Use str
 
 ## Module and file limits
 
-- Keep every Rust source file below 300 lines. Split by use case, aggregate, or query family before it crosses that limit.
+- Keep every handwritten Rust source file below 300 lines. Split by use case, aggregate, or query family before it crosses that limit. Deterministic generated contract data such as Diesel's `schema.rs` and the fixed UI-text key catalog are exempt; their generated header and drift check must make that status explicit.
 - Keep `mod.rs` files to module declarations. Put route assembly, constructors, shared types, and implementations in named files.
 - Default to private or `pub(crate)` visibility. Export only the service surface, domain values, and ports required by callers.
 - Name files for behavior or data ownership, such as `api/login.rs`, `service/authenticate.rs`, `repository/accounts.rs`, and `domain/account.rs`.

@@ -13,9 +13,8 @@ use crate::init::state::ServerState;
 /// demand. Running this once per minute bounds both maps to recently-active actors.
 pub async fn prune_live_chat_state(state: Arc<ServerState>) {
     let now = Utc::now();
-    state.live_chat_cache.clear_expired_rate_windows(now).await;
-    state.live_chat_cache.clear_expired_typing(now).await;
+    state.live_chat_service().prune_runtime(now).await;
     // Drop empty SFU rooms and close their dangling call rows, bounding the
     // `rtc_rooms` registry to rooms with live participants.
-    state.prune_empty_rtc_rooms().await;
+    state.rtc_service().prune_empty_rooms().await;
 }

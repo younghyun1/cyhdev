@@ -1,5 +1,6 @@
 pub mod account;
 pub mod auth_abuse;
+pub mod forum_authority;
 pub mod authorization;
 pub mod public_author;
 pub mod retention_notifications;

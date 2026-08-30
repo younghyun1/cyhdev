@@ -1,7 +1,9 @@
 //! Root-relative development and verification commands for the workspace.
 
+mod evidence_manifest;
 mod review;
 mod secret_scan;
+mod test_database;
 
 use std::{
     env,
@@ -47,7 +49,7 @@ fn run() -> TaskResult<()> {
     let forwarded: Vec<String> = arguments.collect();
 
     match command.as_str() {
-        "backend" => run_package(&root, "rust-be-template", &forwarded),
+        "backend" => run_backend(&root, &forwarded),
         "build" => run_native_build(&root),
         "clippy" => {
             run_native_clippy(&root)?;
@@ -59,6 +61,7 @@ fn run() -> TaskResult<()> {
                 .current_dir(root.join("solid-csr-spa-template")),
         ),
         "db-integration" => review::run_database_integration(&root),
+        "evidence" => evidence_manifest::run(&root),
         "final-review" => review::run_final_review(&root),
         "fmt" => review::run_format_check(&root),
         "frontend-build" => {
@@ -119,6 +122,19 @@ fn run_package(root: &Path, package: &str, arguments: &[String]) -> TaskResult<(
         command.arg("--").args(arguments);
     }
     command.current_dir(root);
+    run_command(&mut command)
+}
+
+fn run_backend(root: &Path, arguments: &[String]) -> TaskResult<()> {
+    let backend = root.join("rust-be-template");
+    let mut command = Command::new("cargo");
+    command.args(["run", "--locked", "--package", "rust-be-template"]);
+    if !arguments.is_empty() {
+        command.arg("--").args(arguments);
+    }
+    // Runtime paths such as .env, Geo-IP bundles, certificates, and the search
+    // index are intentionally backend-relative.
+    command.current_dir(backend);
     run_command(&mut command)
 }
 
@@ -232,6 +248,6 @@ fn run_wasm_clippy(root: &Path) -> TaskResult<()> {
 
 fn print_help() {
     println!(
-        "Commands:\n  backend             Run the backend\n  build               Build native workspace packages from locked inputs\n  clippy              Run the implementation stage gate\n  db-integration      Run ignored PostgreSQL integration cases\n  final-review        Run every deferred review gate and aggregate failures\n  fmt                 Check Rust formatting\n  frontend            Run the frontend development server\n  frontend-build      Install locked frontend dependencies and build assets\n  frontend-check      Run frontend type, lint, and unit checks\n  image               Build the local development image from locked inputs\n  image-smoke         Build the non-release Docker smoke target\n  migration-rollback  Revert and reapply every embedded migration\n  openapi              Check generated frontend contracts for drift\n  secret-scan          Scan the current tree and all Git refs with redacted reports\n  test, unit           Run native unit and non-database tests\n  throughput          Replay the recorded workload and enforce thresholds\n  wasm-build          Build WebAssembly packages from locked inputs\n  wasm-clippy         Check the WebAssembly packages for their target"
+        "Commands:\n  backend             Run the backend\n  build               Build native workspace packages from locked inputs\n  clippy              Run the implementation stage gate\n  db-integration      Run ignored PostgreSQL integration cases\n  evidence            Validate W3/W8 registrations and evidence\n  final-review        Run every deferred review gate and aggregate failures\n  fmt                 Check Rust formatting\n  frontend            Run the frontend development server\n  frontend-build      Install locked frontend dependencies and build assets\n  frontend-check      Run frontend type, lint, and unit checks\n  image               Build the local development image from locked inputs\n  image-smoke         Build the non-release Docker smoke target\n  migration-rollback  Revert and reapply every embedded migration\n  openapi              Check generated frontend contracts for drift\n  secret-scan          Scan the current tree and all Git refs with redacted reports\n  test, unit           Run native unit and non-database tests\n  throughput          Replay the recorded workload and enforce thresholds\n  wasm-build          Build WebAssembly packages from locked inputs\n  wasm-clippy         Check the WebAssembly packages for their target"
     );
 }

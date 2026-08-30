@@ -1,14 +1,15 @@
 //! Plain-HTTP executor for an explicitly supplied local or staged target.
 
 use std::{
-    io::{Read, Write},
+    io::{self, Read, Write},
     net::{SocketAddr, TcpStream, ToSocketAddrs},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::{
     config::RequestSpec,
     error::{HarnessError, HarnessResult},
+    executor::http_target::parse_target,
     executor::types::{ExecutionOutcome, RequestFailure},
 };
 
@@ -48,24 +49,22 @@ impl HttpExecutor {
     }
 
     pub fn execute(&self, request: &RequestSpec) -> Result<ExecutionOutcome, RequestFailure> {
-        let mut stream = TcpStream::connect_timeout(&self.address, self.timeout)
-            .map_err(|_source| RequestFailure::Connect)?;
-        stream
-            .set_read_timeout(Some(self.timeout))
-            .and_then(|()| stream.set_write_timeout(Some(self.timeout)))
-            .map_err(|_source| RequestFailure::ConfigureSocket)?;
+        let deadline = Instant::now()
+            .checked_add(self.timeout)
+            .ok_or(RequestFailure::Timeout)?;
+        let mut stream = TcpStream::connect_timeout(&self.address, remaining(deadline)?)
+            .map_err(|error| classify_io(&error, RequestFailure::Connect))?;
 
         let path = self.request_path(&request.path);
         let wire_request = format!(
             "{} {} HTTP/1.1\r\nHost: {}\r\nAccept: application/json\r\nConnection: close\r\nUser-Agent: cyhdev-throughput/1\r\n\r\n",
             request.method, path, self.authority
         );
-        stream
-            .write_all(wire_request.as_bytes())
-            .map_err(|_source| RequestFailure::Write)?;
+        write_before_deadline(&mut stream, wire_request.as_bytes(), deadline)?;
 
-        let response = self.read_response(&mut stream)?;
+        let response = self.read_response(&mut stream, deadline)?;
         let status = parse_status(&response)?;
+        let _remaining = remaining(deadline)?;
         Ok(ExecutionOutcome {
             status,
             response_bytes: response.len(),
@@ -74,7 +73,11 @@ impl HttpExecutor {
     }
 
     pub fn label(&self) -> String {
-        format!("http://{}{}", self.authority, self.base_path)
+        if self.base_path == "/" {
+            format!("http://{}", self.authority)
+        } else {
+            format!("http://{}{}", self.authority, self.base_path)
+        }
     }
 
     pub fn resolved_address(&self) -> String {
@@ -89,14 +92,23 @@ impl HttpExecutor {
         }
     }
 
-    fn read_response(&self, stream: &mut TcpStream) -> Result<Vec<u8>, RequestFailure> {
+    fn read_response(
+        &self,
+        stream: &mut TcpStream,
+        deadline: Instant,
+    ) -> Result<Vec<u8>, RequestFailure> {
         let initial_capacity = self.max_response_bytes.min(8 * 1024);
         let mut response = Vec::with_capacity(initial_capacity);
         let mut chunk = [0_u8; 8 * 1024];
         loop {
-            let count = stream
-                .read(&mut chunk)
-                .map_err(|_source| RequestFailure::Read)?;
+            stream
+                .set_read_timeout(Some(remaining(deadline)?))
+                .map_err(|_source| RequestFailure::ConfigureSocket)?;
+            let count = match stream.read(&mut chunk) {
+                Ok(count) => count,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(classify_io(&error, RequestFailure::Read)),
+            };
             if count == 0 {
                 break;
             }
@@ -113,115 +125,38 @@ impl HttpExecutor {
     }
 }
 
-#[derive(Debug)]
-struct ParsedTarget {
-    host: String,
-    port: u16,
-    authority: String,
-    base_path: String,
-}
-
-fn parse_target(raw_target: &str) -> HarnessResult<ParsedTarget> {
-    let without_scheme = match raw_target.strip_prefix("http://") {
-        Some(value) => value,
-        None => {
-            return Err(HarnessError::Arguments(
-                "--target must use plain `http://`; terminate TLS before this local harness"
-                    .to_owned(),
-            ));
-        }
-    };
-    if without_scheme.contains('@') || without_scheme.contains('?') || without_scheme.contains('#') {
-        return Err(HarnessError::Arguments(
-            "--target must not contain credentials, a query, a fragment, or control characters"
-                .to_owned(),
-        ));
-    }
-    let (authority, path) = match without_scheme.split_once('/') {
-        Some((authority, path)) => (authority, format!("/{path}")),
-        None => (without_scheme, "/".to_owned()),
-    };
-    if authority.is_empty()
-        || !authority.is_ascii()
-        || authority
-            .bytes()
-            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
-    {
-        return Err(HarnessError::Arguments(
-            "--target must contain a valid host".to_owned(),
-        ));
-    }
-    if !path.is_ascii()
-        || path
-            .bytes()
-            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
-    {
-        return Err(HarnessError::Arguments(
-            "--target base path must be ASCII and contain no whitespace or control characters"
-                .to_owned(),
-        ));
-    }
-    let (host, port) = parse_authority(authority)?;
-    if host.is_empty() {
-        return Err(HarnessError::Arguments(
-            "--target must contain a nonempty host".to_owned(),
-        ));
-    }
-    let trimmed_path = path.trim_end_matches('/');
-    let base_path = if trimmed_path.is_empty() {
-        "/".to_owned()
-    } else {
-        trimmed_path.to_owned()
-    };
-    Ok(ParsedTarget {
-        host,
-        port,
-        authority: authority.to_owned(),
-        base_path,
-    })
-}
-
-fn parse_authority(authority: &str) -> HarnessResult<(String, u16)> {
-    if let Some(bracketed) = authority.strip_prefix('[') {
-        let (host, suffix) = match bracketed.split_once(']') {
-            Some(parts) => parts,
-            None => {
-                return Err(HarnessError::Arguments(
-                    "IPv6 targets must close the host with `]`".to_owned(),
-                ));
-            }
+fn write_before_deadline(
+    stream: &mut TcpStream,
+    mut bytes: &[u8],
+    deadline: Instant,
+) -> Result<(), RequestFailure> {
+    while !bytes.is_empty() {
+        stream
+            .set_write_timeout(Some(remaining(deadline)?))
+            .map_err(|_source| RequestFailure::ConfigureSocket)?;
+        let written = match stream.write(bytes) {
+            Ok(0) => return Err(RequestFailure::Write),
+            Ok(written) => written,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(classify_io(&error, RequestFailure::Write)),
         };
-        let port = parse_optional_port(suffix)?;
-        return Ok((host.to_owned(), port));
+        bytes = &bytes[written..];
     }
-    match authority.rsplit_once(':') {
-        Some((host, port)) if !host.contains(':') => Ok((host.to_owned(), parse_port(port)?)),
-        Some((_host, _port)) => Err(HarnessError::Arguments(
-            "IPv6 targets must enclose the host in brackets".to_owned(),
-        )),
-        None => Ok((authority.to_owned(), 80)),
+    Ok(())
+}
+
+fn remaining(deadline: Instant) -> Result<Duration, RequestFailure> {
+    match deadline.checked_duration_since(Instant::now()) {
+        Some(remaining) if !remaining.is_zero() => Ok(remaining),
+        Some(_) | None => Err(RequestFailure::Timeout),
     }
 }
 
-fn parse_optional_port(suffix: &str) -> HarnessResult<u16> {
-    if suffix.is_empty() {
-        Ok(80)
+fn classify_io(error: &io::Error, fallback: RequestFailure) -> RequestFailure {
+    if matches!(error.kind(), io::ErrorKind::TimedOut | io::ErrorKind::WouldBlock) {
+        RequestFailure::Timeout
     } else {
-        match suffix.strip_prefix(':') {
-            Some(port) => parse_port(port),
-            None => Err(HarnessError::Arguments(
-                "unexpected characters after the IPv6 host".to_owned(),
-            )),
-        }
-    }
-}
-
-fn parse_port(port: &str) -> HarnessResult<u16> {
-    match port.parse::<u16>() {
-        Ok(0) | Err(_) => Err(HarnessError::Arguments(
-            "--target port must be in 1..=65535".to_owned(),
-        )),
-        Ok(port) => Ok(port),
+        fallback
     }
 }
 
@@ -254,30 +189,48 @@ fn hash_bytes(bytes: &[u8]) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_target;
+    use std::{io::Write, net::TcpListener, thread, time::Duration};
+
+    use crate::{config::RequestSpec, executor::types::RequestFailure};
+
+    use super::HttpExecutor;
 
     #[test]
-    fn parses_host_port_and_base_path() {
-        let result = parse_target("http://127.0.0.1:3000/api/");
-        assert!(result.is_ok(), "target should parse: {result:?}");
-        let target = match result {
-            Ok(target) => target,
-            Err(_error) => return,
+    fn canonical_root_target_matches_environment_template() -> Result<(), String> {
+        let executor = HttpExecutor::new(
+            "http://127.0.0.1:3000",
+            Duration::from_secs(1),
+            1_024,
+        ).map_err(|error| error.to_string())?;
+        assert_eq!(executor.label(), "http://127.0.0.1:3000");
+        Ok(())
+    }
+
+    #[test]
+    fn enforces_one_end_to_end_deadline() -> Result<(), String> {
+        let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| error.to_string())?;
+        let address = listener.local_addr().map_err(|error| error.to_string())?;
+        let server = thread::spawn(move || {
+            if let Ok((mut stream, _peer)) = listener.accept() {
+                thread::sleep(Duration::from_millis(40));
+                let _result = stream.write_all(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n");
+            }
+        });
+        let executor = HttpExecutor::new(
+            &format!("http://{address}"),
+            Duration::from_millis(10),
+            1_024,
+        ).map_err(|error| error.to_string())?;
+        let request = RequestSpec {
+            name: "deadline".to_owned(), method: "GET".to_owned(), path: "/".to_owned(),
+            expected_status: 200, weight: 1, fixture_work_units: 1,
         };
-        assert_eq!(target.host, "127.0.0.1");
-        assert_eq!(target.port, 3000);
-        assert_eq!(target.base_path, "/api");
-    }
-
-    #[test]
-    fn rejects_credentials() {
-        assert!(parse_target("http://user:secret@127.0.0.1").is_err());
-    }
-
-    #[test]
-    fn rejects_empty_hosts_and_unsafe_base_paths() {
-        assert!(parse_target("http://:3000").is_err());
-        assert!(parse_target("http://127.0.0.1/api path").is_err());
-        assert!(parse_target("http://127.0.0.1/api\tpath").is_err());
+        let outcome = executor.execute(&request);
+        server.join().map_err(|_payload| "deadline test server panicked".to_owned())?;
+        if matches!(outcome, Err(RequestFailure::Timeout)) {
+            Ok(())
+        } else {
+            Err(format!("expected deadline failure, got {outcome:?}"))
+        }
     }
 }

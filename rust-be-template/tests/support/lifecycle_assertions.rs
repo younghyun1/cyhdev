@@ -6,13 +6,13 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use rust_be_template::{
-    domain::{
-        blog::blog::UserBadgeInfo,
-        photography::photographs::Photograph,
-    },
-    features::accounts::{
-        domain::account::DELETED_USER_DISPLAY_NAME,
-        error::AccountError,
+    features::{
+        accounts::{
+            domain::account::DELETED_USER_DISPLAY_NAME,
+            error::AccountError,
+        },
+        blog::domain::post::UserBadgeInfo,
+        photography::repository::photography_repository::PhotographyRepository,
     },
     schema::{
         deleted_account_retention, email_verification_tokens, password_reset_tokens,
@@ -90,7 +90,6 @@ pub async fn require_account_authority_cleared(
 
 pub async fn require_public_identity_is_generic(
     context: &AccountTestContext,
-    user_id: Uuid,
     original_name: &str,
 ) -> TestResult {
     match context.accounts.public_account(original_name).await {
@@ -107,13 +106,14 @@ pub async fn require_public_identity_is_generic(
         "deleted public badge disclosed account identity",
     )?;
 
-    let mut connection = context.pool.get().await?;
-    let mut photograph = rust_be_template::schema::photographs::table
-        .filter(rust_be_template::schema::photographs::user_id.eq(user_id))
-        .first::<Photograph>(&mut connection)
+    let page = PhotographyRepository::new(context.pool.clone())
+        .photograph_page(1, 100)
         .await?;
-    drop(connection);
-    photograph.anonymize_deleted_owner();
+    let photograph = page
+        .items
+        .into_iter()
+        .find(|photograph| photograph.user_id.is_nil())
+        .ok_or_else(|| std::io::Error::other("deleted user's photograph was not returned"))?;
     require(
         photograph.user_id.is_nil()
             && photograph.photograph_lat == 0.0

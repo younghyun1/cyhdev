@@ -6,13 +6,13 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use rust_be_template::{
-    domain::{
-        blog::blog::{NewCommentVote, NewPost, NewPostVote},
-        live_chat::message::{LIVE_CHAT_SENDER_KIND_USER, LiveChatMessageInsertable},
-        photography::{
-            photographs::{PhotographContext, PhotographInsertable},
-            social::NewPhotographComment,
+    features::{
+        blog::repository::compatibility::{NewCommentVote, NewPost, NewPostVote},
+        live_chat::{
+            domain::message::LIVE_CHAT_SENDER_KIND_USER,
+            repository::compatibility::LiveChatMessageInsertable,
         },
+        photography::repository::enums::DbPhotographContext,
     },
     schema::{
         comment_votes, comments, live_chat_messages, photograph_comment_votes,
@@ -91,29 +91,28 @@ pub async fn seed_authored_content(
         .await?;
 
     let photograph_id = diesel::insert_into(photographs::table)
-        .values(PhotographInsertable {
-            user_id,
-            photograph_shot_at: Some(now),
-            photograph_image_type: 4,
-            photograph_context: PhotographContext::Photography,
-            photograph_is_on_cloud: true,
-            photograph_link: "https://objects.example.test/photo/lifecycle.avif".to_owned(),
-            photograph_comments: "retained photograph body".to_owned(),
-            photograph_lat: 37.0,
-            photograph_lon: -122.0,
-            photograph_thumbnail_link:
-                "https://objects.example.test/photo/lifecycle-thumb.avif".to_owned(),
-        })
+        .values((
+            photographs::user_id.eq(user_id),
+            photographs::photograph_shot_at.eq(Some(now)),
+            photographs::photograph_image_type.eq(4),
+            photographs::photograph_context.eq(DbPhotographContext::Photography),
+            photographs::photograph_is_on_cloud.eq(true),
+            photographs::photograph_link.eq("https://objects.example.test/photo/lifecycle.avif"),
+            photographs::photograph_comments.eq("retained photograph body"),
+            photographs::photograph_lat.eq(37.0),
+            photographs::photograph_lon.eq(-122.0),
+            photographs::photograph_thumbnail_link.eq("https://objects.example.test/photo/lifecycle-thumb.avif"),
+        ))
         .returning(photographs::photograph_id)
         .get_result::<Uuid>(&mut connection)
         .await?;
     let photograph_comment_id = diesel::insert_into(photograph_comments::table)
-        .values(NewPhotographComment {
-            photograph_id: &photograph_id,
-            user_id: &user_id,
-            photograph_comment_content: "retained photograph comment",
-            parent_photograph_comment_id: None,
-        })
+        .values((
+            photograph_comments::photograph_id.eq(photograph_id),
+            photograph_comments::user_id.eq(user_id),
+            photograph_comments::photograph_comment_content.eq("retained photograph comment"),
+            photograph_comments::parent_photograph_comment_id.eq(Option::<Uuid>::None),
+        ))
         .returning(photograph_comments::photograph_comment_id)
         .get_result::<Uuid>(&mut connection)
         .await?;

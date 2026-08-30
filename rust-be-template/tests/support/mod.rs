@@ -8,3 +8,4 @@ pub mod error;
 pub mod fixtures;
 pub mod lifecycle;
 pub mod lifecycle_assertions;
+pub mod migrations;

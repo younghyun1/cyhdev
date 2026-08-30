@@ -1,162 +1,19 @@
 //! OpenAPI documentation registration for Swagger UI.
 use utoipa::OpenApi;
-use crate::features::accounts::api::{
-    authorization_audit, authorization_mutations, authorization_queries, delete_account,
-    hard_purge_account, is_superuser, login, logout,
-    media_cleanup, me, oidc_callback, oidc_link, oidc_start, oidc_status, public_user,
-    reset_password, reset_password_request, retention_notifications, signup,
-    update_profile, verify_user_email,
-};
-use crate::handlers::{
-    admin::sync_i18n_cache,
-    blog::{
-        delete_comment, delete_post, get_posts, read_post, rescind_comment_vote, rescind_post_vote,
-        search_posts, submit_comment, submit_post, update_comment, update_post, vote_comment,
-        vote_post,
-    },
-    countries::{
-        get_countries, get_country, get_language, get_languages, get_subdivisions_for_country,
-    },
-    geo_ip::{lookup_ip, lookup_my_ip},
-    i18n::get_ui_text_bundle,
-    live_chat::{cache_stats, get_messages},
-    photography::{
-        batch_list, batch_status, batch_upload, delete_photograph_comment, delete_photographs,
-        get_photographs, read_photograph, rescind_photograph_comment_vote, rescind_photograph_vote,
-        submit_photograph_comment, update_photograph_comment, upload_photograph, vote_photograph,
-        vote_photograph_comment,
-    },
-    server::{get_host_fastfetch, healthcheck, lookup_ip_loc, root, visitor_board},
-    user::{profile_picture_history, upload_profile_picture},
-    wasm_module::{
-        delete_wasm_module, get_wasm_modules, serve_wasm, update_wasm_module,
-        update_wasm_module_assets, upload_wasm_module,
-    },
-};
-use crate::domain::{
-    blog::blog::{
-        Comment, CommentResponse, Post, PostInfo, PostInfoWithVote, Tag, UserBadgeInfo, VoteState,
-    },
-    country::{
-        CountryAndSubdivisions, IsoCountry, IsoCountrySubdivision, IsoCurrency, IsoLanguage,
-    },
-    photography::batch::status::ProcessingStatus,
-    photography::photographs::{Photograph, PhotographContext},
-    photography::social::{PhotographComment, PhotographCommentResponse},
-};
-use crate::dto::{
-    requests::{
-        admin::{
-            authorization_request::{AssignRoleRequest, SetRolePermissionRequest},
-            media_cleanup_request::ResolveMediaCleanupRequest,
-            retention_notification_request::RetentionNotificationStatusRequest,
-        },
-        auth::{
-            login_request::LoginRequest,
-            oidc_request::{OidcLinkCompleteRequest, OidcUnlinkRequest},
-            reset_password::ResetPasswordProcessRequest,
-            reset_password_request::ResetPasswordRequest, signup_request::SignupRequest,
-            update_profile_request::UpdateProfileRequest,
-            verify_user_email_request::VerifyUserEmailRequest,
-        },
-        blog::{
-            get_posts_request::GetPostsRequest, submit_comment::SubmitCommentRequest,
-            submit_post_request::SubmitPostRequest, update_comment_request::UpdateCommentRequest,
-            update_post_request::UpdatePostRequest, upvote_comment_request::UpvoteCommentRequest,
-            upvote_post_request::UpvotePostRequest,
-        },
-        i18n::get_ui_text_bundle_request::GetUiTextBundleRequest,
-        photography::delete_photographs_request::DeletePhotographsRequest,
-        photography::submit_photograph_comment_request::SubmitPhotographCommentRequest,
-        photography::update_photograph_comment_request::UpdatePhotographCommentRequest,
-        photography::vote_photograph_request::VotePhotographRequest,
-        wasm_module::UpdateWasmModuleRequest,
-    },
-    responses::{
-        admin::{
-            authorization_response::{
-                AuthorizationAuditCursorItem, AuthorizationAuditItem,
-                AuthorizationAuditResponse, AuthorizationPermissionItem,
-                AuthorizationPermissionsResponse, AuthorizationRoleItem,
-                AuthorizationRolesResponse, AuthorizationUserItem,
-                AuthorizationUsersResponse, RoleAssignmentResponse,
-                RolePermissionChangeResponse, RolePermissionItem, RolePermissionsResponse,
-            },
-            media_cleanup_response::{
-                ResolveMediaCleanupResponse, UnresolvedMediaCleanupItem, UnresolvedMediaCleanupResponse,
-            },
-            retention_notification_response::{
-                RetentionNotificationStatusItem, RetentionNotificationStatusResponse,
-                RetryRetentionNotificationResponse,
-            },
-            sync_i18n_cache_response::SyncI18nCacheResponse,
-        },
-        auth::{
-            delete_account_response::DeleteAccountResponse,
-            hard_purge_account_response::{HardPurgeAccountResponse, ProfileObjectCleanupFailure},
-            is_superuser_response::IsSuperuserResponse, login_response::LoginResponse,
-            logout_response::LogoutResponse,
-            me_response::{MeResponse, UserInfo, UserProfilePicture},
-            oidc_response::{
-                OidcAuthorizationResponse, OidcLinkResponse, OidcStatusResponse,
-            },
-            reset_password_request_response::ResetPasswordRequestResponse,
-            reset_password_response::ResetPasswordResponse, signup_response::SignupResponse,
-            update_profile_response::UpdateProfileResponse,
-            verify_user_email_response::VerifyUserEmailResponse,
-        },
-        blog::{
-            delete_comment_response::DeleteCommentResponse,
-            delete_post_response::DeletePostResponse, get_posts::GetPostsResponse,
-            read_post_response::ReadPostResponse, submit_post_response::SubmitPostResponse,
-            vote_comment_response::VoteCommentResponse, vote_post_response::VotePostResponse,
-        },
-        i18n::ui_text_bundle_response::UiTextBundleResponse,
-        photography::batch_status_response::{
-            BatchItemStatus, BatchListResponse, BatchStatusResponse, BatchUploadItem,
-            BatchUploadResponse,
-        },
-        photography::delete_photograph_comment_response::DeletePhotographCommentResponse,
-        photography::delete_photographs_response::DeletePhotographsResponse,
-        photography::get_photograph_response::{
-            GetPhotographsResponse, PaginationMeta, PhotographItem,
-        },
-        photography::read_photograph_response::ReadPhotographResponse,
-        photography::vote_photograph_response::VotePhotographResponse,
-        user::{
-            profile_picture_history_response::{
-                DeleteProfilePictureResponse, ProfilePictureHistoryItem,
-                ProfilePictureHistoryResponse, SelectProfilePictureResponse,
-            },
-            public_user_info_response::PublicUserInfoResponse,
-        },
-        live_chat::{GetLiveChatMessagesResponse, LiveChatCacheStatsResponse, LiveChatMessageItem},
-        wasm_module::{GetWasmModulesResponse, WasmModuleItem},
-    },
-};
-use crate::errors::code_error::CodeErrorResp;
-use crate::dto::requests::auth::delete_account_request::DeleteAccountRequest;
-use crate::handlers::{
-    blog::search_posts::SearchPostsResponse,
-    countries::get_countries::GetCountriesResponse,
-    server::{healthcheck::ServerHealthcheckResponse, root::RootHandlerResponse},
-    wasm_module::delete_wasm_module::DeleteWasmModuleResponse,
-};
-use crate::openapi_envelope::FrontendResponseEnvelope;
-use crate::util::geographic::ip_info_lookup::IpInfo;
-use crate::features::accounts::domain::retention_notifications::RetentionNotificationStage;
+use crate::docs_registry::*;
+
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]
 #[openapi(
     modifiers(&FrontendResponseEnvelope),
     paths(
-        healthcheck::healthcheck,
-        root::root_handler,
-        get_host_fastfetch::get_host_fastfetch,
-        visitor_board::get_visitor_board_entries,
-        lookup_ip_loc::lookup_ip_location,
-        lookup_ip::lookup_ip_info,
-        lookup_my_ip::lookup_my_ip_info,
+        server_http::healthcheck,
+        server_http::root_handler,
+        server_http::get_host_fastfetch,
+        forum_visitor_board::get_visitor_board_entries,
+        geo_lookup::lookup_ip_location,
+        geo_lookup::lookup_ip_info,
+        geo_lookup::lookup_my_ip_info,
         get_languages::get_languages,
         get_language::get_language,
         get_countries::get_countries,
@@ -189,6 +46,22 @@ use crate::features::accounts::domain::retention_notifications::RetentionNotific
         authorization_audit::list_authorization_audit,
         authorization_mutations::assign_authorization_role,
         authorization_mutations::set_authorization_role_permission,
+        forum_capabilities::forum_capabilities,
+        forum_topics::list_forum_topics,
+        forum_topics::get_forum_topic,
+        forum_topics::create_forum_topic,
+        forum_topics::update_forum_topic,
+        forum_topics::delete_forum_topic,
+        forum_topics::moderate_forum_topic,
+        forum_replies::create_forum_reply,
+        forum_replies::update_forum_reply,
+        forum_replies::delete_forum_reply,
+        forum_replies::moderate_forum_reply,
+        forum_subscriptions::subscribe_forum_topic,
+        forum_subscriptions::unsubscribe_forum_topic,
+        forum_notifications::list_forum_notifications,
+        forum_notifications::mark_forum_notification_read,
+        forum_audit::list_forum_moderation_audit,
         update_profile::update_profile,
         get_posts::get_posts,
         read_post::read_post,
@@ -274,6 +147,38 @@ use crate::features::accounts::domain::retention_notifications::RetentionNotific
             AuthorizationAuditItem,
             RoleAssignmentResponse,
             RolePermissionChangeResponse,
+            CreateForumTopicRequest,
+            UpdateForumTopicRequest,
+            DeleteForumContentRequest,
+            CreateForumReplyRequest,
+            UpdateForumReplyRequest,
+            ForumTopicModerationActionRequest,
+            ForumReplyModerationActionRequest,
+            ModerateForumTopicRequest,
+            ModerateForumReplyRequest,
+            ForumAuthorResponse,
+            ForumContentStateResponse,
+            ForumTopicAccessStateResponse,
+            ForumNotificationKindResponse,
+            ForumModerationActionResponse,
+            ForumTopicResponse,
+            ForumReplyResponse,
+            ForumTopicCursorResponse,
+            ForumReplyCursorResponse,
+            ForumTopicListResponse,
+            ForumTopicDetailResponse,
+            ForumTopicMutationResponse,
+            ForumReplyMutationResponse,
+            ForumSubscriptionResponse,
+            ForumCapabilitiesResponse,
+            ForumNotificationResponse,
+            ForumNotificationCursorResponse,
+            ForumNotificationListResponse,
+            ForumNotificationReadResponse,
+            ForumModerationResponse,
+            ForumModerationAuditItem,
+            ForumModerationAuditCursorResponse,
+            ForumModerationAuditListResponse,
             UpdateProfileRequest,
             UpdateProfileResponse,
             MeResponse,
@@ -367,7 +272,8 @@ use crate::features::accounts::domain::retention_notifications::RetentionNotific
         (name = "photography", description = "Photography endpoints"),
         (name = "user", description = "User endpoints"),
         (name = "live_chat", description = "Live chat HTTP endpoints"),
-        (name = "wasm_module", description = "WebAssembly module endpoints")
+        (name = "wasm_module", description = "WebAssembly module endpoints"),
+        (name = "forum", description = "Forum topics, replies, subscriptions, notifications, and moderation")
     )
 )]
 pub struct ApiDoc;

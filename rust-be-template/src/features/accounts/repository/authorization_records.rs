@@ -5,7 +5,7 @@ use diesel::{Insertable, Queryable, Selectable};
 use uuid::Uuid;
 
 use crate::{
-    features::accounts::domain::authorization::AuthorizationAuditKind,
+    features::accounts::repository::sql_enums::StoredAuthorizationAuditKind,
     schema::authorization_audit_events,
 };
 
@@ -44,7 +44,7 @@ pub(super) struct RolePermissionBindingRow {
 pub(super) struct AuthorizationAuditEventRow {
     pub(super) authorization_audit_event_id: Uuid,
     pub(super) authorization_audit_event_actor_user_id: Uuid,
-    pub(super) authorization_audit_event_kind: AuthorizationAuditKind,
+    pub(super) authorization_audit_event_kind: StoredAuthorizationAuditKind,
     pub(super) authorization_audit_event_target_user_id: Option<Uuid>,
     pub(super) authorization_audit_event_role_id: Uuid,
     pub(super) authorization_audit_event_role_name: String,
@@ -61,7 +61,7 @@ pub(super) struct AuthorizationAuditEventRow {
 #[diesel(table_name = authorization_audit_events)]
 pub(super) struct NewAuthorizationAuditEventRecord<'a> {
     pub(super) authorization_audit_event_actor_user_id: Uuid,
-    pub(super) authorization_audit_event_kind: AuthorizationAuditKind,
+    pub(super) authorization_audit_event_kind: StoredAuthorizationAuditKind,
     pub(super) authorization_audit_event_target_user_id: Option<Uuid>,
     pub(super) authorization_audit_event_role_id: Uuid,
     pub(super) authorization_audit_event_role_name: &'static str,

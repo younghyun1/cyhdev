@@ -1,24 +1,10 @@
 //! Durable staged notification state for retained account identity.
 
-use std::io::Write;
-
 use chrono::{DateTime, Days, TimeDelta, Utc};
-use diesel::{AsExpression, FromSqlRow};
-use diesel::deserialize::{FromSql, Result as DeserializeResult};
-use diesel::pg::{Pg, PgValue};
-use diesel::query_builder::QueryId;
-use diesel::serialize::{IsNull, Output, ToSql};
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use zeroize::Zeroizing;
-
-use crate::schema::sql_types::AccountRetentionNotificationStage as StageSql;
-
-impl QueryId for StageSql {
-    type QueryId = StageSql;
-    const HAS_STATIC_QUERY_ID: bool = true;
-}
 
 pub const RETENTION_NOTIFICATION_BATCH_SIZE: i64 = 32;
 pub const RETENTION_NOTIFICATION_DELIVERY_CONCURRENCY: usize = 4;
@@ -29,8 +15,7 @@ const RETRY_BASE_MINUTES: i64 = 5;
 const RETRY_MAX_EXPONENT: i32 = 8;
 
 /// Fixed notice stages keyed uniquely per retained account.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, ToSchema, AsExpression, FromSqlRow)]
-#[diesel(sql_type = StageSql)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RetentionNotificationStage {
     SevenDaysBeforePurge,
@@ -49,23 +34,6 @@ impl RetentionNotificationStage {
         match self {
             Self::SevenDaysBeforePurge => "seven_days_before_purge",
             Self::OneDayBeforePurge => "one_day_before_purge",
-        }
-    }
-}
-
-impl ToSql<StageSql, Pg> for RetentionNotificationStage {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        out.write_all(self.as_str().as_bytes())?;
-        Ok(IsNull::No)
-    }
-}
-
-impl FromSql<StageSql, Pg> for RetentionNotificationStage {
-    fn from_sql(bytes: PgValue<'_>) -> DeserializeResult<Self> {
-        match bytes.as_bytes() {
-            b"seven_days_before_purge" => Ok(Self::SevenDaysBeforePurge),
-            b"one_day_before_purge" => Ok(Self::OneDayBeforePurge),
-            _ => Err("unrecognized account_retention_notification_stage value".into()),
         }
     }
 }

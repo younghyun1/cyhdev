@@ -4,9 +4,13 @@ mod check;
 mod cli;
 mod config;
 mod config_validation;
+#[cfg(test)]
+mod config_validation_tests;
 mod error;
+mod environment_evidence;
 mod executor;
 mod hardware;
+mod implementation;
 mod measurement;
 mod report;
 mod statistics;
@@ -56,7 +60,10 @@ fn run() -> HarnessResult<()> {
             let report = measurement::run(&options)?;
             report::write(&options.output, &report)?;
             report::print_json(&report)?;
-            check::enforce(&report.verdict)?;
+            let verdict = report.verdict.as_ref().ok_or_else(|| {
+                HarnessError::Arguments("thresholded run produced no verdict".to_owned())
+            })?;
+            check::enforce(verdict)?;
             info!(
                 workload = %report.workload.name,
                 requests = report.metrics.requests,
@@ -65,10 +72,25 @@ fn run() -> HarnessResult<()> {
             );
             Ok(())
         }
+        CliAction::Command(Command::Record(options)) => {
+            let report = measurement::run(&options)?;
+            report::write(&options.output, &report)?;
+            report::print_json(&report)?;
+            info!(
+                workload = %report.workload.name,
+                requests = report.metrics.requests,
+                throughput_rps = report.metrics.throughput_requests_per_second,
+                "Recorded threshold-free backend calibration"
+            );
+            Ok(())
+        }
         CliAction::Command(Command::Check(options)) => {
             let checked = check::check_saved_report(&options)?;
             report::print_json(&checked)?;
-            check::enforce(&checked.verdict)
+            let verdict = checked.verdict.as_ref().ok_or_else(|| {
+                HarnessError::Arguments("checked report produced no verdict".to_owned())
+            })?;
+            check::enforce(verdict)
         }
     }
 }

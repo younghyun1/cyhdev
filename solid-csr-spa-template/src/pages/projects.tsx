@@ -624,7 +624,7 @@ export default function Projects() {
                 src={selectedModule()!.wasm_module_link}
                 class="wasm-iframe"
                 title={selectedModule()!.wasm_module_title}
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-scripts"
               />
             </div>
           </div>

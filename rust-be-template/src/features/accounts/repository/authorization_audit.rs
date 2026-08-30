@@ -80,7 +80,7 @@ fn map_audit_event(
             user_names,
             row.authorization_audit_event_actor_user_id,
         )?,
-        kind: row.authorization_audit_event_kind,
+        kind: row.authorization_audit_event_kind.into_domain(),
         target_user_id: row.authorization_audit_event_target_user_id,
         target_display_name: row
             .authorization_audit_event_target_user_id

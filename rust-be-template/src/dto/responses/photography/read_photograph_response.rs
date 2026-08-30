@@ -1,8 +1,7 @@
 use utoipa::ToSchema;
 
-use crate::domain::blog::blog::{UserBadgeInfo, VoteState};
-use crate::domain::photography::photographs::Photograph;
-use crate::domain::photography::social::PhotographCommentResponse;
+use crate::features::blog::domain::{post::UserBadgeInfo, vote::VoteState};
+use crate::features::photography::domain::{photograph::Photograph, social::PhotographCommentResponse};
 
 /// Detail response for a single photograph: the row (incl. denormalized view +
 /// vote counts), the caller's vote state, the enriched flat comment list, and

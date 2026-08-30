@@ -6,6 +6,7 @@ pub mod naming;
 pub mod output;
 pub mod reference;
 pub mod runtime;
+pub mod router_surface;
 pub mod surface;
 pub mod type_modules;
 pub mod typescript;

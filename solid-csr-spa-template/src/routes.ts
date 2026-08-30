@@ -52,6 +52,29 @@ export const routes = defineRoutes([
     ],
   },
   {
+    path: "/forum",
+    children: [
+      {
+        path: "/",
+        component: lazy(() => import("./pages/forum/List")),
+      },
+      {
+        path: "/new",
+        component: withAuth(lazy(() => import("./pages/forum/New"))),
+      },
+      {
+        path: "/notifications",
+        component: withAuth(
+          lazy(() => import("./pages/forum/Notifications")),
+        ),
+      },
+      {
+        path: "/:topic_id",
+        component: lazy(() => import("./pages/forum/Topic")),
+      },
+    ],
+  },
+  {
     path: "/visitor-board",
     component: lazy(() => import("./pages/visitor_board")),
   },

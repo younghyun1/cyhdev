@@ -1,4 +1,5 @@
 //! Parallel-safe PostgreSQL lifecycle support for integration tests.
+#![allow(clippy::redundant_field_names)]
 
 use std::{
     any::Any,
@@ -10,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use diesel::{Connection, RunQueryDsl, pg::PgConnection};
+use diesel::{Connection, QueryableByName, RunQueryDsl, pg::PgConnection};
 use diesel_async::{
     AsyncPgConnection,
     pooled_connection::{AsyncDieselConnectionManager, bb8::Pool},
@@ -26,6 +27,8 @@ pub use super::error::{BoxError, HarnessError, TestResult};
 
 const DATABASE_ENV: &str = "TEST_DATABASE_URL";
 const DATABASE_PREFIX: &str = "cyhdev_it_";
+const DISPOSABLE_MAINTENANCE_DATABASE: &str = "cyhdev_test_maintenance";
+const REMOTE_OVERRIDE_ENV: &str = "TEST_DATABASE_ALLOW_REMOTE_CI";
 static DATABASE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 pub type DatabaseTestFuture<'a> = Pin<Box<dyn Future<Output = TestResult> + Send + 'a>>;
@@ -42,6 +45,7 @@ pub struct TestDatabase {
 impl TestDatabase {
     async fn create() -> Result<Self, HarnessError> {
         let maintenance_url = configured_maintenance_url()?;
+        validate_maintenance_server(maintenance_url.as_str().to_owned()).await?;
         let database_name = generated_database_name()?;
         run_lifecycle_statement(
             maintenance_url.as_str().to_owned(),
@@ -117,6 +121,57 @@ impl TestDatabase {
         self.cleaned = true;
         Ok(())
     }
+}
+
+#[derive(QueryableByName)]
+struct MaintenanceServerRow {
+    #[diesel(sql_type = diesel::sql_types::BigInt)]
+    version_num: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    database_name: String,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Text>)]
+    server_address: Option<String>,
+}
+
+async fn validate_maintenance_server(maintenance_url: String) -> Result<(), HarnessError> {
+    tokio::task::spawn_blocking(move || {
+        let mut connection = PgConnection::establish(&maintenance_url).map_err(|source| {
+            HarnessError::LifecycleConnection { action: "validate integration database server", source }
+        })?;
+        let row = diesel::sql_query(
+            "SELECT current_setting('server_version_num')::bigint AS version_num, current_database()::text AS database_name, inet_server_addr()::text AS server_address",
+        )
+        .get_result::<MaintenanceServerRow>(&mut connection)
+        .map_err(|source| HarnessError::LifecycleStatement {
+            action: "validate integration database server",
+            source,
+        })?;
+        if !(180_000..190_000).contains(&row.version_num) {
+            return Err(HarnessError::UnsupportedPostgresVersion { version: row.version_num });
+        }
+        if row.database_name != DISPOSABLE_MAINTENANCE_DATABASE {
+            return Err(HarnessError::UnsafeMaintenanceDatabase {
+                required: DISPOSABLE_MAINTENANCE_DATABASE,
+                actual: row.database_name,
+            });
+        }
+        let Some(server_address) = row.server_address else { return Ok(()) };
+        let address = server_address.parse::<std::net::IpAddr>().map_err(|_| {
+            HarnessError::InvalidServerAddress { address: server_address.clone() }
+        })?;
+        if address.is_loopback() {
+            return Ok(());
+        }
+        let override_enabled = matches!(env::var(REMOTE_OVERRIDE_ENV), Ok(value) if value == "1");
+        let ci_enabled = matches!(env::var("CI"), Ok(value) if value == "1" || value.eq_ignore_ascii_case("true"));
+        if override_enabled && ci_enabled {
+            Ok(())
+        } else {
+            Err(HarnessError::RemoteDatabaseForbidden { address: address.to_string() })
+        }
+    })
+    .await
+    .map_err(HarnessError::LifecycleTask)?
 }
 
 impl Drop for TestDatabase {

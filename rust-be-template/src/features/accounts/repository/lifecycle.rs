@@ -24,8 +24,8 @@ use crate::{
     },
     schema::{
         account_oidc_identities, deleted_account_retention, email_verification_tokens,
-        live_chat_call_participants, live_chat_messages, password_reset_tokens, photographs,
-        user_roles, users,
+        forum_notifications, forum_topic_subscriptions, live_chat_call_participants,
+        live_chat_messages, password_reset_tokens, photographs, user_roles, users,
     },
 };
 
@@ -209,6 +209,20 @@ async fn clear_account_authority(
     connection: &mut diesel_async::AsyncPgConnection,
     user_id: Uuid,
 ) -> Result<(), AccountError> {
+    diesel::delete(
+        forum_notifications::table.filter(
+            forum_notifications::forum_notification_recipient_user_id.eq(user_id),
+        ),
+    )
+    .execute(&mut *connection)
+    .await?;
+    diesel::delete(
+        forum_topic_subscriptions::table.filter(
+            forum_topic_subscriptions::forum_topic_subscription_user_id.eq(user_id),
+        ),
+    )
+    .execute(&mut *connection)
+    .await?;
     diesel::delete(
         account_oidc_identities::table.filter(
             account_oidc_identities::account_oidc_identity_user_id.eq(user_id),

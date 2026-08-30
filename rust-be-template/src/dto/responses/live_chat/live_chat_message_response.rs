@@ -3,7 +3,7 @@ use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::domain::live_chat::cache::CachedChatMessage;
+use crate::features::live_chat::service::cache::CachedChatMessage;
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct LiveChatMessageItem {

@@ -1,6 +1,5 @@
 //! Profile-picture metadata persistence.
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
@@ -9,11 +8,15 @@ use crate::{
     features::accounts::{
         domain::account::ProfilePictureReplacement,
         error::AccountError,
-        repository::{account_repository::AccountRepository, records::NewProfilePictureRecord},
+        repository::{
+            account_repository::AccountRepository,
+            records::NewProfilePictureRecord,
+        },
     },
-    schema::{media_object_cleanup, user_profile_pictures, users},
+    persistence::media_cleanup::enqueue_media_cleanup,
+    schema::{user_profile_pictures, users},
     util::media::cleanup::{
-        MediaCleanupRequest, REASON_PROFILE_PICTURE_HISTORY_PRUNED, enqueue_media_cleanup,
+        MediaCleanupRequest, REASON_PROFILE_PICTURE_HISTORY_PRUNED,
     },
 };
 
@@ -116,45 +119,4 @@ impl AccountRepository {
             .map_err(AccountError::Mutation)
     }
 
-    /// Removes a durable cleanup row only after idempotent object deletion succeeds.
-    pub async fn complete_media_object_cleanup(
-        &self,
-        cleanup_id: Uuid,
-    ) -> Result<bool, AccountError> {
-        let mut connection = self.connection().await?;
-        diesel::delete(media_object_cleanup::table.find(cleanup_id))
-            .execute(&mut connection)
-            .await
-            .map(|deleted| deleted == 1)
-            .map_err(AccountError::Mutation)
-    }
-
-    /// Records one failed attempt without overwriting a concurrent worker's result.
-    pub async fn record_media_object_cleanup_failure(
-        &self,
-        cleanup_id: Uuid,
-        expected_attempt_count: i32,
-        attempted_at: chrono::DateTime<Utc>,
-        error: &str,
-    ) -> Result<bool, AccountError> {
-        let next_attempt_count = expected_attempt_count.saturating_add(1);
-        let mut connection = self.connection().await?;
-        diesel::update(
-            media_object_cleanup::table
-                .find(cleanup_id)
-                .filter(
-                    media_object_cleanup::media_object_cleanup_attempt_count
-                        .eq(expected_attempt_count),
-                ),
-        )
-        .set((
-            media_object_cleanup::media_object_cleanup_attempt_count.eq(next_attempt_count),
-            media_object_cleanup::media_object_cleanup_last_attempt_at.eq(attempted_at),
-            media_object_cleanup::media_object_cleanup_last_error.eq(error),
-        ))
-        .execute(&mut connection)
-        .await
-        .map(|updated| updated == 1)
-        .map_err(AccountError::Mutation)
-    }
 }

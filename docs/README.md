@@ -21,6 +21,8 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Media persistence](architecture/be/media-persistence.md)
 - [OpenID Connect account linking](architecture/be/oidc-account-linking.md)
 - [OpenID Connect account controls](design/fe/oidc-account-controls.md)
+- [Forum architecture](architecture/be/forum.md)
+- [WebAssembly service](architecture/be/wasm-service.md)
 
 ## Active Plans
 

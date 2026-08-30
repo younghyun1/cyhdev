@@ -1,17 +1,8 @@
 //! Validated role-administration commands and authority records.
 
-use std::io::Write;
-
 use chrono::{DateTime, Utc};
-use diesel::{AsExpression, FromSqlRow};
-use diesel::deserialize::{FromSql, Result as DeserializeResult};
-use diesel::pg::{Pg, PgValue};
-use diesel::query_builder::QueryId;
-use diesel::serialize::{IsNull, Output, ToSql};
 use nutype::nutype;
 use uuid::Uuid;
-
-use crate::schema::sql_types::AuthorizationAuditKind as AuthorizationAuditKindSql;
 
 use super::role::RoleType;
 
@@ -48,13 +39,7 @@ pub struct AuthorizationSearch(String);
 )]
 pub struct AuthorizationPageSize(u16);
 
-impl QueryId for AuthorizationAuditKindSql {
-    type QueryId = AuthorizationAuditKindSql;
-    const HAS_STATIC_QUERY_ID: bool = true;
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, AsExpression, FromSqlRow)]
-#[diesel(sql_type = AuthorizationAuditKindSql)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuthorizationAuditKind {
     UserRoleAssigned,
     RolePermissionGranted,
@@ -70,24 +55,6 @@ impl AuthorizationAuditKind {
         }
     }
 
-}
-
-impl ToSql<AuthorizationAuditKindSql, Pg> for AuthorizationAuditKind {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> diesel::serialize::Result {
-        out.write_all(self.as_str().as_bytes())?;
-        Ok(IsNull::No)
-    }
-}
-
-impl FromSql<AuthorizationAuditKindSql, Pg> for AuthorizationAuditKind {
-    fn from_sql(bytes: PgValue<'_>) -> DeserializeResult<Self> {
-        match bytes.as_bytes() {
-            b"user_role_assigned" => Ok(Self::UserRoleAssigned),
-            b"role_permission_granted" => Ok(Self::RolePermissionGranted),
-            b"role_permission_revoked" => Ok(Self::RolePermissionRevoked),
-            _ => Err("unrecognized authorization_audit_kind value".into()),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

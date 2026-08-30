@@ -48,6 +48,24 @@ pub struct HardPurgeAccountReceipt {
     pub profile_metadata_deleted: usize,
 }
 
+/// Full hard-purge result after bounded remote profile cleanup and metadata finalization.
+pub struct HardPurgeAccountOutcome {
+    pub user_id: Uuid,
+    pub hard_purged_at: DateTime<Utc>,
+    pub profile_objects_deleted: usize,
+    pub profile_metadata_deleted: usize,
+    pub profile_cleanup_remaining: usize,
+    pub profile_cleanup_failures: Vec<ProfileObjectCleanupFailure>,
+}
+
+/// Profile object which remains represented by retained metadata for a later retry.
+pub struct ProfileObjectCleanupFailure {
+    pub profile_picture_id: Uuid,
+    pub object_url: Option<String>,
+    pub reason: String,
+    pub retryable: bool,
+}
+
 /// Idempotent object-store cleanup item retained in PostgreSQL until finalization.
 #[derive(Debug, Clone)]
 pub struct ProfileObjectCleanup {

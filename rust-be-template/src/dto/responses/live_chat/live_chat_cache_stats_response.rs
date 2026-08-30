@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 
-use crate::domain::live_chat::cache::LiveChatCacheStats;
+use crate::features::live_chat::service::cache::LiveChatCacheStats;
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct LiveChatCacheStatsResponse {
