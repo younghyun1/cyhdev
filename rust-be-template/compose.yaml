@@ -13,11 +13,12 @@ services:
       context: ..
       dockerfile: rust-be-template/Dockerfile
       target: final
+      pull: true
     # Runtime configuration stays outside the image and build context.
     env_file:
       - .env
     ports:
-      - 30737:30737
+      - 30737:443
       # WebRTC SFU media. The default 64-port range covers the maximum room
       # capacity; keep its start in sync with RTC_UDP_PORT_START.
       - 3478-3541:3478-3541/udp
