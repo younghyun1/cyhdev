@@ -22,6 +22,8 @@ rust-be-template/fe/
 **/src/build_info.rs
 
 # Local tooling
+**/AGENTS.md
+**/CLAUDE.md
 **/.claude/settings.local.json
 **/.idea/
 **/.vscode/
