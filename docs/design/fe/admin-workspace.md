@@ -1,0 +1,7 @@
+# Administration workspace navigation
+
+Authenticated superusers enter the administration workspace through one plain `Admin` link in the desktop or mobile top bar. The top bar does not enumerate privileged tools or use a dropdown. `/admin/operations` and `/admin/authorization` share a workspace shell with a persistent left sidebar on desktop and a horizontally scrollable navigation strip on narrow screens. The application owns the single `main` landmark; the workspace shell and both pages use neutral containers so landmark nesting remains valid.
+
+The workspace lists only destinations that do not already have normal site navigation: maintenance operations, roles and permissions, the four operation-panel fragments, and OpenAPI documentation. Blog, photograph, project/WASM, and forum links remain in their normal menus and do not appear in the administration sidebar. Operation fragments use stable IDs for retention notifications, media cleanup, UI text synchronization, and hard purge. The current route receives `aria-current="page"`; an exact current fragment additionally receives `aria-current="location"`.
+
+The OpenAPI link uses the canonical `/swagger-ui/` URL and `rel="external"`. This makes the browser perform a native same-tab request to the protected backend route instead of allowing the Solid Router to interpret it as an SPA route. Both desktop and compact navigation render the same typed link inventory and remain absent until authentication bootstrap confirms superuser status.

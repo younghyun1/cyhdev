@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import HardPurgePanel from "../components/admin/operations/HardPurgePanel";
+import { ADMIN_OPERATION_SECTION_IDS } from "../components/admin/navigation";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import type { AdminOperationsApi } from "../services/contracts/admin_operations";
 import { setLocaleSignal, setTexts } from "../state/i18n";
@@ -46,7 +47,12 @@ describe("hard-purge operations", () => {
       "hardPurgeAccount"
     >;
 
-    render(() => <HardPurgePanel service={service} />);
+    const result = render(() => <HardPurgePanel service={service} />);
+    expect(
+      result.container.querySelector(
+        `#${ADMIN_OPERATION_SECTION_IDS.hardPurge}`,
+      ),
+    ).not.toBeNull();
     expect(hardPurge).not.toHaveBeenCalled();
 
     const idInput = screen.getByLabelText("User UUID") as HTMLInputElement;
@@ -62,7 +68,9 @@ describe("hard-purge operations", () => {
     const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
     checkbox.checked = true;
     fireEvent.change(checkbox);
-    const submit = screen.getByRole("button", { name: "Hard purge account" }) as HTMLButtonElement;
+    const submit = screen.getByRole("button", {
+      name: "Hard purge account",
+    }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
 
     confirmationInput.value = `PURGE ${USER_ID}`;

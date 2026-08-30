@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import RetentionNotificationsPanel from "../components/admin/operations/RetentionNotificationsPanel";
+import { ADMIN_OPERATION_SECTION_IDS } from "../components/admin/navigation";
 import type { RetentionNotificationStatusItem } from "../generated";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import type { AdminOperationsApi } from "../services/contracts/admin_operations";
@@ -47,8 +48,15 @@ describe("retention notification operations", () => {
       "retentionStatus" | "retryRetentionNotification"
     >;
 
-    render(() => <RetentionNotificationsPanel service={service} />);
+    const result = render(() => (
+      <RetentionNotificationsPanel service={service} />
+    ));
 
+    expect(
+      result.container.querySelector(
+        `#${ADMIN_OPERATION_SECTION_IDS.retention}`,
+      ),
+    ).not.toBeNull();
     expect(await screen.findByText("Seven-day warning")).toBeTruthy();
     expect(retry).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Queue retry" }));
@@ -71,8 +79,9 @@ describe("retention notification operations", () => {
   });
 
   it("replaces pages and sends both keyset cursor fields together", async () => {
-    const firstPage = Array.from({ length: 25 }, (_, index) =>
-      notification(String(index + 1).padStart(12, "0")),
+    const firstPage = Array.from(
+      { length: 25 },
+      (_, index) => notification(String(index + 1).padStart(12, "0")),
     );
     const firstNotification = requiredItem(firstPage[0]);
     const lastNotification = requiredItem(firstPage[24]);
@@ -121,7 +130,9 @@ describe("retention notification operations", () => {
   });
 });
 
-function notification(suffix = "000000000001"): RetentionNotificationStatusItem {
+function notification(
+  suffix = "000000000001",
+): RetentionNotificationStatusItem {
   return {
     notification_id: `019d7f00-0000-7000-8000-${suffix}`,
     user_id: USER_ID,
