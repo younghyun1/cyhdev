@@ -1,0 +1,197 @@
+use crate::domain::i18n::i18n::InternationalizationString;
+use chrono::{DateTime, Utc};
+use std::collections::{BTreeMap, HashMap};
+use uuid::Uuid;
+
+pub struct I18nCache {
+    pub rows: Vec<InternationalizationString>,
+    // HashMap indexes
+    pub country_idx: HashMap<i32, Vec<usize>>,
+    pub subdivision_idx: HashMap<Option<String>, Vec<usize>>,
+    pub language_idx: HashMap<i32, Vec<usize>>,
+    pub created_by_idx: HashMap<Uuid, Vec<usize>>,
+    pub updated_by_idx: HashMap<Uuid, Vec<usize>>,
+    pub reference_idx: HashMap<String, Vec<usize>>,
+    // BTreeMap indexes
+    pub created_at_idx: BTreeMap<DateTime<Utc>, Vec<usize>>,
+    pub updated_at_idx: BTreeMap<DateTime<Utc>, Vec<usize>>,
+}
+
+impl Default for I18nCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl I18nCache {
+    pub fn new() -> Self {
+        Self {
+            rows: Vec::new(),
+            country_idx: HashMap::new(),
+            subdivision_idx: HashMap::new(),
+            language_idx: HashMap::new(),
+            created_by_idx: HashMap::new(),
+            updated_by_idx: HashMap::new(),
+            reference_idx: HashMap::new(),
+            created_at_idx: BTreeMap::new(),
+            updated_at_idx: BTreeMap::new(),
+        }
+    }
+
+    pub fn from_rows(rows: Vec<InternationalizationString>) -> Self {
+        let mut cache = I18nCache::new();
+        for (i, row) in rows.into_iter().enumerate() {
+            // Push to row vec, retain `i` as index
+            cache.rows.push(row);
+            let row_ref = &cache.rows[i];
+            // country
+            cache
+                .country_idx
+                .entry(row_ref.i18n_string_country_code)
+                .or_default()
+                .push(i);
+            // subdivision
+            cache
+                .subdivision_idx
+                .entry(row_ref.i18n_string_country_subdivision_code.clone())
+                .or_default()
+                .push(i);
+            // language
+            cache
+                .language_idx
+                .entry(row_ref.i18n_string_language_code)
+                .or_default()
+                .push(i);
+            // created_by
+            cache
+                .created_by_idx
+                .entry(row_ref.i18n_string_created_by)
+                .or_default()
+                .push(i);
+            // updated_by
+            cache
+                .updated_by_idx
+                .entry(row_ref.i18n_string_updated_by)
+                .or_default()
+                .push(i);
+            // reference_key
+            cache
+                .reference_idx
+                .entry(row_ref.i18n_string_reference_key.clone())
+                .or_default()
+                .push(i);
+            // created_at
+            cache
+                .created_at_idx
+                .entry(row_ref.i18n_string_created_at)
+                .or_default()
+                .push(i);
+            // updated_at
+            cache
+                .updated_at_idx
+                .entry(row_ref.i18n_string_updated_at)
+                .or_default()
+                .push(i);
+        }
+        cache
+    }
+
+    // Example lookup methods:
+    pub fn by_country(&self, code: i32) -> Vec<&InternationalizationString> {
+        self.country_idx
+            .get(&code)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+    pub fn by_subdivision(&self, code: Option<&str>) -> Vec<&InternationalizationString> {
+        let key = code.map(|s| s.to_string());
+        self.subdivision_idx
+            .get(&key)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+    pub fn by_language(&self, code: i32) -> Vec<&InternationalizationString> {
+        self.language_idx
+            .get(&code)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+    pub fn by_reference(&self, key: &str) -> Vec<&InternationalizationString> {
+        self.reference_idx
+            .get(key)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+    pub fn by_created_by(&self, user: &Uuid) -> Vec<&InternationalizationString> {
+        self.created_by_idx
+            .get(user)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+    pub fn by_updated_by(&self, user: &Uuid) -> Vec<&InternationalizationString> {
+        self.updated_by_idx
+            .get(user)
+            .map(|v| v.iter().map(|&i| &self.rows[i]).collect())
+            .unwrap_or_default()
+    }
+
+    pub fn range_created_at(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Vec<&InternationalizationString> {
+        self.created_at_idx
+            .range(start..=end)
+            .flat_map(|(_k, v)| v.iter().map(|&i| &self.rows[i]))
+            .collect()
+    }
+
+    pub fn range_updated_at(
+        &self,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> Vec<&InternationalizationString> {
+        self.updated_at_idx
+            .range(start..=end)
+            .flat_map(|(_k, v)| v.iter().map(|&i| &self.rows[i]))
+            .collect()
+    }
+
+    pub fn ui_text_bundle(
+        &self,
+        country_code: i32,
+        language_code: i32,
+        fallback_country_code: i32,
+        fallback_language_code: i32,
+        required_keys: &[&str],
+    ) -> HashMap<String, String> {
+        let mut texts = HashMap::with_capacity(required_keys.len());
+
+        for key in required_keys {
+            let text = match self.find_ui_text(key, country_code, language_code) {
+                Some(text) => Some(text),
+                None => self.find_ui_text(key, fallback_country_code, fallback_language_code),
+            };
+
+            if let Some(text) = text {
+                texts.insert((*key).to_string(), text);
+            }
+        }
+
+        texts
+    }
+
+    fn find_ui_text(&self, key: &str, country_code: i32, language_code: i32) -> Option<String> {
+        let indices = self.reference_idx.get(key)?;
+        for &idx in indices {
+            let row = self.rows.get(idx)?;
+            if row.i18n_string_country_code == country_code
+                && row.i18n_string_language_code == language_code
+            {
+                return Some(row.i18n_string_content.clone());
+            }
+        }
+
+        None
+    }
+}

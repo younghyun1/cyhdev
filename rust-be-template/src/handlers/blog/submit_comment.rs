@@ -1,0 +1,115 @@
+use std::sync::Arc;
+
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+    response::IntoResponse,
+};
+use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, prelude::Insertable};
+use uuid::Uuid;
+
+use diesel_async::RunQueryDsl;
+
+use crate::{
+    domain::blog::blog::{Comment as DbComment, CommentResponse, UserBadgeInfo, VoteState},
+    dto::{
+        requests::blog::submit_comment::SubmitCommentRequest, responses::response_data::http_resp,
+    },
+    errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    init::state::ServerState,
+    routers::middleware::is_logged_in::AuthSession,
+    schema::{comments, user_profile_pictures},
+    util::time::now::tokio_now,
+};
+
+// Insert the comment
+#[derive(Insertable)]
+#[diesel(table_name = comments)]
+struct NewComment<'a> {
+    pub post_id: &'a Uuid,
+    pub user_id: &'a Uuid,
+    pub comment_content: &'a str,
+    pub parent_comment_id: Option<&'a Uuid>,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/blog/{post_id}/comment",
+    tag = "blog",
+    params(
+        ("post_id" = Uuid, Path, description = "ID of the post to comment on")
+    ),
+    request_body = SubmitCommentRequest,
+    responses(
+        (status = 200, description = "Comment submitted successfully", body = CommentResponse),
+        (status = 401, description = "Unauthorized", body = CodeErrorResp),
+        (status = 500, description = "Internal server error", body = CodeErrorResp)
+    )
+)]
+pub async fn submit_comment(
+    Extension(auth_session): Extension<Option<AuthSession>>,
+    State(state): State<Arc<ServerState>>,
+    Path(post_id): Path<Uuid>,
+    Json(request): Json<SubmitCommentRequest>,
+) -> HandlerResponse<impl IntoResponse> {
+    let start = tokio_now();
+
+    let mut conn = state
+        .get_conn()
+        .await
+        .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
+
+    if request.is_guest {
+        return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+    }
+
+    let auth_session = match auth_session {
+        Some(auth_session) => auth_session,
+        None => return Err(CodeError::UNAUTHORIZED_ACCESS.into()),
+    };
+    let user_id = auth_session.user_id;
+    let user_country = auth_session.user_country;
+
+    let new_comment = NewComment {
+        post_id: &post_id,
+        user_id: &user_id,
+        comment_content: &request.comment_content,
+        parent_comment_id: request.parent_comment_id.as_ref(),
+    };
+
+    let inserted_comment: DbComment = diesel::insert_into(comments::table)
+        .values(new_comment)
+        .returning(comments::all_columns)
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| code_err(CodeError::DB_INSERTION_ERROR, e))?;
+
+    let user_profile_picture_url: Option<String> = user_profile_pictures::table
+        .filter(user_profile_pictures::user_id.eq(user_id))
+        .order(user_profile_pictures::user_profile_picture_updated_at.desc())
+        .select(user_profile_pictures::user_profile_picture_link)
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
+        .flatten();
+
+    drop(conn);
+
+    // Look up country flag from cache
+    let country_map = state.country_map.read().await;
+    let user_country_flag = country_map.get_flag_by_code(user_country);
+    drop(country_map);
+
+    let response = CommentResponse::from_comment_votestate_and_badge_info(
+        inserted_comment,
+        VoteState::DidNotVote,
+        UserBadgeInfo {
+            user_name: auth_session.user_name,
+            user_profile_picture_url: user_profile_picture_url.unwrap_or_default(),
+            user_country_flag,
+        },
+    );
+
+    Ok(http_resp(response, (), start))
+}
