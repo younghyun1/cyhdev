@@ -19,6 +19,28 @@ pub struct LoginAccount {
     pub language: i32,
 }
 
+impl LoginAccount {
+    pub fn session_principal(&self) -> SessionPrincipal {
+        SessionPrincipal {
+            user_id: self.user_id,
+            user_name: self.user_name.clone(),
+            is_email_verified: self.is_email_verified,
+            country: self.country,
+            language: self.language,
+        }
+    }
+}
+
+/// Account authority used to seed a process-local session.
+#[derive(Debug, Clone)]
+pub struct SessionPrincipal {
+    pub user_id: Uuid,
+    pub user_name: String,
+    pub is_email_verified: bool,
+    pub country: i32,
+    pub language: i32,
+}
+
 /// Account data copied into an existing session after an account mutation.
 #[derive(Debug, Clone)]
 pub struct SessionAccount {

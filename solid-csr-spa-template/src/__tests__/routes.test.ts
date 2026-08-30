@@ -23,6 +23,7 @@ describe("application routes", () => {
     ["/blog", "/blog"],
     ["/blog/example-post", "/blog/:post_id"],
     ["/photographs/42", "/photographs/:photograph_id"],
+    ["/admin/authorization", "/admin/authorization"],
   ])("matches %s with the expected route", (url, pattern) => {
     expect(Router.match(url).at(-1)?.pattern).toBe(pattern);
   });

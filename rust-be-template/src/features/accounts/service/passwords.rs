@@ -2,12 +2,12 @@
 
 use chrono::Utc;
 use lettre::AsyncTransport;
+use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use crate::{
-    DOMAIN_NAME,
     features::accounts::{
         domain::account::PasswordResetReceipt,
         error::AccountError,
@@ -111,11 +111,12 @@ impl AccountService {
             }
         };
         let email_client = self.email_client.clone();
+        let public_app_origin = Arc::clone(&self.public_app_origin);
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match PasswordResetEmail::new()
                 .set_link(&format!(
-                    "https://{DOMAIN_NAME}/reset-password#token={token}"
+                    "{public_app_origin}/reset-password#token={token}"
                 ))
                 .to_message(&user_email)
             {

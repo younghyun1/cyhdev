@@ -8,6 +8,7 @@ use crate::{
         domain::lifecycle::{
             ACCOUNT_RETENTION_DAYS, HardPurgeAccountReceipt, SoftDeleteAccountReceipt,
         },
+        domain::retention_notifications::RetentionNotificationSchedule,
         error::AccountError,
         service::{
             account_service::AccountService,
@@ -49,6 +50,8 @@ impl AccountService {
         let purge_after = deleted_at
             .checked_add_days(Days::new(retention_days))
             .ok_or(AccountError::RetentionScheduleOverflow)?;
+        let notification_schedule = RetentionNotificationSchedule::from_purge_after(purge_after)
+            .ok_or(AccountError::RetentionScheduleOverflow)?;
         let receipt = self
             .repository
             .soft_delete_account(
@@ -56,6 +59,7 @@ impl AccountService {
                 &candidate.password_hash,
                 deleted_at,
                 purge_after,
+                notification_schedule,
             )
             .await?;
 
@@ -71,11 +75,13 @@ impl AccountService {
         requester_id: Uuid,
         user_id: Uuid,
     ) -> Result<HardPurgeAccountReceipt, AccountError> {
+        let retention_delivery = self.retention_notification_delivery_gate.write().await;
         let session_consistency = self.session_consistency.write().await;
         let receipt = self
             .repository
             .hard_purge_account(requester_id, user_id, Utc::now())
             .await?;
+        drop(retention_delivery);
         self.sessions.remove_for_user(user_id).await;
         let finalization = self
             .repository

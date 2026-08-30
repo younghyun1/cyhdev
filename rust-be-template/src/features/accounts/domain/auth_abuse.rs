@@ -10,6 +10,7 @@ pub enum AuthEndpoint {
     PasswordResetRequest,
     PasswordResetSubmit,
     EmailVerification,
+    OidcStart,
 }
 
 impl AuthEndpoint {
@@ -21,6 +22,7 @@ impl AuthEndpoint {
             Self::PasswordResetRequest => "password_reset_request",
             Self::PasswordResetSubmit => "password_reset_submit",
             Self::EmailVerification => "email_verification",
+            Self::OidcStart => "oidc_start",
         }
     }
 
@@ -32,6 +34,9 @@ impl AuthEndpoint {
             "/api/auth/reset-password-request" => Some(Self::PasswordResetRequest),
             "/api/auth/reset-password" => Some(Self::PasswordResetSubmit),
             "/api/auth/verify-user-email" => Some(Self::EmailVerification),
+            "/api/auth/oidc/login/start" | "/api/auth/oidc/link/start" => {
+                Some(Self::OidcStart)
+            }
             _ => None,
         }
     }

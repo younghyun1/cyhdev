@@ -1,8 +1,13 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, onSettled, Show } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
-import { authApi } from "../services/all_api";
+import { authApi, oidcApi } from "../services/all_api";
+import type { OidcStatusResponse } from "../generated";
 import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
-import { consumePostLoginRedirect } from "../services/api";
+import {
+  consumePostLoginRedirect,
+  rememberPostLoginRedirect,
+} from "../services/api";
+import { consumeOidcFragment } from "../services/oidc_fragment";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
@@ -10,9 +15,61 @@ function LoginPage() {
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [loading, setLoading] = createSignal(false);
+  const [oidcStatus, setOidcStatus] = createSignal<OidcStatusResponse | null>(
+    null,
+  );
   const [error, setError] = createSignal<string | null>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const requestedTarget = () => {
+    const next = Array.isArray(searchParams.next)
+      ? searchParams.next[0]
+      : searchParams.next;
+    return next?.startsWith("/") && !next.startsWith("//") ? next : null;
+  };
+
+  const hydrateSession = async (): Promise<boolean> => {
+    const meResp = await authApi.me();
+    const hasUser = !!meResp.data?.user_info?.user_id;
+    setAuthenticated(hasUser);
+    setUser(hasUser ? meResp.data : null);
+    if (!hasUser) {
+      setSuperuser(false);
+      return false;
+    }
+    try {
+      const superuserResp = await authApi.isSuperuser();
+      setSuperuser(!!superuserResp.data?.is_superuser);
+    } catch {
+      setSuperuser(false);
+    }
+    return true;
+  };
+
+  const finishLogin = async () => {
+    if (!(await hydrateSession())) {
+      throw new Error("authenticated session was not established");
+    }
+    const target = consumePostLoginRedirect() || requestedTarget() || "/";
+    navigate(target, { replace: true });
+  };
+
+  onSettled(() => {
+    const callback = consumeOidcFragment();
+    oidcApi
+      .status()
+      .then((response) => setOidcStatus(response.data ?? null))
+      .catch(() => setOidcStatus(null));
+    if (callback.kind === "failed") {
+      setError(t("auth.oidc.failed"));
+    } else if (callback.kind === "login-success") {
+      setLoading(true);
+      finishLogin()
+        .catch(() => setError(t("auth.oidc.failed")))
+        .finally(() => setLoading(false));
+    }
+  });
 
   const handleLogin = async (e: Event) => {
     e.preventDefault();
@@ -24,29 +81,7 @@ function LoginPage() {
         user_password: password(),
       });
       if (res.success) {
-        // Set auth state
-        const meResp = await authApi.me();
-        if (meResp?.success && meResp.data) {
-          const hasUser = !!meResp.data.user_info?.user_id;
-          setAuthenticated(hasUser);
-          setUser(hasUser ? meResp.data : null);
-          if (hasUser) {
-            try {
-              const superuserResp = await authApi.isSuperuser();
-              setSuperuser(!!superuserResp.data?.is_superuser);
-            } catch {
-              setSuperuser(false);
-            }
-          }
-        }
-
-        // Redirect: prefer sessionStorage (set by 401 interceptor), fall back to ?next param
-        const savedRedirect = consumePostLoginRedirect();
-        const nextParam = Array.isArray(searchParams.next)
-          ? searchParams.next[0]
-          : searchParams.next;
-        const target = savedRedirect || nextParam || "/";
-        navigate(target, { replace: true });
+        await finishLogin();
         return;
       } else {
         setAuthenticated(false);
@@ -60,6 +95,24 @@ function LoginPage() {
       setSuperuser(false);
       setError(t("auth.login.failed"));
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOidcLogin = async () => {
+    setLoading(true);
+    setError(null);
+    const target = requestedTarget();
+    if (target) rememberPostLoginRedirect(target);
+    try {
+      const response = await oidcApi.startLogin();
+      const authorizationUrl = response.data?.authorization_url;
+      if (!response.success || !authorizationUrl) {
+        throw new Error("authorization URL missing");
+      }
+      window.location.assign(authorizationUrl);
+    } catch {
+      setError(t("auth.oidc.failed"));
       setLoading(false);
     }
   };
@@ -115,6 +168,18 @@ function LoginPage() {
           >
             {loading() ? t("auth.login.loading") : t("page.login.title")}
           </button>
+          <Show when={oidcStatus()?.enabled}>
+            <button
+              class={`${pageStyles.buttonSecondary} w-full mb-3 py-3`}
+              type="button"
+              disabled={loading()}
+              onClick={handleOidcLogin}
+            >
+              {loading()
+                ? t("auth.oidc.starting")
+                : `${t("auth.oidc.login")} ${oidcStatus()?.provider_name ?? "OIDC"}`}
+            </button>
+          </Show>
           <button
             class={`${pageStyles.buttonSecondary} w-full py-3`}
             type="button"

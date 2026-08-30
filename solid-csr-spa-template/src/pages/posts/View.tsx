@@ -701,6 +701,17 @@ export default function PostViewPage() {
                 );
                 return markdown ? clean(markdown) : "";
               });
+              let renderedPostElement: HTMLDivElement | undefined;
+              createEffect(
+                () => renderedPostHtml(),
+                () => {
+                  renderedPostElement
+                    ?.querySelectorAll("pre code")
+                    .forEach((block) => {
+                      hljs.highlightElement(block as HTMLElement);
+                    });
+                },
+              );
 
               return (
                 <>
@@ -821,18 +832,7 @@ export default function PostViewPage() {
                         class="prose mb-3"
                         // eslint-disable-next-line solid/no-innerhtml
                         innerHTML={renderedPostHtml()}
-                        ref={(el) => {
-                          createEffect(
-                            () => renderedPostHtml(),
-                            () => {
-                              el.querySelectorAll("pre code").forEach(
-                                (block) => {
-                                  hljs.highlightElement(block as HTMLElement);
-                                },
-                              );
-                            },
-                          );
-                        }}
+                        ref={(element) => (renderedPostElement = element)}
                       />
                     </div>
                   </div>

@@ -2,8 +2,81 @@
 
 pub mod sql_types {
     #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "authorization_audit_kind"))]
+    pub struct AuthorizationAuditKind;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "account_retention_notification_stage"))]
+    pub struct AccountRetentionNotificationStage;
+
+    #[derive(diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "photograph_context"))]
     pub struct PhotographContext;
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::AuthorizationAuditKind;
+
+    authorization_audit_events (authorization_audit_event_id) {
+        authorization_audit_event_id -> Uuid,
+        authorization_audit_event_actor_user_id -> Uuid,
+        authorization_audit_event_kind -> AuthorizationAuditKind,
+        authorization_audit_event_target_user_id -> Nullable<Uuid>,
+        authorization_audit_event_role_id -> Uuid,
+        #[max_length = 64]
+        authorization_audit_event_role_name -> Varchar,
+        authorization_audit_event_permission_id -> Nullable<Uuid>,
+        #[max_length = 64]
+        authorization_audit_event_permission_name -> Nullable<Varchar>,
+        #[max_length = 128]
+        authorization_audit_event_old_value -> Varchar,
+        #[max_length = 128]
+        authorization_audit_event_new_value -> Varchar,
+        #[max_length = 500]
+        authorization_audit_event_reason -> Varchar,
+        authorization_audit_event_request_id -> Nullable<Uuid>,
+        authorization_audit_event_created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::AccountRetentionNotificationStage;
+
+    account_retention_notifications (account_retention_notification_id) {
+        account_retention_notification_id -> Uuid,
+        account_retention_notification_user_id -> Uuid,
+        account_retention_notification_stage -> AccountRetentionNotificationStage,
+        account_retention_notification_scheduled_for -> Timestamptz,
+        account_retention_notification_next_attempt_at -> Timestamptz,
+        account_retention_notification_attempt_count -> Int4,
+        account_retention_notification_claim_token -> Nullable<Uuid>,
+        account_retention_notification_claimed_at -> Nullable<Timestamptz>,
+        account_retention_notification_claim_expires_at -> Nullable<Timestamptz>,
+        account_retention_notification_sent_at -> Nullable<Timestamptz>,
+        account_retention_notification_cancelled_at -> Nullable<Timestamptz>,
+        #[max_length = 512]
+        account_retention_notification_last_error -> Nullable<Varchar>,
+        account_retention_notification_created_at -> Timestamptz,
+        account_retention_notification_updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    account_oidc_identities (account_oidc_identity_id) {
+        account_oidc_identity_id -> Uuid,
+        account_oidc_identity_user_id -> Uuid,
+        #[max_length = 1024]
+        account_oidc_identity_issuer -> Varchar,
+        #[max_length = 255]
+        account_oidc_identity_subject -> Varchar,
+        #[max_length = 254]
+        account_oidc_identity_provider_email -> Varchar,
+        account_oidc_identity_created_at -> Timestamptz,
+        account_oidc_identity_updated_at -> Timestamptz,
+        account_oidc_identity_last_authenticated_at -> Nullable<Timestamptz>,
+    }
 }
 
 diesel::table! {
@@ -399,6 +472,8 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(account_oidc_identities -> users (account_oidc_identity_user_id));
+diesel::joinable!(account_retention_notifications -> users (account_retention_notification_user_id));
 diesel::joinable!(comment_votes -> comments (comment_id));
 diesel::joinable!(comment_votes -> users (user_id));
 diesel::joinable!(comments -> posts (post_id));
@@ -443,6 +518,9 @@ diesel::joinable!(users -> iso_language (user_language));
 diesel::joinable!(wasm_module -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    account_oidc_identities,
+    account_retention_notifications,
+    authorization_audit_events,
     comment_votes,
     comments,
     deleted_account_retention,

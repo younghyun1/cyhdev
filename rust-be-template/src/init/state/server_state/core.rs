@@ -4,9 +4,10 @@ use std::sync::Arc;
 use super::ServerState;
 use crate::features::accounts::service::{
     account_service::AccountService, auth_abuse::AuthAbuseService,
+    oidc::provider::OidcService,
     session_service::SessionService,
 };
-use crate::init::state::{DeploymentEnvironment, ServerStateBuilder};
+use crate::init::state::{DeploymentEnvironment, PublicAppOrigin, ServerStateBuilder};
 
 impl ServerState {
     pub fn builder() -> ServerStateBuilder {
@@ -33,6 +34,10 @@ impl ServerState {
         Arc::clone(&self.auth_abuse_service)
     }
 
+    pub fn oidc_service(&self) -> Arc<OidcService> {
+        Arc::clone(&self.oidc_service)
+    }
+
     pub fn session_service(&self) -> Arc<SessionService> {
         Arc::clone(&self.session_service)
     }
@@ -51,6 +56,10 @@ impl ServerState {
 
     pub fn get_deployment_environment(&self) -> DeploymentEnvironment {
         self.deployment_environment
+    }
+
+    pub fn public_app_origin(&self) -> PublicAppOrigin {
+        self.public_app_origin.clone()
     }
 
     pub fn get_request_client(&self) -> &reqwest::Client {

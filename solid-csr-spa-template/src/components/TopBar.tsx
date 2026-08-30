@@ -2,6 +2,7 @@ import { Show, createSignal, For, onCleanup } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
   isAuthenticated,
+  isSuperuser,
   setSuperuser,
   user,
   setAuthenticated,
@@ -247,6 +248,15 @@ const TopBar = () => {
                           </svg>
                           {t("top_bar.profile.edit")}
                         </a>
+
+                        <Show when={isSuperuser() === true}>
+                          <a
+                            href="/admin/authorization"
+                            class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          >
+                            {t("top_bar.profile.authorization")}
+                          </a>
+                        </Show>
 
                         <button
                           class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"

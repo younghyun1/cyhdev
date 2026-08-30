@@ -1,5 +1,6 @@
 pub mod delete_account_request;
 pub mod login_request;
+pub mod oidc_request;
 pub mod reset_password;
 pub mod reset_password_request;
 pub mod signup_request;

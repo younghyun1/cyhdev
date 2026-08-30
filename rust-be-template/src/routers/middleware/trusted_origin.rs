@@ -9,9 +9,8 @@ use axum::{
 };
 
 use crate::{
-    DOMAIN_NAME,
     errors::code_error::{CodeError, HandlerResponse, code_err},
-    init::state::DeploymentEnvironment,
+    init::state::{DeploymentEnvironment, PublicAppOrigin},
 };
 
 const TRUSTED_BROWSER_ORIGINS_ENV: &str = "TRUSTED_BROWSER_ORIGINS";
@@ -24,25 +23,11 @@ pub struct TrustedOrigins {
 
 impl TrustedOrigins {
     /// Builds the deployment defaults plus operator-configured split-origin frontends.
-    pub fn from_environment(environment: DeploymentEnvironment) -> anyhow::Result<Self> {
-        let mut origins = vec![
-            format!("https://{DOMAIN_NAME}"),
-            format!("https://www.{DOMAIN_NAME}"),
-        ];
-
-        if matches!(environment, DeploymentEnvironment::Local) {
-            origins.extend(
-                [
-                    "https://localhost:30737",
-                    "http://localhost:3000",
-                    "http://127.0.0.1:3000",
-                    "http://localhost:5173",
-                    "http://127.0.0.1:5173",
-                ]
-                .into_iter()
-                .map(str::to_owned),
-            );
-        }
+    pub fn from_environment(
+        environment: DeploymentEnvironment,
+        public_origin: &PublicAppOrigin,
+    ) -> anyhow::Result<Self> {
+        let mut origins = vec![public_origin.as_str().to_owned()];
 
         match std::env::var(TRUSTED_BROWSER_ORIGINS_ENV) {
             Ok(configured) => origins.extend(

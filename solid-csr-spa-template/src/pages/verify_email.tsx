@@ -1,4 +1,4 @@
-import { Match, Show, Switch, createSignal, onMount } from "solid-js";
+import { Match, Show, Switch, createSignal, onSettled } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 
 import type { VerifyUserEmailResponse } from "../generated";
@@ -27,7 +27,7 @@ function VerifyEmailPage() {
     createSignal<VerifyUserEmailResponse | null>(null);
   const [error, setError] = createSignal<string | null>(null);
 
-  onMount(() => {
+  onSettled(() => {
     setLinkState(
       consumeEmailVerificationFragment(window.location, window.history),
     );

@@ -53,6 +53,7 @@ pub fn account_test_context(database: &TestDatabase) -> TestResult<AccountTestCo
         Arc::clone(&sessions),
         Arc::clone(&live_chat_cache),
         email_client,
+        Arc::from("https://app.example.test"),
         TEST_DUMMY_PASSWORD_HASH.to_owned(),
     );
 

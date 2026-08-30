@@ -369,6 +369,62 @@ impl CodeError {
         message: "The password reset request is invalid or no longer active.",
         log_level: Level::INFO,
     };
+    pub const AUTHORIZATION_CONFLICT: CodeError = CodeError {
+        success: false,
+        error_code: 70,
+        http_status_code: StatusCode::CONFLICT,
+        message: "The requested authorization change conflicts with current authority.",
+        log_level: Level::WARN,
+    };
+    pub const AUTHORIZATION_RESOURCE_NOT_FOUND: CodeError = CodeError {
+        success: false,
+        error_code: 71,
+        http_status_code: StatusCode::NOT_FOUND,
+        message: "The requested authorization resource was not found.",
+        log_level: Level::INFO,
+    };
+    pub const AUTHORIZATION_DATA_INTEGRITY: CodeError = CodeError {
+        success: false,
+        error_code: 72,
+        http_status_code: StatusCode::INTERNAL_SERVER_ERROR,
+        message: "Stored authorization data failed validation.",
+        log_level: Level::ERROR,
+    };
+    pub const OIDC_DISABLED: CodeError = CodeError {
+        success: false,
+        error_code: 63,
+        http_status_code: StatusCode::NOT_FOUND,
+        message: "OpenID Connect is not configured.",
+        log_level: Level::INFO,
+    };
+    pub const OIDC_FLOW_REJECTED: CodeError = CodeError {
+        success: false,
+        error_code: 64,
+        http_status_code: StatusCode::BAD_REQUEST,
+        message: "The OpenID Connect flow is invalid or no longer active.",
+        log_level: Level::WARN,
+    };
+    pub const OIDC_IDENTITY_NOT_LINKED: CodeError = CodeError {
+        success: false,
+        error_code: 65,
+        http_status_code: StatusCode::UNAUTHORIZED,
+        message: "The OpenID Connect identity is not linked to an active account.",
+        log_level: Level::INFO,
+    };
+    pub const OIDC_IDENTITY_CONFLICT: CodeError = CodeError {
+        success: false,
+        error_code: 66,
+        http_status_code: StatusCode::CONFLICT,
+        message: "The OpenID Connect identity conflicts with existing account access.",
+        log_level: Level::INFO,
+    };
+    pub const OIDC_TEMPORARILY_UNAVAILABLE: CodeError = CodeError {
+        success: false,
+        error_code: 67,
+        http_status_code: StatusCode::SERVICE_UNAVAILABLE,
+        message: "OpenID Connect is temporarily unavailable.",
+        log_level: Level::WARN,
+    };
     pub const COULD_NOT_SYNC_18N_CACHE: CodeError = CodeError {
         success: false,
         error_code: 39,

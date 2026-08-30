@@ -24,9 +24,25 @@ export function consumePostLoginRedirect(): string | null {
   try {
     const target = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
     sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-    return target && !target.startsWith("/login") ? target : null;
+    return target?.startsWith("/")
+      && !target.startsWith("//")
+      && !target.startsWith("/login")
+      ? target
+      : null;
   } catch {
     return null;
+  }
+}
+
+/** Saves a validated same-site route across an external authentication redirect. */
+export function rememberPostLoginRedirect(target: string): void {
+  if (!target.startsWith("/") || target.startsWith("//") || target.startsWith("/login")) {
+    return;
+  }
+  try {
+    sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, target);
+  } catch {
+    // Navigation can continue; the post-login fallback remains the home page.
   }
 }
 

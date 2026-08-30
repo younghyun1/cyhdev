@@ -69,6 +69,20 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
             CodeError::SESSION_CREATION_FAILED
         }
         AccountError::SessionStoreSaturated { .. } => CodeError::SESSION_STORE_SATURATED,
+        AccountError::OidcDisabled => CodeError::OIDC_DISABLED,
+        AccountError::OidcFlowEntropy(_)
+        | AccountError::OidcFlowStoreSaturated { .. }
+        | AccountError::OidcTokenExchange(_) => CodeError::OIDC_TEMPORARILY_UNAVAILABLE,
+        AccountError::OidcFlowRejected
+        | AccountError::OidcTokenValidation(_)
+        | AccountError::OidcProviderEmailRejected => CodeError::OIDC_FLOW_REJECTED,
+        AccountError::OidcIdentityNotLinked | AccountError::OidcIdentityNotFound => {
+            CodeError::OIDC_IDENTITY_NOT_LINKED
+        }
+        AccountError::OidcIdentityConflict(_)
+        | AccountError::OidcProviderAlreadyLinked
+        | AccountError::OidcLinkSessionMismatch
+        | AccountError::OidcAnotherLoginRequired => CodeError::OIDC_IDENTITY_CONFLICT,
     };
 
     let response = code_err(code, &error);

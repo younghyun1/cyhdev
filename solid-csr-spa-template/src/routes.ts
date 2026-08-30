@@ -3,6 +3,7 @@ import { defineRoutes } from "@solidjs/router";
 
 import Home from "./pages/home";
 import { withAuth } from "./components/RequireAuth";
+import { withSuperuser } from "./components/RequireSuperuser";
 
 export const routes = defineRoutes([
   {
@@ -97,6 +98,12 @@ export const routes = defineRoutes([
   {
     path: "/edit-profile",
     component: withAuth(lazy(() => import("./pages/edit_profile"))),
+  },
+  {
+    path: "/admin/authorization",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/admin_authorization"))),
+    ),
   },
   {
     path: "/under-construction",

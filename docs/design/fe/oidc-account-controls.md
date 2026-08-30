@@ -1,0 +1,5 @@
+# OpenID Connect account controls
+
+The login page requests `/api/auth/oidc/status` and renders the provider button only when the backend reports an enabled provider. The browser receives an authorization URL, not a client secret. After a login callback, the page consumes the `#oidc=success` fragment, removes it from history, loads the host-only session through `/api/auth/me`, and restores only a validated same-site post-login path.
+
+The edit-profile page follows the same availability rule. Link redirects return a short-lived one-time completion capability in the URL fragment because fragments are not sent to HTTP servers or referrers. The account panel parses the fixed-size URL-safe value once, removes the complete fragment with `history.replaceState`, and posts it from the same origin so the strict session cookie accompanies completion. Provider failures use a non-sensitive fragment status. Unlink asks for the current local password and does not offer a path that could remove the account's last usable login method.

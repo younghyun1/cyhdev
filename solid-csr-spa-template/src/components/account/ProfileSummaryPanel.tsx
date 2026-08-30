@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, onSettled } from "solid-js";
+import { Show, createEffect, createSignal, onSettled, untrack } from "solid-js";
 import { ApiContractError } from "../../generated";
 import type { IsoCountry, IsoCountrySubdivision, IsoLanguage } from "../../generated";
 import { authApi, dropdownApi } from "../../services/all_api";
@@ -12,7 +12,7 @@ type ProfileField = "currentPassword" | "userName" | "country" | "language" | "s
 type FieldErrors = Partial<Record<ProfileField, string>>;
 
 export default function ProfileSummaryPanel() {
-  const initial = user()?.user_info;
+  const initial = untrack(() => user()?.user_info);
   const [userName, setUserName] = createSignal(initial?.user_name ?? "");
   const [country, setCountry] = createSignal(initial?.user_country ?? 0);
   const [language, setLanguage] = createSignal(initial?.user_language ?? 0);

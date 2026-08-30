@@ -1,4 +1,4 @@
-import { createSignal, Show, onMount, onCleanup } from "solid-js";
+import { createSignal, Show, onSettled, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
@@ -20,7 +20,7 @@ function ResetPasswordPage() {
     if (redirectTimer !== undefined) clearTimeout(redirectTimer);
   });
 
-  onMount(() => {
+  onSettled(() => {
     if (typeof window === "undefined") {
       setError(t("auth.reset_password.missing_token_link"));
       return;

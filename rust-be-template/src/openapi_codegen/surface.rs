@@ -18,13 +18,33 @@ macro_rules! operation {
 
 /// Explicit frontend contract boundary. Missing or method-mismatched routes fail generation.
 pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
+    operation!("authorization", "GET", "/api/admin/authorization/users"),
+    operation!("authorization", "GET", "/api/admin/authorization/roles"),
+    operation!("authorization", "GET", "/api/admin/authorization/permissions"),
+    operation!("authorization", "GET", "/api/admin/authorization/role-permissions"),
+    operation!("authorization", "GET", "/api/admin/authorization/audit"),
+    operation!(
+        "authorization",
+        "PATCH",
+        "/api/admin/authorization/users/{user_id}/role"
+    ),
+    operation!(
+        "authorization",
+        "PATCH",
+        "/api/admin/authorization/roles/{role_id}/permissions/{permission_id}"
+    ),
     operation!("account", "DELETE", "/api/auth/account"),
     operation!("account", "GET", "/api/auth/is-superuser"),
     operation!("account", "GET", "/api/auth/me"),
+    operation!("oidc", "GET", "/api/auth/oidc/status"),
     operation!("account", "POST", "/api/auth/verify-user-email"),
     operation!("account", "GET", "/api/users/{user_name}"),
     operation!("account", "GET", "/api/admin/media-cleanup/unresolved"),
     operation!("account", "POST", "/api/auth/login"),
+    operation!("oidc", "POST", "/api/auth/oidc/login/start"),
+    operation!("oidc", "POST", "/api/auth/oidc/link/start"),
+    operation!("oidc", "POST", "/api/auth/oidc/link/complete"),
+    operation!("oidc", "DELETE", "/api/auth/oidc/link"),
     operation!("account", "POST", "/api/auth/logout"),
     operation!("account", "POST", "/api/auth/reset-password"),
     operation!("account", "POST", "/api/auth/reset-password-request"),

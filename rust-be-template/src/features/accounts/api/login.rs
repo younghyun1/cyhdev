@@ -79,13 +79,13 @@ pub async fn login(
     ))
 }
 
-fn session_token_from_cookie(cookie_jar: &CookieJar) -> Option<&str> {
+pub(super) fn session_token_from_cookie(cookie_jar: &CookieJar) -> Option<&str> {
     cookie_jar
         .get(SESSION_COOKIE_NAME)
         .map(|cookie| cookie.value())
 }
 
-fn session_cookie(session_token: &SessionToken) -> Cookie<'static> {
+pub(super) fn session_cookie(session_token: &SessionToken) -> Cookie<'static> {
     Cookie::build((SESSION_COOKIE_NAME, session_token.expose().to_owned()))
         .path("/")
         .http_only(true)
