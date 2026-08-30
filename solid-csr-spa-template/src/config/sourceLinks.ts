@@ -1,6 +1,3 @@
-const DEFAULT_REPOSITORY_SOURCE_BASE_URL =
-  "https://github.com/younghyun1/cyhdev/blob/main";
-
 type RepositoryPackage =
   | "rust-be-template"
   | "solid-csr-spa-template"
@@ -11,20 +8,23 @@ export type RepositorySourcePath =
   | "Cargo.toml"
   | "rust-toolchain.toml";
 
-function normalizeRepositorySourceBaseUrl(configuredUrl: string | undefined): string {
-  const candidate = configuredUrl?.trim() || DEFAULT_REPOSITORY_SOURCE_BASE_URL;
+function normalizeRepositorySourceBaseUrl(
+  configuredUrl: string | undefined,
+): string | undefined {
+  const candidate = configuredUrl?.trim();
+  if (!candidate) return undefined;
 
   try {
     const parsedUrl = new URL(candidate);
     if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
-      return DEFAULT_REPOSITORY_SOURCE_BASE_URL;
+      return undefined;
     }
 
     parsedUrl.hash = "";
     parsedUrl.search = "";
     return parsedUrl.toString().replace(/\/+$/, "");
   } catch {
-    return DEFAULT_REPOSITORY_SOURCE_BASE_URL;
+    return undefined;
   }
 }
 
@@ -60,7 +60,10 @@ export const repositorySourcePaths = {
 } as const satisfies Record<string, RepositorySourcePath>;
 
 /** Builds a provider URL from a stable path relative to the monorepo root. */
-export function repositorySourceUrl(path: RepositorySourcePath): string {
+export function repositorySourceUrl(
+  path: RepositorySourcePath,
+): string | undefined {
+  if (!repositorySourceBaseUrl) return undefined;
   const encodedPath = path
     .split("/")
     .map((segment) => encodeURIComponent(segment))

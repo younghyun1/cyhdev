@@ -1,25 +1,29 @@
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::bb8::Pool;
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
-use tracing::{error, info};
-use uuid::Uuid;
-
 use crate::domain::country::{CountryAndSubdivisionsTable, IsoCurrencyTable, IsoLanguageTable};
 use crate::domain::i18n::i18n_cache::I18nCache;
 use crate::domain::live_chat::cache::LiveChatCache;
 use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine};
+use crate::features::accounts::{
+    repository::account_repository::AccountRepository,
+    service::{account_service::AccountService, session_service::SessionService},
+};
 use crate::init::load_cache::fastfetch_cache::FastFetchCache;
 use crate::init::load_cache::system_info::SystemInfoState;
+use crate::init::load_cache::wasm_module_cache::WasmModuleCache;
 use crate::init::search::PostSearchIndex;
 use crate::util::geographic::ip_info_lookup::decompress_and_deserialize;
+use tokio::sync::RwLock;
+use tracing::{error, info};
 
 use super::deployment_environment::DeploymentEnvironment;
 use super::server_state::ServerState;
+use super::server_state::blog_cache_policy::BlogCacheMetrics;
 
 #[derive(Default)]
 pub struct ServerStateBuilder {
@@ -51,6 +55,21 @@ impl ServerStateBuilder {
     }
 
     pub async fn build(self) -> anyhow::Result<ServerState> {
+        let deployment_environment = DeploymentEnvironment::from_env()?;
+        let pool = self
+            .pool
+            .ok_or_else(|| anyhow::anyhow!("pool is required"))?;
+        let email_client = self
+            .email_client
+            .ok_or_else(|| anyhow::anyhow!("email_client is required"))?;
+        let account_repository = Arc::new(AccountRepository::new(pool.clone()));
+        let session_service = Arc::new(SessionService::new());
+        let account_service = Arc::new(AccountService::new(
+            account_repository,
+            Arc::clone(&session_service),
+            email_client,
+        ));
+
         let aws_profile_picture_config = {
             use aws_config::BehaviorVersion;
             use aws_config::meta::region::RegionProviderChain;
@@ -100,18 +119,15 @@ impl ServerStateBuilder {
             server_start_time: self
                 .server_start_time
                 .ok_or_else(|| anyhow::anyhow!("server_start_time is required"))?,
-            pool: self
-                .pool
-                .ok_or_else(|| anyhow::anyhow!("pool is required"))?,
+            pool,
             responses_handled: AtomicU64::new(0u64),
-            email_client: self
-                .email_client
-                .ok_or_else(|| anyhow::anyhow!("email_client is required"))?,
-            // regexes: [get_email_regex()],
-            session_map: scc::HashMap::new(),
+            account_service,
+            session_service,
             blog_posts_cache: scc::HashMap::new(),
             blog_post_slug_cache: scc::HashMap::new(),
             blog_post_order_cache: RwLock::new(Vec::new()),
+            blog_cache_mutation: tokio::sync::Mutex::new(()),
+            blog_cache_metrics: BlogCacheMetrics::default(),
             search_index: {
                 // Use disk-persisted index, configurable via env var
                 let index_path = std::env::var("SEARCH_INDEX_PATH")
@@ -125,41 +141,33 @@ impl ServerStateBuilder {
                 info!(elapsed=%format!("{dur:?}"), "Geo-IP database loaded and interned.");
                 dbs
             },
-            api_keys_set: scc::HashSet::<Uuid>::new(),
             country_map: RwLock::new(CountryAndSubdivisionsTable::new_empty()),
             languages_map: RwLock::new(IsoLanguageTable::new_empty()),
             currency_map: RwLock::new(IsoCurrencyTable::new_empty()),
             i18n_cache: RwLock::new(I18nCache::new()),
-            deployment_environment: match std::env::var("CURR_ENV").as_deref() {
-                Ok(s) => match s.to_ascii_lowercase().as_str() {
-                    // Local
-                    "local" | "localhost" => DeploymentEnvironment::Local,
-                    // Dev
-                    "dev" | "develop" | "development" => DeploymentEnvironment::Dev,
-                    // Staging
-                    "staging" | "stage" | "stg" => DeploymentEnvironment::Staging,
-                    // Prod
-                    "prd" | "prod" | "production" => DeploymentEnvironment::Prod,
-                    // Default fallback: push _ to Local
-                    _ => DeploymentEnvironment::Local,
-                },
-                Err(_) => DeploymentEnvironment::Prod,
-            },
+            deployment_environment,
             request_client: reqwest::Client::builder()
                 .user_agent("cyhdev.com")
                 .build()?,
             visitor_board_map: scc::HashMap::new(),
+            visitor_board_entry_count: AtomicUsize::new(0),
+            visitor_board_rejected_entries: AtomicU64::new(0),
             visitor_log_buffer: scc::HashMap::new(),
+            visitor_log_entry_count: AtomicUsize::new(0),
+            visitor_log_pending_events: AtomicUsize::new(0),
+            visitor_log_rejected_admissions: AtomicU64::new(0),
             system_info_state: SystemInfoState::new(),
             aws_profile_picture_config,
             fastfetch: fastfetch_cache,
-            wasm_module_cache: scc::HashMap::new(),
+            wasm_module_cache: WasmModuleCache::default(),
             live_chat_cache: LiveChatCache::default(),
             rtc_config,
             rtc_engine,
             rtc_rooms: scc::HashMap::new(),
             photograph_batches: scc::HashMap::new(),
+            photograph_batch_count: AtomicUsize::new(0),
             photograph_view_buffer: tokio::sync::RwLock::new(std::collections::HashMap::new()),
+            photograph_view_rejected_events: AtomicU64::new(0),
         })
     }
 }

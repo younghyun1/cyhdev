@@ -10,7 +10,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::role::RoleType,
+    features::accounts::domain::role::RoleType,
     dto::responses::{blog::delete_post_response::DeletePostResponse, response_data::http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     init::state::ServerState,

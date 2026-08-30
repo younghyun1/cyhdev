@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_API_URL?: string;
   readonly VITE_REPOSITORY_SOURCE_BASE_URL?: string;
 }
 

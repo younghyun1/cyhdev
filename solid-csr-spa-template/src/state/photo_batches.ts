@@ -11,7 +11,7 @@ import { photographyApi } from "../services/all_api";
 import type {
   BatchStatusResponse,
   BatchUploadResponse,
-} from "../dtos/responses/photography";
+} from "../generated";
 
 export interface BatchEntry {
   batch_id: string;

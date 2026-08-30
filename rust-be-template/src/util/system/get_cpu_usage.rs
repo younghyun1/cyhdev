@@ -1,66 +1,4 @@
 pub async fn get_cpu_usage() -> f64 {
-    #[cfg(target_os = "windows")]
-    {
-        use std::{mem::zeroed, time::Duration};
-        use windows::Win32::Foundation::FILETIME;
-        use windows::Win32::System::Threading::GetSystemTimes;
-
-        unsafe fn filetime_to_u64(ft: &FILETIME) -> u64 {
-            ((ft.dwHighDateTime as u64) << 32) | (ft.dwLowDateTime as u64)
-        }
-
-        unsafe {
-            let mut idle_time1: FILETIME = zeroed();
-            let mut kernel_time1: FILETIME = zeroed();
-            let mut user_time1: FILETIME = zeroed();
-
-            if GetSystemTimes(
-                Some(&mut idle_time1),
-                Some(&mut kernel_time1),
-                Some(&mut user_time1),
-            )
-            .is_err()
-            {
-                return 0.0;
-            }
-
-            tokio::time::sleep(Duration::from_millis(100)).await;
-
-            let mut idle_time2: FILETIME = zeroed();
-            let mut kernel_time2: FILETIME = zeroed();
-            let mut user_time2: FILETIME = zeroed();
-
-            if GetSystemTimes(
-                Some(&mut idle_time2),
-                Some(&mut kernel_time2),
-                Some(&mut user_time2),
-            )
-            .is_err()
-            {
-                return 0.0;
-            }
-
-            let idle1 = filetime_to_u64(&idle_time1);
-            let idle2 = filetime_to_u64(&idle_time2);
-            let kernel1 = filetime_to_u64(&kernel_time1);
-            let kernel2 = filetime_to_u64(&kernel_time2);
-            let user1 = filetime_to_u64(&user_time1);
-            let user2 = filetime_to_u64(&user_time2);
-
-            let sys1 = kernel1 + user1;
-            let sys2 = kernel2 + user2;
-
-            let sys_delta = sys2.saturating_sub(sys1);
-            let idle_delta = idle2.saturating_sub(idle1);
-
-            if sys_delta == 0 {
-                0.0
-            } else {
-                ((sys_delta - idle_delta) as f64) * 100.0 / (sys_delta as f64)
-            }
-        }
-    }
-
     #[cfg(target_os = "linux")]
     {
         use std::{
@@ -116,6 +54,65 @@ pub async fn get_cpu_usage() -> f64 {
             ((total_delta - idle_delta) as f64) * 100.0 / (total_delta as f64)
         }
     }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos_cpu_usage().await
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn macos_cpu_usage() -> f64 {
+    use std::time::Duration;
+
+    let (total_before, idle_before) =
+        match tokio::task::spawn_blocking(read_macos_cpu_ticks).await {
+            Ok(Some(ticks)) => ticks,
+            Ok(None) | Err(_) => return 0.0,
+        };
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let (total_after, idle_after) =
+        match tokio::task::spawn_blocking(read_macos_cpu_ticks).await {
+            Ok(Some(ticks)) => ticks,
+            Ok(None) | Err(_) => return 0.0,
+        };
+
+    let total_delta = total_after.saturating_sub(total_before);
+    let idle_delta = idle_after.saturating_sub(idle_before);
+    if total_delta == 0 {
+        0.0
+    } else {
+        total_delta
+            .saturating_sub(idle_delta)
+            .saturating_mul(100) as f64
+            / total_delta as f64
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn read_macos_cpu_ticks() -> Option<(u64, u64)> {
+    use std::mem::MaybeUninit;
+
+    let mut info = MaybeUninit::<libc::host_cpu_load_info>::zeroed();
+    let mut count = libc::HOST_CPU_LOAD_INFO_COUNT;
+    let status = unsafe {
+        libc::host_statistics(
+            libc::mach_host_self(),
+            libc::HOST_CPU_LOAD_INFO,
+            info.as_mut_ptr().cast::<libc::integer_t>(),
+            &mut count,
+        )
+    };
+    if status != libc::KERN_SUCCESS {
+        return None;
+    }
+
+    let ticks = unsafe { info.assume_init() }.cpu_ticks;
+    let user = u64::from(ticks[libc::CPU_STATE_USER as usize]);
+    let system = u64::from(ticks[libc::CPU_STATE_SYSTEM as usize]);
+    let idle = u64::from(ticks[libc::CPU_STATE_IDLE as usize]);
+    let nice = u64::from(ticks[libc::CPU_STATE_NICE as usize]);
+    Some((user + system + idle + nice, idle))
 }
 
 #[cfg(test)]

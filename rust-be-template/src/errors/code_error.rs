@@ -138,20 +138,6 @@ impl CodeError {
         message: "Wrong password!",
         log_level: Level::INFO,
     };
-    pub const SESSION_ID_ALREADY_EXISTS: CodeError = CodeError {
-        success: false,
-        error_code: 17,
-        http_status_code: StatusCode::BAD_REQUEST,
-        message: "Session ID already exists!",
-        log_level: Level::INFO,
-    };
-    pub const COULD_NOT_REMOVE_OLD_SESSION: CodeError = CodeError {
-        success: false,
-        error_code: 18,
-        http_status_code: StatusCode::INTERNAL_SERVER_ERROR,
-        message: "Could not remove old session!",
-        log_level: Level::ERROR,
-    };
     pub const PASSWORD_RESET_TOKEN_FABRICATED: CodeError = CodeError {
         success: false,
         error_code: 19,
@@ -208,11 +194,11 @@ impl CodeError {
         message: "Invalid IP address provided!",
         log_level: Level::INFO,
     };
-    pub const API_KEY_INVALID: CodeError = CodeError {
+    pub const UNTRUSTED_ORIGIN: CodeError = CodeError {
         success: false,
         error_code: 26,
-        http_status_code: StatusCode::UNAUTHORIZED,
-        message: "Invalid API key provided!",
+        http_status_code: StatusCode::FORBIDDEN,
+        message: "Request origin is not trusted!",
         log_level: Level::WARN,
     };
     pub const LANGUAGE_NOT_FOUND: CodeError = CodeError {
@@ -298,6 +284,20 @@ impl CodeError {
         http_status_code: StatusCode::INTERNAL_SERVER_ERROR,
         message: "Could not get i18n bundle!",
         log_level: Level::ERROR,
+    };
+    pub const SESSION_CREATION_FAILED: CodeError = CodeError {
+        success: false,
+        error_code: 51,
+        http_status_code: StatusCode::INTERNAL_SERVER_ERROR,
+        message: "Could not create a session!",
+        log_level: Level::ERROR,
+    };
+    pub const SESSION_STORE_SATURATED: CodeError = CodeError {
+        success: false,
+        error_code: 52,
+        http_status_code: StatusCode::SERVICE_UNAVAILABLE,
+        message: "Session capacity is temporarily unavailable!",
+        log_level: Level::WARN,
     };
     pub const COULD_NOT_SYNC_18N_CACHE: CodeError = CodeError {
         success: false,

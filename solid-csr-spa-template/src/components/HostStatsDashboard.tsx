@@ -26,7 +26,6 @@ const HISTORY_LIMIT = 60;
 
 export default function HostStatsDashboard(props: {
   wsUrl?: string;
-  apiKey?: string;
 }) {
   const [history, setHistory] = createSignal<HostStatPoint[]>([]);
   const [error, setError] = createSignal<string | null>(null);
@@ -92,9 +91,6 @@ export default function HostStatsDashboard(props: {
     ws.onopen = () => {
       retry = 0;
       setError(null);
-      if (props.apiKey) {
-        ws?.send(JSON.stringify({ apiKey: props.apiKey }));
-      }
     };
 
     ws.onmessage = (evt) => {

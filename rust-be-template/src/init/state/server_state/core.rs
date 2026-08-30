@@ -1,9 +1,10 @@
 use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::bb8::PooledConnection;
-use lettre::{AsyncSmtpTransport, Tokio1Executor};
-use uuid::Uuid;
-
+use std::sync::Arc;
 use super::ServerState;
+use crate::features::accounts::service::{
+    account_service::AccountService, session_service::SessionService,
+};
 use crate::init::state::{DeploymentEnvironment, ServerStateBuilder};
 
 impl ServerState {
@@ -23,8 +24,12 @@ impl ServerState {
         Ok(self.pool.get().await?)
     }
 
-    pub fn get_email_client(&self) -> &AsyncSmtpTransport<Tokio1Executor> {
-        &self.email_client
+    pub fn account_service(&self) -> Arc<AccountService> {
+        Arc::clone(&self.account_service)
+    }
+
+    pub fn session_service(&self) -> Arc<SessionService> {
+        Arc::clone(&self.session_service)
     }
 
     pub fn get_responses_handled(&self) -> u64 {
@@ -32,17 +37,6 @@ impl ServerState {
             &self.responses_handled,
             std::sync::atomic::Ordering::SeqCst,
         )
-    }
-
-    pub async fn check_api_key(&self, key: &Uuid) -> bool {
-        self.api_keys_set.contains_async(key).await
-    }
-
-    pub async fn insert_api_key(&self, key: Uuid) -> anyhow::Result<()> {
-        match self.api_keys_set.insert_async(key).await {
-            Ok(_) => Ok(()),
-            Err(e) => Err(anyhow::anyhow!("Failed to insert API key: {:?}", e)),
-        }
     }
 
     pub fn add_responses_handled(&self) {

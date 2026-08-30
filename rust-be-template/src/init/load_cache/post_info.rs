@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::{
     domain::blog::blog::{CachedPostInfo, PostInfo},
     init::state::ServerState,
+    init::state::server_state::blog_cache_policy::BLOG_POST_CACHE_MAX_ENTRIES,
     schema::{post_tags, posts, tags},
 };
 
@@ -20,10 +21,12 @@ pub async fn load_post_info(state: &ServerState) -> anyhow::Result<Vec<CachedPos
         }
     };
 
-    // Load all posts
+    // This is a recent-post acceleration layer. Listing and search hydration
+    // read through to PostgreSQL, so rows outside this window remain visible.
     let post_infos: Vec<PostInfo> = match posts::table
         .select(PostInfo::as_select())
-        .order(posts::post_created_at.desc())
+        .order((posts::post_created_at.desc(), posts::post_id.desc()))
+        .limit(BLOG_POST_CACHE_MAX_ENTRIES as i64)
         .load::<PostInfo>(&mut conn)
         .await
     {
@@ -31,15 +34,19 @@ pub async fn load_post_info(state: &ServerState) -> anyhow::Result<Vec<CachedPos
         Err(e) => return Err(e.into()),
     };
 
-    // Load all post_tags with tag names in one query
-    let tag_data: Vec<(Uuid, String)> = match post_tags::table
-        .inner_join(tags::table)
-        .select((post_tags::post_id, tags::tag_name))
-        .load::<(Uuid, String)>(&mut conn)
-        .await
-    {
-        Ok(data) => data,
-        Err(e) => return Err(e.into()),
+    let post_ids = post_infos
+        .iter()
+        .map(|post| post.post_id)
+        .collect::<Vec<_>>();
+    let tag_data: Vec<(Uuid, String)> = if post_ids.is_empty() {
+        Vec::new()
+    } else {
+        post_tags::table
+            .inner_join(tags::table)
+            .filter(post_tags::post_id.eq_any(&post_ids))
+            .select((post_tags::post_id, tags::tag_name))
+            .load::<(Uuid, String)>(&mut conn)
+            .await?
     };
 
     drop(conn);

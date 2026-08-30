@@ -13,6 +13,7 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 mod query;
+mod index_update;
 
 /// Disk-persisted search index for blog posts using Tantivy.
 /// Indexes post titles and tags for fast full-text search.
@@ -219,107 +220,4 @@ impl PostSearchIndex {
         Ok(())
     }
 
-    /// Rebuild the entire index from a list of posts.
-    /// Clears existing index and re-indexes all posts.
-    pub fn rebuild_index<'a, I>(&self, posts: I) -> anyhow::Result<usize>
-    where
-        I: Iterator<Item = (Uuid, &'a str, &'a [String])>,
-    {
-        // Clear the index
-        {
-            let mut writer = self
-                .writer
-                .write()
-                .map_err(|e| anyhow::anyhow!("Writer lock poisoned: {}", e))?;
-            writer.delete_all_documents()?;
-            writer.commit()?;
-        }
-
-        let mut count = 0;
-        for (post_id, title, tags) in posts {
-            self.index_post(post_id, title, tags)?;
-            count += 1;
-        }
-
-        self.commit()?;
-        info!(posts_indexed = count, "Search index rebuilt");
-
-        Ok(count)
-    }
-
-    /// Incrementally sync the index with a set of posts.
-    /// Adds missing posts and removes extra posts.
-    /// More efficient than full rebuild when only a few posts differ.
-    pub fn sync_with_posts<'a, I>(&self, posts: I) -> anyhow::Result<(usize, usize)>
-    where
-        I: Iterator<Item = (Uuid, &'a str, &'a [String])>,
-    {
-        let posts_vec: Vec<_> = posts.collect();
-        let expected_ids: HashSet<Uuid> = posts_vec.iter().map(|(id, _, _)| *id).collect();
-
-        let (missing, extra) = self.check_coherence(&expected_ids)?;
-
-        // Remove extra posts
-        for post_id in &extra {
-            self.remove_post(*post_id)?;
-        }
-
-        // Add missing posts
-        let missing_set: HashSet<Uuid> = missing.iter().copied().collect();
-        for (post_id, title, tags) in &posts_vec {
-            if missing_set.contains(post_id) {
-                self.index_post(*post_id, title, tags)?;
-            }
-        }
-
-        if !missing.is_empty() || !extra.is_empty() {
-            self.commit()?;
-            info!(
-                added = missing.len(),
-                removed = extra.len(),
-                "Search index synchronized"
-            );
-        }
-
-        Ok((missing.len(), extra.len()))
-    }
-
-    /// Update a post in the index (remove old, add new) and commit immediately.
-    pub fn update_post(&self, post_id: Uuid, title: &str, tags: &[String]) -> anyhow::Result<()> {
-        self.remove_post(post_id)?;
-        self.index_post(post_id, title, tags)?;
-        self.commit()?;
-        Ok(())
-    }
-
-    /// Add a new post to the index and commit immediately.
-    /// Use this for single post additions to ensure disk persistence.
-    pub fn add_post_and_commit(
-        &self,
-        post_id: Uuid,
-        title: &str,
-        tags: &[String],
-    ) -> anyhow::Result<()> {
-        self.index_post(post_id, title, tags)?;
-        self.commit()?;
-        Ok(())
-    }
-
-    /// Remove a post from the index and commit immediately.
-    /// Use this for single post deletions to ensure disk persistence.
-    pub fn remove_post_and_commit(&self, post_id: Uuid) -> anyhow::Result<()> {
-        self.remove_post(post_id)?;
-        self.commit()?;
-        Ok(())
-    }
-
-    /// Get the index path if disk-persisted, None if in-memory.
-    pub fn index_path(&self) -> Option<&Path> {
-        self.index_path.as_deref()
-    }
-
-    /// Get the number of documents in the index.
-    pub fn num_docs(&self) -> u64 {
-        self.reader.searcher().num_docs()
-    }
 }

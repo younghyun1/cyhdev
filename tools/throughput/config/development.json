@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "label": "portable-development-fixture",
+  "power_profile": "performance or equivalent",
+  "build_profile": "debug via cargo xtask throughput",
+  "configuration": {
+    "executor": "in-process deterministic fixture",
+    "service_dependencies": "none",
+    "toolchain": "rolling nightly from rust-toolchain.toml"
+  },
+  "notes": [
+    "Run on an otherwise idle host and keep the power profile constant when comparing reports.",
+    "The report captures observed OS, architecture, logical CPU count, CPU model, and memory when the platform exposes them."
+  ]
+}

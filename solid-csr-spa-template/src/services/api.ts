@@ -1,10 +1,12 @@
 import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
-import type { ServerHealthcheckResponse } from "../dtos/responses/health";
+import type {
+  ApiResponse,
+  RootHandlerResponse,
+  ServerHealthcheckResponse,
+} from "../generated";
 import { updateServerBuildInfo } from "../state/server_info";
 
 export const API_URL = import.meta.env.VITE_API_URL || "";
-
-const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
 export function apiUrl(path: string) {
   return `${API_URL}${path}`;
@@ -13,23 +15,7 @@ export function apiUrl(path: string) {
 declare const __BUILD_TIMESTAMP__: string;
 declare const __APP_NAME__: string;
 
-// Shape of /api/healthcheck/state (RootHandlerResponse wrapper)
-export type HealthStateResponse = {
-  success: boolean;
-  data: {
-    timestamp: string;
-    server_uptime: string;
-    responses_handled: number;
-    users_logged_in: number;
-    db_version: string;
-    db_latency: string;
-  };
-  meta: {
-    time_to_process: string;
-    timestamp: string;
-    metadata: unknown;
-  };
-};
+export type HealthStateResponse = ApiResponse<RootHandlerResponse>;
 
 const POST_LOGIN_REDIRECT_KEY = "post_login_redirect";
 
@@ -45,12 +31,10 @@ export function consumePostLoginRedirect(): string | null {
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
-  options.headers = {
-    ...options.headers,
-    "x-api-key": API_KEY,
-  };
-
-  const response = await fetch(apiUrl(path), { credentials: "include", ...options });
+  const response = await fetch(apiUrl(path), {
+    credentials: "include",
+    ...options,
+  });
 
   const builtTime = response.headers.get("x-server-built-time");
   const serverName = response.headers.get("x-server-name");
@@ -65,31 +49,28 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
   }
 
   if (response.status === 401 || response.status === 403) {
-    setAuthenticated(false);
-    setUser(null);
-    setSuperuser(false);
-
-    if (!window.location.pathname.startsWith("/login")) {
-      try {
-        const currentUrl =
-          window.location.pathname +
-          window.location.search +
-          window.location.hash;
-        sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, currentUrl);
-      } catch (err) {
-        console.warn("Failed to persist post-login redirect target:", err);
-      }
-      window.location.href = `/login?next=${encodeURIComponent(
-        window.location.pathname +
-          window.location.search +
-          window.location.hash,
-      )}`;
-    }
-
-    throw new Error("Unauthorized – redirected to login");
+    handleUnauthorizedResponse();
+    throw new Error("Unauthorized; redirected to login");
   }
 
   return response;
+}
+
+/** Clears local authority and redirects after an authenticated request fails. */
+export function handleUnauthorizedResponse(): void {
+  setAuthenticated(false);
+  setUser(null);
+  setSuperuser(false);
+
+  if (window.location.pathname.startsWith("/login")) return;
+  const currentUrl =
+    window.location.pathname + window.location.search + window.location.hash;
+  try {
+    sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, currentUrl);
+  } catch (error: unknown) {
+    console.warn("Failed to persist post-login redirect target:", error);
+  }
+  window.location.href = `/login?next=${encodeURIComponent(currentUrl)}`;
 }
 
 // Helper for JSON GETs that also benefits from header-based build info

@@ -26,7 +26,7 @@ use crate::{
     tag = "photography",
     params(("photograph_id" = Uuid, Path, description = "Photograph to rescind a vote on")),
     responses(
-        (status = 200, description = "Vote rescinded", body = CodeErrorResp),
+        (status = 200, description = "Vote rescinded"),
         (status = 401, description = "Unauthorized", body = CodeErrorResp),
         (status = 404, description = "Vote does not exist", body = CodeErrorResp)
     )

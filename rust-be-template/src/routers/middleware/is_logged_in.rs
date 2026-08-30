@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     body::Body,
@@ -10,9 +10,14 @@ use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::role::RoleType,
     errors::code_error::HandlerResponse,
-    init::state::{ServerState, Session},
+    features::accounts::{
+        domain::{
+            role::RoleType,
+            session::{SESSION_COOKIE_NAME, Session},
+        },
+        service::session_service::SessionService,
+    },
 };
 
 #[derive(Clone)]
@@ -41,22 +46,19 @@ impl From<&Session> for AuthSession {
 }
 
 pub async fn is_logged_in_middleware(
-    State(state): State<Arc<ServerState>>,
+    State(sessions): State<Arc<SessionService>>,
     cookie_jar: CookieJar,
     mut request: Request<Body>,
     next: Next,
 ) -> HandlerResponse<impl IntoResponse> {
     let mut auth_session: Option<AuthSession> = None;
-    let auth_status = if let Some(session_cookie) = cookie_jar.get("session_id") {
-        match Uuid::from_str(session_cookie.value()) {
-            Ok(session_id) => match state.get_session(&session_id).await {
-                Ok(session) if session.is_unexpired() => {
-                    auth_session = Some(AuthSession::from(&session));
-                    AuthStatus::LoggedIn(session.get_user_id())
-                }
-                _ => AuthStatus::LoggedOut,
-            },
-            Err(_) => AuthStatus::LoggedOut,
+    let auth_status = if let Some(session_cookie) = cookie_jar.get(SESSION_COOKIE_NAME) {
+        match sessions.lookup(session_cookie.value()).await {
+            Some(session) => {
+                auth_session = Some(AuthSession::from(&session));
+                AuthStatus::LoggedIn(session.get_user_id())
+            }
+            None => AuthStatus::LoggedOut,
         }
     } else {
         AuthStatus::LoggedOut

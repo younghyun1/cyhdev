@@ -7,7 +7,10 @@ use diesel_async::RunQueryDsl;
 use crate::{
     dto::{
         requests::photography::delete_photographs_request::DeletePhotographsRequest,
-        responses::response_data::http_resp,
+        responses::{
+            photography::delete_photographs_response::DeletePhotographsResponse,
+            response_data::http_resp,
+        },
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
     init::state::ServerState,
@@ -21,7 +24,7 @@ use crate::{
     tag = "photography",
     request_body = DeletePhotographsRequest,
     responses(
-        (status = 200, description = "Photographs deleted successfully"),
+        (status = 200, description = "Photographs deleted successfully", body = DeletePhotographsResponse),
         (status = 401, description = "Unauthorized", body = CodeErrorResp),
         (status = 403, description = "Forbidden (not superuser)", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
@@ -40,10 +43,10 @@ pub async fn delete_photographs(
 
     if body.photograph_ids.is_empty() {
         return Ok(http_resp(
-            serde_json::json!({
-                "deleted_count": 0usize,
-                "s3_deleted_count": 0usize
-            }),
+            DeletePhotographsResponse {
+                deleted_count: 0,
+                s3_deleted_count: 0,
+            },
             (),
             start,
         ));
@@ -187,10 +190,10 @@ pub async fn delete_photographs(
     );
 
     Ok(http_resp(
-        serde_json::json!({
-            "deleted_count": deleted_rows,
-            "s3_deleted_count": s3_deleted_count
-        }),
+        DeletePhotographsResponse {
+            deleted_count: deleted_rows,
+            s3_deleted_count,
+        },
         (),
         start,
     ))

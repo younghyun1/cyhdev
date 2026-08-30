@@ -13,7 +13,7 @@ import type {
   IsoCountry,
   IsoCountrySubdivision,
   IsoLanguage,
-} from "../dtos/responses/dropdown";
+} from "../generated";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
@@ -64,7 +64,7 @@ function EditProfilePage() {
     null,
   );
   const [subdivisions, setSubdivisions] = createSignal<
-    IsoCountrySubdivision[]
+    ReadonlyArray<IsoCountrySubdivision>
   >([]);
   onSettled(() => {
     dropdownApi
@@ -197,7 +197,7 @@ function EditProfilePage() {
 
     try {
       // Use XMLHttpRequest-based utility for progress
-      const resp = await uploadWithProgress({
+      const resp = await uploadWithProgress<null>({
         url: "/api/user/upload-profile-picture",
         formData,
         onProgress: setProgress,

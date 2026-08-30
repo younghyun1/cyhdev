@@ -12,7 +12,7 @@ import { Key } from "@solid-primitives/keyed";
 import { createKeyedStore } from "../../state/keyed_store";
 import { useParams, useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
-import type { CommentResponse } from "../../dtos/responses/blog";
+import type { CommentResponse, VoteState } from "../../generated";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
@@ -38,11 +38,17 @@ hljs.registerLanguage("html", html);
 hljs.registerLanguage("css", css);
 hljs.registerLanguage("dockerfile", dockerfile);
 
-// VoteState Mapping based on Rust Enum:
-// 0: Upvoted
-// 1: Downvoted
-// 2: DidNotVote
-type VoteState = 0 | 1 | 2;
+const markdownContentFromMetadata = (metadata: unknown): string => {
+  if (
+    typeof metadata !== "object" ||
+    metadata === null ||
+    !("markdown_content" in metadata)
+  ) {
+    return "";
+  }
+  const markdownContent = metadata.markdown_content;
+  return typeof markdownContent === "string" ? markdownContent.trim() : "";
+};
 
 export default function PostViewPage() {
   const params = useParams();
@@ -387,7 +393,7 @@ export default function PostViewPage() {
   type CommentTreeNode = CommentResponse & { children: CommentTreeNode[] };
 
   function buildCommentTree(
-    flatComments: CommentResponse[],
+    flatComments: ReadonlyArray<CommentResponse>,
   ): CommentTreeNode[] {
     const commentsById: Record<string, CommentTreeNode> = {};
     const roots: CommentTreeNode[] = [];
@@ -690,14 +696,9 @@ export default function PostViewPage() {
                   DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
                 const content = (post.post_content ?? "").trim();
                 if (content) return clean(content);
-                const metadata = post.post_metadata as
-                  | { markdown_content?: string }
-                  | null
-                  | undefined;
-                const markdown =
-                  typeof metadata?.markdown_content === "string"
-                    ? metadata.markdown_content.trim()
-                    : "";
+                const markdown = markdownContentFromMetadata(
+                  post.post_metadata,
+                );
                 return markdown ? clean(markdown) : "";
               });
 

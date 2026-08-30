@@ -17,7 +17,12 @@ const UPDATE_INTERVAL: chrono::Duration = chrono::Duration::minutes(1);
     path = "/api/healthcheck/fastfetch",
     tag = "server",
     responses(
-        (status = 200, description = "Host fastfetch information", body = String),
+        (
+            status = 200,
+            description = "Host fastfetch information",
+            body = String,
+            content_type = "application/json"
+        ),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]

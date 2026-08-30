@@ -1,20 +1,4 @@
 pub fn get_memory_usage() -> u64 {
-    #[cfg(target_os = "windows")]
-    {
-        use std::mem::zeroed;
-        use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
-
-        unsafe {
-            let mut mem_status: MEMORYSTATUSEX = zeroed();
-            mem_status.dwLength = std::mem::size_of::<MEMORYSTATUSEX>() as u32;
-            if GlobalMemoryStatusEx(&mut mem_status).is_ok() {
-                (mem_status.ullTotalPhys - mem_status.ullAvailPhys) as u64
-            } else {
-                0
-            }
-        }
-    }
-
     #[cfg(target_os = "linux")]
     {
         use std::fs::File;
@@ -69,6 +53,39 @@ pub fn get_memory_usage() -> u64 {
             }
         }
     }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos_memory_usage().unwrap_or(0)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_memory_usage() -> Option<u64> {
+    use std::mem::MaybeUninit;
+
+    let mut statistics = MaybeUninit::<libc::vm_statistics64>::zeroed();
+    let mut count = libc::HOST_VM_INFO64_COUNT;
+    let status = unsafe {
+        libc::host_statistics64(
+            libc::mach_host_self(),
+            libc::HOST_VM_INFO64,
+            statistics.as_mut_ptr().cast::<libc::integer_t>(),
+            &mut count,
+        )
+    };
+    if status != libc::KERN_SUCCESS {
+        return None;
+    }
+
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+    let page_size = u64::try_from(page_size).ok()?;
+    let statistics = unsafe { statistics.assume_init() };
+    let used_pages = u64::from(statistics.active_count)
+        + u64::from(statistics.inactive_count)
+        + u64::from(statistics.wire_count)
+        + u64::from(statistics.compressor_page_count);
+    Some(used_pages.saturating_mul(page_size))
 }
 
 #[cfg(target_os = "linux")]

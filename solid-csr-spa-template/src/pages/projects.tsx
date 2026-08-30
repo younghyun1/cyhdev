@@ -252,7 +252,7 @@ const styles = `
 `;
 
 export default function Projects() {
-  const [modules, setModules] = createSignal<WasmModuleItem[]>([]);
+  const [modules, setModules] = createSignal<ReadonlyArray<WasmModuleItem>>([]);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [selectedModule, setSelectedModule] =
@@ -339,7 +339,9 @@ export default function Projects() {
       }
       dropdownApi
         .country(countryId)
-        .then((response) => setUserCountryFlag(response.data.country_flag))
+        .then((response) =>
+          setUserCountryFlag(response.data.country.country_flag),
+        )
         .catch(() => setUserCountryFlag(undefined));
     },
   );

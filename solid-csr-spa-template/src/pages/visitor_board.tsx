@@ -61,10 +61,7 @@ export default function VisitorBoard() {
     async function loadVisitorBoard() {
       try {
         const resp = await visitorBoardApi.getVisitorBoard();
-        // Modify this depending on your actual data structure
-        // If you have image URLs, e.g., [ [lat, lng], count, imgUrl ]
-        const pairs: [number[], number, string?][] =
-          resp?.data && Array.isArray(resp.data) ? resp.data : [];
+        const pairs = resp.data;
         const first = pairs[0];
         const initialLatLng: [number, number] =
           first ? [first[0][0] ?? 51.505, first[0][1] ?? -0.09] : [51.505, -0.09];

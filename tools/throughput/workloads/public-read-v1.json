@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "public-read-v1",
+  "iterations": 25000,
+  "warmup_iterations": 2500,
+  "concurrency": 4,
+  "timeout_ms": 2000,
+  "max_response_bytes": 262144,
+  "requests": [
+    {
+      "name": "server-health",
+      "method": "GET",
+      "path": "/api/healthcheck/server",
+      "expected_status": 200,
+      "weight": 8,
+      "fixture_work_units": 512
+    },
+    {
+      "name": "state-health",
+      "method": "GET",
+      "path": "/api/healthcheck/state",
+      "expected_status": 200,
+      "weight": 4,
+      "fixture_work_units": 768
+    },
+    {
+      "name": "language-dropdown",
+      "method": "GET",
+      "path": "/api/dropdown/language",
+      "expected_status": 200,
+      "weight": 2,
+      "fixture_work_units": 1024
+    },
+    {
+      "name": "country-dropdown",
+      "method": "GET",
+      "path": "/api/dropdown/country",
+      "expected_status": 200,
+      "weight": 2,
+      "fixture_work_units": 1024
+    }
+  ]
+}

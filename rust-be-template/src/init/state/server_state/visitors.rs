@@ -1,44 +1,58 @@
 use std::collections::HashMap as StdHashMap;
 use std::net::IpAddr;
-
-use diesel::QueryDsl;
+use std::sync::atomic::Ordering;
+use diesel::{ExpressionMethods, QueryDsl, dsl::count_star};
 use diesel_async::RunQueryDsl;
 use scc::hash_map::Entry;
 use tracing::{info, warn};
-
 use super::{ServerState, VisitorLogBatch, VisitorLogKey};
+use super::visitor_cache_policy::{
+    VISITOR_BOARD_MAX_ENTRIES, VISITOR_LOG_BUFFER_MAX_ENTRIES,
+    VISITOR_LOG_BUFFER_MAX_EVENTS, record_rejection, reserve_up_to, try_reserve,
+};
 use crate::domain::geo::visitation_data::NewVisitationData;
 use crate::util::time::now::tokio_now;
-
 impl ServerState {
     pub async fn sync_visitor_board_data(&self) -> anyhow::Result<usize> {
         use crate::schema::visitation_data::dsl as vdsl;
 
         let start = tokio_now();
         let mut conn = self.get_conn().await?;
-
-        let visits: Vec<(f64, f64)> = vdsl::visitation_data
-            .select((vdsl::latitude, vdsl::longitude))
-            .load::<(f64, f64)>(&mut conn)
+        let row_limit = i64::try_from(VISITOR_BOARD_MAX_ENTRIES)?;
+        let visits: Vec<(f64, f64, i64)> = vdsl::visitation_data
+            .group_by((vdsl::latitude, vdsl::longitude))
+            .select((vdsl::latitude, vdsl::longitude, count_star()))
+            .order((count_star().desc(), vdsl::latitude.asc(), vdsl::longitude.asc()))
+            .limit(row_limit)
+            .load::<(f64, f64, i64)>(&mut conn)
             .await?;
+        drop(conn);
 
-        let mut visit_counts = std::collections::HashMap::<([u8; 8], [u8; 8]), u64>::new();
-
-        for (latitude, longitude) in visits.iter().copied() {
-            let lat_bytes = latitude.to_be_bytes();
-            let long_bytes = longitude.to_be_bytes();
-            let key = (lat_bytes, long_bytes);
-            *visit_counts.entry(key).or_insert(0) += 1;
-        }
-
-        for (key, count) in visit_counts {
+        self.visitor_board_map.clear_async().await;
+        let mut cached = 0usize;
+        for (latitude, longitude, count) in visits {
+            let key = (latitude.to_be_bytes(), longitude.to_be_bytes());
+            let count = match u64::try_from(count) {
+                Ok(count) => count,
+                Err(e) => {
+                    warn!(error = %e, count, "Skipped invalid visitor-board aggregate");
+                    continue;
+                }
+            };
             let _ = self.visitor_board_map.insert_async(key, count).await;
+            cached = cached.saturating_add(1);
         }
+        self.visitor_board_entry_count
+            .store(cached, Ordering::SeqCst);
 
-        let num_rows = visits.len();
-
-        info!(elapsed = ?start.elapsed(), rows_synchronized = %num_rows, "Synchronized visitor board data.");
-        Ok(num_rows)
+        info!(
+            elapsed = ?start.elapsed(),
+            entries_synchronized = cached,
+            max_entries = VISITOR_BOARD_MAX_ENTRIES,
+            rejected_entries = self.visitor_board_rejected_entries.load(Ordering::Relaxed),
+            "Synchronized visitor board data."
+        );
+        Ok(cached)
     }
 
     pub async fn enqueue_visitor_log(&self, inp_ip: Option<IpAddr>) {
@@ -71,7 +85,14 @@ impl ServerState {
                 *occ.get_mut() += 1;
             }
             Entry::Vacant(vac) => {
-                vac.insert_entry(1);
+                if try_reserve(
+                    &self.visitor_board_entry_count,
+                    VISITOR_BOARD_MAX_ENTRIES,
+                ) {
+                    vac.insert_entry(1);
+                } else {
+                    record_rejection(&self.visitor_board_rejected_entries, "visitor_board");
+                }
             }
         }
 
@@ -83,6 +104,17 @@ impl ServerState {
             country: ip_info.country_name,
         };
 
+        if !try_reserve(
+            &self.visitor_log_pending_events,
+            VISITOR_LOG_BUFFER_MAX_EVENTS,
+        ) {
+            record_rejection(
+                &self.visitor_log_rejected_admissions,
+                "visitor_log_buffer",
+            );
+            return;
+        }
+
         match self.visitor_log_buffer.entry_async(key).await {
             Entry::Occupied(mut occ) => {
                 let batch = occ.get_mut();
@@ -90,10 +122,22 @@ impl ServerState {
                 batch.visited_at = chrono::Utc::now();
             }
             Entry::Vacant(vac) => {
-                vac.insert_entry(VisitorLogBatch {
-                    count: 1,
-                    visited_at: chrono::Utc::now(),
-                });
+                if try_reserve(
+                    &self.visitor_log_entry_count,
+                    VISITOR_LOG_BUFFER_MAX_ENTRIES,
+                ) {
+                    vac.insert_entry(VisitorLogBatch {
+                        count: 1,
+                        visited_at: chrono::Utc::now(),
+                    });
+                } else {
+                    self.visitor_log_pending_events
+                        .fetch_sub(1, Ordering::SeqCst);
+                    record_rejection(
+                        &self.visitor_log_rejected_admissions,
+                        "visitor_log_buffer",
+                    );
+                }
             }
         }
     }
@@ -110,6 +154,18 @@ impl ServerState {
                 false
             })
             .await;
+        let drained_entries = pending.len();
+        let drained_events = pending.values().fold(0usize, |total, batch| {
+            let count = match usize::try_from(batch.count) {
+                Ok(count) => count,
+                Err(_) => usize::MAX,
+            };
+            total.saturating_add(count)
+        });
+        self.visitor_log_entry_count
+            .fetch_sub(drained_entries, Ordering::SeqCst);
+        self.visitor_log_pending_events
+            .fetch_sub(drained_events, Ordering::SeqCst);
         if pending.is_empty() {
             return Ok(0);
         }
@@ -158,6 +214,9 @@ impl ServerState {
                 info!(
                     rows_flushed = inserted_rows,
                     visit_count = total_pending,
+                    rejected_admissions = self
+                        .visitor_log_rejected_admissions
+                        .load(Ordering::Relaxed),
                     "Flushed buffered visitor logs"
                 );
                 Ok(total_pending)
@@ -170,7 +229,32 @@ impl ServerState {
     }
 
     async fn requeue_visitor_logs(&self, pending: StdHashMap<VisitorLogKey, VisitorLogBatch>) {
-        for (key, batch) in pending {
+        for (key, mut batch) in pending {
+            let requested = match usize::try_from(batch.count) {
+                Ok(requested) => requested,
+                Err(_) => usize::MAX,
+            };
+            let admitted = reserve_up_to(
+                &self.visitor_log_pending_events,
+                requested,
+                VISITOR_LOG_BUFFER_MAX_EVENTS,
+            );
+            if admitted == 0 {
+                record_rejection(
+                    &self.visitor_log_rejected_admissions,
+                    "visitor_log_buffer",
+                );
+                continue;
+            }
+            batch.count = match u64::try_from(admitted) {
+                Ok(count) => count,
+                Err(e) => {
+                    self.visitor_log_pending_events
+                        .fetch_sub(admitted, Ordering::SeqCst);
+                    warn!(error = %e, admitted, "Could not requeue visitor-log batch");
+                    continue;
+                }
+            };
             match self.visitor_log_buffer.entry_async(key).await {
                 Entry::Occupied(mut occ) => {
                     let existing = occ.get_mut();
@@ -180,7 +264,19 @@ impl ServerState {
                     }
                 }
                 Entry::Vacant(vac) => {
-                    vac.insert_entry(batch);
+                    if try_reserve(
+                        &self.visitor_log_entry_count,
+                        VISITOR_LOG_BUFFER_MAX_ENTRIES,
+                    ) {
+                        vac.insert_entry(batch);
+                    } else {
+                        self.visitor_log_pending_events
+                            .fetch_sub(admitted, Ordering::SeqCst);
+                        record_rejection(
+                            &self.visitor_log_rejected_admissions,
+                            "visitor_log_buffer",
+                        );
+                    }
                 }
             }
         }

@@ -87,7 +87,7 @@ Log each failure once at the layer that has enough context to act on it. Use str
 
 ## Incremental migration
 
-Migrate one coherent vertical slice at a time. Accounts and authentication are first because later account mutations, durable sessions, OAuth/OIDC, and role administration depend on this boundary.
+Migrate one coherent vertical slice at a time. Accounts and authentication are first because later account mutations, bounded process-local sessions, OAuth/OIDC, and role administration depend on this boundary.
 
 1. Capture the current route, request, response, status, cookie, authorization, and database behavior. A boundary refactor does not change the public contract or schema unless that change is separately scoped.
 2. Introduce persistence-independent domain inputs and results for one use case.

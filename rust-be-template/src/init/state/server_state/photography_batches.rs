@@ -7,6 +7,7 @@
 //! would nuke the user's session mid-upload.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -22,12 +23,30 @@ const TERMINAL_BATCH_TTL_SECONDS: i64 = 30 * 60;
 /// Hard cap: any batch idle beyond this is dropped even if not `done`, guarding
 /// against a wedged session leaking memory + temp files forever.
 const STUCK_BATCH_TTL_SECONDS: i64 = 6 * 60 * 60;
+/// Bound concurrent and retained status sessions; each session contains at most
+/// 50 items, as enforced by the upload handler.
+const PHOTOGRAPH_BATCH_MAX_ENTRIES: usize = 32;
 
 impl ServerState {
     /// Register a freshly-created batch session.
-    pub async fn register_batch(&self, batch: Arc<BatchSession>) {
+    pub async fn register_batch(&self, batch: Arc<BatchSession>) -> bool {
+        if self
+            .photograph_batch_count
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
+                (current < PHOTOGRAPH_BATCH_MAX_ENTRIES).then_some(current + 1)
+            })
+            .is_err()
+        {
+            return false;
+        }
         let batch_id = batch.batch_id;
-        let _ = self.photograph_batches.insert_async(batch_id, batch).await;
+        match self.photograph_batches.insert_async(batch_id, batch).await {
+            Ok(_) => true,
+            Err(_) => {
+                self.photograph_batch_count.fetch_sub(1, Ordering::SeqCst);
+                false
+            }
+        }
     }
 
     /// Fetch a batch only if it exists and is owned by `requester`.
@@ -85,6 +104,8 @@ impl ServerState {
                 }
             })
             .await;
+        self.photograph_batch_count
+            .fetch_sub(evicted.len(), Ordering::SeqCst);
 
         for batch_id in &evicted {
             let dir = batch_temp_dir(*batch_id);

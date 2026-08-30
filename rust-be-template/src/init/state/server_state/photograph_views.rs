@@ -4,15 +4,16 @@
 //! wasteful. Instead each view increments an in-RAM delta under a `tokio::RwLock`
 //! ([`record_view`]) and a periodic job ([`flush_photograph_views`]) folds the
 //! accumulated deltas into `photographs.photograph_view_count`. The buffer is
-//! drained to empty on every flush, so it stays bounded.
+//! drained on every flush and has a hard distinct-photograph cap.
 //!
-//! Loss policy: on a DB *error* the deltas are merged back and retried next
-//! window (no loss). Deltas whose `UPDATE` matches zero rows are dropped, not
+//! Loss policy: on a DB error, deltas are re-admitted within the same cap; a
+//! concurrent refill can therefore drop approximate view counts. Deltas whose `UPDATE` matches zero rows are dropped, not
 //! requeued: that only happens once the photograph has been deleted, and
 //! requeueing a never-matching id would leak the buffer forever. A process
 //! crash loses at most one flush window, acceptable for naive view counts.
 
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -23,15 +24,40 @@ use crate::schema::photographs;
 
 use super::ServerState;
 
+/// Maximum number of distinct photograph counters pending in one flush window.
+const PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES: usize = 8_192;
+
 impl ServerState {
     /// Record a single view for `photograph_id` in the RAM buffer and return the
     /// running pending delta (including this view), so the caller can present a
     /// live count of `persisted_base + pending` without a DB round trip.
     pub async fn record_view(&self, photograph_id: Uuid) -> i64 {
         let mut buffer = self.photograph_view_buffer.write().await;
-        let entry = buffer.entry(photograph_id).or_insert(0);
-        *entry += 1;
-        *entry
+        let has_capacity = buffer.len() < PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES;
+        match buffer.get_mut(&photograph_id) {
+            Some(delta) => {
+                *delta = delta.saturating_add(1);
+                *delta
+            }
+            None if has_capacity => {
+                buffer.insert(photograph_id, 1);
+                1
+            }
+            None => {
+                let rejected = self
+                    .photograph_view_rejected_events
+                    .fetch_add(1, Ordering::Relaxed)
+                    .saturating_add(1);
+                if rejected.is_power_of_two() {
+                    warn!(
+                        rejected_events = rejected,
+                        max_entries = PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES,
+                        "Dropped photograph view count because the buffer is full"
+                    );
+                }
+                0
+            }
+        }
     }
 
     /// Drain buffered view deltas and fold them into the persisted counters.
@@ -90,7 +116,18 @@ impl ServerState {
     async fn requeue_photograph_views(&self, pending: HashMap<Uuid, i64>) {
         let mut buffer = self.photograph_view_buffer.write().await;
         for (photograph_id, delta) in pending {
-            *buffer.entry(photograph_id).or_insert(0) += delta;
+            let has_capacity = buffer.len() < PHOTOGRAPH_VIEW_BUFFER_MAX_ENTRIES;
+            match buffer.get_mut(&photograph_id) {
+                Some(existing) => *existing = existing.saturating_add(delta),
+                None if has_capacity => {
+                    buffer.insert(photograph_id, delta);
+                }
+                None => {
+                    let rejected = u64::try_from(delta.max(0)).unwrap_or(u64::MAX);
+                    self.photograph_view_rejected_events
+                        .fetch_add(rejected, Ordering::Relaxed);
+                }
+            }
         }
     }
 }

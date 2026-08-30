@@ -58,7 +58,6 @@ COPY rust-be-template/new_bundle_ipv4.db /bin/
 COPY rust-be-template/new_bundle_ipv6.db /bin/
 
 # Set non-secret defaults. Inject database and service credentials at runtime.
-ENV CURR_ENV="dev"
 ENV HOST_IP="0.0.0.0"
 ENV HOST_PORT="443"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"

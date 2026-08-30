@@ -34,14 +34,16 @@ pub async fn get_ui_text_bundle(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let locale = UiLocale::parse(request.locale.as_deref());
-    let i18n_cache = state.i18n_cache.read().await;
-    let texts = i18n_cache.ui_text_bundle(
-        locale.country_code(),
-        locale.language_code(),
-        EN_US_COUNTRY_CODE,
-        EN_US_LANGUAGE_CODE,
-        REQUIRED_UI_TEXT_KEYS,
-    );
+    let texts = state
+        .get_cached_ui_text_bundle(
+            locale.country_code(),
+            locale.language_code(),
+            EN_US_COUNTRY_CODE,
+            EN_US_LANGUAGE_CODE,
+            REQUIRED_UI_TEXT_KEYS,
+        )
+        .await
+        .map_err(|e| code_err(CodeError::COULD_NOT_GET_I18N_BUNDLE, e))?;
 
     if texts.is_empty() {
         return Err(code_err(

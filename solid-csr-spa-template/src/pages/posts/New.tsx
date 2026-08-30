@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
+import type { SubmitPostRequest } from "../../generated";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
 import { t } from "../../state/i18n";
@@ -22,14 +23,15 @@ export default function NewPostPage() {
       .split(",")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
+    const request = {
+      post_title: title(),
+      post_content: body(),
+      post_tags: postTags,
+      post_is_published: isPublished(),
+    } satisfies SubmitPostRequest;
 
     try {
-      const res = await blogApi.submitPost({
-        post_title: title(),
-        post_content: body(),
-        post_tags: postTags,
-        post_is_published: isPublished(),
-      });
+      const res = await blogApi.submitPost(request);
       if (res.success) {
         navigate(
           `/blog/${encodeURIComponent(res.data.post_slug || res.data.post_id)}`,

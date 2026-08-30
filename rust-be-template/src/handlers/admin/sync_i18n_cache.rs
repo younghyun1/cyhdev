@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[utoipa::path(
-    get,
+    post,
     path = "/api/admin/sync-i18n-cache",
     tag = "admin",
     responses(

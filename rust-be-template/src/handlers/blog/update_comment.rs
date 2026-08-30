@@ -10,7 +10,7 @@ use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
-    domain::auth::role::RoleType,
+    features::accounts::domain::role::RoleType,
     domain::blog::blog::{Comment as DbComment, CommentResponse, UserBadgeInfo, VoteState},
     dto::{
         requests::blog::update_comment_request::UpdateCommentRequest,

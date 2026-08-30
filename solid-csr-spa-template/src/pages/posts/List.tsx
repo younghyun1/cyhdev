@@ -10,7 +10,7 @@ import {
   refresh,
 } from "solid-js";
 import { blogApi } from "../../services/all_api";
-import type { PostInfo } from "../../dtos/responses/blog";
+import type { PostInfoWithVote } from "../../generated";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
@@ -156,7 +156,9 @@ export default function PostsList() {
   const postsPending = () => isPending(() => posts());
 
   const navigate = useNavigate();
-  const [displayPosts, setDisplayPosts] = createSignal<PostInfo[]>([]);
+  const [displayPosts, setDisplayPosts] = createSignal<
+    ReadonlyArray<PostInfoWithVote>
+  >([]);
   const [loadError, setLoadError] = createSignal<string | null>(null);
   createEffect(
     () => posts(),
