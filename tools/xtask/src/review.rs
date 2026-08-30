@@ -2,7 +2,9 @@
 
 use std::{env, path::Path, process::Command};
 
-use crate::{TaskError, TaskResult, run_command, run_native_clippy, run_package, run_wasm_clippy};
+use crate::{
+    TaskError, TaskResult, run_command, run_native_clippy, run_throughput_harness, run_wasm_clippy,
+};
 
 type ReviewStep = (&'static str, fn(&Path) -> TaskResult<()>);
 
@@ -237,7 +239,7 @@ fn run_throughput_thresholds(root: &Path) -> TaskResult<()> {
     // Keep the portable fixture as a harness regression, then require the
     // hardware-specific HTTP baseline for an actual backend capacity claim.
     let mut failures = Vec::new();
-    if let Err(error) = run_package(root, "throughput-harness", &[]) {
+    if let Err(error) = run_throughput_harness(root, &[]) {
         failures.push(format!("fixture: {error}"));
     }
     if let Err(error) = run_http_throughput_thresholds(root) {
@@ -259,9 +261,8 @@ fn run_http_throughput_thresholds(root: &Path) -> TaskResult<()> {
             ));
         }
     };
-    run_package(
+    run_throughput_harness(
         root,
-        "throughput-harness",
         &[
             "run".to_owned(),
             "--target".to_owned(),

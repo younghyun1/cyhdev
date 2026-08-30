@@ -1,6 +1,8 @@
 //! Root-relative development and verification commands for the workspace.
 
 mod evidence_manifest;
+#[cfg(test)]
+mod main_tests;
 mod release;
 mod review;
 mod secret_scan;
@@ -82,7 +84,7 @@ fn run() -> TaskResult<()> {
         "openapi" => review::run_openapi_drift_check(&root),
         "secret-scan" => review::run_secret_scan(&root),
         "test" | "unit" => review::run_unit_tests(&root),
-        "throughput" => run_package(&root, "throughput-harness", &forwarded),
+        "throughput" => run_throughput_harness(&root, &forwarded),
         "wasm-build" => run_wasm_build(&root),
         "wasm-clippy" => run_wasm_clippy(&root),
         "help" | "--help" | "-h" => {
@@ -115,14 +117,25 @@ fn run_command(command: &mut Command) -> TaskResult<()> {
     }
 }
 
-fn run_package(root: &Path, package: &str, arguments: &[String]) -> TaskResult<()> {
+pub(crate) fn run_throughput_harness(root: &Path, arguments: &[String]) -> TaskResult<()> {
+    let mut command = throughput_harness_command(root, arguments);
+    run_command(&mut command)
+}
+
+fn throughput_harness_command(root: &Path, arguments: &[String]) -> Command {
     let mut command = Command::new("cargo");
-    command.args(["run", "--locked", "--package", package]);
+    command.args([
+        "run",
+        "--locked",
+        "--release",
+        "--package",
+        "throughput-harness",
+    ]);
     if !arguments.is_empty() {
         command.arg("--").args(arguments);
     }
     command.current_dir(root);
-    run_command(&mut command)
+    command
 }
 
 fn run_backend(root: &Path, arguments: &[String]) -> TaskResult<()> {
