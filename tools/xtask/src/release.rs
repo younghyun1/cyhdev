@@ -27,7 +27,7 @@ struct ReleaseOptions {
 }
 
 pub(crate) fn run(root: &Path) -> TaskResult<()> {
-    let options = ReleaseOptions::from_environment()?;
+    let options = ReleaseOptions::from_environment(root)?;
     let output_directory = artifact_directory(root, &options.target_triple);
     fs::create_dir_all(&output_directory).map_err(|error| {
         TaskError(format!(
@@ -79,13 +79,13 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
 }
 
 impl ReleaseOptions {
-    fn from_environment() -> TaskResult<Self> {
+    fn from_environment(root: &Path) -> TaskResult<Self> {
         let app_name = environment_value("APP_NAME", DEFAULT_APP_NAME)?;
         let target_triple = target_triple()?;
         let target_cpu = environment_value("TARGET_CPU", DEFAULT_TARGET_CPU)?;
         let docker_platform = environment_value("DOCKER_PLATFORM", DEFAULT_DOCKER_PLATFORM)?;
         let rust_docker_tag = environment_value("RUST_DOCKER_TAG", DEFAULT_RUST_DOCKER_TAG)?;
-        let source_date_epoch = environment_value("SOURCE_DATE_EPOCH", "0")?;
+        let source_date_epoch = source_date_epoch(root)?;
 
         validate_token("APP_NAME", &app_name, 64, false)?;
         validate_token("TARGET_TRIPLE", &target_triple, 64, false)?;
@@ -97,21 +97,61 @@ impl ReleaseOptions {
         validate_token("TARGET_CPU", &target_cpu, 64, true)?;
         validate_token("DOCKER_PLATFORM", &docker_platform, 64, true)?;
         validate_token("RUST_DOCKER_TAG", &rust_docker_tag, 64, true)?;
-        let epoch = source_date_epoch.parse::<u64>().map_err(|error| {
-            TaskError(format!(
-                "SOURCE_DATE_EPOCH must be an unsigned integer: {error}"
-            ))
-        })?;
-
         Ok(Self {
             app_name,
             target_triple,
             target_cpu,
             docker_platform,
             rust_docker_tag,
-            source_date_epoch: epoch.to_string(),
+            source_date_epoch,
         })
     }
+}
+
+/// Returns an explicit source epoch or the current Git revision timestamp.
+pub(crate) fn source_date_epoch(root: &Path) -> TaskResult<String> {
+    match env::var("SOURCE_DATE_EPOCH") {
+        Ok(value) => normalize_source_date_epoch(&value),
+        Err(env::VarError::NotPresent) => git_commit_epoch(root),
+        Err(env::VarError::NotUnicode(_)) => Err(TaskError(
+            "SOURCE_DATE_EPOCH must contain valid UTF-8".to_owned(),
+        )),
+    }
+}
+
+fn git_commit_epoch(root: &Path) -> TaskResult<String> {
+    let output = Command::new("git")
+        .args(["show", "-s", "--format=%ct", "HEAD"])
+        .current_dir(root)
+        .output()
+        .map_err(|error| TaskError(format!("failed to read the Git commit timestamp: {error}")))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(TaskError(format!(
+            "git could not read the HEAD commit timestamp: {}",
+            stderr.trim()
+        )));
+    }
+    let value = String::from_utf8(output.stdout).map_err(|error| {
+        TaskError(format!(
+            "git returned a non-UTF-8 HEAD commit timestamp: {error}"
+        ))
+    })?;
+    normalize_source_date_epoch(value.trim())
+}
+
+fn normalize_source_date_epoch(value: &str) -> TaskResult<String> {
+    let epoch = value.parse::<u64>().map_err(|error| {
+        TaskError(format!(
+            "SOURCE_DATE_EPOCH must be an unsigned integer: {error}"
+        ))
+    })?;
+    let epoch = i64::try_from(epoch).map_err(|error| {
+        TaskError(format!(
+            "SOURCE_DATE_EPOCH must fit in a signed 64-bit timestamp: {error}"
+        ))
+    })?;
+    Ok(epoch.to_string())
 }
 
 fn target_triple() -> TaskResult<String> {
@@ -187,7 +227,7 @@ fn validate_artifact(path: &Path) -> TaskResult<()> {
 mod tests {
     use std::path::Path;
 
-    use super::{artifact_directory, validate_token};
+    use super::{artifact_directory, normalize_source_date_epoch, validate_token};
 
     #[test]
     fn build_tokens_reject_shell_and_path_injection() {
@@ -204,5 +244,15 @@ mod tests {
             artifact_directory(Path::new("/repo"), "x86_64-unknown-linux-gnu"),
             Path::new("/repo/target/x86_64-unknown-linux-gnu/release")
         );
+    }
+
+    #[test]
+    fn source_epoch_is_canonical_and_bounded_to_unsigned_values() -> crate::TaskResult<()> {
+        assert_eq!(normalize_source_date_epoch("001234")?, "1234");
+        assert!(normalize_source_date_epoch("-1").is_err());
+        assert!(normalize_source_date_epoch("").is_err());
+        assert!(normalize_source_date_epoch("tomorrow").is_err());
+        assert!(normalize_source_date_epoch(&u64::MAX.to_string()).is_err());
+        Ok(())
     }
 }

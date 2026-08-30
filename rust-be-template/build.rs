@@ -9,7 +9,6 @@ use std::{
 use serde_json::Value;
 
 const SOURCE_DATE_EPOCH: &str = "SOURCE_DATE_EPOCH";
-const DEFAULT_SOURCE_DATE_EPOCH: i64 = 0;
 
 fn main() -> ExitCode {
     match generate_build_info() {
@@ -69,7 +68,7 @@ fn build_time_utc() -> Result<String, String> {
         Ok(value) => value.parse::<i64>().map_err(|error| {
             format!("{SOURCE_DATE_EPOCH} must be an integer Unix timestamp: {error}")
         })?,
-        Err(env::VarError::NotPresent) => DEFAULT_SOURCE_DATE_EPOCH,
+        Err(env::VarError::NotPresent) => return Ok(chrono::Utc::now().to_rfc3339()),
         Err(env::VarError::NotUnicode(_)) => {
             return Err(format!("{SOURCE_DATE_EPOCH} must contain valid UTF-8"));
         }
