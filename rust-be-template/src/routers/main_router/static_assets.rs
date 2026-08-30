@@ -6,7 +6,7 @@ use mime_guess::from_path;
 use rust_embed::Embed;
 
 #[derive(Embed)]
-#[folder = "fe/"]
+#[folder = "../solid-csr-spa-template/dist/"]
 struct EmbeddedAssets;
 
 /// Serves static files embedded in the binary, prioritizing pre-compressed .zst files.

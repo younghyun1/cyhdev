@@ -8,6 +8,8 @@ use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, TouchEvent, Window,
 };
 
+type AnimationFrameLoop = Rc<RefCell<Option<Closure<dyn FnMut()>>>>;
+
 #[derive(Clone)]
 struct Brick {
     x: f64,
@@ -421,11 +423,10 @@ impl Game {
         gradient.add_color_stop(0.0, "#0b1026").ok();
         gradient.add_color_stop(0.45, "#111c3f").ok();
         gradient.add_color_stop(1.0, "#1d0f2e").ok();
-        let gradient_val = JsValue::from(gradient);
-        ctx.set_fill_style(&gradient_val);
+        ctx.set_fill_style_canvas_gradient(&gradient);
         ctx.fill_rect(0.0, 0.0, self.width, self.height);
 
-        ctx.set_fill_style(&JsValue::from_str("rgba(255,255,255,0.08)"));
+        ctx.set_fill_style_str("rgba(255,255,255,0.08)");
         for i in 0..12 {
             let y = self.height * 0.08 + i as f64 * 48.0;
             ctx.fill_rect(0.0, y, self.width, 1.0);
@@ -434,7 +435,7 @@ impl Game {
         for star in &self.stars {
             let twinkle = (self.time * 1.8 + star.phase).sin() * 0.5 + 0.6;
             ctx.set_global_alpha(twinkle.clamp(0.2, 0.9));
-            ctx.set_fill_style(&JsValue::from_str("#ffffff"));
+            ctx.set_fill_style_str("#ffffff");
             ctx.fill_rect(star.x, star.y, star.r, star.r);
         }
         ctx.set_global_alpha(1.0);
@@ -450,13 +451,12 @@ impl Game {
             let bottom = format!("hsla({}, 80%, 46%, 0.95)", brick.hue);
             grad.add_color_stop(0.0, &top).ok();
             grad.add_color_stop(1.0, &bottom).ok();
-            let grad_val = JsValue::from(grad);
-            ctx.set_fill_style(&grad_val);
+            ctx.set_fill_style_canvas_gradient(&grad);
             ctx.set_shadow_color(&format!("hsla({}, 90%, 60%, 0.7)", brick.hue));
             ctx.fill_rect(brick.x, brick.y, brick.w, brick.h);
 
             ctx.set_shadow_blur(0.0);
-            ctx.set_fill_style(&JsValue::from_str("rgba(255,255,255,0.25)"));
+            ctx.set_fill_style_str("rgba(255,255,255,0.25)");
             ctx.fill_rect(brick.x + 2.0, brick.y + 2.0, brick.w - 4.0, 4.0);
             ctx.set_shadow_blur(22.0);
         }
@@ -473,8 +473,7 @@ impl Game {
         );
         paddle_grad.add_color_stop(0.0, "#7ee8ff").ok();
         paddle_grad.add_color_stop(1.0, "#1aa0ff").ok();
-        let paddle_val = JsValue::from(paddle_grad);
-        ctx.set_fill_style(&paddle_val);
+        ctx.set_fill_style_canvas_gradient(&paddle_grad);
         ctx.fill_rect(self.paddle_x, self.paddle_y, self.paddle_w, self.paddle_h);
         ctx.restore();
 
@@ -483,7 +482,7 @@ impl Game {
         for p in &self.particles {
             let alpha = (p.life * 1.6).clamp(0.0, 0.6);
             ctx.set_global_alpha(alpha);
-            ctx.set_fill_style(&JsValue::from_str("rgba(110, 227, 255, 1.0)"));
+            ctx.set_fill_style_str("rgba(110, 227, 255, 1.0)");
             ctx.begin_path();
             let _ = ctx.arc(p.x, p.y, p.radius, 0.0, std::f64::consts::PI * 2.0);
             ctx.fill();
@@ -510,9 +509,9 @@ impl Game {
             ball_grad
                 .add_color_stop(1.0, "rgba(120, 180, 255, 0.1)")
                 .ok();
-            ctx.set_fill_style(&JsValue::from(ball_grad));
+            ctx.set_fill_style_canvas_gradient(&ball_grad);
         } else {
-            ctx.set_fill_style(&JsValue::from_str("#d8f7ff"));
+            ctx.set_fill_style_str("#d8f7ff");
         }
         ctx.begin_path();
         let _ = ctx.arc(
@@ -525,7 +524,7 @@ impl Game {
         ctx.fill();
         ctx.restore();
 
-        ctx.set_fill_style(&JsValue::from_str("rgba(255,255,255,0.9)"));
+        ctx.set_fill_style_str("rgba(255,255,255,0.9)");
         ctx.set_font("16px system-ui, sans-serif");
         ctx.fill_text(&format!("Score: {}", self.score), 24.0, 32.0)
             .ok();
@@ -533,7 +532,7 @@ impl Game {
             .ok();
 
         if !self.started {
-            ctx.set_fill_style(&JsValue::from_str("rgba(255,255,255,0.75)"));
+            ctx.set_fill_style_str("rgba(255,255,255,0.75)");
             ctx.set_font("18px system-ui, sans-serif");
             ctx.fill_text(
                 "Click / tap or press Space to launch",
@@ -594,7 +593,7 @@ pub fn start() -> Result<(), JsValue> {
         let closure = Closure::wrap(Box::new(move |event: MouseEvent| {
             let mut game = game.borrow_mut();
             game.pointer_active = true;
-            game.paddle_target_x = event.client_x() as f64 - game.paddle_w * 0.5;
+            game.paddle_target_x = event.client_x() - game.paddle_w * 0.5;
         }) as Box<dyn FnMut(MouseEvent)>);
         window.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
         closure.forget();
@@ -628,11 +627,7 @@ pub fn start() -> Result<(), JsValue> {
                     game.input_right = true;
                     game.pointer_active = false;
                 }
-                " " => {
-                    if !game.started {
-                        game.launch_ball();
-                    }
-                }
+                " " if !game.started => game.launch_ball(),
                 _ => {}
             }
         }) as Box<dyn FnMut(KeyboardEvent)>);
@@ -671,7 +666,7 @@ pub fn start() -> Result<(), JsValue> {
         .performance()
         .ok_or_else(|| JsValue::from_str("no performance"))?;
 
-    let f: Rc<RefCell<Option<Closure<dyn FnMut()>>>> = Rc::new(RefCell::new(None));
+    let f: AnimationFrameLoop = Rc::new(RefCell::new(None));
     let g = f.clone();
     let game_loop = game.clone();
 

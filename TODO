@@ -5,7 +5,7 @@
 - Complete local implementation waves in numeric order. Work items in the same wave can proceed concurrently unless a dependency says otherwise. External deployment gates do not block local implementation.
 - A foundation gate must land before dependent work starts. Continuous items begin in their listed wave and continue feature by feature without blocking unrelated later work.
 - Give each work item one owner. Serialize repository-wide integration and overlapping schema changes; keep feature-level changes isolated by module.
-- Run only `cargo clippy --workspace --all-targets --all-features -- -D warnings` as the stage code check. Defer broader test, build, benchmark, and review work until Wave 8.
+- Run only `cargo xtask clippy` as the stage code check. It invokes Clippy separately for native and WebAssembly targets with warnings denied. Defer broader test, build, benchmark, and review work until Wave 8.
 
 ## Wave 0: External deployment gate
 

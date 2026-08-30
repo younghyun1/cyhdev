@@ -1,16 +1,10 @@
 [package]
 name = "rust-be-template"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
-[profile.release]
-opt-level = 3
-codegen-units = 1
-debug = false
-incremental = false
-strip = true
-lto = true
-panic = "unwind"
+[lints]
+workspace = true
 
 [[bin]]
 name = "process_ip2location_dbs"
@@ -23,7 +17,6 @@ axum = { version = "0.8.9", features = [
     "multipart",
     "ws",
     "macros",
-    "multipart",
 ] }
 axum-extra = { version = "0.12.6", features = ["cookie", "attachment", "form"] }
 axum-server = { version = "0.8.0", features = ["tls-rustls", "tokio-rustls"] }
@@ -55,10 +48,10 @@ diesel-async = { version = "0.9.2", features = ["bb8", "postgres"] }
 diesel_migrations = "2.3.2"
 
 # .env loading
-dotenvy = "0.15.7"
+dotenvy.workspace = true
 
 # async runtime
-tokio = { version = "1.53.1", features = ["full"] }
+tokio = { workspace = true, features = ["full"] }
 async-trait = "0.1.92"
 # Stream/Sink combinators (WebSocket split for the live-chat writer task)
 futures-util = { version = "0.3.34", default-features = false, features = [
@@ -67,12 +60,12 @@ futures-util = { version = "0.3.34", default-features = false, features = [
 ] }
 
 # loggers
-tracing = { version = "0.1.44", features = ["std"] }
-tracing-subscriber = { version = "0.3.23", features = ["fmt", "json"] }
-tracing-appender = "0.2.5"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
 
 # error
-anyhow = "1.0.104"
+anyhow.workspace = true
 
 # system information
 num_cpus = "1.17.0"
@@ -82,12 +75,12 @@ walkdir = "2.5.0"
 # serialization/deserialization
 serde = "1.0.229"
 serde_derive = "1.0.229"
-serde_json = { version = "1.0.151", features = ["preserve_order"] }
+serde_json.workspace = true
 bitcode = "0.6.9"
 flate2 = "1.1.9"
 
 # types
-chrono = { version = "0.4.45", features = ["serde"] }
+chrono.workspace = true
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 scc = "3.8.6"
 uuid = { version = "1.25.0", features = [
@@ -111,7 +104,7 @@ rustls = { version = "0.23.43", features = [] }
 zeroize = { version = "1.9.0", features = ["derive"] }
 
 # memory allocator
-mimalloc = { version = "0.1.52", features = [] }
+mimalloc.workspace = true
 
 # email
 lettre = { version = "0.11.23", default-features = false, features = [
@@ -167,8 +160,8 @@ nutype = "0.7.0"
 # openssl = { version = "0.10.74", features = ["vendored"] }
 
 [build-dependencies]
-chrono = { version = "0.4.45" }
-serde_json = { version = "1.0.151", features = ["preserve_order"] }
+chrono.workspace = true
+serde_json.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2.189", features = [] }
