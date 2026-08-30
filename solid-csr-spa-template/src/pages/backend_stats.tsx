@@ -1,0 +1,57 @@
+import { Loading, Show, createMemo } from "solid-js";
+import DOMPurify from "dompurify";
+import HostStatsDashboard from "../components/HostStatsDashboard";
+import { healthApi } from "../services/all_api";
+import { pageStyles } from "../styles/pageStyles";
+import { theme } from "../state/theme";
+
+export default function BackendStats() {
+  const fastfetch = createMemo(async () => {
+    try {
+      const res = await healthApi.fastfetch();
+      return res.data;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  });
+
+  const isDark = () => theme() === "dark";
+
+  // fastfetch HTML is server-generated ANSI->HTML (color spans); sanitize to strip any script/handlers.
+  const cleanFastfetch = () =>
+    DOMPurify.sanitize(fastfetch() ?? "", {
+      ALLOWED_TAGS: ["span", "b", "i", "br", "pre"],
+      ALLOWED_ATTR: ["style", "class"],
+    });
+
+  return (
+    <main class={pageStyles.page}>
+      <div
+        class={`${pageStyles.pageInner} max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
+      >
+        <div class="w-full max-w-7xl xl:w-[56rem] 2xl:w-[64rem]">
+          <HostStatsDashboard />
+        </div>
+
+        <Loading>
+          <Show when={fastfetch()}>
+            <div
+              class="w-full max-w-7xl xl:w-[44rem] 2xl:w-[52rem] p-6 rounded-sm shadow-lg font-mono text-xs sm:text-sm overflow-x-auto overflow-y-auto border-2 flex flex-col"
+              style={{
+                background: isDark()
+                  ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
+                  : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                "border-color": isDark() ? "#f59e0b" : "#b45309",
+                color: isDark() ? "#e2e8f0" : "#0f172a",
+              }}
+            >
+              {/* eslint-disable-next-line solid/no-innerhtml -- value is DOMPurify-sanitized in cleanFastfetch(). */}
+              <pre class="m-auto whitespace-pre" innerHTML={cleanFastfetch()} />
+            </div>
+          </Show>
+        </Loading>
+      </div>
+    </main>
+  );
+}

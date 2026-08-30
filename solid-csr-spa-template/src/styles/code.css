@@ -1,0 +1,60 @@
+/* highlight.js theme in the site palette. Replaces github-dark.css: code
+   blocks are intentionally dark in both modes, using the dark-mode surface
+   and warm token colors so they sit naturally on the cream light canvas. */
+.hljs {
+    color: #e8e3da;
+    background: #141210;
+}
+.hljs-comment,
+.hljs-quote {
+    color: #8a7f72;
+    font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-meta .hljs-keyword {
+    color: #fbbf24;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+    color: #a8c08a;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+    color: #e5a458;
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+    color: #f0ece5;
+}
+.hljs-type,
+.hljs-title.class_,
+.hljs-selector-class,
+.hljs-selector-id {
+    color: #d4b483;
+}
+.hljs-built_in,
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-name {
+    color: #c9a26d;
+}
+.hljs-deletion {
+    color: #fb7185;
+}
+.hljs-meta {
+    color: #9c917f;
+}
+.hljs-emphasis {
+    font-style: italic;
+}
+.hljs-strong {
+    font-weight: 700;
+}

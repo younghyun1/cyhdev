@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* IBM Plex fontsource CSS is imported in src/index.tsx, NOT here:
+   @tailwindcss/postcss inlines @imports without rebasing their relative
+   url(./files/*.woff2) references, which 404s every font in production.
+   Importing from JS lets Vite rebase and emit the font assets. */
+
+@import "./styles/prose.css";
+@import "./styles/code.css";
+
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Semantic tokens. Warm neutrals in both modes; the light canvas is cream
+   paper, the dark canvas is pure black with warm raised surfaces. Amber is
+   the only decorative accent; ok/danger are semantic (votes, status, alerts). */
+:root {
+    --paper: #f6f1e8;
+    --surface: #fdfaf4;
+    --surface-2: #f1eadd;
+    --ink: #211d18;
+    --ink-muted: #6e655a;
+    --ink-faint: #9a9084;
+    --line: #e3dacb;
+    --line-strong: #c9bfae;
+    --accent: #b45309;
+    --accent-strong: #92400e;
+    --accent-soft: #f6e5c4;
+    --ok: #047857;
+    --danger: #be123c;
+    --glow-ok: color-mix(in srgb, var(--ok) 60%, transparent);
+    --glow-danger: color-mix(in srgb, var(--danger) 60%, transparent);
+    color-scheme: light;
+}
+.dark {
+    --paper: #000000;
+    --surface: #141210;
+    --surface-2: #1d1a17;
+    --ink: #f0ece5;
+    --ink-muted: #a39a8f;
+    --ink-faint: #6f675d;
+    --line: #262220;
+    --line-strong: #3d3731;
+    --accent: #fbbf24;
+    --accent-strong: #fcd34d;
+    --accent-soft: #422006;
+    --ok: #34d399;
+    --danger: #fb7185;
+    color-scheme: dark;
+}
+
+/* Font tokens are static, so a plain @theme emits them as :root custom
+   properties that preflight picks up for the document default. */
+@theme {
+    --font-sans:
+        "IBM Plex Sans", "IBM Plex Sans KR", ui-sans-serif, system-ui,
+        sans-serif;
+    --font-mono:
+        "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Color tokens are mode-dependent var() references, so they must be
+   inlined into utilities (bg-paper -> background-color: var(--paper))
+   to resolve against the .dark cascade at the usage site. */
+@theme inline {
+    --color-paper: var(--paper);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-ink: var(--ink);
+    --color-ink-muted: var(--ink-muted);
+    --color-ink-faint: var(--ink-faint);
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-soft: var(--accent-soft);
+    --color-ok: var(--ok);
+    --color-danger: var(--danger);
+}
+
+/* Ensure full height for root elements so flex layouts can vertically center properly */
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+html {
+    background: var(--paper);
+}
+body {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+/* Grain: paints above the body background, below all content (negative
+   z-index pseudo). Texture on the ground only; never over images or text. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark body::before {
+    opacity: 0.04;
+}
+
+main {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+}
+
+/* Single visible focus treatment everywhere; replaces the scattered
+   focus:outline-none + ring combinations. */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.chart-wrapper {
+    position: absolute;
+    inset: 0;
+}

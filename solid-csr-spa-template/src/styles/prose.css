@@ -1,0 +1,58 @@
+/* Blog prose: maps @tailwindcss/typography onto the site tokens so a single
+   .prose class is correct in both modes (no dark:prose-invert). Code blocks
+   stay dark in both modes by design; see code.css for token colors. */
+.prose {
+    --tw-prose-body: var(--ink);
+    --tw-prose-headings: var(--ink);
+    --tw-prose-lead: var(--ink-muted);
+    --tw-prose-links: var(--accent);
+    --tw-prose-bold: var(--ink);
+    --tw-prose-counters: var(--ink-muted);
+    --tw-prose-bullets: var(--line-strong);
+    --tw-prose-hr: var(--line);
+    --tw-prose-quotes: var(--ink);
+    --tw-prose-quote-borders: var(--accent);
+    --tw-prose-captions: var(--ink-muted);
+    --tw-prose-kbd: var(--ink);
+    --tw-prose-code: var(--ink);
+    --tw-prose-pre-code: #e8e3da;
+    --tw-prose-pre-bg: #141210;
+    --tw-prose-th-borders: var(--line-strong);
+    --tw-prose-td-borders: var(--line);
+    max-width: 70ch;
+}
+
+.prose :where(h1, h2, h3, h4) {
+    letter-spacing: -0.015em;
+}
+
+/* Inline code as a bordered chip; drop the plugin's backtick pseudo-content. */
+.prose :where(code):not(:where(pre code))::before,
+.prose :where(code):not(:where(pre code))::after {
+    content: none;
+}
+.prose :where(code):not(:where(pre code)) {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+    font-weight: 500;
+}
+
+.prose :where(pre) {
+    border: 1px solid var(--line-strong);
+    border-radius: 0.25rem;
+}
+
+.prose :where(hr) {
+    border-style: dashed;
+}
+
+.prose :where(a) {
+    text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    text-underline-offset: 4px;
+    transition: text-decoration-color 150ms ease;
+}
+.prose :where(a):hover {
+    text-decoration-color: var(--accent);
+}
