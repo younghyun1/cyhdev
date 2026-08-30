@@ -67,10 +67,10 @@ export default function ProfileSummaryPanel() {
       dropdownApi
         .countrySubdivisions(countryId)
         .then((response) => {
-          if (country() !== countryId) return;
+          if (untrack(country) !== countryId) return;
           const values = Array.isArray(response.data) ? response.data : [];
           setSubdivisions(values);
-          const selected = subdivision();
+          const selected = untrack(subdivision);
           if (
             selected !== null &&
             !values.some((item) => item.subdivision_id === selected)
@@ -79,7 +79,7 @@ export default function ProfileSummaryPanel() {
           }
         })
         .catch(() => {
-          if (country() === countryId) setSubdivisions([]);
+          if (untrack(country) === countryId) setSubdivisions([]);
         });
     },
   );
@@ -193,7 +193,7 @@ export default function ProfileSummaryPanel() {
           <input
             class={`${pageStyles.input} bg-surface-2`}
             value={initial?.user_email ?? ""}
-            readOnly
+            readonly
             aria-readonly="true"
           />
         </label>

@@ -264,21 +264,23 @@ export default function PostsList() {
           <div class="flex rounded-sm border border-line overflow-hidden">
             <button
               onClick={() => setSearchType("title")}
-              class={`px-4 py-2 text-sm font-medium transition-colors ${
+              class={[
+                "px-4 py-2 text-sm font-medium transition-colors",
                 searchType() === "title"
                   ? "bg-accent text-paper"
-                  : "bg-surface text-ink-muted hover:bg-surface-2"
-              }`}
+                  : "bg-surface text-ink-muted hover:bg-surface-2",
+              ]}
             >
               {t("blog.search_title")}
             </button>
             <button
               onClick={() => setSearchType("tag")}
-              class={`px-4 py-2 text-sm font-medium transition-colors border-l border-line ${
+              class={[
+                "px-4 py-2 text-sm font-medium transition-colors border-l border-line",
                 searchType() === "tag"
                   ? "bg-accent text-paper"
-                  : "bg-surface text-ink-muted hover:bg-surface-2"
-              }`}
+                  : "bg-surface text-ink-muted hover:bg-surface-2",
+              ]}
             >
               {t("blog.search_tag")}
             </button>

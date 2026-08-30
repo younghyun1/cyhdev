@@ -541,7 +541,12 @@ export default function PostViewPage() {
               </Show>
               <div class="flex items-center gap-2 mt-2 mb-1">
                 <button
-                  class={`text-lg px-1 ${voteState() === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
+                  class={[
+                    "text-lg px-1",
+                    voteState() === 0
+                      ? "text-ok font-bold"
+                      : "text-ink-muted hover:text-ok",
+                  ]}
                   onClick={() =>
                     handleVote("comment", true, {
                       postId: postId(),
@@ -558,7 +563,12 @@ export default function PostViewPage() {
                 </span>
 
                 <button
-                  class={`text-lg px-1 ${voteState() === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
+                  class={[
+                    "text-lg px-1",
+                    voteState() === 1
+                      ? "text-danger font-bold"
+                      : "text-ink-muted hover:text-danger",
+                  ]}
                   onClick={() =>
                     handleVote("comment", false, {
                       postId: postId(),
@@ -718,7 +728,12 @@ export default function PostViewPage() {
                   <div class="mb-4 flex flex-row items-start gap-4">
                     <div class="flex flex-col items-center pr-4 select-none border-r border-line mr-2">
                       <button
-                        class={`text-2xl transition ${postVoteState() === 0 ? "text-ok font-bold" : "text-ink-muted hover:text-ok"}`}
+                        class={[
+                          "text-2xl transition",
+                          postVoteState() === 0
+                            ? "text-ok font-bold"
+                            : "text-ink-muted hover:text-ok",
+                        ]}
                         onClick={() =>
                           handleVote("post", true, {
                             postId: data().post.post_id,
@@ -734,7 +749,12 @@ export default function PostViewPage() {
                       </span>
 
                       <button
-                        class={`text-2xl transition ${postVoteState() === 1 ? "text-danger font-bold" : "text-ink-muted hover:text-danger"}`}
+                        class={[
+                          "text-2xl transition",
+                          postVoteState() === 1
+                            ? "text-danger font-bold"
+                            : "text-ink-muted hover:text-danger",
+                        ]}
                         onClick={() =>
                           handleVote("post", false, {
                             postId: data().post.post_id,

@@ -84,6 +84,7 @@ fn run_gitleaks(
     if let Some(options) = log_options {
         command.arg(format!("--log-opts={options}"));
     }
+    command.arg("--config").arg(root.join(".gitleaks.toml"));
     command.arg(target).current_dir(root);
     run_command(&mut command)
 }

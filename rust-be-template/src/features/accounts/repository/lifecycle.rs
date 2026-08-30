@@ -167,22 +167,30 @@ impl AccountRepository {
                 anonymize_photograph_locations(connection, user_id).await?;
 
                 let tombstone = TombstoneIdentity::for_retention_id(retention_id);
-                diesel::update(users::table.filter(users::user_id.eq(user_id)))
-                    .set((
-                        users::user_name.eq(tombstone.user_name),
-                        users::user_email.eq(tombstone.email),
-                        users::user_password_hash.eq(tombstone.password_hash),
-                        users::user_updated_at.eq(deleted_at),
-                        users::user_is_email_verified.eq(false),
-                        users::user_country.eq(system_country),
-                        users::user_language.eq(system_language),
-                        users::user_subdivision.eq(Option::<i32>::None),
-                        users::user_deleted_at.eq(deleted_at),
-                        users::user_purge_after.eq(purge_after),
-                        users::user_hard_purged_at.eq(Option::<DateTime<Utc>>::None),
-                    ))
-                    .execute(&mut *connection)
-                    .await?;
+                let (persisted_deleted_at, persisted_purge_after) =
+                    diesel::update(users::table.filter(users::user_id.eq(user_id)))
+                        .set((
+                            users::user_name.eq(tombstone.user_name),
+                            users::user_email.eq(tombstone.email),
+                            users::user_password_hash.eq(tombstone.password_hash),
+                            users::user_updated_at.eq(deleted_at),
+                            users::user_is_email_verified.eq(false),
+                            users::user_country.eq(system_country),
+                            users::user_language.eq(system_language),
+                            users::user_subdivision.eq(Option::<i32>::None),
+                            users::user_deleted_at.eq(deleted_at),
+                            users::user_purge_after.eq(purge_after),
+                            users::user_hard_purged_at.eq(Option::<DateTime<Utc>>::None),
+                        ))
+                        .returning((users::user_deleted_at, users::user_purge_after))
+                        .get_result::<(Option<DateTime<Utc>>, Option<DateTime<Utc>>)>(
+                            &mut *connection,
+                        )
+                        .await?;
+                let persisted_deleted_at =
+                    persisted_deleted_at.ok_or(AccountError::AccountChanged)?;
+                let persisted_purge_after =
+                    persisted_purge_after.ok_or(AccountError::AccountChanged)?;
 
                 insert_retention_notification_schedule(
                     connection,
@@ -194,8 +202,8 @@ impl AccountRepository {
 
                 Ok(SoftDeleteAccountReceipt {
                     user_id,
-                    deleted_at,
-                    purge_after,
+                    deleted_at: persisted_deleted_at,
+                    purge_after: persisted_purge_after,
                 })
             })
             .await

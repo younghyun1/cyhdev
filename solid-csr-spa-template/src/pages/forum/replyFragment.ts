@@ -2,8 +2,7 @@ import {
   type Accessor,
   createEffect,
   createSignal,
-  onCleanup,
-  onMount,
+  onSettled,
 } from "solid-js";
 
 import type {
@@ -32,8 +31,10 @@ export function createReplyFragmentFollower(
   const [locationHash, setLocationHash] = createSignal(window.location.hash);
 
   const captureHash = () => setLocationHash(window.location.hash);
-  onMount(() => window.addEventListener("hashchange", captureHash));
-  onCleanup(() => window.removeEventListener("hashchange", captureHash));
+  onSettled(() => {
+    window.addEventListener("hashchange", captureHash);
+    return () => window.removeEventListener("hashchange", captureHash);
+  });
 
   createEffect(
     () => ({

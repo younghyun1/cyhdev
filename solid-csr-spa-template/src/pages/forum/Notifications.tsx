@@ -124,9 +124,10 @@ export default function ForumNotificationsPage() {
               return (
                 <li>
                   <article
-                    class={`forum-notification ${
-                      unread() ? "forum-notification--unread" : ""
-                    }`}
+                    class={[
+                      "forum-notification",
+                      unread() ? "forum-notification--unread" : "",
+                    ]}
                   >
                     <div class="forum-notification__meta">
                       <ForumAuthorBadge author={notification.actor} />

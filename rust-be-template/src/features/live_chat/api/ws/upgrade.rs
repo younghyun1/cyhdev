@@ -39,23 +39,24 @@ pub async fn live_chat_ws_handler(
     if service.is_actor_banned(actor.user_id, client_ip).await {
         return (StatusCode::FORBIDDEN, "Live chat access denied.").into_response();
     }
-    let registered =
-        match register_connection(&service, sessions.as_ref(), &cookie_jar, &actor).await {
-            Ok(registered) => registered,
-            Err(LiveChatRegistrationError::Disabled) => {
-                return (StatusCode::FORBIDDEN, "Live chat connection unavailable.").into_response();
-            }
-            Err(LiveChatRegistrationError::Capacity) => {
-                return (
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    "Live chat connection unavailable.",
-                )
-                    .into_response();
-            }
-            Err(LiveChatRegistrationError::ExpiredSession) => {
-                return (StatusCode::UNAUTHORIZED, "Live chat session expired.").into_response();
-            }
-        };
+    let registered = match register_connection(&service, sessions.as_ref(), &cookie_jar, &actor)
+        .await
+    {
+        Ok(registered) => registered,
+        Err(LiveChatRegistrationError::Disabled) => {
+            return (StatusCode::FORBIDDEN, "Live chat connection unavailable.").into_response();
+        }
+        Err(LiveChatRegistrationError::Capacity) => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Live chat connection unavailable.",
+            )
+                .into_response();
+        }
+        Err(LiveChatRegistrationError::ExpiredSession) => {
+            return (StatusCode::UNAUTHORIZED, "Live chat session expired.").into_response();
+        }
+    };
     let connection_id = registered.connection_id;
     let ws = ws.protocols([LIVE_CHAT_BINARY_PROTOCOL]);
     let wire_protocol = match ws.selected_protocol().and_then(|value| value.to_str().ok()) {

@@ -4,7 +4,7 @@
 // module-scoped batch store directly. Reuses the page's `.modal-overlay` /
 // `.modal-content` shell plus a `.processing-modal` rule in the inline <style>.
 
-import { Show, createMemo, onSettled } from "solid-js";
+import { Show, createMemo, onSettled, untrack } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import {
   batches,
@@ -14,7 +14,7 @@ import {
 import { pageStyles, chipClass } from "../../styles/pageStyles";
 import { t, tx } from "../../state/i18n";
 import type { UiTextKey } from "../../i18n/keys";
-import type { ProcessingStatus } from "../../generated";
+import type { BatchItemStatus, ProcessingStatus } from "../../generated";
 
 interface ProcessingModalProps {
   show: boolean;
@@ -30,6 +30,13 @@ const STATUS_LABEL: Record<ProcessingStatus["status"], UiTextKey> = {
   failed: "photos.status_failed",
 };
 
+function processingItemTitle(item: BatchItemStatus): string | undefined {
+  const status = item.status;
+  return status.status === "failed"
+    ? status.reason
+    : (item.file_name ?? undefined);
+}
+
 export default function ProcessingModal(props: ProcessingModalProps) {
   const visibleBatches = createMemo<BatchEntry[]>(() =>
     Object.keys(batches)
@@ -42,13 +49,13 @@ export default function ProcessingModal(props: ProcessingModalProps) {
       }),
   );
 
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") props.onClose();
-  };
-
   onSettled(() => {
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    const handleKeyDown = (event: KeyboardEvent) =>
+      untrack(() => {
+        if (event.key === "Escape") props.onClose();
+      });
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
   const progressPercent = (entry: BatchEntry): number => {
@@ -122,11 +129,7 @@ export default function ProcessingModal(props: ProcessingModalProps) {
                         {(item) => (
                           <span
                             class={chipClass(item().status.status)}
-                            title={
-                              item().status.status === "failed"
-                                ? item().status.reason
-                                : (item().file_name ?? undefined)
-                            }
+                            title={processingItemTitle(item())}
                           >
                             {(item().file_name ?? item().item_id.slice(0, 8)) +
                               " · " +

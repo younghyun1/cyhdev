@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 
 // Mock localStorage before importing the module
 const storage: Record<string, string> = {};
-vi.stubGlobal("localStorage", {
+Object.defineProperty(window, "localStorage", { configurable: true, value: {
   getItem: (key: string) => storage[key] ?? null,
   setItem: (key: string, value: string) => {
     storage[key] = value;
@@ -10,7 +10,7 @@ vi.stubGlobal("localStorage", {
   removeItem: (key: string) => {
     delete storage[key];
   },
-});
+} });
 
 describe("theme state", () => {
   beforeEach(() => {

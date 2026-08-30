@@ -6,6 +6,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  untrack,
   useContext,
 } from "solid-js";
 import type { RtcClientSignal } from "../dtos/requests/live_chat";
@@ -284,15 +285,15 @@ export const RtcProvider: ParentComponent = (props) => {
     sendRtc({ kind: "media_state", mic_on: micOn(), cam_on: next });
   };
 
-  const dispose = socket.onEvent((event) => {
-    if (event.type === "hello") {
-      setSelfActor(event.actor);
-      return;
-    }
-    if (event.type === "rtc") {
-      void handleRtcSignal(event);
-    }
-  });
+  const dispose = socket.onEvent((event) =>
+    untrack(() => {
+      if (event.type === "hello") {
+        setSelfActor(event.actor);
+        return;
+      }
+      if (event.type === "rtc") void handleRtcSignal(event);
+    }),
+  );
   onCleanup(dispose);
 
   // If the socket drops while in a call, the SFU has torn the peer down; reset

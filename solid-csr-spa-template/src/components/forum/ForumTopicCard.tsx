@@ -24,7 +24,10 @@ export default function ForumTopicCard(props: ForumTopicCardProps) {
 
   return (
     <article
-      class={`forum-topic-card ${masked() ? "forum-topic-card--masked" : ""}`}
+      class={[
+        "forum-topic-card",
+        masked() ? "forum-topic-card--masked" : "",
+      ]}
     >
       <div class="forum-badges">
         <Show when={props.topic.is_pinned}>

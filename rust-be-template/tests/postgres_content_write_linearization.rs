@@ -34,7 +34,7 @@ async fn content_write_and_soft_delete_share_one_account_lock_order() -> TestRes
 fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let account = seed_account(&context, "ContentWriteLinearization").await?;
+        let account = seed_account(&context, "ContentWriter").await?;
         let pool = context.pool.clone();
         let accounts = Arc::clone(&context.accounts);
         let user_id = account.user_id;
