@@ -54,11 +54,11 @@ function LoginPage() {
         setSuperuser(false);
         setError(t("auth.login.failed"));
       }
-    } catch (err: unknown) {
+    } catch {
       setAuthenticated(false);
       setUser(null);
       setSuperuser(false);
-      setError(err instanceof Error ? err.message : t("auth.login.failed"));
+      setError(t("auth.login.failed"));
     } finally {
       setLoading(false);
     }
@@ -80,6 +80,7 @@ function LoginPage() {
             onInput={(e) => setEmail(e.currentTarget.value)}
             class={`${pageStyles.input} mb-4`}
             autocomplete="username"
+            maxlength={254}
             required
           />
           <input
@@ -89,6 +90,7 @@ function LoginPage() {
             onInput={(e) => setPassword(e.currentTarget.value)}
             class={`${pageStyles.input} mb-6`}
             autocomplete="current-password"
+            maxlength={128}
             required
           />
           <div class="flex justify-end w-full mb-6">

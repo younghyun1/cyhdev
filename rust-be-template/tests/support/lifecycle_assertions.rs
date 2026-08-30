@@ -34,7 +34,7 @@ pub async fn require_login_rejected(
         .login(original_email, VALID_PASSWORD, None)
         .await
     {
-        Err(AccountError::AccountNotFound) => Ok(()),
+        Err(AccountError::InvalidCredentials) => Ok(()),
         Err(error) => Err(Box::new(error) as BoxError),
         Ok(_) => require(false, "deleted account authenticated with its original identity"),
     }

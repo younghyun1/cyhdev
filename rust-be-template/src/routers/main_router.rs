@@ -7,7 +7,6 @@ use axum::{
     middleware::{from_fn, from_fn_with_state},
     routing::{delete, get, patch, post},
 };
-use tower_governor::{GovernorLayer, governor::GovernorConfigBuilder};
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
@@ -18,7 +17,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     docs::ApiDoc,
     features::accounts::api::{
-        check_if_user_exists::check_if_user_exists_handler, delete_account::delete_account,
+        auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_headers},
+        delete_account::delete_account,
         hard_purge_account::hard_purge_account, is_superuser::is_superuser_handler, login::login,
         logout::logout, me::me_handler, media_cleanup::{resolve_media_cleanup, unresolved_media_cleanup},
         public_user::get_user_info, reset_password::reset_password,
@@ -82,14 +82,11 @@ use super::middleware::{
 };
 
 mod static_assets;
-
 use static_assets::static_asset_handler;
 
 const MAX_REQUEST_SIZE: usize = 1024 * 1024 * 150; // 150MB
 const BATCH_REQUEST_SIZE: usize = 1024 * 1024 * 1024; // 1GB (route-scoped to batch upload)
-
-const REPLENISHED_EVERY_MILLISECONDS: u64 = 63;
-const RATE_LIMIT_BURST_SIZE: u32 = 1024;
+const AUTH_REQUEST_SIZE: usize = 8 * 1024;
 
 pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
     let sessions = state.session_service();
@@ -121,23 +118,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             header::HeaderName::from_static("x-server-built-time"),
             header::HeaderName::from_static("x-server-name"),
             header::HeaderName::from_static("x-server-rust-version"),
+            header::RETRY_AFTER,
         ]);
-
-    let governor_conf = match GovernorConfigBuilder::default()
-        .per_millisecond(REPLENISHED_EVERY_MILLISECONDS)
-        .burst_size(RATE_LIMIT_BURST_SIZE)
-        .finish()
-    {
-        Some(conf) => Some(Arc::new(conf)),
-        None => {
-            tracing::error!(
-                replenished_every_milliseconds = REPLENISHED_EVERY_MILLISECONDS,
-                burst_size = RATE_LIMIT_BURST_SIZE,
-                "Failed to build governor config; rate limiting disabled"
-            );
-            None
-        }
-    };
 
     let public_router = Router::new()
         .route("/api/healthcheck/server", get(healthcheck))
@@ -157,20 +139,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/geolocate/{ip_address}", get(lookup_ip_location))
         .route("/api/geo-ip-info/me", get(lookup_my_ip_info))
         .route("/api/geo-ip-info/{ip_address}", get(lookup_ip_info))
-        .route("/api/auth/signup", post(signup_handler))
         .route("/api/auth/me", get(me_handler))
         .route("/api/auth/is-superuser", get(is_superuser_handler))
-        .route(
-            "/api/auth/check-if-user-exists",
-            post(check_if_user_exists_handler),
-        )
-        .route("/api/auth/login", post(login))
-        .route(
-            "/api/auth/reset-password-request",
-            post(reset_password_request_process),
-        )
-        .route("/api/auth/reset-password", post(reset_password))
-        .route("/api/auth/verify-user-email", get(verify_user_email))
         .route("/api/users/{user_name}", get(get_user_info))
         .route("/api/blog/posts", get(get_posts))
         .route("/api/blog/posts/{post_id}", get(read_post))
@@ -183,10 +153,29 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/wasm-modules", get(get_wasm_modules))
         .route("/api/wasm-modules/{wasm_module_id}/wasm", get(serve_wasm));
 
-    let protected_router = Router::new()
+    let auth_abuse_router = Router::new()
+        .route("/api/auth/signup", post(signup_handler))
+        .route("/api/auth/login", post(login))
+        .route(
+            "/api/auth/reset-password-request",
+            post(reset_password_request_process),
+        )
+        .route("/api/auth/reset-password", post(reset_password))
+        .route("/api/auth/verify-user-email", post(verify_user_email))
+        .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE))
+        .layer(from_fn_with_state(
+            state.auth_abuse_service(),
+            enforce_auth_ip_throttle,
+        ))
+        .layer(from_fn(sensitive_auth_response_headers));
+
+    let protected_account_router = Router::new()
         .route("/api/auth/logout", post(logout))
         .route("/api/auth/account", delete(delete_account))
         .route("/api/auth/profile", patch(update_profile))
+        .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
+
+    let protected_router = Router::new()
         .route(
             "/api/user/upload-profile-picture",
             post(upload_profile_picture),
@@ -239,6 +228,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             "/api/photographs/{photograph_id}/{comment_id}",
             delete(delete_photograph_comment),
         )
+        .merge(protected_account_router)
         .layer(auth_middleware.clone());
 
     let batch_upload_router = Router::new()
@@ -277,6 +267,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .layer(auth_middleware.clone());
 
     let api_router = public_router
+        .merge(auth_abuse_router)
         .merge(protected_router)
         .merge(superuser_router)
         .layer(is_logged_in_middleware)
@@ -287,7 +278,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .with_state(state.clone());
 
     let router = Router::new().merge(api_router);
-
     let swagger_ui = SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
     let mut swagger_router = Router::new().merge(swagger_ui);
@@ -301,14 +291,9 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             .layer(auth_middleware.clone());
     }
 
-    // The rate limiter covers every surface; compression remains outermost.
-    let mut router = router
+    let router = router
         .merge(swagger_router)
         .fallback_service(get(static_asset_handler));
-
-    if let Some(governor_conf) = governor_conf {
-        router = router.layer(GovernorLayer::new(governor_conf));
-    }
 
     Ok(router.layer(compression_middleware))
 }

@@ -7,12 +7,21 @@ use zeroize::Zeroize;
 use crate::{
     dto::{
         requests::auth::login_request::LoginRequest,
-        responses::{auth::login_response::LoginResponse, response_data::http_resp_with_cookies},
+        responses::{
+            auth::login_response::LoginResponse,
+            response_data::http_resp_with_cookies_sensitive,
+        },
     },
     errors::code_error::HandlerResponse,
     features::accounts::{
-        api::account_error::{AccountMutation, map_account_error},
-        domain::session::{SESSION_COOKIE_NAME, SessionToken},
+        api::{
+            account_error::map_login_error,
+            auth_abuse::map_auth_throttle_rejection,
+        },
+        domain::{
+            auth_abuse::{AuthEndpoint, AuthIdentity},
+            session::{SESSION_COOKIE_NAME, SessionToken},
+        },
     },
     init::state::ServerState,
     util::time::now::tokio_now,
@@ -26,7 +35,7 @@ use crate::{
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "User not found"),
+        (status = 429, description = "Authentication attempt budget exhausted"),
         (status = 503, description = "Session capacity unavailable"),
         (status = 500, description = "Internal server error")
     )
@@ -38,6 +47,14 @@ pub async fn login(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let previous_session_token = session_token_from_cookie(&cookie_jar);
+    state
+        .auth_abuse_service()
+        .check_identity(
+            AuthEndpoint::Login,
+            AuthIdentity::Email(&request.user_email),
+        )
+        .await
+        .map_err(map_auth_throttle_rejection)?;
     let login_result = state
         .account_service()
         .login(
@@ -47,11 +64,10 @@ pub async fn login(
         )
         .await;
     request.zeroize();
-    let receipt =
-        login_result.map_err(|error| map_account_error(error, AccountMutation::Update))?;
+    let receipt = login_result.map_err(map_login_error)?;
 
     let cookie = session_cookie(&receipt.session_token);
-    Ok(http_resp_with_cookies(
+    Ok(http_resp_with_cookies_sensitive(
         LoginResponse {
             message: "Login successful".to_string(),
             user_id: receipt.user_id,

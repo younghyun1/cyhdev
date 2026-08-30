@@ -47,7 +47,11 @@ function SignupPage() {
 
   // Mirror backend validate_password_form (validations.rs): len>=8 + upper + lower + digit.
   const isPasswordValid = (pw: string) =>
-    pw.length >= 8 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
+    pw.length >= 8 &&
+    pw.length <= 128 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /[0-9]/.test(pw);
 
   // ––––– fetch countries & languages once on mount
   onSettled(() => {
@@ -133,8 +137,8 @@ function SignupPage() {
       } else {
         setError(t("auth.signup.failed"));
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("auth.signup.failed"));
+    } catch {
+      setError(t("auth.signup.failed"));
     } finally {
       setLoading(false);
     }
@@ -194,6 +198,7 @@ function SignupPage() {
               placeholder={t("common.username")}
               value={userName()}
               onInput={(e) => setUserName(e.currentTarget.value)}
+              maxlength={20}
             />
 
             <input
@@ -203,6 +208,7 @@ function SignupPage() {
               autocomplete="username email"
               value={userEmail()}
               onInput={(e) => setUserEmail(e.currentTarget.value)}
+              maxlength={254}
             />
 
             <input
@@ -213,6 +219,7 @@ function SignupPage() {
               value={userPassword()}
               onInput={(e) => setUserPassword(e.currentTarget.value)}
               required
+              maxlength={128}
             />
 
             <input
@@ -223,6 +230,7 @@ function SignupPage() {
               value={confirmPassword()}
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
               required
+              maxlength={128}
               aria-invalid={passwordsMismatch() ? "true" : "false"}
             />
 

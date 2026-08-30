@@ -26,6 +26,10 @@ export const routes = defineRoutes([
     component: lazy(() => import("./pages/reset_password")),
   },
   {
+    path: "/verify-email",
+    component: lazy(() => import("./pages/verify_email")),
+  },
+  {
     path: "/blog",
     children: [
       {

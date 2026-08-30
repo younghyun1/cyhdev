@@ -1,4 +1,3 @@
-pub mod check_if_user_exists_request;
 pub mod delete_account_request;
 pub mod login_request;
 pub mod reset_password;

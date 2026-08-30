@@ -19,6 +19,7 @@ describe("application routes", () => {
   it.each([
     ["/", ""],
     ["/about", "/about"],
+    ["/verify-email", "/verify-email"],
     ["/blog", "/blog"],
     ["/blog/example-post", "/blog/:post_id"],
     ["/photographs/42", "/photographs/:photograph_id"],

@@ -2,8 +2,6 @@
 
 import type {
   ApiResponse,
-  CheckIfUserExistsRequest,
-  CheckIfUserExistsResponse,
   DeleteAccountRequest,
   DeleteAccountResponse,
   DeleteProfilePictureResponse,
@@ -27,31 +25,19 @@ import type {
   UnresolvedMediaCleanupResponse,
   UpdateProfileRequest,
   UpdateProfileResponse,
+  VerifyUserEmailRequest,
+  VerifyUserEmailResponse,
 } from "../api-types";
 import {
-  appendQuery,
   interpolatePath,
   requestHeaders,
   requestJson,
-  requestText,
   type ApiRequestOptions,
   type ApiTransport,
 } from "../runtime";
 
 export function createAccountClient(transport: ApiTransport) {
   return {
-    checkIfUserExists: async (input: {
-      readonly body: CheckIfUserExistsRequest;
-    }, options: ApiRequestOptions = {}) => {
-      const path = "/api/auth/check-if-user-exists";
-      const url = path;
-      return requestJson<ApiResponse<CheckIfUserExistsResponse>>(transport, url, {
-        method: "POST",
-        headers: requestHeaders(options.headers, true),
-        signal: options.signal,
-        body: JSON.stringify(input.body),
-      });
-    },
     deleteAccount: async (input: {
       readonly body: DeleteAccountRequest;
     }, options: ApiRequestOptions = {}) => {
@@ -249,16 +235,15 @@ export function createAccountClient(transport: ApiTransport) {
       });
     },
     verifyUserEmail: async (input: {
-      readonly query: {
-        readonly email_validation_token_id: string;
-      };
+      readonly body: VerifyUserEmailRequest;
     }, options: ApiRequestOptions = {}) => {
       const path = "/api/auth/verify-user-email";
-      const url = appendQuery(path, input.query);
-      return requestText<string>(transport, url, {
-        method: "GET",
-        headers: requestHeaders(options.headers, false),
+      const url = path;
+      return requestJson<ApiResponse<VerifyUserEmailResponse>>(transport, url, {
+        method: "POST",
+        headers: requestHeaders(options.headers, true),
         signal: options.signal,
+        body: JSON.stringify(input.body),
       });
     },
   } as const;

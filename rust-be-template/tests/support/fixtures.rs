@@ -21,6 +21,7 @@ use rust_be_template::{
 use super::database::{HarnessError, TestDatabase, TestResult};
 
 pub const VALID_PASSWORD: &str = "ValidPass123";
+const TEST_DUMMY_PASSWORD_HASH: &str = "$argon2id$v=19$m=256,t=2,p=1$c29tZXNhbHQ$nf65EOgLrQMR/uIPnA4rEsF5h7TKyQwu9U1bMCHGi/4";
 
 pub struct AccountTestContext {
     pub accounts: AccountService,
@@ -52,6 +53,7 @@ pub fn account_test_context(database: &TestDatabase) -> TestResult<AccountTestCo
         Arc::clone(&sessions),
         Arc::clone(&live_chat_cache),
         email_client,
+        TEST_DUMMY_PASSWORD_HASH.to_owned(),
     );
 
     Ok(AccountTestContext {

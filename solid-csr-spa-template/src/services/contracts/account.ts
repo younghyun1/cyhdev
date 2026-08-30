@@ -1,5 +1,4 @@
 import type {
-  CheckIfUserExistsRequest,
   DeleteAccountRequest,
   LoginRequest,
   ResetPasswordProcessRequest,
@@ -7,22 +6,19 @@ import type {
   ResolveMediaCleanupRequest,
   SignupRequest,
   UpdateProfileRequest,
+  VerifyUserEmailRequest,
 } from "../../generated";
 import { contractApi } from "../account_api";
 
 export const authApi = {
   signup: (body: SignupRequest) => contractApi.signup({ body }),
-  checkIfUserExists: (body: CheckIfUserExistsRequest) =>
-    contractApi.checkIfUserExists({ body }),
   login: (body: LoginRequest) => contractApi.login({ body }),
   resetPasswordRequest: (body: ResetPasswordRequest) =>
     contractApi.resetPasswordRequest({ body }),
   resetPassword: (body: ResetPasswordProcessRequest) =>
     contractApi.resetPassword({ body }),
-  verifyUserEmail: (emailValidationTokenId: string) =>
-    contractApi.verifyUserEmail({
-      query: { email_validation_token_id: emailValidationTokenId },
-    }),
+  verifyUserEmail: (body: VerifyUserEmailRequest) =>
+    contractApi.verifyUserEmail({ body }),
   me: () => contractApi.me(),
   isSuperuser: () => contractApi.isSuperuser(),
   logout: () => contractApi.logout(),

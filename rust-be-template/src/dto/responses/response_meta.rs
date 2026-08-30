@@ -23,4 +23,12 @@ impl<T: serde::Serialize> ResponseMeta<T> {
             metadata,
         }
     }
+
+    pub fn redacted(metadata: T) -> Self {
+        ResponseMeta {
+            time_to_process: "redacted".to_owned(),
+            timestamp: Utc::now(),
+            metadata,
+        }
+    }
 }

@@ -133,6 +133,13 @@ pub struct SignupReceipt {
     pub verify_by: DateTime<Utc>,
 }
 
+/// Fresh verification capability for an existing active unverified account.
+pub struct EmailVerificationIssue {
+    pub user_email: String,
+    pub token: Uuid,
+    pub verify_by: DateTime<Utc>,
+}
+
 /// Password-reset token state used for service-level validation.
 #[derive(Debug, Clone)]
 pub struct PasswordResetToken {

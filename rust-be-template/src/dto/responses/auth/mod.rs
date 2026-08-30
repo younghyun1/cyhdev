@@ -1,5 +1,4 @@
 pub mod delete_account_response;
-pub mod email_validate_response;
 pub mod hard_purge_account_response;
 pub mod is_superuser_response;
 pub mod login_response;
@@ -9,3 +8,4 @@ pub mod reset_password_request_response;
 pub mod reset_password_response;
 pub mod signup_response;
 pub mod update_profile_response;
+pub mod verify_user_email_response;

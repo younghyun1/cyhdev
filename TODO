@@ -21,10 +21,6 @@
 - [ ] **W3-A: Establish integration coverage.** Add a database-backed integration test harness and cover current authentication, role gates, session refresh and revocation, cache consistency, media cleanup, and migration rollback boundaries. Extend the suite with soft-deletion cases when W5-B lands. Build the harness during implementation; execute it in Wave 8.
 - [ ] **W3-D: Add reproducible throughput measurement.** Build a throughput demo with a recorded workload, hardware and configuration, latency percentiles, and regression thresholds. Establish the benchmark independently, then wire its threshold command into Wave 8.
 
-## Wave 5: Account and data foundations, concurrent
-
-- [ ] **W5-C: Harden authentication abuse boundaries.** Add endpoint-specific bounded throttles and enumeration-resistant behavior for login, signup, account-existence checks, and password-reset flows. Replace state-changing verification links with an explicit confirmation and POST flow while retaining one-time token semantics.
-
 ## Wave 6: Account capabilities, concurrent
 
 - [ ] **W6-A: Add OAuth/OIDC.** Add login and account linking without weakening the session and email-verification controls.

@@ -101,6 +101,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "page.signup.title": "회원가입",
   "page.find_password.title": "비밀번호 찾기",
   "page.reset_password.title": "비밀번호 재설정",
+  "page.verify_email.title": "이메일 인증",
   "page.edit_profile.title": "프로필 수정",
   "page.not_found.title": "찾을 수 없음",
   "home.hero.role": "Experienced backend, infrastructure, and data engineer.",
@@ -147,6 +148,22 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "auth.reset_password.new_password": "새 비밀번호",
   "auth.reset_password.confirm_password": "비밀번호 확인",
   "auth.reset_password.resetting": "재설정 중...",
+  "auth.verify_email.no_automatic_change":
+    "이 페이지를 여는 것만으로 계정이 변경되지 않습니다. 아래에서 확인해야 인증됩니다.",
+  "auth.verify_email.checking": "인증 링크를 확인하는 중...",
+  "auth.verify_email.token_ready":
+    "인증 링크를 확인했습니다. 아래에서 이메일 인증을 확정하세요.",
+  "auth.verify_email.token_missing":
+    "링크에 이메일 인증 토큰이 없습니다.",
+  "auth.verify_email.token_invalid":
+    "이메일 인증 링크가 올바르지 않거나 사용할 수 없습니다.",
+  "auth.verify_email.confirm": "이메일 인증 확인",
+  "auth.verify_email.confirming": "확인 중...",
+  "auth.verify_email.success": "이메일 주소가 인증되었습니다.",
+  "auth.verify_email.failed":
+    "이메일 인증에 실패했습니다. 새 링크를 요청한 후 다시 시도하세요.",
+  "auth.verify_email.verified_at": "인증 시각: {date}",
+  "auth.verify_email.go_to_login": "로그인으로 이동",
   "profile.change_picture": "프로필 사진 변경",
   "profile.picture_alt": "프로필",
   "profile.choose_image": "이미지 선택",

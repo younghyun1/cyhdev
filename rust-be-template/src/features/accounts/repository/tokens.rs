@@ -8,15 +8,15 @@ use uuid::Uuid;
 use crate::{
     features::accounts::{
         domain::account::{
-            EmailVerificationReceipt, EmailVerificationToken, PasswordResetReceipt,
+            EmailVerificationIssue, EmailVerificationReceipt, EmailVerificationToken, PasswordResetReceipt,
             PasswordResetRequestReceipt, PasswordResetToken,
         },
         error::AccountError,
         repository::{
             account_repository::AccountRepository,
             records::{
-                AccountRecord, EmailVerificationTokenRecord, NewPasswordResetTokenRecord,
-                PasswordResetTokenRecord, UpdatePasswordRecord,
+                AccountRecord, EmailVerificationTokenRecord, NewEmailVerificationTokenRecord,
+                NewPasswordResetTokenRecord, PasswordResetTokenRecord, UpdatePasswordRecord,
             },
         },
     },
@@ -24,16 +24,65 @@ use crate::{
 };
 
 impl AccountRepository {
+    pub async fn replace_email_verification_token_if_unverified(
+        &self,
+        user_email: &str,
+        token: Uuid,
+        created_at: DateTime<Utc>,
+        expires_at: DateTime<Utc>,
+    ) -> Result<Option<EmailVerificationIssue>, AccountError> {
+        let mut connection = self.connection().await?;
+        connection
+            .transaction::<Option<EmailVerificationIssue>, AccountError, _>(
+                async move |connection| {
+                    let account = users::table
+                        .filter(users::user_email.eq(user_email))
+                        .filter(users::user_is_email_verified.eq(false))
+                        .filter(users::user_deleted_at.is_null())
+                        .select((users::user_id, users::user_email))
+                        .for_update()
+                        .first::<(Uuid, String)>(&mut *connection)
+                        .await
+                        .optional()?;
+                    let (user_id, stored_email) = match account {
+                        Some(account) => account,
+                        None => return Ok(None),
+                    };
+                    diesel::delete(
+                        email_verification_tokens::table
+                            .filter(email_verification_tokens::user_id.eq(user_id)),
+                    )
+                    .execute(&mut *connection)
+                    .await?;
+                    diesel::insert_into(email_verification_tokens::table)
+                        .values(NewEmailVerificationTokenRecord {
+                            user_id,
+                            email_verification_token: token,
+                            email_verification_token_expires_at: expires_at,
+                            email_verification_token_created_at: created_at,
+                        })
+                        .execute(&mut *connection)
+                        .await?;
+                    Ok(Some(EmailVerificationIssue {
+                        user_email: stored_email,
+                        token,
+                        verify_by: expires_at,
+                    }))
+                },
+            )
+            .await
+    }
+
     pub async fn issue_password_reset_token(
         &self,
         user_email: &str,
         token: Uuid,
         created_at: DateTime<Utc>,
         expires_at: DateTime<Utc>,
-    ) -> Result<PasswordResetRequestReceipt, AccountError> {
+    ) -> Result<Option<PasswordResetRequestReceipt>, AccountError> {
         let mut connection = self.connection().await?;
         connection
-            .transaction::<PasswordResetRequestReceipt, AccountError, _>(
+            .transaction::<Option<PasswordResetRequestReceipt>, AccountError, _>(
                 async move |connection| {
                     let account = users::table
                         .filter(users::user_email.eq(user_email))
@@ -43,8 +92,19 @@ impl AccountRepository {
                         .first::<(Uuid, String)>(&mut *connection)
                         .await
                         .optional()?;
-                    let (user_id, stored_email) =
-                        account.ok_or(AccountError::AccountNotFound)?;
+                    let (user_id, stored_email) = match account {
+                        Some(account) => account,
+                        None => return Ok(None),
+                    };
+                    // One live reset capability per account keeps replacement and
+                    // cleanup atomic. Deleting consumed and expired rows here also
+                    // bounds per-account token history without a second query.
+                    diesel::delete(
+                        password_reset_tokens::table
+                            .filter(password_reset_tokens::user_id.eq(user_id)),
+                    )
+                    .execute(&mut *connection)
+                    .await?;
                     diesel::insert_into(password_reset_tokens::table)
                         .values(NewPasswordResetTokenRecord {
                             user_id,
@@ -54,11 +114,11 @@ impl AccountRepository {
                         })
                         .execute(&mut *connection)
                         .await?;
-                    Ok(PasswordResetRequestReceipt {
+                    Ok(Some(PasswordResetRequestReceipt {
                         user_email: stored_email,
                         token,
                         verify_by: expires_at,
-                    })
+                    }))
                 },
             )
             .await

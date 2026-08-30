@@ -1,6 +1,6 @@
 # Account identity and session invariants
 
-The account slice treats `users.user_email` and `users.user_name` as exact, case-sensitive identities because current registration, login, and public lookup behavior does not normalize either value. PostgreSQL enforces those identities through the named `users_user_email_unique` and `users_user_name_unique` constraints. Registration classifies conflicts by constraint name, so concurrent requests return the same account error as sequential duplicates without a race-prone existence query.
+The account slice treats `users.user_email` and `users.user_name` as exact, case-sensitive identities because current registration, login, and public lookup behavior does not normalize either value. PostgreSQL enforces those identities through the named `users_user_email_unique` and `users_user_name_unique` constraints. Registration classifies conflicts by constraint name without a race-prone existence query. The service retains the detailed constraint result for coordination; the public signup endpoint suppresses duplicate-email detail behind the same accepted response as a new registration and maps a duplicate public user name to one generic conflict.
 
 The identity migration takes an exclusive lock and fails closed when pre-existing duplicates exist. It never deletes, renames, or merges an account. An operator must choose the canonical account, repair references and identity values explicitly, and rerun the migration. Its down migration restores the prior non-unique lookup indexes.
 
