@@ -1,6 +1,6 @@
 ### Building and running the application
 
-Copy `rust-be-template/.env.example` to `rust-be-template/.env`, replace every placeholder, build the frontend with `cargo xtask frontend-build`, then run `docker compose --file rust-be-template/compose.yaml up --build` from the repository root. Compose injects the backend `.env` file at runtime; the file is excluded from Git and the Docker build context.
+Copy `rust-be-template/.env.example` to `rust-be-template/.env`, replace every placeholder, and keep `HOST_IP=0.0.0.0` so the container accepts forwarded traffic. Then run `docker compose --file rust-be-template/compose.yaml up --build` from the repository root. The Dockerfile installs frontend dependencies from `package-lock.json`, builds the frontend in its own stage, and builds the backend from the root `Cargo.lock`. Compose injects the backend `.env` file at runtime; the file is excluded from Git and the Docker build context.
 
 Never pass database, SMTP, object-store, or API credentials as Docker build arguments or bake them into the image. Production deployments must provide the same environment variables through the deployment platform's runtime secret mechanism.
 
@@ -8,9 +8,9 @@ The application will be available at http://localhost:30737.
 
 ### Deploying your application to the cloud
 
-Build the image without credentials from the repository root: `docker build --file rust-be-template/Dockerfile --tag myapp .`.
+Build the development image without credentials from the repository root with `cargo xtask image`. The command pulls the rolling nightly base and passes `SOURCE_DATE_EPOCH`, defaulting to zero for deterministic metadata.
 
-If the deployment uses a different CPU architecture than the development machine, build for that platform: `docker build --platform=linux/amd64 --file rust-be-template/Dockerfile --tag myapp .`.
+If the deployment uses a different CPU architecture than the development machine, invoke Docker from the repository root with the required `--platform` and `--pull` options.
 
 Then push it to the registry, for example: `docker push myregistry.com/myapp`.
 

@@ -1,19 +1,34 @@
+# syntax=docker/dockerfile:1
+
 ARG APP_NAME=rust-be-template
 
-# --- Build Stage ---
+# Build the frontend from the committed npm lockfile inside the image build.
+# This prevents an ambient local dist directory from changing the backend image.
+FROM node:24-alpine AS frontend
+WORKDIR /workspace/solid-csr-spa-template
+COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY solid-csr-spa-template/ ./
+RUN npm run build
+
+# The rolling tag intentionally tracks the latest nightly toolchain. The root
+# image command always uses --pull so a cached base cannot pin an older nightly.
 FROM rustlang/rust:nightly-alpine AS build
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
+ARG SOURCE_DATE_EPOCH=0
 WORKDIR /workspace
 
-# Install build dependencies, including tools for vendored OpenSSL
+# Install native build dependencies required by the bundled C libraries.
 RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
     && rustup component add rust-src
 
+COPY . ./
+COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+
 # Rebuild the standard library with the release profile from Cargo.toml so the
 # application and sysroot share the same optimization, LTO, and panic settings.
-RUN --mount=type=bind,source=.,target=/workspace \
-    --mount=type=cache,target=/workspace/target/ \
+RUN --mount=type=cache,target=/workspace/target/ \
     --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
@@ -27,6 +42,7 @@ FROM scratch AS final
 
 # Copy the server executable from the build stage
 COPY --from=build /bin/server /bin/
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 # Copy database bundle files
 COPY rust-be-template/new_bundle_ipv4.db /bin/
@@ -34,8 +50,9 @@ COPY rust-be-template/new_bundle_ipv6.db /bin/
 
 # Set non-secret defaults. Inject database and service credentials at runtime.
 ENV CURR_ENV="dev"
-ENV HOST_IP="127.0.0.1"
+ENV HOST_IP="0.0.0.0"
 ENV HOST_PORT="443"
+ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
 
 # Expose the application port
 EXPOSE 443

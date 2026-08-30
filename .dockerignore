@@ -4,6 +4,8 @@
 !**/.env.example
 **/target
 **/node_modules
+**/dist
+**/pkg
 **/certs
 **/*.pem
 **/*.key
