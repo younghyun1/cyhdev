@@ -12,6 +12,9 @@ services:
     build:
       context: .
       target: final
+    # Runtime configuration stays outside the image and build context.
+    env_file:
+      - .env
     ports:
       - 30737:30737
       # WebRTC SFU media. The default 64-port range covers the maximum room
