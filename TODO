@@ -5,19 +5,9 @@
 - Complete local implementation waves in numeric order. Work items in the same wave can proceed concurrently unless a dependency says otherwise. External deployment gates do not block local implementation.
 - A foundation gate must land before dependent work starts. Continuous items begin in their listed wave and continue feature by feature without blocking unrelated later work.
 - Give each work item one owner. Serialize repository-wide integration and overlapping schema changes; keep feature-level changes isolated by module.
-- Run only `cargo xtask clippy` as the stage code check. It invokes Clippy separately for native and WebAssembly targets with warnings denied. Defer broader test, build, benchmark, and review work until Wave 8.
 
 ## Wave 0: External deployment gate
 
 - [ ] **W0-A: Rotate exposed credentials and invalidate old build artifacts.** The current source and Docker build context no longer contain the PostgreSQL credential, and runtime secrets are injected through the deployment environment. Before the next deployment, revoke the historical database password and former browser API keys if they were ever valid; retire externally stored images or remote build caches that received the old context. This is an external operational action and does not block local implementation.
 - [ ] **W0-B: Publish or configure the stable source-link target.** The source map uses stable monorepo-relative paths and intentionally renders them without links until `VITE_REPOSITORY_SOURCE_BASE_URL` identifies an existing published repository. Provide that URL through deployment configuration after publication; do not create an external repository automatically.
 - [ ] **W0-C: Promote the SolidJS 2 release-candidate pins after upstream stable release.** The frontend is migrated to exact `solid-js`/`@solidjs/web` 2.0 RC and official `@solidjs/vite-plugin` prerelease packages because no stable SolidJS 2 release exists yet. Replace those exact prerelease pins with compatible stable releases when upstream publishes them; never depend on a mutable branch.
-
-## Wave 3: Verification and measurement, concurrent
-
-- [ ] **W3-A: Establish integration coverage.** Add a database-backed integration test harness and cover current authentication, role gates, session refresh and revocation, cache consistency, media cleanup, and migration rollback boundaries. Extend the suite with soft-deletion cases when W5-B lands. Build the harness during implementation; execute it in Wave 8.
-- [ ] **W3-D: Add reproducible throughput measurement.** Build a throughput demo with a recorded workload, hardware and configuration, latency percentiles, and regression thresholds. Establish the benchmark independently, then wire its threshold command into Wave 8.
-
-## Wave 8: Deferred heavy review
-
-- [ ] **W8-A: Run the full repository review once.** Run formatting, unit and database-backed integration tests, migration rollback coverage, OpenAPI drift, frontend checks, development image smoke tests, throughput thresholds, and a redacted current-tree and history secret scan. Review every TODO requirement against direct evidence, fix all findings, and rerun affected checks. Do not run a release build.
