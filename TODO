@@ -11,15 +11,12 @@
 
 - [ ] **W0-A: Rotate exposed credentials and invalidate old build artifacts.** The current source and Docker build context no longer contain the PostgreSQL credential, and runtime secrets are injected through the deployment environment. Before the next deployment, revoke the historical database password and former browser API keys if they were ever valid; retire externally stored images or remote build caches that received the old context. This is an external operational action and does not block local implementation.
 
-## Wave 1: Repository foundation gate
-
-
 ## Wave 2: Engineering foundations, concurrent
 
 - [ ] **W2-A: Establish backend boundaries, then continue incrementally.** Refactor by feature into `api`, `service`, `repository`, and `domain` boundaries. Migrate authentication and accounts first as the reference slice; that slice is the foundation gate for account work. Handlers should only parse, authorize, and map HTTP data; services should own use cases, transactions, and cache coordination; repositories should own Diesel queries; domain types should not depend on Axum or persistence. Replace business methods on `ServerState` with explicit dependencies and split files over 300 lines. Continue the remaining feature migrations alongside Waves 3 through 7 without overlapping active feature work.
 - [ ] **W2-B: Make builds reproducible and non-mutating.** Remove `git pull`, `npm update`, and `cargo update` from build scripts; build locked inputs from the monorepo root; stop copying frontend output between sibling repositories.
 - [ ] **W2-C: Generate frontend API contracts.** Generate the TypeScript API types and client from the OpenAPI contract, and provide a deterministic drift-check command for W3-B.
-- [ ] **W2-D: Add stable source links.** Add source links for major site components, especially authentication, using paths or commit permalinks that are stable after W1-A.
+- [ ] **W2-D: Add stable source links.** Add source links for major site components, especially authentication, using the stable monorepo paths or commit permalinks.
 
 ## Wave 3: Verification and measurement, concurrent
 
