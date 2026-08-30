@@ -6,13 +6,16 @@ use axum::{
     response::IntoResponse,
 };
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
     features::accounts::domain::role::RoleType,
     dto::responses::{blog::delete_post_response::DeletePostResponse, response_data::http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{
+        ActiveUserWriteError, lock_active_superuser, lock_active_user,
+    },
     init::state::ServerState,
     schema::posts,
     util::time::now::tokio_now,
@@ -35,13 +38,11 @@ use crate::{
 )]
 pub async fn delete_post(
     Extension(requester_id): Extension<Uuid>,
-    Extension(role_type): Extension<RoleType>,
+    Extension(_role_type): Extension<RoleType>,
     State(state): State<Arc<ServerState>>,
     Path(post_id): Path<Uuid>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-
-    let is_superuser = role_type.is_superuser();
 
     // 1. Check post author against requester ID.
     let mut conn = state
@@ -49,36 +50,34 @@ pub async fn delete_post(
         .await
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
-    let author_id: Uuid = posts::table
-        .select(posts::user_id)
-        .filter(posts::post_id.eq(post_id))
-        .first(&mut conn)
+    match conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, requester_id).await?;
+            let author_id = posts::table
+                .select(posts::user_id)
+                .filter(posts::post_id.eq(post_id))
+                .first::<Uuid>(&mut *conn)
+                .await
+                .optional()?
+                .ok_or(ActiveUserWriteError::TargetNotFound)?;
+            if author_id != requester_id {
+                lock_active_superuser(&mut *conn, requester_id).await?;
+            }
+            diesel::delete(posts::table.filter(posts::post_id.eq(post_id)))
+                .execute(&mut *conn)
+                .await?;
+            Ok(())
+        })
         .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .ok_or_else(|| code_err(CodeError::POST_NOT_FOUND, "Post not found"))?;
-
-    if author_id == requester_id || is_superuser {
-        // 2. Delete comment!
-        match diesel::delete(posts::table.filter(posts::post_id.eq(post_id)))
-            .execute(&mut conn)
-            .await
-        {
-            Ok(_) => {
-                tracing::info!(
-                    deleted_post_id = %post_id,
-                    "Post deleted"
-                );
-            }
-            Err(e) => {
-                return Err(code_err(CodeError::DB_DELETION_ERROR, e));
-            }
+    {
+        Ok(()) => tracing::info!(deleted_post_id = %post_id, "Post deleted"),
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
         }
-    } else {
-        return Err(code_err(
-            CodeError::UNAUTHORIZED_ACCESS,
-            "User is not authorized to delete this post",
-        ));
+        Err(ActiveUserWriteError::TargetNotFound) => return Err(CodeError::POST_NOT_FOUND.into()),
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_DELETION_ERROR, e));
+        }
     }
 
     drop(conn);

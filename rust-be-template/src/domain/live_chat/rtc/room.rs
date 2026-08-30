@@ -193,10 +193,28 @@ impl RtcRoom {
     /// WS-disconnect and connection-failed paths (the `begin_teardown` guard and
     /// the single registry removal ensure the broadcast/close/release run once).
     pub async fn teardown_peer(&self, connection_id: Uuid) {
+        self.teardown_peer_with_deleted_user(connection_id, None).await;
+    }
+
+    /// Tear down a deleted user's peer with an already-anonymized final event.
+    pub async fn teardown_deleted_user_peer(&self, connection_id: Uuid, user_id: Uuid) {
+        self.teardown_peer_with_deleted_user(connection_id, Some(user_id))
+            .await;
+    }
+
+    async fn teardown_peer_with_deleted_user(
+        &self,
+        connection_id: Uuid,
+        deleted_user_id: Option<Uuid>,
+    ) {
         if let Some(peer) = self.remove_peer(connection_id).await
             && peer.begin_teardown()
         {
-            self.broadcast_peer_state(&peer.participant(), RtcPeerPhase::Left);
+            let mut participant = peer.participant();
+            if let Some(user_id) = deleted_user_id {
+                let _ = participant.actor.anonymize_deleted_user(user_id);
+            }
+            self.broadcast_peer_state(&participant, RtcPeerPhase::Left);
             peer.close().await;
             self.release_slot();
         }

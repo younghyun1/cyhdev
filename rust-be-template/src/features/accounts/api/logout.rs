@@ -56,7 +56,7 @@ pub async fn logout(
     ))
 }
 
-fn removal_cookie() -> Cookie<'static> {
+pub(super) fn removal_cookie() -> Cookie<'static> {
     let mut cookie = Cookie::build((SESSION_COOKIE_NAME, ""))
         .path("/")
         .http_only(true)

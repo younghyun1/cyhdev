@@ -124,6 +124,7 @@ pub(super) struct ProfilePictureRecord {
     user_profile_picture_updated_at: DateTime<Utc>,
     user_profile_picture_image_type: i32,
     user_profile_picture_is_on_cloud: bool,
+    user_profile_picture_is_active: bool,
     user_profile_picture_link: Option<String>,
 }
 
@@ -136,6 +137,7 @@ impl From<ProfilePictureRecord> for ProfilePicture {
             updated_at: record.user_profile_picture_updated_at,
             image_type: record.user_profile_picture_image_type,
             is_on_cloud: record.user_profile_picture_is_on_cloud,
+            is_active: record.user_profile_picture_is_active,
             link: record.user_profile_picture_link,
         }
     }
@@ -236,5 +238,6 @@ pub(super) struct NewProfilePictureRecord<'a> {
     pub(super) user_id: Uuid,
     pub(super) user_profile_picture_image_type: i32,
     pub(super) user_profile_picture_is_on_cloud: bool,
+    pub(super) user_profile_picture_is_active: bool,
     pub(super) user_profile_picture_link: Option<&'a str>,
 }

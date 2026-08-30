@@ -15,9 +15,10 @@ use crate::{
     domain::blog::blog::{CachedPostInfo, PostInfoWithVote, UserBadgeInfo, VoteState},
     dto::responses::response_data::http_resp,
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
     routers::middleware::is_logged_in::AuthStatus,
-    schema::{post_votes, user_profile_pictures, users},
+    schema::post_votes,
     util::time::now::tokio_now,
 };
 
@@ -158,41 +159,9 @@ pub async fn search_posts(
         .await
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
-    // Fetch user names and country codes
-    let authors: Vec<(Uuid, String, i32)> = users::table
-        .filter(users::user_id.eq_any(&user_ids))
-        .select((users::user_id, users::user_name, users::user_country))
-        .load(&mut conn)
+    let authors = load_public_authors(&mut conn, &user_ids)
         .await
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut author_map: HashMap<Uuid, String> = HashMap::new();
-    let mut author_country_map: HashMap<Uuid, i32> = HashMap::new();
-    for (uid, name, country) in authors {
-        author_map.insert(uid, name);
-        author_country_map.insert(uid, country);
-    }
-
-    // Fetch profile pictures
-    let author_pics: Vec<(Uuid, Option<String>)> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq_any(&user_ids))
-        .order(user_profile_pictures::user_profile_picture_updated_at.desc())
-        .select((
-            user_profile_pictures::user_id,
-            user_profile_pictures::user_profile_picture_link,
-        ))
-        .load(&mut conn)
-        .await
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut author_pic_map: HashMap<Uuid, String> = HashMap::new();
-    for (uid, link) in author_pics {
-        if !author_pic_map.contains_key(&uid)
-            && let Some(l) = link
-        {
-            author_pic_map.insert(uid, l);
-        }
-    }
 
     // Fetch vote states if logged in
     let vote_map = if let AuthStatus::LoggedIn(user_id) = is_logged_in {
@@ -232,26 +201,24 @@ pub async fn search_posts(
                 .cloned()
                 .unwrap_or(VoteState::DidNotVote);
 
-            let user_name = author_map
-                .get(&post.user_id)
-                .cloned()
-                .unwrap_or_else(|| "Unknown".to_string());
-            let user_profile_picture_url = author_pic_map
-                .get(&post.user_id)
-                .cloned()
-                .unwrap_or_default();
-            let user_country_flag = author_country_map
-                .get(&post.user_id)
-                .and_then(|&code| country_map.get_flag_by_code(code));
+            let (public_user_id, user_badge_info) = match authors.get(&post.user_id) {
+                Some(author) => {
+                    let country_flag = author
+                        .country_code()
+                        .and_then(|code| country_map.get_flag_by_code(code));
+                    (
+                        author.public_user_id(),
+                        UserBadgeInfo::from_public_author(author, country_flag),
+                    )
+                }
+                None => (Uuid::nil(), UserBadgeInfo::deleted()),
+            };
 
             PostInfoWithVote::from_cached_info_with_vote(
                 post,
                 vote_state,
-                UserBadgeInfo {
-                    user_name,
-                    user_profile_picture_url,
-                    user_country_flag,
-                },
+                public_user_id,
+                user_badge_info,
             )
         })
         .collect();

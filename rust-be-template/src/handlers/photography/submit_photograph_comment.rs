@@ -8,8 +8,7 @@ use axum::{
     extract::{Path, State},
     response::IntoResponse,
 };
-use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -22,8 +21,10 @@ use crate::{
         responses::response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
-    schema::{photograph_comments, user_profile_pictures, users},
+    schema::photograph_comments,
     util::time::now::tokio_now,
 };
 
@@ -66,47 +67,54 @@ pub async fn submit_photograph_comment(
         parent_photograph_comment_id: request.parent_comment_id.as_ref(),
     };
 
-    let inserted: PhotographComment = diesel::insert_into(photograph_comments::table)
-        .values(new_comment)
-        .returning(photograph_comments::all_columns)
-        .get_result(&mut conn)
+    let inserted: PhotographComment = match conn
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, user_id).await?;
+            diesel::insert_into(photograph_comments::table)
+                .values(new_comment)
+                .returning(photograph_comments::all_columns)
+                .get_result(&mut *conn)
+                .await
+                .map_err(ActiveUserWriteError::from)
+        })
         .await
-        .map_err(|e| code_err(CodeError::DB_INSERTION_ERROR, e))?;
+    {
+        Ok(comment) => comment,
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => {
+            return Err(code_err(CodeError::DB_INSERTION_ERROR, e));
+        }
+        Err(e) => return Err(code_err(CodeError::DB_INSERTION_ERROR, e)),
+    };
 
-    // Author badge (the comment author is the caller).
-    let user_row: Option<(String, i32)> = users::table
-        .filter(users::user_id.eq(user_id))
-        .select((users::user_name, users::user_country))
-        .first::<(String, i32)>(&mut conn)
+    let public_authors = load_public_authors(&mut conn, &[user_id])
         .await
-        .optional()
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-    let (user_name, user_country) = user_row.unwrap_or_else(|| ("Unknown".to_string(), 0));
-
-    let pic: Option<String> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq(user_id))
-        .order(user_profile_pictures::user_profile_picture_updated_at.desc())
-        .select(user_profile_pictures::user_profile_picture_link)
-        .first::<Option<String>>(&mut conn)
-        .await
-        .optional()
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
-        .flatten();
 
     drop(conn);
 
     let country_map = state.country_map.read().await;
-    let user_country_flag = country_map.get_flag_by_code(user_country);
+    let (public_user_id, user_badge_info) = match public_authors.get(&user_id) {
+        Some(author) => {
+            let country_flag = author
+                .country_code()
+                .and_then(|code| country_map.get_flag_by_code(code));
+            (
+                author.public_user_id(),
+                UserBadgeInfo::from_public_author(author, country_flag),
+            )
+        }
+        None => (Uuid::nil(), UserBadgeInfo::deleted()),
+    };
     drop(country_map);
 
     let resp = PhotographCommentResponse::from_comment_votestate_and_badge_info(
         inserted,
         VoteState::DidNotVote,
-        UserBadgeInfo {
-            user_name,
-            user_profile_picture_url: pic.unwrap_or_default(),
-            user_country_flag,
-        },
+        public_user_id,
+        user_badge_info,
     );
 
     Ok(http_resp(resp, (), start))

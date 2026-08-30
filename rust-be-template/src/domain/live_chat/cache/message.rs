@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::domain::live_chat::{
     guest_nickname::normalize_guest_display_name, message::LiveChatMessage,
 };
+use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 
 use super::LIVE_CHAT_MESSAGE_FIXED_BYTES;
 
@@ -64,6 +65,19 @@ impl CachedChatMessage {
                 None => 0,
             }
             + self.message_body.len()
+    }
+
+    /// Remove the deleted account's public identity from a retained message.
+    pub fn anonymize_deleted_user(&mut self, deleted_user_id: Uuid) -> bool {
+        if self.user_id != Some(deleted_user_id) {
+            return false;
+        }
+        self.user_id = None;
+        self.guest_ip = None;
+        self.sender_display_name = DELETED_USER_DISPLAY_NAME.to_owned();
+        self.sender_country_flag = None;
+        self.user_profile_picture_url = None;
+        true
     }
 }
 

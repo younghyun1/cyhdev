@@ -14,6 +14,11 @@ pub struct TypingState {
 #[derive(Debug, Clone)]
 pub struct ChatConnectionState {
     pub actor: ChatActor,
+    /// Original authority identity retained only for cache invalidation and
+    /// disabled-connection cleanup; it is never serialized.
+    pub authority_user_id: Option<uuid::Uuid>,
+    /// Targeted shutdown signal used when account authority is revoked.
+    pub disconnect_tx: tokio::sync::watch::Sender<bool>,
     pub room_key: String,
     pub connected_at: DateTime<Utc>,
 }

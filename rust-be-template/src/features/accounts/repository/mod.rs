@@ -1,7 +1,14 @@
 pub mod account_repository;
 pub mod accounts;
+pub mod hard_purge;
+pub mod lifecycle;
+pub mod media_cleanup;
 pub mod profile_pictures;
+pub mod profile_picture_history;
+pub mod profile_update;
 pub mod records;
 pub mod registration;
 pub mod roles;
 pub mod tokens;
+pub mod active_user;
+pub mod public_authors;

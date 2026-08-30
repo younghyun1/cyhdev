@@ -15,6 +15,7 @@ use crate::{
         responses::{blog::vote_post_response::VotePostResponse, response_data::http_resp},
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_user},
     init::state::ServerState,
     schema::posts,
     util::time::now::tokio_now,
@@ -68,7 +69,8 @@ pub async fn vote_post(
     }
 
     let (upvote_count, downvote_count): (i64, i64) = match conn
-        .transaction::<_, diesel::result::Error, _>(async |conn| {
+        .transaction::<_, ActiveUserWriteError, _>(async |conn| {
+            lock_active_user(&mut *conn, user_id).await?;
             let is_upvote = request.is_upvote;
 
             // 1. Insert or update the vote
@@ -110,13 +112,17 @@ pub async fn vote_post(
         .await
     {
         Ok(tuple) => tuple,
-        Err(e) => match e {
+        Err(ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied) => {
+            return Err(CodeError::UNAUTHORIZED_ACCESS.into());
+        }
+        Err(ActiveUserWriteError::Database(e)) => match e {
             diesel::result::Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UniqueViolation,
                 _error_info,
             ) => return Err(CodeError::UPVOTE_MUST_BE_UNIQUE.into()),
             e => return Err(code_err(CodeError::DB_INSERTION_ERROR, e)),
         },
+        Err(e) => return Err(code_err(CodeError::DB_INSERTION_ERROR, e)),
     };
 
     // Atomically update only the vote counts on the live cache entry, leaving all

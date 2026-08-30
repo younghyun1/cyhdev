@@ -51,6 +51,7 @@ Cargo.lock
 /target
 LICENSE
 README.md
+!/tests/README.md
 
 # logs
 *.log

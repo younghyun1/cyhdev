@@ -32,34 +32,36 @@ impl AccountRepository {
         expires_at: DateTime<Utc>,
     ) -> Result<PasswordResetRequestReceipt, AccountError> {
         let mut connection = self.connection().await?;
-        let account = users::table
-            .filter(users::user_email.eq(user_email))
-            .select((users::user_id, users::user_email))
-            .first::<(Uuid, String)>(&mut connection)
+        connection
+            .transaction::<PasswordResetRequestReceipt, AccountError, _>(
+                async move |connection| {
+                    let account = users::table
+                        .filter(users::user_email.eq(user_email))
+                        .filter(users::user_deleted_at.is_null())
+                        .select((users::user_id, users::user_email))
+                        .for_update()
+                        .first::<(Uuid, String)>(&mut *connection)
+                        .await
+                        .optional()?;
+                    let (user_id, stored_email) =
+                        account.ok_or(AccountError::AccountNotFound)?;
+                    diesel::insert_into(password_reset_tokens::table)
+                        .values(NewPasswordResetTokenRecord {
+                            user_id,
+                            password_reset_token: token,
+                            password_reset_token_expires_at: expires_at,
+                            password_reset_token_created_at: created_at,
+                        })
+                        .execute(&mut *connection)
+                        .await?;
+                    Ok(PasswordResetRequestReceipt {
+                        user_email: stored_email,
+                        token,
+                        verify_by: expires_at,
+                    })
+                },
+            )
             .await
-            .optional()
-            .map_err(AccountError::Query)?;
-        let (user_id, stored_email) = match account {
-            Some(account) => account,
-            None => return Err(AccountError::AccountNotFound),
-        };
-
-        diesel::insert_into(password_reset_tokens::table)
-            .values(NewPasswordResetTokenRecord {
-                user_id,
-                password_reset_token: token,
-                password_reset_token_expires_at: expires_at,
-                password_reset_token_created_at: created_at,
-            })
-            .execute(&mut connection)
-            .await
-            .map_err(AccountError::Mutation)?;
-
-        Ok(PasswordResetRequestReceipt {
-            user_email: stored_email,
-            token,
-            verify_by: expires_at,
-        })
     }
 
     pub async fn password_reset_token(
@@ -103,11 +105,15 @@ impl AccountRepository {
                     return Err(diesel::result::Error::RollbackTransaction);
                 }
 
-                diesel::update(users::table.filter(users::user_id.eq(token.user_id)))
-                    .set(&update)
-                    .returning(AccountRecord::as_returning())
-                    .get_result(&mut *connection)
-                    .await
+                diesel::update(
+                    users::table
+                        .filter(users::user_id.eq(token.user_id))
+                        .filter(users::user_deleted_at.is_null()),
+                )
+                .set(&update)
+                .returning(AccountRecord::as_returning())
+                .get_result(&mut *connection)
+                .await
             })
             .await;
 
@@ -161,7 +167,8 @@ impl AccountRepository {
                 diesel::update(
                     users::table
                         .filter(users::user_id.eq(token.user_id))
-                        .filter(users::user_is_email_verified.eq(false)),
+                        .filter(users::user_is_email_verified.eq(false))
+                        .filter(users::user_deleted_at.is_null()),
                 )
                 .set((
                     users::user_is_email_verified.eq(true),

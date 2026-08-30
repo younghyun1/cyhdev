@@ -8,7 +8,6 @@ use crate::{
     jobs::{
         auth::{
             invalidate_sessions::invalidate_sessions,
-            purge_nonverified_users::purge_nonverified_users,
             update_system_stats::update_system_stats,
         },
         job_funcs::{
@@ -20,6 +19,7 @@ use crate::{
             compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
             flush_visitor_logs::flush_visitor_logs, prune_live_chat::prune_live_chat_state,
             prune_photograph_batches::prune_photograph_batches,
+            retry_media_cleanup::retry_media_object_cleanup,
         },
     },
 };
@@ -89,22 +89,6 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("INVALIDATE_EXPIRED_SESSIONS"),
                 30, // minutes
-                00, // seconds
-            )
-        });
-    }
-
-    {
-        let state = Arc::clone(&state);
-        supervise("PURGE_NONVERIFIED_USERS", move || {
-            let state = Arc::clone(&state);
-            schedule_task_every_hour_at(
-                state,
-                move |coroutine_state: Arc<ServerState>| async move {
-                    purge_nonverified_users(coroutine_state).await
-                },
-                String::from("PURGE_NONVERIFIED_USERS"),
-                00, // minutes
                 00, // seconds
             )
         });
@@ -202,6 +186,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("PRUNE_PHOTOGRAPH_BATCHES"),
                 45,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("RETRY_MEDIA_OBJECT_CLEANUP", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_minute_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    retry_media_object_cleanup(coroutine_state).await
+                },
+                String::from("RETRY_MEDIA_OBJECT_CLEANUP"),
+                20,
                 0,
             )
         });

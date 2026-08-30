@@ -64,9 +64,11 @@ impl ServerStateBuilder {
             .ok_or_else(|| anyhow::anyhow!("email_client is required"))?;
         let account_repository = Arc::new(AccountRepository::new(pool.clone()));
         let session_service = Arc::new(SessionService::new());
+        let live_chat_cache = Arc::new(LiveChatCache::default());
         let account_service = Arc::new(AccountService::new(
             account_repository,
             Arc::clone(&session_service),
+            Arc::clone(&live_chat_cache),
             email_client,
         ));
 
@@ -160,7 +162,7 @@ impl ServerStateBuilder {
             aws_profile_picture_config,
             fastfetch: fastfetch_cache,
             wasm_module_cache: WasmModuleCache::default(),
-            live_chat_cache: LiveChatCache::default(),
+            live_chat_cache,
             rtc_config,
             rtc_engine,
             rtc_rooms: scc::HashMap::new(),

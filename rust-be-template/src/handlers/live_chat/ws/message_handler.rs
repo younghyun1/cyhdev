@@ -30,6 +30,18 @@ pub(super) async fn handle_client_message(
     if matches!(message, Message::Close(_)) {
         return false;
     }
+    if let Some(user_id) = actor.user_id
+        && state.live_chat_cache.is_connected_user_disabled(user_id)
+    {
+        send_error(
+            out,
+            "account_deleted",
+            "This account can no longer use live chat.",
+            wire_protocol,
+        )
+        .await;
+        return false;
+    }
 
     let client_event = match wire_protocol {
         LiveChatWireProtocol::Json => match decode_json_client_event(out, &message).await {

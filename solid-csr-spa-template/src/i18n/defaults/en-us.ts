@@ -161,6 +161,54 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "profile.refresh_failed": "Upload succeeded, but failed to refresh profile.",
   "profile.upload_failed": "Upload failed. Please try again.",
   "profile.upload_unknown_error": "Unknown error during upload.",
+  "profile.upload_success": "Profile picture uploaded and added to your history.",
+  "profile.update.title": "Profile information",
+  "profile.update.description":
+    "Your email address is read-only. Confirm profile changes with your current password.",
+  "profile.update.options_failed":
+    "Country and language options could not be loaded. Try again later.",
+  "profile.update.name_invalid":
+    "Display name must contain 1-20 letters or numbers without spaces.",
+  "profile.update.country_required": "Select a country.",
+  "profile.update.language_required": "Select a language.",
+  "profile.update.subdivision_invalid":
+    "Select a subdivision belonging to the selected country, or choose none.",
+  "profile.update.current_password": "Current password",
+  "profile.update.password_required": "Enter your current password.",
+  "profile.update.name_conflict": "That display name is already in use.",
+  "profile.update.password_wrong": "The current password did not match.",
+  "profile.update.failed": "Profile update failed.",
+  "profile.update.success": "Profile information updated.",
+  "profile.picture_history.title": "Profile picture history",
+  "profile.picture_history.count": "{count} of {maximum}",
+  "profile.picture_history.load_failed":
+    "Profile picture history could not be loaded.",
+  "profile.picture_history.empty": "No profile pictures have been uploaded.",
+  "profile.picture_history.active": "Active",
+  "profile.picture_history.select": "Select",
+  "profile.picture_history.delete_confirmation":
+    "Delete the profile picture from {date}? Stored media cleanup begins immediately.",
+  "profile.picture_history.action_failed":
+    "The profile picture could not be updated.",
+  "profile.picture_history.selected": "Active profile picture updated.",
+  "profile.picture_history.deleted": "Profile picture deleted.",
+  "profile.picture_history.cleanup_pending":
+    "{count} media cleanup items remain for administrative retry.",
+  "profile.delete_account.title": "Delete account",
+  "profile.delete_account.description":
+    "Delete your account and end the current session. This action cannot be undone.",
+  "profile.delete_account.retention":
+    "Your account identity is retained for 30 days, then permanently purged. Authored posts, comments, photographs, and chat remain with anonymous attribution.",
+  "profile.delete_account.current_password": "Current password",
+  "profile.delete_account.confirmation":
+    "I understand that account deletion is irreversible and my retained content will be anonymized.",
+  "profile.delete_account.submit": "Delete my account",
+  "profile.delete_account.failed": "Account deletion failed.",
+  "profile.delete_account.success": "Your account has been deleted and anonymized.",
+  "profile.delete_account.purge_deadline":
+    "Permanent identity purge is scheduled for {deadline}.",
+  "profile.delete_account.redirecting":
+    "You will be signed out and returned home shortly.",
   "user.back_to_blog": "<- back to blog",
   "user.loading": "Loading user...",
   "user.not_found": "User not found.",

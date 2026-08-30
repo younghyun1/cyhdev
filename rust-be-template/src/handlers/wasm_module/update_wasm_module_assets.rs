@@ -19,6 +19,7 @@ use crate::{
         wasm_module::WasmModuleItem,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
     init::state::ServerState,
     schema::wasm_module,
     util::{
@@ -28,6 +29,10 @@ use crate::{
             process_uploaded_image_files::process_uploaded_image_files,
         },
         media::{
+            cleanup::{
+                EnqueuedMediaCleanup, MediaCleanupRequest, REASON_SUPERSEDED_WASM_THUMBNAIL,
+                enqueue_media_cleanup, settle_durable_cleanup,
+            },
             object_store::{ObjectLocation, S3MediaObjectStore},
             persistence::{
                 CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
@@ -58,6 +63,8 @@ enum WasmUpdateError {
     Pool(#[source] anyhow::Error),
     #[error("WebAssembly module update failed: {0}")]
     Update(#[source] diesel::result::Error),
+    #[error("authenticated account is no longer active")]
+    Inactive,
 }
 
 #[utoipa::path(
@@ -76,7 +83,7 @@ enum WasmUpdateError {
     )
 )]
 pub async fn update_wasm_module_assets(
-    Extension(_user_id): Extension<Uuid>,
+    Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Path(module_id): Path<Uuid>,
     mut multipart: Multipart,
@@ -159,14 +166,31 @@ pub async fn update_wasm_module_assets(
             .get_conn()
             .await
             .map_err(WasmUpdateError::Pool)?;
-        let (updated, old_thumbnail) = connection
-            .transaction::<(WasmModule, String), diesel::result::Error, _>(async |connection| {
+        let (updated, cleanup) = connection
+            .transaction::<(WasmModule, EnqueuedMediaCleanup), ActiveUserWriteError, _>(async |connection| {
+                lock_active_superuser(&mut *connection, user_id).await?;
                 let old_thumbnail = wasm_module::table
                     .find(module_id)
                     .select(wasm_module::wasm_module_thumbnail_link)
                     .for_update()
                     .first::<String>(&mut *connection)
                     .await?;
+                let cleanup = if thumbnail_changed {
+                    enqueue_media_cleanup(
+                        connection,
+                        vec![MediaCleanupRequest {
+                            original_url: old_thumbnail,
+                            reason: REASON_SUPERSEDED_WASM_THUMBNAIL,
+                            source_id: module_id,
+                        }],
+                    )
+                    .await?
+                } else {
+                    EnqueuedMediaCleanup {
+                        resolved: Vec::new(),
+                        unresolved_count: 0,
+                    }
+                };
                 let updated = diesel::update(wasm_module::table.find(module_id))
                     .set(WasmModuleAssetsChangeset {
                         wasm_module_title: title,
@@ -177,30 +201,44 @@ pub async fn update_wasm_module_assets(
                     })
                     .get_result(&mut *connection)
                     .await?;
-                Ok((updated, old_thumbnail))
+                Ok((updated, cleanup))
             })
             .await
-            .map_err(WasmUpdateError::Update)?;
-        drop(connection);
-        let superseded = if thumbnail_changed {
-            match ObjectLocation::from_public_s3_url(AWS_S3_BUCKET_NAME, &old_thumbnail) {
-                Some(location) => vec![location],
-                None => {
-                    warn!(wasm_module_id = %module_id, url = %old_thumbnail, "Skipped invalid old WASM thumbnail URL");
-                    Vec::new()
+            .map_err(|source| match source {
+                ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied => {
+                    WasmUpdateError::Inactive
                 }
-            }
-        } else {
-            Vec::new()
-        };
-        Ok(PersistedMedia::new(updated, superseded))
+                ActiveUserWriteError::Database(source) => WasmUpdateError::Update(source),
+                ActiveUserWriteError::TargetNotFound => WasmUpdateError::Inactive,
+        })?;
+        drop(connection);
+        let superseded = cleanup
+            .resolved
+            .iter()
+            .map(|cleanup| cleanup.location.clone())
+            .collect();
+        Ok(PersistedMedia::new((updated, cleanup), superseded))
     })
     .await;
 
     let updated = match result {
         Ok(success) => {
+            if success.value.1.unresolved_count > 0 {
+                warn!(
+                    wasm_module_id = %module_id,
+                    unresolved = success.value.1.unresolved_count,
+                    "Superseded WASM thumbnail requires administrative resolution"
+                );
+            }
+            let _ = settle_durable_cleanup(
+                &state.account_service(),
+                success.value.1.resolved,
+                &success.cleaned,
+                &success.cleanup_failures,
+            )
+            .await;
             log_cleanup_failures(module_id, &success.cleanup_failures);
-            success.value
+            success.value.0
         }
         Err(MediaWriteError::Upload {
             source,
@@ -244,6 +282,7 @@ fn map_update_error(source: WasmUpdateError) -> CodeErrorResp {
             code_err(CodeError::DB_QUERY_ERROR, "WASM module not found")
         }
         WasmUpdateError::Update(_) => code_err(CodeError::DB_UPDATE_ERROR, source),
+        WasmUpdateError::Inactive => code_err(CodeError::UNAUTHORIZED_ACCESS, source),
     }
 }
 

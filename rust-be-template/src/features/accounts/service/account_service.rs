@@ -4,14 +4,19 @@ use std::sync::Arc;
 
 use lettre::{AsyncSmtpTransport, Tokio1Executor};
 
-use crate::features::accounts::{
-    repository::account_repository::AccountRepository, service::session_service::SessionService,
+use crate::{
+    domain::live_chat::cache::LiveChatCache,
+    features::accounts::{
+        repository::account_repository::AccountRepository,
+        service::session_service::SessionService,
+    },
 };
 
 /// Coordinates account use cases across persistence, sessions, and email delivery.
 pub struct AccountService {
     pub(super) repository: Arc<AccountRepository>,
     pub(super) sessions: Arc<SessionService>,
+    pub(super) live_chat_cache: Arc<LiveChatCache>,
     pub(super) email_client: Arc<AsyncSmtpTransport<Tokio1Executor>>,
     /// Prevents a login from creating a stale session while an account mutation commits.
     pub(super) session_consistency: tokio::sync::RwLock<()>,
@@ -21,11 +26,13 @@ impl AccountService {
     pub fn new(
         repository: Arc<AccountRepository>,
         sessions: Arc<SessionService>,
+        live_chat_cache: Arc<LiveChatCache>,
         email_client: AsyncSmtpTransport<Tokio1Executor>,
     ) -> Self {
         Self {
             repository,
             sessions,
+            live_chat_cache,
             email_client: Arc::new(email_client),
             session_consistency: tokio::sync::RwLock::new(()),
         }

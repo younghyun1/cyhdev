@@ -18,10 +18,11 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::{
     docs::ApiDoc,
     features::accounts::api::{
-        check_if_user_exists::check_if_user_exists_handler, is_superuser::is_superuser_handler,
-        login::login, logout::logout, me::me_handler, public_user::get_user_info,
-        reset_password::reset_password, reset_password_request::reset_password_request_process,
-        signup::signup_handler, verify_user_email::verify_user_email,
+        check_if_user_exists::check_if_user_exists_handler, delete_account::delete_account,
+        hard_purge_account::hard_purge_account, is_superuser::is_superuser_handler, login::login,
+        logout::logout, me::me_handler, media_cleanup::{resolve_media_cleanup, unresolved_media_cleanup},
+        public_user::get_user_info, reset_password::reset_password,
+        reset_password_request::reset_password_request_process, signup::signup_handler, update_profile::update_profile, verify_user_email::verify_user_email,
     },
     handlers::{
         admin::{get_host_stats::ws_host_stats_handler, sync_i18n_cache::sync_i18n_cache},
@@ -58,7 +59,12 @@ use crate::{
             lookup_ip_loc::lookup_ip_location, root::root_handler,
             visitor_board::get_visitor_board_entries,
         },
-        user::upload_profile_picture::upload_profile_picture,
+        user::{
+            profile_picture_history::{
+                delete_profile_picture, list_profile_pictures, select_profile_picture,
+            },
+            upload_profile_picture::upload_profile_picture,
+        },
         wasm_module::{
             delete_wasm_module::delete_wasm_module, get_wasm_modules::get_wasm_modules,
             serve_wasm::serve_wasm, update_wasm_module::update_wasm_module,
@@ -98,8 +104,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         from_fn_with_state(Arc::clone(&trusted_origins), require_trusted_origin);
     let compression_middleware = CompressionLayer::new().zstd(true).gzip(true);
 
-    // Credentialed CORS and side-effect protection use one exact allow-list. CORS governs which
-    // responses browsers expose; the middleware also rejects cross-origin writes and WebSockets.
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::list(
             trusted_origins.header_values().iter().cloned(),
@@ -135,7 +139,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         }
     };
 
-    // Publicly accessible API routes
     let public_router = Router::new()
         .route("/api/healthcheck/server", get(healthcheck))
         .route("/api/healthcheck/state", get(root_handler))
@@ -177,16 +180,25 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/i18n/ui-text", get(get_ui_text_bundle))
         .route("/api/photographs/get", get(get_photographs))
         .route("/api/photographs/{photograph_id}", get(read_photograph))
-        // WASM modules - public read endpoints
         .route("/api/wasm-modules", get(get_wasm_modules))
         .route("/api/wasm-modules/{wasm_module_id}/wasm", get(serve_wasm));
 
-    // API routes requiring authentication
     let protected_router = Router::new()
         .route("/api/auth/logout", post(logout))
+        .route("/api/auth/account", delete(delete_account))
+        .route("/api/auth/profile", patch(update_profile))
         .route(
             "/api/user/upload-profile-picture",
             post(upload_profile_picture),
+        )
+        .route("/api/user/profile-pictures", get(list_profile_pictures))
+        .route(
+            "/api/user/profile-pictures/{profile_picture_id}/select",
+            post(select_profile_picture),
+        )
+        .route(
+            "/api/user/profile-pictures/{profile_picture_id}",
+            delete(delete_profile_picture),
         )
         .route("/api/blog/{post_id}/vote", post(vote_post))
         .route("/api/blog/{post_id}/{comment_id}/vote", post(vote_comment))
@@ -199,7 +211,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             "/api/blog/{post_id}/{comment_id}/vote",
             delete(rescind_comment_vote),
         )
-        // Photograph social (votes + comments), mirroring the blog tier.
         .route(
             "/api/photographs/{photograph_id}/vote",
             post(vote_photograph),
@@ -230,20 +241,24 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         )
         .layer(auth_middleware.clone());
 
-    // This route-local limit overrides the global limit without widening other routes.
     let batch_upload_router = Router::new()
         .route("/api/photographs/batch-upload", post(batch_upload))
         .layer(DefaultBodyLimit::max(BATCH_REQUEST_SIZE));
 
     let superuser_router = Router::new()
         .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
+        .route(
+            "/api/admin/users/{user_id}/hard-purge",
+            post(hard_purge_account),
+        )
+        .route("/api/admin/media-cleanup/unresolved", get(unresolved_media_cleanup))
+        .route("/api/admin/media-cleanup/{cleanup_id}/resolve", post(resolve_media_cleanup))
         .route("/api/blog/posts", post(submit_post))
         .route("/api/blog/{post_id}", patch(update_post))
         .route("/api/photographs/upload", post(upload_photograph))
         .route("/api/photographs/delete", delete(delete_photographs))
         .route("/api/photographs/batch/{batch_id}", get(batch_status))
         .route("/api/photographs/batches", get(batch_list))
-        // WASM modules - protected CUD endpoints
         .route("/api/wasm-modules", post(upload_wasm_module))
         .route(
             "/api/wasm-modules/{wasm_module_id}",
@@ -261,7 +276,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .layer(require_superuser_middleware.clone())
         .layer(auth_middleware.clone());
 
-    // CORS remains API-only; the outer rate limiter also covers Swagger and static assets.
     let api_router = public_router
         .merge(protected_router)
         .merge(superuser_router)
@@ -274,7 +288,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
 
     let router = Router::new().merge(api_router);
 
-    // Swagger has no layer method, so nest it to require production superuser authentication.
     let swagger_ui = SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
     let mut swagger_router = Router::new().merge(swagger_ui);

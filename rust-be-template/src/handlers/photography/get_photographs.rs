@@ -16,6 +16,7 @@ use crate::{
     },
     dto::responses::response_data::http_resp,
     errors::code_error::{CodeError, HandlerResponse, code_err},
+    features::accounts::repository::public_authors::load_deleted_user_ids,
     init::state::ServerState,
     schema::photographs::dsl::*,
     util::time::now::tokio_now,
@@ -78,7 +79,21 @@ pub async fn get_photographs(
         .load::<Photograph>(&mut conn)
         .await;
 
-    let photographs_vec = results.map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+    let mut photographs_vec = results.map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+    let owner_ids = photographs_vec
+        .iter()
+        .map(|photograph| photograph.user_id)
+        .collect::<Vec<_>>();
+    let deleted_user_ids = load_deleted_user_ids(&mut conn, &owner_ids)
+        .await
+        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
+    drop(conn);
+
+    for photograph in &mut photographs_vec {
+        if deleted_user_ids.contains(&photograph.user_id) {
+            photograph.anonymize_deleted_owner();
+        }
+    }
 
     let total_pages = if total_items == 0 {
         0

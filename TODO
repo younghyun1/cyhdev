@@ -23,7 +23,6 @@
 
 ## Wave 5: Account and data foundations, concurrent
 
-- [ ] **W5-B: Implement soft deletion and retention.** Preserve authored posts, comments, photographs, and chat history under an anonymized actor; avoid user foreign-key cascades; define retention; provide a separately authorized hard-purge path.
 - [ ] **W5-C: Harden authentication abuse boundaries.** Add endpoint-specific bounded throttles and enumeration-resistant behavior for login, signup, account-existence checks, and password-reset flows. Replace state-changing verification links with an explicit confirmation and POST flow while retaining one-time token semantics.
 
 ## Wave 6: Account capabilities, concurrent

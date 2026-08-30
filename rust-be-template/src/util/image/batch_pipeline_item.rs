@@ -3,7 +3,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use chrono::Utc;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::{error, warn};
 use uuid::Uuid;
 
@@ -12,6 +12,7 @@ use crate::{
         batch::{session::BatchSession, status::ProcessingStatus},
         photographs::{Photograph, PhotographContext, PhotographInsertable},
     },
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
     init::state::ServerState,
     schema::photographs,
     util::{
@@ -40,6 +41,8 @@ enum BatchPersistenceError {
     Pool(#[source] anyhow::Error),
     #[error("photograph insert failed: {0}")]
     Insert(#[source] diesel::result::Error),
+    #[error("authenticated account is no longer active")]
+    Inactive,
 }
 
 struct StagedFileGuard {
@@ -163,22 +166,34 @@ pub(crate) async fn process_batch_item(
             .get_conn()
             .await
             .map_err(BatchPersistenceError::Pool)?;
-        let photograph: Photograph = diesel::insert_into(photographs::table)
-            .values(PhotographInsertable {
-                user_id,
-                photograph_shot_at,
-                photograph_image_type: image_type,
-                photograph_context: context,
-                photograph_is_on_cloud: true,
-                photograph_link: persisted_object_url,
-                photograph_comments: item.comments.clone(),
-                photograph_lat: item.lat,
-                photograph_lon: item.lon,
-                photograph_thumbnail_link: persisted_thumbnail_url,
+        let photograph: Photograph = connection
+            .transaction::<_, ActiveUserWriteError, _>(async |connection| {
+                lock_active_superuser(&mut *connection, user_id).await?;
+                diesel::insert_into(photographs::table)
+                    .values(PhotographInsertable {
+                        user_id,
+                        photograph_shot_at,
+                        photograph_image_type: image_type,
+                        photograph_context: context,
+                        photograph_is_on_cloud: true,
+                        photograph_link: persisted_object_url,
+                        photograph_comments: item.comments.clone(),
+                        photograph_lat: item.lat,
+                        photograph_lon: item.lon,
+                        photograph_thumbnail_link: persisted_thumbnail_url,
+                    })
+                    .get_result(&mut *connection)
+                    .await
+                    .map_err(ActiveUserWriteError::from)
             })
-            .get_result(&mut connection)
             .await
-            .map_err(BatchPersistenceError::Insert)?;
+            .map_err(|source| match source {
+                ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied => {
+                    BatchPersistenceError::Inactive
+                }
+                ActiveUserWriteError::Database(source) => BatchPersistenceError::Insert(source),
+                ActiveUserWriteError::TargetNotFound => BatchPersistenceError::Inactive,
+            })?;
         drop(connection);
         Ok(PersistedMedia::new(photograph, Vec::new()))
     })

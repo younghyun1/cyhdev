@@ -69,7 +69,7 @@ pub struct ServerState {
     pub aws_profile_picture_config: aws_config::SdkConfig,
     pub fastfetch: FastFetchCache,
     pub wasm_module_cache: WasmModuleCache,
-    pub live_chat_cache: LiveChatCache,
+    pub live_chat_cache: Arc<LiveChatCache>,
     /// SFU runtime configuration (env-derived).
     pub(crate) rtc_config: RtcConfig,
     /// The shared webrtc-rs engine; `None` when the SFU is disabled or failed to

@@ -9,7 +9,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use chrono::Utc;
+use axum_extra::extract::CookieJar;
 use futures_util::{SinkExt, StreamExt};
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::{
     domain::live_chat::{
         binary_codec::LIVE_CHAT_BINARY_PROTOCOL,
-        cache::{ChatActor, ChatConnectionState, DEFAULT_LIVE_CHAT_ROOM, LiveChatServerEvent},
+        cache::{ChatActor, LiveChatServerEvent},
     },
     init::state::ServerState,
     routers::middleware::is_logged_in::{AuthSession, AuthStatus},
@@ -29,10 +29,14 @@ mod presence;
 mod protocol;
 mod rtc;
 mod message_handler;
+mod actor_resolution;
+mod registration;
 
+use actor_resolution::resolve_actor;
 use message_handler::handle_client_message;
 use presence::cleanup_live_chat_connection;
 use protocol::encode_event;
+use registration::{LiveChatRegistrationError, register_connection};
 use rtc::RtcSession;
 
 /// Bound on the per-connection outbound frame queue feeding the writer task.
@@ -55,6 +59,7 @@ pub async fn live_chat_ws_handler(
     Extension(auth_status): Extension<AuthStatus>,
     Extension(auth_session): Extension<Option<AuthSession>>,
     State(state): State<Arc<ServerState>>,
+    cookie_jar: CookieJar,
     ConnectInfo(socket_addr): ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     ws: WebSocketUpgrade,
@@ -69,48 +74,55 @@ pub async fn live_chat_ws_handler(
         return (StatusCode::FORBIDDEN, "Live chat access denied.").into_response();
     }
 
+    // Register before rechecking the RAM session. Deletion linearizes either
+    // before the lookup (which fails) or after registration (which signals this
+    // connection), closing the middleware-to-upgrade revocation race.
+    let registered = match register_connection(&state, &cookie_jar, &actor).await {
+        Ok(registered) => registered,
+        Err(LiveChatRegistrationError::Disabled) => {
+            return (StatusCode::FORBIDDEN, "Live chat connection unavailable.").into_response();
+        }
+        Err(LiveChatRegistrationError::Capacity) => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Live chat connection unavailable.",
+            )
+                .into_response();
+        }
+        Err(LiveChatRegistrationError::ExpiredSession) => {
+            return (StatusCode::UNAUTHORIZED, "Live chat session expired.").into_response();
+        }
+    };
+    let connection_id = registered.connection_id;
+    let disconnect_rx = registered.disconnect_rx;
+
     let ws = ws.protocols([LIVE_CHAT_BINARY_PROTOCOL]);
     let wire_protocol = match ws.selected_protocol().and_then(|value| value.to_str().ok()) {
         Some(LIVE_CHAT_BINARY_PROTOCOL) => LiveChatWireProtocol::Binary,
         _ => LiveChatWireProtocol::Json,
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_live_chat_socket(socket, state, actor, client_ip, wire_protocol)
+    let failed_state = state.clone();
+    ws.on_failed_upgrade(move |error| {
+        warn!(error = %error, connection_id = %connection_id, "Live chat WebSocket upgrade failed");
+        let _cleanup = tokio::spawn(async move {
+            failed_state
+                .live_chat_cache
+                .unregister_connection(connection_id)
+                .await;
+        });
     })
-}
-
-async fn resolve_actor(
-    state: Arc<ServerState>,
-    auth_status: AuthStatus,
-    auth_session: Option<AuthSession>,
-    client_ip: std::net::IpAddr,
-) -> ChatActor {
-    match auth_status {
-        AuthStatus::LoggedIn(user_id) => {
-            let (display_name, country_flag, user_profile_picture_url) = match auth_session {
-                Some(session) if session.user_id == user_id => {
-                    let country_flag = state
-                        .country_flag_for_country_code(session.user_country)
-                        .await;
-                    let user_profile_picture_url =
-                        state.latest_user_profile_picture_url(user_id).await;
-                    (session.user_name, country_flag, user_profile_picture_url)
-                }
-                _ => (format!("user@{user_id}"), None, None),
-            };
-            ChatActor::user(
-                user_id,
-                display_name,
-                country_flag,
-                user_profile_picture_url,
-            )
-        }
-        AuthStatus::LoggedOut => {
-            let country_flag = state.country_flag_for_ip(client_ip).await;
-            ChatActor::guest(client_ip, country_flag)
-        }
-    }
+    .on_upgrade(move |socket| {
+        handle_live_chat_socket(
+            socket,
+            state,
+            actor,
+            client_ip,
+            wire_protocol,
+            connection_id,
+            disconnect_rx,
+        )
+    })
 }
 
 async fn handle_live_chat_socket(
@@ -119,26 +131,9 @@ async fn handle_live_chat_socket(
     actor: ChatActor,
     client_ip: std::net::IpAddr,
     wire_protocol: LiveChatWireProtocol,
+    connection_id: Uuid,
+    mut disconnect_rx: tokio::sync::watch::Receiver<bool>,
 ) {
-    let connection_id = Uuid::now_v7();
-    if !state
-        .live_chat_cache
-        .register_connection(
-            connection_id,
-            ChatConnectionState {
-                actor: actor.clone(),
-                room_key: DEFAULT_LIVE_CHAT_ROOM.to_string(),
-                connected_at: Utc::now(),
-            },
-        )
-        .await
-    {
-        warn!(
-            max_connections = crate::domain::live_chat::cache::LIVE_CHAT_MAX_CONNECTIONS,
-            "Rejected live chat connection at capacity"
-        );
-        return;
-    }
     let broadcast_rx = state.live_chat_cache.subscribe();
 
     let (mut sink, mut stream) = socket.split();
@@ -149,11 +144,14 @@ async fn handle_live_chat_socket(
         .live_chat_cache
         .get_recent_chat_messages(LIVE_CHAT_INITIAL_MESSAGES)
         .await;
-    let hello = LiveChatServerEvent::Hello {
+    let mut hello = LiveChatServerEvent::Hello {
         actor: actor.clone(),
         recent_messages,
         connected_count: state.live_chat_cache.connected_count(),
     };
+    state
+        .live_chat_cache
+        .anonymize_event_for_public(&mut hello);
     let hello_sent = match encode_event(&hello, wire_protocol) {
         Some(message) => sink.send(message).await.is_ok(),
         None => false,
@@ -187,7 +185,10 @@ async fn handle_live_chat_socket(
                 }
                 broadcast_event = broadcast_rx.recv() => {
                     match broadcast_event {
-                        Ok(event) => {
+                        Ok(mut event) => {
+                            writer_state
+                                .live_chat_cache
+                                .anonymize_event_for_public(&mut event);
                             if let Some(message) = encode_event(&event, wire_protocol)
                                 && sink.send(message).await.is_err()
                             {
@@ -200,11 +201,14 @@ async fn handle_live_chat_socket(
                                 .live_chat_cache
                                 .get_recent_chat_messages(LIVE_CHAT_INITIAL_MESSAGES)
                                 .await;
-                            let resync = LiveChatServerEvent::Hello {
+                            let mut resync = LiveChatServerEvent::Hello {
                                 actor: writer_actor.clone(),
                                 recent_messages,
                                 connected_count: writer_state.live_chat_cache.connected_count(),
                             };
+                            writer_state
+                                .live_chat_cache
+                                .anonymize_event_for_public(&mut resync);
                             if let Some(message) = encode_event(&resync, wire_protocol)
                                 && sink.send(message).await.is_err()
                             {
@@ -239,26 +243,36 @@ async fn handle_live_chat_socket(
     ));
 
     // Reader loop: handle inbound frames, enqueueing any responses on out_tx.
-    while let Some(socket_message) = stream.next().await {
-        let should_continue = match socket_message {
-            Ok(message) => {
-                handle_client_message(
-                    &out_tx,
-                    state.clone(),
-                    actor.clone(),
-                    client_ip,
-                    message,
-                    wire_protocol,
-                    &rtc_session,
-                )
-                .await
+    loop {
+        let should_continue = tokio::select! {
+            disconnect = disconnect_rx.changed() => {
+                match disconnect {
+                    Ok(()) => !*disconnect_rx.borrow_and_update(),
+                    Err(_) => false,
+                }
             }
-            Err(e) => {
-                info!(error = ?e, connection_id = %connection_id, "Live chat WebSocket receive error");
-                false
+            socket_message = stream.next() => {
+                match socket_message {
+                    Some(Ok(message)) => {
+                        handle_client_message(
+                            &out_tx,
+                            state.clone(),
+                            actor.clone(),
+                            client_ip,
+                            message,
+                            wire_protocol,
+                            &rtc_session,
+                        )
+                        .await
+                    }
+                    Some(Err(e)) => {
+                        info!(error = ?e, connection_id = %connection_id, "Live chat WebSocket receive error");
+                        false
+                    }
+                    None => false,
+                }
             }
         };
-
         if !should_continue {
             break;
         }

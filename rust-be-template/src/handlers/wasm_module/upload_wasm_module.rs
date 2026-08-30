@@ -7,7 +7,7 @@ use axum::{
     extract::{Multipart, State},
 };
 use chrono::Utc;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -18,6 +18,7 @@ use crate::{
         wasm_module::WasmModuleItem,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::active_user::{ActiveUserWriteError, lock_active_superuser},
     init::state::ServerState,
     schema::wasm_module,
     util::{
@@ -47,6 +48,8 @@ enum WasmPersistenceError {
     Pool(#[source] anyhow::Error),
     #[error("WebAssembly module insert failed: {0}")]
     Insert(#[source] diesel::result::Error),
+    #[error("authenticated account is no longer active")]
+    Inactive,
 }
 
 #[utoipa::path(
@@ -137,21 +140,33 @@ pub async fn upload_wasm_module(
             .await
             .map_err(WasmPersistenceError::Pool)?;
         let now = Utc::now();
-        let module: WasmModule = diesel::insert_into(wasm_module::table)
-            .values(WasmModuleInsertable {
-                wasm_module_id: module_id,
-                user_id,
-                wasm_module_link: format!("/api/wasm-modules/{module_id}/wasm"),
-                wasm_module_description: description,
-                wasm_module_created_at: now,
-                wasm_module_updated_at: now,
-                wasm_module_thumbnail_link: thumbnail_url,
-                wasm_module_title: title,
-                wasm_module_bundle_gz: normalized.gz_bytes,
+        let module: WasmModule = connection
+            .transaction::<_, ActiveUserWriteError, _>(async |connection| {
+                lock_active_superuser(&mut *connection, user_id).await?;
+                diesel::insert_into(wasm_module::table)
+                    .values(WasmModuleInsertable {
+                        wasm_module_id: module_id,
+                        user_id,
+                        wasm_module_link: format!("/api/wasm-modules/{module_id}/wasm"),
+                        wasm_module_description: description,
+                        wasm_module_created_at: now,
+                        wasm_module_updated_at: now,
+                        wasm_module_thumbnail_link: thumbnail_url,
+                        wasm_module_title: title,
+                        wasm_module_bundle_gz: normalized.gz_bytes,
+                    })
+                    .get_result(&mut *connection)
+                    .await
+                    .map_err(ActiveUserWriteError::from)
             })
-            .get_result(&mut connection)
             .await
-            .map_err(WasmPersistenceError::Insert)?;
+            .map_err(|source| match source {
+                ActiveUserWriteError::Inactive | ActiveUserWriteError::Denied => {
+                    WasmPersistenceError::Inactive
+                }
+                ActiveUserWriteError::Database(source) => WasmPersistenceError::Insert(source),
+                ActiveUserWriteError::TargetNotFound => WasmPersistenceError::Inactive,
+            })?;
         drop(connection);
         Ok(PersistedMedia::new(module, Vec::new()))
     })
@@ -177,6 +192,7 @@ pub async fn upload_wasm_module(
             let code = match &source {
                 WasmPersistenceError::Pool(_) => CodeError::POOL_ERROR,
                 WasmPersistenceError::Insert(_) => CodeError::DB_INSERTION_ERROR,
+                WasmPersistenceError::Inactive => CodeError::UNAUTHORIZED_ACCESS,
             };
             return Err(code_err(code, source));
         }

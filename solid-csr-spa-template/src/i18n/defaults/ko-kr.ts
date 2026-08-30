@@ -161,6 +161,54 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "profile.refresh_failed": "업로드는 성공했지만 프로필을 새로고침하지 못했습니다.",
   "profile.upload_failed": "업로드에 실패했습니다. 다시 시도하세요.",
   "profile.upload_unknown_error": "업로드 중 알 수 없는 오류가 발생했습니다.",
+  "profile.upload_success": "프로필 사진을 업로드하고 기록에 추가했습니다.",
+  "profile.update.title": "프로필 정보",
+  "profile.update.description":
+    "이메일 주소는 변경할 수 없습니다. 현재 비밀번호로 프로필 변경을 확인하세요.",
+  "profile.update.options_failed":
+    "국가와 언어 목록을 불러오지 못했습니다. 나중에 다시 시도하세요.",
+  "profile.update.name_invalid":
+    "표시 이름은 공백 없이 문자 또는 숫자 1-20자로 입력하세요.",
+  "profile.update.country_required": "국가를 선택하세요.",
+  "profile.update.language_required": "언어를 선택하세요.",
+  "profile.update.subdivision_invalid":
+    "선택한 국가에 속한 지역을 선택하거나 지역 없음을 선택하세요.",
+  "profile.update.current_password": "현재 비밀번호",
+  "profile.update.password_required": "현재 비밀번호를 입력하세요.",
+  "profile.update.name_conflict": "이미 사용 중인 표시 이름입니다.",
+  "profile.update.password_wrong": "현재 비밀번호가 일치하지 않습니다.",
+  "profile.update.failed": "프로필 정보를 업데이트하지 못했습니다.",
+  "profile.update.success": "프로필 정보를 업데이트했습니다.",
+  "profile.picture_history.title": "프로필 사진 기록",
+  "profile.picture_history.count": "{maximum}개 중 {count}개",
+  "profile.picture_history.load_failed":
+    "프로필 사진 기록을 불러오지 못했습니다.",
+  "profile.picture_history.empty": "업로드한 프로필 사진이 없습니다.",
+  "profile.picture_history.active": "사용 중",
+  "profile.picture_history.select": "선택",
+  "profile.picture_history.delete_confirmation":
+    "{date}의 프로필 사진을 삭제하시겠습니까? 저장된 미디어 정리가 즉시 시작됩니다.",
+  "profile.picture_history.action_failed":
+    "프로필 사진을 업데이트하지 못했습니다.",
+  "profile.picture_history.selected": "사용할 프로필 사진을 변경했습니다.",
+  "profile.picture_history.deleted": "프로필 사진을 삭제했습니다.",
+  "profile.picture_history.cleanup_pending":
+    "관리자가 다시 처리해야 할 미디어 정리 항목이 {count}개 남았습니다.",
+  "profile.delete_account.title": "계정 삭제",
+  "profile.delete_account.description":
+    "계정을 삭제하고 현재 세션을 종료합니다. 이 작업은 취소할 수 없습니다.",
+  "profile.delete_account.retention":
+    "계정 식별 정보는 30일 동안 보관된 후 영구 삭제됩니다. 작성한 글, 댓글, 사진, 채팅은 익명으로 유지됩니다.",
+  "profile.delete_account.current_password": "현재 비밀번호",
+  "profile.delete_account.confirmation":
+    "계정 삭제를 취소할 수 없으며 유지되는 콘텐츠가 익명화된다는 점을 이해합니다.",
+  "profile.delete_account.submit": "내 계정 삭제",
+  "profile.delete_account.failed": "계정을 삭제하지 못했습니다.",
+  "profile.delete_account.success": "계정이 삭제되고 익명화되었습니다.",
+  "profile.delete_account.purge_deadline":
+    "계정 식별 정보는 {deadline}에 영구 삭제될 예정입니다.",
+  "profile.delete_account.redirecting":
+    "곧 로그아웃하고 홈페이지로 이동합니다.",
   "user.back_to_blog": "<- 블로그로 돌아가기",
   "user.loading": "사용자 로딩 중...",
   "user.not_found": "사용자를 찾을 수 없습니다.",

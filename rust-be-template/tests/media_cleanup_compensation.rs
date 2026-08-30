@@ -7,7 +7,10 @@ use rust_be_template::util::media::{
         MediaObjectStore, MediaObjectStoreFuture, ObjectLocation, ObjectStoreError,
         ObjectStoreOperation,
     },
-    persistence::{MediaWriteError, PendingMediaObject, PersistedMedia, persist_media_objects},
+    persistence::{
+        MAX_CLEANUP_ERROR_CHARS, MediaWriteError, PendingMediaObject, PersistedMedia,
+        bounded_cleanup_error, persist_media_objects,
+    },
 };
 use tokio::sync::Mutex;
 
@@ -121,6 +124,7 @@ async fn superseded_object_is_deleted_only_after_database_commit() -> Result<(),
     .map_err(|_| "expected successful database commit".to_string())?;
 
     assert_eq!(outcome.value, 7);
+    assert!(outcome.cleaned.is_empty());
     assert_eq!(outcome.cleanup_failures.len(), 1);
     assert!(outcome.cleanup_failures[0].is_retryable());
     assert_eq!(
@@ -132,6 +136,43 @@ async fn superseded_object_is_deleted_only_after_database_commit() -> Result<(),
         ]
     );
     Ok(())
+}
+
+#[tokio::test]
+async fn successful_superseded_delete_is_reported_for_ledger_finalization() -> Result<(), String> {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let store = RecordingStore {
+        events: Arc::clone(&events),
+        failed_uploads: HashSet::new(),
+        failed_deletes: HashSet::new(),
+    };
+    let pending = [pending("new-profile.avif")];
+    let outcome = persist_media_objects(&store, &pending, async {
+        events.lock().await.push(Event::Persist);
+        Ok::<_, &'static str>(PersistedMedia::new(
+            (),
+            vec![location("old-profile.avif")],
+        ))
+    })
+    .await
+    .map_err(|_| "expected successful database commit".to_string())?;
+
+    assert_eq!(outcome.cleaned, vec![location("old-profile.avif")]);
+    assert!(outcome.cleanup_failures.is_empty());
+    Ok(())
+}
+
+#[test]
+fn persisted_cleanup_errors_are_character_bounded() {
+    let source = ObjectStoreError::new(
+        ObjectStoreOperation::Delete,
+        "x".repeat(MAX_CLEANUP_ERROR_CHARS * 2),
+        true,
+    );
+    assert_eq!(
+        bounded_cleanup_error(&source).chars().count(),
+        MAX_CLEANUP_ERROR_CHARS
+    );
 }
 
 #[tokio::test]

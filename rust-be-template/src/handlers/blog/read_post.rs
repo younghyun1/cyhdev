@@ -16,11 +16,10 @@ use crate::{
     },
     dto::responses::{blog::read_post_response::ReadPostResponse, response_data::http_resp},
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
     routers::middleware::is_logged_in::{AuthSession, AuthStatus},
-    schema::{
-        comment_votes, comments, post_tags, post_votes, posts, tags, user_profile_pictures, users,
-    },
+    schema::{comment_votes, comments, post_tags, post_votes, posts, tags},
     util::time::now::tokio_now,
 };
 
@@ -158,6 +157,7 @@ pub async fn read_post(
 
     let mut post: crate::domain::blog::blog::Post =
         post_result.map_err(|e| code_err(CodeError::JOIN_ERROR, e))??;
+    let post_author_id = post.user_id;
 
     // Pick the markdown source while preserving the original branch semantics:
     // prefer post_metadata["markdown_content"]; else fall back to post_content
@@ -227,45 +227,9 @@ pub async fn read_post(
         .await
         .map_err(|e| code_err(CodeError::POOL_ERROR, e))?;
 
-    // Fetch user names and country codes
-    let users_info: Vec<(Uuid, String, i32)> = users::table
-        .filter(users::user_id.eq_any(&relevant_user_ids))
-        .select((users::user_id, users::user_name, users::user_country))
-        .load(&mut conn)
+    let public_authors = load_public_authors(&mut conn, &relevant_user_ids)
         .await
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut user_name_map: HashMap<Uuid, String> = HashMap::new();
-    let mut user_country_map: HashMap<Uuid, i32> = HashMap::new();
-    for (uid, name, country) in users_info {
-        user_name_map.insert(uid, name);
-        user_country_map.insert(uid, country);
-    }
-
-    // Fetch profile pictures
-    let user_pics: Vec<(Uuid, Option<String>)> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq_any(&relevant_user_ids))
-        .distinct_on(user_profile_pictures::user_id)
-        .order((
-            user_profile_pictures::user_id,
-            user_profile_pictures::user_profile_picture_updated_at.desc(),
-        ))
-        .select((
-            user_profile_pictures::user_id,
-            user_profile_pictures::user_profile_picture_link,
-        ))
-        .load(&mut conn)
-        .await
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut user_pic_map: HashMap<Uuid, String> = HashMap::new();
-    for (uid, link) in user_pics {
-        if !user_pic_map.contains_key(&uid)
-            && let Some(l) = link
-        {
-            user_pic_map.insert(uid, l);
-        }
-    }
 
     drop(conn);
 
@@ -312,40 +276,43 @@ pub async fn read_post(
                 .cloned()
                 .unwrap_or(VoteState::DidNotVote);
 
-            let user_name = user_name_map
-                .get(&comment.user_id)
-                .cloned()
-                .unwrap_or_else(|| "Unknown".to_string());
-            let user_profile_picture_url = user_pic_map
-                .get(&comment.user_id)
-                .cloned()
-                .unwrap_or_default();
-            let user_country_flag = user_country_map
-                .get(&comment.user_id)
-                .and_then(|&code| country_map.get_flag_by_code(code));
+            let (public_user_id, user_badge_info) = match public_authors.get(&comment.user_id) {
+                Some(author) => {
+                    let country_flag = author
+                        .country_code()
+                        .and_then(|code| country_map.get_flag_by_code(code));
+                    (
+                        author.public_user_id(),
+                        UserBadgeInfo::from_public_author(author, country_flag),
+                    )
+                }
+                None => (Uuid::nil(), UserBadgeInfo::deleted()),
+            };
 
             CommentResponse::from_comment_votestate_and_badge_info(
                 comment,
                 vs,
-                UserBadgeInfo {
-                    user_name,
-                    user_profile_picture_url,
-                    user_country_flag,
-                },
+                public_user_id,
+                user_badge_info,
             )
         })
         .collect();
 
     comment_responses.sort_by_key(|c| -(c.total_upvotes - c.total_downvotes));
 
-    let post_author_name = user_name_map
-        .get(&post.user_id)
-        .cloned()
-        .unwrap_or_else(|| "Unknown".to_string());
-    let post_author_pic = user_pic_map.get(&post.user_id).cloned().unwrap_or_default();
-    let post_author_country_flag = user_country_map
-        .get(&post.user_id)
-        .and_then(|&code| country_map.get_flag_by_code(code));
+    let (public_post_author_id, post_author_badge) = match public_authors.get(&post_author_id) {
+        Some(author) => {
+            let country_flag = author
+                .country_code()
+                .and_then(|code| country_map.get_flag_by_code(code));
+            (
+                author.public_user_id(),
+                UserBadgeInfo::from_public_author(author, country_flag),
+            )
+        }
+        None => (Uuid::nil(), UserBadgeInfo::deleted()),
+    };
+    post.user_id = public_post_author_id;
 
     drop(country_map);
 
@@ -377,11 +344,7 @@ pub async fn read_post(
             post_tags: post_tags_list,
             comments: comment_responses,
             vote_state: post_vote_state,
-            user_badge_info: UserBadgeInfo {
-                user_name: post_author_name,
-                user_profile_picture_url: post_author_pic,
-                user_country_flag: post_author_country_flag,
-            },
+            user_badge_info: post_author_badge,
         },
         (),
         start,

@@ -7,6 +7,7 @@ use crate::domain::live_chat::{
     guest_nickname::guest_nickname_for_ip,
     message::{LIVE_CHAT_SENDER_KIND_GUEST, LIVE_CHAT_SENDER_KIND_USER},
 };
+use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "value", rename_all = "snake_case")]
@@ -55,5 +56,19 @@ impl ChatActor {
             country_flag,
             user_profile_picture_url,
         }
+    }
+
+    /// Remove every public identity field while retaining the user sender kind.
+    pub fn anonymize_deleted_user(&mut self, deleted_user_id: Uuid) -> bool {
+        if self.user_id != Some(deleted_user_id) {
+            return false;
+        }
+        self.actor_key = ChatActorKey::User(Uuid::nil());
+        self.user_id = None;
+        self.guest_ip = None;
+        self.display_name = DELETED_USER_DISPLAY_NAME.to_owned();
+        self.country_flag = None;
+        self.user_profile_picture_url = None;
+        true
     }
 }

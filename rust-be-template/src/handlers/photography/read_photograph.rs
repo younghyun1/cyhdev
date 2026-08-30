@@ -29,11 +29,11 @@ use crate::{
         photography::read_photograph_response::ReadPhotographResponse, response_data::http_resp,
     },
     errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    features::accounts::repository::public_authors::load_public_authors,
     init::state::ServerState,
     routers::middleware::is_logged_in::AuthStatus,
     schema::{
         photograph_comment_votes, photograph_comments, photograph_votes, photographs,
-        user_profile_pictures, users,
     },
     util::time::now::tokio_now,
 };
@@ -71,6 +71,7 @@ pub async fn read_photograph(
         .optional()
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?
         .ok_or_else(|| code_err(CodeError::PHOTOGRAPH_NOT_FOUND, "Photograph not found"))?;
+    let photograph_owner_id = photograph.user_id;
 
     // Record the view in the RAM buffer and present persisted base + pending.
     let pending_views = state.record_view(photograph_id).await;
@@ -88,43 +89,9 @@ pub async fn read_photograph(
     relevant_user_ids.sort();
     relevant_user_ids.dedup();
 
-    let users_info: Vec<(Uuid, String, i32)> = users::table
-        .filter(users::user_id.eq_any(&relevant_user_ids))
-        .select((users::user_id, users::user_name, users::user_country))
-        .load(&mut conn)
+    let public_authors = load_public_authors(&mut conn, &relevant_user_ids)
         .await
         .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut user_name_map: HashMap<Uuid, String> = HashMap::new();
-    let mut user_country_map: HashMap<Uuid, i32> = HashMap::new();
-    for (uid, name, country) in users_info {
-        user_name_map.insert(uid, name);
-        user_country_map.insert(uid, country);
-    }
-
-    let user_pics: Vec<(Uuid, Option<String>)> = user_profile_pictures::table
-        .filter(user_profile_pictures::user_id.eq_any(&relevant_user_ids))
-        .distinct_on(user_profile_pictures::user_id)
-        .order((
-            user_profile_pictures::user_id,
-            user_profile_pictures::user_profile_picture_updated_at.desc(),
-        ))
-        .select((
-            user_profile_pictures::user_id,
-            user_profile_pictures::user_profile_picture_link,
-        ))
-        .load(&mut conn)
-        .await
-        .map_err(|e| code_err(CodeError::DB_QUERY_ERROR, e))?;
-
-    let mut user_pic_map: HashMap<Uuid, String> = HashMap::new();
-    for (uid, link) in user_pics {
-        if !user_pic_map.contains_key(&uid)
-            && let Some(l) = link
-        {
-            user_pic_map.insert(uid, l);
-        }
-    }
 
     // Per-comment vote state for the caller.
     let comment_vote_map: HashMap<Uuid, VoteState> =
@@ -178,15 +145,18 @@ pub async fn read_photograph(
 
     let country_map = state.country_map.read().await;
 
-    let badge_for = |uid: &Uuid| UserBadgeInfo {
-        user_name: user_name_map
-            .get(uid)
-            .cloned()
-            .unwrap_or_else(|| "Unknown".to_string()),
-        user_profile_picture_url: user_pic_map.get(uid).cloned().unwrap_or_default(),
-        user_country_flag: user_country_map
-            .get(uid)
-            .and_then(|&code| country_map.get_flag_by_code(code)),
+    let presentation_for = |user_id: &Uuid| match public_authors.get(user_id) {
+        Some(author) => {
+            let country_flag = author
+                .country_code()
+                .and_then(|code| country_map.get_flag_by_code(code));
+            (
+                author.public_user_id(),
+                UserBadgeInfo::from_public_author(author, country_flag),
+                author.is_deleted(),
+            )
+        }
+        None => (Uuid::nil(), UserBadgeInfo::deleted(), true),
     };
 
     let mut comment_responses: Vec<PhotographCommentResponse> = comments
@@ -196,15 +166,23 @@ pub async fn read_photograph(
                 .get(&comment.photograph_comment_id)
                 .cloned()
                 .unwrap_or(VoteState::DidNotVote);
-            let badge = badge_for(&comment.user_id);
-            PhotographCommentResponse::from_comment_votestate_and_badge_info(comment, vs, badge)
+            let (public_user_id, badge, _) = presentation_for(&comment.user_id);
+            PhotographCommentResponse::from_comment_votestate_and_badge_info(
+                comment,
+                vs,
+                public_user_id,
+                badge,
+            )
         })
         .collect();
     comment_responses.sort_by_key(|c| {
         -(c.photograph_comment_total_upvotes - c.photograph_comment_total_downvotes)
     });
 
-    let author_badge = badge_for(&photograph.user_id);
+    let (_, author_badge, owner_deleted) = presentation_for(&photograph_owner_id);
+    if owner_deleted {
+        photograph.anonymize_deleted_owner();
+    }
     drop(country_map);
 
     Ok(http_resp(
