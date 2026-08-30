@@ -247,9 +247,9 @@ fn validate_schema(path: &Path, version: u32, expected: u32) -> HarnessResult<()
 }
 
 fn validate_digest(path: &Path, field: &str, value: &str) -> HarnessResult<()> {
-    let valid = value.len() == 25
+    let valid = value.len() == 24
         && value.starts_with("fnv1a64:")
-        && value[9..]
+        && value[8..]
             .bytes()
             .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'));
     if valid {
