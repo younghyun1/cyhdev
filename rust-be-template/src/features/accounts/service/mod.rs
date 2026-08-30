@@ -1,14 +1,17 @@
 pub mod account_service;
 pub mod auth_abuse;
+pub mod authorization;
 mod auth_abuse_policy;
 pub mod authentication;
 pub mod lifecycle;
 pub mod media_cleanup;
+pub mod oidc;
 pub mod passwords;
 pub mod profiles;
 pub mod profile_update;
 pub mod public_profiles;
 pub mod registration;
+pub mod retention_notifications;
 pub mod roles;
 mod session_coordination;
 pub mod session_service;

@@ -26,6 +26,6 @@ Decisions: group room call (everyone in `main` shares one call); in-process SFU 
 - `src/services/rtc.ts` (codec preference ordering, getUserMedia, ICE serialization); `live_chat_binary.ts` gains the new opcodes. Components under `src/components/call/`: `CallPanel`, `VideoTile`, `CallControls`, integrated into `LiveChatPanel` "full" mode. Styling centralized in `styles/pageStyles.ts`.
 
 ## Verification
-`cargo check`/`cargo clippy`/`cargo fmt` (dev only); `cargo test` for codec roundtrips; `pnpm test` for binary opcodes. Local: run with `RTC_ENABLE=true RTC_PUBLIC_IP=127.0.0.1 RTC_UDP_MUX_PORT=<port>`, open two tabs at `/live-chat`, join, confirm two-way audio+video, mute/camera toggle, roster updates, clean teardown; check `getStats` for AV1/Opus. Confirm `live_chat_calls` opens/closes and participant rows record leave.
+`cargo check`/`cargo clippy`/`cargo fmt` (dev only); `cargo test` for codec roundtrips; `npm test` for binary opcodes. Local: run with `RTC_ENABLE=true RTC_PUBLIC_IP=127.0.0.1 RTC_UDP_MUX_PORT=<port>`, open two tabs at `/live-chat`, join, confirm two-way audio+video, mute/camera toggle, roster updates, clean teardown; check `getStats` for AV1/Opus. Confirm `live_chat_calls` opens/closes and participant rows record leave.
 
 See `docs/architecture/be/rtc-sfu.md` and `docs/design/fe/call-ui.md`.

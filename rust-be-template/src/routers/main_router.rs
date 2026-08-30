@@ -18,10 +18,23 @@ use crate::{
     docs::ApiDoc,
     features::accounts::api::{
         auth_abuse::{enforce_auth_ip_throttle, sensitive_auth_response_headers},
+        authorization_audit::list_authorization_audit,
+        authorization_mutations::{
+            assign_authorization_role, set_authorization_role_permission,
+        },
+        authorization_queries::{
+            list_authorization_permissions, list_authorization_roles,
+            list_authorization_users, list_role_permissions,
+        },
         delete_account::delete_account,
         hard_purge_account::hard_purge_account, is_superuser::is_superuser_handler, login::login,
         logout::logout, me::me_handler, media_cleanup::{resolve_media_cleanup, unresolved_media_cleanup},
+        oidc_callback::oidc_callback,
+        oidc_link::{complete_oidc_link, unlink_oidc},
+        oidc_start::{start_oidc_link, start_oidc_login},
+        oidc_status::oidc_status,
         public_user::get_user_info, reset_password::reset_password,
+        retention_notifications::{retention_notification_status, retry_retention_notification},
         reset_password_request::reset_password_request_process, signup::signup_handler, update_profile::update_profile, verify_user_email::verify_user_email,
     },
     handlers::{
@@ -96,6 +109,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
     let is_logged_in_middleware = from_fn_with_state(sessions, is_logged_in_middleware);
     let trusted_origins = Arc::new(TrustedOrigins::from_environment(
         state.get_deployment_environment(),
+        &state.public_app_origin(),
     )?);
     let trusted_origin_middleware =
         from_fn_with_state(Arc::clone(&trusted_origins), require_trusted_origin);
@@ -140,6 +154,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/geo-ip-info/me", get(lookup_my_ip_info))
         .route("/api/geo-ip-info/{ip_address}", get(lookup_ip_info))
         .route("/api/auth/me", get(me_handler))
+        .route("/api/auth/oidc/status", get(oidc_status))
         .route("/api/auth/is-superuser", get(is_superuser_handler))
         .route("/api/users/{user_name}", get(get_user_info))
         .route("/api/blog/posts", get(get_posts))
@@ -156,6 +171,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
     let auth_abuse_router = Router::new()
         .route("/api/auth/signup", post(signup_handler))
         .route("/api/auth/login", post(login))
+        .route("/api/auth/oidc/login/start", post(start_oidc_login))
         .route(
             "/api/auth/reset-password-request",
             post(reset_password_request_process),
@@ -163,6 +179,22 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/auth/reset-password", post(reset_password))
         .route("/api/auth/verify-user-email", post(verify_user_email))
         .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE))
+        .layer(from_fn_with_state(
+            state.auth_abuse_service(),
+            enforce_auth_ip_throttle,
+        ))
+        .layer(from_fn(sensitive_auth_response_headers));
+
+    let oidc_callback_router = Router::new()
+        .route("/api/auth/oidc/callback", get(oidc_callback))
+        .layer(from_fn(sensitive_auth_response_headers));
+
+    let protected_oidc_router = Router::new()
+        .route("/api/auth/oidc/link/start", post(start_oidc_link))
+        .route("/api/auth/oidc/link/complete", post(complete_oidc_link))
+        .route("/api/auth/oidc/link", delete(unlink_oidc))
+        .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE))
+        .layer(auth_middleware.clone())
         .layer(from_fn_with_state(
             state.auth_abuse_service(),
             enforce_auth_ip_throttle,
@@ -235,6 +267,37 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/photographs/batch-upload", post(batch_upload))
         .layer(DefaultBodyLimit::max(BATCH_REQUEST_SIZE));
 
+    let authorization_admin_router = Router::new()
+        .route(
+            "/api/admin/authorization/users",
+            get(list_authorization_users),
+        )
+        .route(
+            "/api/admin/authorization/roles",
+            get(list_authorization_roles),
+        )
+        .route(
+            "/api/admin/authorization/permissions",
+            get(list_authorization_permissions),
+        )
+        .route(
+            "/api/admin/authorization/role-permissions",
+            get(list_role_permissions),
+        )
+        .route(
+            "/api/admin/authorization/audit",
+            get(list_authorization_audit),
+        )
+        .route(
+            "/api/admin/authorization/users/{user_id}/role",
+            patch(assign_authorization_role),
+        )
+        .route(
+            "/api/admin/authorization/roles/{role_id}/permissions/{permission_id}",
+            patch(set_authorization_role_permission),
+        )
+        .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
+
     let superuser_router = Router::new()
         .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
         .route(
@@ -243,6 +306,14 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         )
         .route("/api/admin/media-cleanup/unresolved", get(unresolved_media_cleanup))
         .route("/api/admin/media-cleanup/{cleanup_id}/resolve", post(resolve_media_cleanup))
+        .route(
+            "/api/admin/account-retention-notifications",
+            get(retention_notification_status),
+        )
+        .route(
+            "/api/admin/account-retention-notifications/{notification_id}/retry",
+            post(retry_retention_notification),
+        )
         .route("/api/blog/posts", post(submit_post))
         .route("/api/blog/{post_id}", patch(update_post))
         .route("/api/photographs/upload", post(upload_photograph))
@@ -263,11 +334,14 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
             delete(delete_wasm_module),
         )
         .merge(batch_upload_router)
+        .merge(authorization_admin_router)
         .layer(require_superuser_middleware.clone())
         .layer(auth_middleware.clone());
 
     let api_router = public_router
         .merge(auth_abuse_router)
+        .merge(oidc_callback_router)
+        .merge(protected_oidc_router)
         .merge(protected_router)
         .merge(superuser_router)
         .layer(is_logged_in_middleware)

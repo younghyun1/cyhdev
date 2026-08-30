@@ -1,10 +1,10 @@
-import { Show, type Component, type ParentComponent } from "solid-js";
+import { onSettled, Show, type Component, type ParentComponent } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { isAuthenticated } from "../state/auth";
 
 const LoginRedirect: Component = () => {
   const navigate = useNavigate();
-  navigate("/login", { replace: true });
+  onSettled(() => navigate("/login", { replace: true }));
   return null;
 };
 

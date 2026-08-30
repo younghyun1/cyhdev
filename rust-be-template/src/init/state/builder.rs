@@ -13,6 +13,7 @@ use crate::features::accounts::{
     repository::account_repository::AccountRepository,
     service::{
         account_service::AccountService, auth_abuse::AuthAbuseService,
+        oidc::provider::OidcService,
         session_service::SessionService,
     },
 };
@@ -25,7 +26,7 @@ use tokio::sync::RwLock;
 use tracing::{error, info};
 use zeroize::Zeroizing;
 
-use super::deployment_environment::DeploymentEnvironment;
+use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
 use super::server_state::ServerState;
 use super::server_state::blog_cache_policy::BlogCacheMetrics;
 
@@ -62,6 +63,7 @@ impl ServerStateBuilder {
 
     pub async fn build(self) -> anyhow::Result<ServerState> {
         let deployment_environment = DeploymentEnvironment::from_env()?;
+        let public_app_origin = PublicAppOrigin::from_environment(deployment_environment)?;
         let pool = self
             .pool
             .ok_or_else(|| anyhow::anyhow!("pool is required"))?;
@@ -73,6 +75,9 @@ impl ServerStateBuilder {
             anyhow::anyhow!("operating-system entropy unavailable for auth limiter: {error}")
         })?);
         let session_service = Arc::new(SessionService::new());
+        let oidc_service = Arc::new(
+            OidcService::from_environment(deployment_environment, &public_app_origin).await?,
+        );
         let live_chat_cache = Arc::new(LiveChatCache::default());
         let dummy_password_hash = crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(
             DUMMY_PASSWORD.to_owned(),
@@ -84,6 +89,7 @@ impl ServerStateBuilder {
             Arc::clone(&session_service),
             Arc::clone(&live_chat_cache),
             email_client,
+            public_app_origin.as_arc(),
             dummy_password_hash,
         ));
 
@@ -140,6 +146,7 @@ impl ServerStateBuilder {
             responses_handled: AtomicU64::new(0u64),
             account_service,
             auth_abuse_service,
+            oidc_service,
             session_service,
             blog_posts_cache: scc::HashMap::new(),
             blog_post_slug_cache: scc::HashMap::new(),
@@ -164,6 +171,7 @@ impl ServerStateBuilder {
             currency_map: RwLock::new(IsoCurrencyTable::new_empty()),
             i18n_cache: RwLock::new(I18nCache::new()),
             deployment_environment,
+            public_app_origin,
             request_client: reqwest::Client::builder()
                 .user_agent("cyhdev.com")
                 .build()?,

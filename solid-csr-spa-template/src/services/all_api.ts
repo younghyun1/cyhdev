@@ -1,6 +1,8 @@
 export { authApi, userApi } from "./contracts/account";
+export { oidcApi } from "./contracts/oidc";
 export { blogApi } from "./contracts/blog";
 export { adminApi, i18nApi, wasmModuleApi } from "./contracts/misc";
+export { authorizationAdminApi } from "./contracts/authorization";
 export { photographyApi } from "./contracts/photography";
 export {
   dropdownApi,

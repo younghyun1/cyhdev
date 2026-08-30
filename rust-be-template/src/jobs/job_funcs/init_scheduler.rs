@@ -21,6 +21,7 @@ use crate::{
             prune_auth_abuse::prune_auth_abuse,
             prune_photograph_batches::prune_photograph_batches,
             retry_media_cleanup::retry_media_object_cleanup,
+            send_retention_notifications::send_retention_notifications,
         },
     },
 };
@@ -219,6 +220,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("RETRY_MEDIA_OBJECT_CLEANUP"),
                 20,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("SEND_RETENTION_NOTIFICATIONS", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_minute_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    send_retention_notifications(coroutine_state).await
+                },
+                String::from("SEND_RETENTION_NOTIFICATIONS"),
+                40,
                 0,
             )
         });

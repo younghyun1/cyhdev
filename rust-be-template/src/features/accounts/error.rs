@@ -98,6 +98,32 @@ pub enum AccountError {
     SessionTokenCollision,
     #[error("session store reached its fixed limit of {max_sessions} sessions")]
     SessionStoreSaturated { max_sessions: usize },
+    #[error("OpenID Connect is not configured")]
+    OidcDisabled,
+    #[error("operating-system entropy was unavailable for OpenID Connect flow creation")]
+    OidcFlowEntropy(#[source] getrandom::Error),
+    #[error("OpenID Connect pending-flow store reached its fixed limit of {max_flows} flows")]
+    OidcFlowStoreSaturated { max_flows: usize },
+    #[error("OpenID Connect authorization flow was invalid, expired, or already consumed")]
+    OidcFlowRejected,
+    #[error("OpenID Connect provider rejected or failed the token exchange")]
+    OidcTokenExchange(#[source] anyhow::Error),
+    #[error("OpenID Connect ID token failed validation")]
+    OidcTokenValidation(#[source] anyhow::Error),
+    #[error("OpenID Connect provider did not supply a verified valid email claim")]
+    OidcProviderEmailRejected,
+    #[error("OpenID Connect identity is not linked to an active verified local account")]
+    OidcIdentityNotLinked,
+    #[error("OpenID Connect identity is already linked to another account")]
+    OidcIdentityConflict(#[source] DieselError),
+    #[error("this account already links another subject from the configured issuer")]
+    OidcProviderAlreadyLinked,
+    #[error("OpenID Connect link completion does not match the current account")]
+    OidcLinkSessionMismatch,
+    #[error("OpenID Connect identity was not linked to this account")]
+    OidcIdentityNotFound,
+    #[error("another usable login method is required before unlinking OpenID Connect")]
+    OidcAnotherLoginRequired,
 }
 
 impl From<diesel::result::Error> for AccountError {
@@ -114,7 +140,10 @@ impl AccountError {
             | Self::PasswordWorkSaturated { .. }
             | Self::SessionEntropy(_)
             | Self::SessionTokenCollision
-            | Self::SessionStoreSaturated { .. } => true,
+            | Self::SessionStoreSaturated { .. }
+            | Self::OidcFlowEntropy(_)
+            | Self::OidcFlowStoreSaturated { .. }
+            | Self::OidcTokenExchange(_) => true,
             Self::Query(error) | Self::Mutation(error) => is_retryable_diesel_error(error),
             _ => false,
         }

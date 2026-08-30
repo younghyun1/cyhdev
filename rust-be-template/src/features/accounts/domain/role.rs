@@ -33,6 +33,15 @@ impl RoleType {
         self == Self::Younghyun
     }
 
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Younghyun => "younghyun",
+            Self::Moderator => "moderator",
+            Self::User => "user",
+            Self::Guest => "guest",
+        }
+    }
+
     pub fn permits(self, required_role_type: RoleType) -> bool {
         self.access_level() >= required_role_type.access_level()
     }

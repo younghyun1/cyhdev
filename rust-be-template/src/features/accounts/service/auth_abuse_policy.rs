@@ -24,6 +24,7 @@ const RESET_SUBMIT_IP: [FixedWindowLimit; 1] = [limit(10, FIFTEEN_MINUTES)];
 const RESET_SUBMIT_TOKEN: [FixedWindowLimit; 1] = [limit(5, FIFTEEN_MINUTES)];
 const VERIFY_IP: [FixedWindowLimit; 1] = [limit(20, HOUR)];
 const VERIFY_TOKEN: [FixedWindowLimit; 1] = [limit(5, HOUR)];
+const OIDC_START_IP: [FixedWindowLimit; 2] = [limit(10, MINUTE), limit(50, HOUR)];
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct FixedWindowLimit {
@@ -42,6 +43,7 @@ pub(super) fn ip_limits(endpoint: AuthEndpoint) -> &'static [FixedWindowLimit] {
         AuthEndpoint::PasswordResetRequest => &RESET_REQUEST_IP,
         AuthEndpoint::PasswordResetSubmit => &RESET_SUBMIT_IP,
         AuthEndpoint::EmailVerification => &VERIFY_IP,
+        AuthEndpoint::OidcStart => &OIDC_START_IP,
     }
 }
 

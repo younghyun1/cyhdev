@@ -1,8 +1,10 @@
 //! OpenAPI documentation registration for Swagger UI.
 use utoipa::OpenApi;
 use crate::features::accounts::api::{
-    delete_account, hard_purge_account, is_superuser, login, logout,
-    media_cleanup, me, public_user, reset_password, reset_password_request, signup,
+    authorization_audit, authorization_mutations, authorization_queries, delete_account,
+    hard_purge_account, is_superuser, login, logout,
+    media_cleanup, me, oidc_callback, oidc_link, oidc_start, oidc_status, public_user,
+    reset_password, reset_password_request, retention_notifications, signup,
     update_profile, verify_user_email,
 };
 use crate::handlers::{
@@ -44,9 +46,14 @@ use crate::domain::{
 };
 use crate::dto::{
     requests::{
-        admin::media_cleanup_request::ResolveMediaCleanupRequest,
+        admin::{
+            authorization_request::{AssignRoleRequest, SetRolePermissionRequest},
+            media_cleanup_request::ResolveMediaCleanupRequest,
+            retention_notification_request::RetentionNotificationStatusRequest,
+        },
         auth::{
             login_request::LoginRequest,
+            oidc_request::{OidcLinkCompleteRequest, OidcUnlinkRequest},
             reset_password::ResetPasswordProcessRequest,
             reset_password_request::ResetPasswordRequest, signup_request::SignupRequest,
             update_profile_request::UpdateProfileRequest,
@@ -67,8 +74,20 @@ use crate::dto::{
     },
     responses::{
         admin::{
+            authorization_response::{
+                AuthorizationAuditCursorItem, AuthorizationAuditItem,
+                AuthorizationAuditResponse, AuthorizationPermissionItem,
+                AuthorizationPermissionsResponse, AuthorizationRoleItem,
+                AuthorizationRolesResponse, AuthorizationUserItem,
+                AuthorizationUsersResponse, RoleAssignmentResponse,
+                RolePermissionChangeResponse, RolePermissionItem, RolePermissionsResponse,
+            },
             media_cleanup_response::{
                 ResolveMediaCleanupResponse, UnresolvedMediaCleanupItem, UnresolvedMediaCleanupResponse,
+            },
+            retention_notification_response::{
+                RetentionNotificationStatusItem, RetentionNotificationStatusResponse,
+                RetryRetentionNotificationResponse,
             },
             sync_i18n_cache_response::SyncI18nCacheResponse,
         },
@@ -78,6 +97,9 @@ use crate::dto::{
             is_superuser_response::IsSuperuserResponse, login_response::LoginResponse,
             logout_response::LogoutResponse,
             me_response::{MeResponse, UserInfo, UserProfilePicture},
+            oidc_response::{
+                OidcAuthorizationResponse, OidcLinkResponse, OidcStatusResponse,
+            },
             reset_password_request_response::ResetPasswordRequestResponse,
             reset_password_response::ResetPasswordResponse, signup_response::SignupResponse,
             update_profile_response::UpdateProfileResponse,
@@ -122,6 +144,7 @@ use crate::handlers::{
 };
 use crate::openapi_envelope::FrontendResponseEnvelope;
 use crate::util::geographic::ip_info_lookup::IpInfo;
+use crate::features::accounts::domain::retention_notifications::RetentionNotificationStage;
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]
 #[openapi(
@@ -143,6 +166,12 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         is_superuser::is_superuser_handler,
         me::me_handler,
         login::login,
+        oidc_status::oidc_status,
+        oidc_start::start_oidc_login,
+        oidc_start::start_oidc_link,
+        oidc_callback::oidc_callback,
+        oidc_link::complete_oidc_link,
+        oidc_link::unlink_oidc,
         reset_password_request::reset_password_request_process,
         reset_password::reset_password,
         verify_user_email::verify_user_email,
@@ -151,6 +180,15 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         hard_purge_account::hard_purge_account,
         media_cleanup::unresolved_media_cleanup,
         media_cleanup::resolve_media_cleanup,
+        retention_notifications::retention_notification_status,
+        retention_notifications::retry_retention_notification,
+        authorization_queries::list_authorization_users,
+        authorization_queries::list_authorization_roles,
+        authorization_queries::list_authorization_permissions,
+        authorization_queries::list_role_permissions,
+        authorization_audit::list_authorization_audit,
+        authorization_mutations::assign_authorization_role,
+        authorization_mutations::set_authorization_role_permission,
         update_profile::update_profile,
         get_posts::get_posts,
         read_post::read_post,
@@ -202,6 +240,11 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             SignupResponse,
             LoginRequest,
             LoginResponse,
+            OidcLinkCompleteRequest,
+            OidcUnlinkRequest,
+            OidcStatusResponse,
+            OidcAuthorizationResponse,
+            OidcLinkResponse,
             LogoutResponse,
             DeleteAccountRequest,
             DeleteAccountResponse,
@@ -211,6 +254,26 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             ResolveMediaCleanupResponse,
             UnresolvedMediaCleanupItem,
             UnresolvedMediaCleanupResponse,
+            RetentionNotificationStatusRequest,
+            RetentionNotificationStatusItem,
+            RetentionNotificationStatusResponse,
+            RetryRetentionNotificationResponse,
+            RetentionNotificationStage,
+            AssignRoleRequest,
+            SetRolePermissionRequest,
+            AuthorizationUsersResponse,
+            AuthorizationUserItem,
+            AuthorizationRolesResponse,
+            AuthorizationRoleItem,
+            AuthorizationPermissionsResponse,
+            AuthorizationPermissionItem,
+            RolePermissionsResponse,
+            RolePermissionItem,
+            AuthorizationAuditResponse,
+            AuthorizationAuditCursorItem,
+            AuthorizationAuditItem,
+            RoleAssignmentResponse,
+            RolePermissionChangeResponse,
             UpdateProfileRequest,
             UpdateProfileResponse,
             MeResponse,

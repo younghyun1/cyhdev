@@ -11,7 +11,7 @@ use zeroize::Zeroizing;
 
 use crate::features::accounts::{
     domain::{
-        account::{LoginAccount, SessionAccount},
+        account::{LoginAccount, SessionAccount, SessionPrincipal},
         role::RoleType,
         session::{
             DEFAULT_SESSION_DURATION, SESSION_SECRET_BYTES, Session, SessionKey, SessionToken,
@@ -53,6 +53,23 @@ impl SessionService {
     pub async fn create(
         &self,
         account: &LoginAccount,
+        role_type: RoleType,
+        previous_token: Option<&str>,
+        valid_for: Option<chrono::Duration>,
+    ) -> Result<SessionToken, AccountError> {
+        self.create_principal(
+            &account.session_principal(),
+            role_type,
+            previous_token,
+            valid_for,
+        )
+        .await
+    }
+
+    /// Creates a session from authority resolved through a non-password login method.
+    pub async fn create_principal(
+        &self,
+        account: &SessionPrincipal,
         role_type: RoleType,
         previous_token: Option<&str>,
         valid_for: Option<chrono::Duration>,

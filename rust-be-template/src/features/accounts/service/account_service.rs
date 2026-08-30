@@ -21,9 +21,14 @@ pub struct AccountService {
     pub(super) sessions: Arc<SessionService>,
     pub(super) live_chat_cache: Arc<LiveChatCache>,
     pub(super) email_client: Arc<AsyncSmtpTransport<Tokio1Executor>>,
+    pub(super) public_app_origin: Arc<str>,
     pub(super) dummy_password_hash: Arc<str>,
     pub(super) password_jobs: tokio::sync::Semaphore,
     pub(super) email_jobs: Arc<tokio::sync::Semaphore>,
+    /// Excludes retained-email delivery while hard purge removes private identity.
+    pub(super) retention_notification_delivery_gate: tokio::sync::RwLock<()>,
+    /// Prevents one process from overlapping retention-notification batches.
+    pub(super) retention_notification_run_gate: tokio::sync::Mutex<()>,
     /// Prevents a login from creating a stale session while an account mutation commits.
     pub(super) session_consistency: tokio::sync::RwLock<()>,
 }
@@ -34,6 +39,7 @@ impl AccountService {
         sessions: Arc<SessionService>,
         live_chat_cache: Arc<LiveChatCache>,
         email_client: AsyncSmtpTransport<Tokio1Executor>,
+        public_app_origin: Arc<str>,
         dummy_password_hash: String,
     ) -> Self {
         Self {
@@ -41,9 +47,12 @@ impl AccountService {
             sessions,
             live_chat_cache,
             email_client: Arc::new(email_client),
+            public_app_origin,
             dummy_password_hash: Arc::from(dummy_password_hash),
             password_jobs: tokio::sync::Semaphore::new(MAX_PASSWORD_JOBS),
             email_jobs: Arc::new(tokio::sync::Semaphore::new(MAX_EMAIL_JOBS)),
+            retention_notification_delivery_gate: tokio::sync::RwLock::new(()),
+            retention_notification_run_gate: tokio::sync::Mutex::new(()),
             session_consistency: tokio::sync::RwLock::new(()),
         }
     }

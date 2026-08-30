@@ -14,13 +14,18 @@ use crate::{
                 AccountDeletionCandidate, RetainedAccountIdentity, SYSTEM_ACTOR_USER_ID,
                 SoftDeleteAccountReceipt, TombstoneIdentity,
             },
+            retention_notifications::RetentionNotificationSchedule,
         },
         error::AccountError,
-        repository::account_repository::AccountRepository,
+        repository::{
+            account_repository::AccountRepository,
+            retention_notifications::insert_retention_notification_schedule,
+        },
     },
     schema::{
-        deleted_account_retention, email_verification_tokens, live_chat_call_participants,
-        live_chat_messages, password_reset_tokens, photographs, user_roles, users,
+        account_oidc_identities, deleted_account_retention, email_verification_tokens,
+        live_chat_call_participants, live_chat_messages, password_reset_tokens, photographs,
+        user_roles, users,
     },
 };
 
@@ -67,6 +72,7 @@ impl AccountRepository {
         expected_password_hash: &str,
         deleted_at: DateTime<Utc>,
         purge_after: DateTime<Utc>,
+        notification_schedule: RetentionNotificationSchedule,
     ) -> Result<SoftDeleteAccountReceipt, AccountError> {
         let mut connection = self.connection().await?;
         connection
@@ -180,6 +186,14 @@ impl AccountRepository {
                     .execute(&mut *connection)
                     .await?;
 
+                insert_retention_notification_schedule(
+                    connection,
+                    user_id,
+                    &notification_schedule,
+                    deleted_at,
+                )
+                .await?;
+
                 Ok(SoftDeleteAccountReceipt {
                     user_id,
                     deleted_at,
@@ -195,6 +209,13 @@ async fn clear_account_authority(
     connection: &mut diesel_async::AsyncPgConnection,
     user_id: Uuid,
 ) -> Result<(), AccountError> {
+    diesel::delete(
+        account_oidc_identities::table.filter(
+            account_oidc_identities::account_oidc_identity_user_id.eq(user_id),
+        ),
+    )
+    .execute(&mut *connection)
+    .await?;
     diesel::delete(user_roles::table.filter(user_roles::user_id.eq(user_id)))
         .execute(&mut *connection)
         .await?;

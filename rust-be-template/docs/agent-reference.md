@@ -91,9 +91,14 @@ paths unless the bootstrap is changed.
   `./data/search_index`.
 - `CURR_ENV`: required deployment mode mapped to `Local`, `Dev`, `Staging`, or
   `Prod`; missing and unknown values abort startup.
+- `PUBLIC_APP_ORIGIN`: canonical exact browser origin for CORS, OIDC callbacks,
+  and account email links. Development and staging require an explicit value.
 - `TRUSTED_BROWSER_ORIGINS`: optional comma-separated extra origins used by
   credentialed CORS and request-origin enforcement. Entries outside `Local`
   must be exact HTTPS origins.
+- `OIDC_PROVIDER_NAME`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, and optional
+  `OIDC_CLIENT_SECRET`: all provider settings are optional as a group; omitting
+  them disables OIDC without a discovery request.
 
 ## ServerState
 

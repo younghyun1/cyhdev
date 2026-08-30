@@ -2,6 +2,7 @@
 
 use chrono::Utc;
 use lettre::AsyncTransport;
+use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 
@@ -107,10 +108,11 @@ impl AccountService {
             }
         };
         let email_client = self.email_client.clone();
+        let public_app_origin = Arc::clone(&self.public_app_origin);
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match ValidateEmailEmail::new()
-                .set_fields(verify_by, token)
+                .set_fields(verify_by, token, &public_app_origin)
                 .to_message(&user_email)
             {
                 Ok(message) => message,

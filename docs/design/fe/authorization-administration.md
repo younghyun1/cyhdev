@@ -1,0 +1,7 @@
+# Authorization administration UI
+
+`/admin/authorization` is linked only from the superuser profile menu and lazy-loaded behind both authenticated and superuser route guards. It consumes only generated OpenAPI contracts. The page loads the bounded account page, fixed role and permission catalogs, bounded role-permission pages, and the first audit page concurrently. Role-permission pagination has a fixed client ceiling derived from four roles and the 256-entry permission catalog; exceeding it fails visibly instead of creating an unbounded request loop.
+
+Account role selection and permission toggles open a confirmation dialog rather than mutating immediately. The dialog displays the exact account or role-permission pair, requires an 8-to-500-character reason, and requires an explicit review checkbox. The request repeats the confirmed resource identifiers so the server can reject stale or mismatched UI state. Successful mutations reload the affected bounded view and newest audit page from committed server state.
+
+Audit rows show the current display name resolved by the backend and retain the immutable UUID beside it. This allows deleted accounts to appear under their masked tombstone names without preserving old profile identity in browser contracts. Page-specific styles live in `src/styles/authorization.css`; interface text is present in both typed default locale bundles.

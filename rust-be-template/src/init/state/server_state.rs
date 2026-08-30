@@ -14,6 +14,7 @@ use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine, RtcRoom};
 use crate::domain::photography::batch::session::BatchSession;
 use crate::features::accounts::service::{
     account_service::AccountService, auth_abuse::AuthAbuseService,
+    oidc::provider::OidcService,
     session_service::SessionService,
 };
 use crate::init::load_cache::fastfetch_cache::FastFetchCache;
@@ -23,7 +24,7 @@ use crate::init::load_cache::{
 use crate::init::search::PostSearchIndex;
 use crate::util::geographic::ip_info_lookup::GeoIpDatabases;
 
-use super::deployment_environment::DeploymentEnvironment;
+use super::{deployment_environment::DeploymentEnvironment, public_app_origin::PublicAppOrigin};
 pub(crate) mod blog_cache_policy;
 mod core;
 mod geo;
@@ -46,6 +47,7 @@ pub struct ServerState {
     pub(crate) responses_handled: AtomicU64,
     pub(crate) account_service: Arc<AccountService>,
     pub(crate) auth_abuse_service: Arc<AuthAbuseService>,
+    pub(crate) oidc_service: Arc<OidcService>,
     pub(crate) session_service: Arc<SessionService>,
     pub(crate) blog_posts_cache: scc::HashMap<uuid::Uuid, CachedPostInfo>,
     pub(crate) blog_post_slug_cache: scc::HashMap<String, uuid::Uuid>,
@@ -66,6 +68,7 @@ pub struct ServerState {
     pub currency_map: RwLock<IsoCurrencyTable>,
     pub i18n_cache: RwLock<I18nCache>,
     pub(crate) deployment_environment: DeploymentEnvironment,
+    pub(crate) public_app_origin: PublicAppOrigin,
     pub(crate) request_client: reqwest::Client,
     pub system_info_state: SystemInfoState,
     pub aws_profile_picture_config: aws_config::SdkConfig,

@@ -8,6 +8,7 @@ import {
   isPending,
   onCleanup,
   refresh,
+  untrack,
 } from "solid-js";
 import { blogApi } from "../../services/all_api";
 import type { PostInfoWithVote } from "../../generated";
@@ -36,22 +37,26 @@ const PAGE_SIZE = 20;
 
 export default function PostsList() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = createSignal(
-    getParamString(searchParams.q),
-  );
+  const initialFilters = untrack(() => ({
+    query: getParamString(searchParams.q),
+    type:
+      (getParamString(searchParams.type) as "title" | "tag") || "title",
+    tags: parseTagsParam(searchParams.tags),
+    page: Math.max(
+      1,
+      Number.parseInt(getParamString(searchParams.page) || "1", 10) || 1,
+    ),
+  }));
+  const [searchQuery, setSearchQuery] = createSignal(initialFilters.query);
   const [searchType, setSearchType] = createSignal<"title" | "tag">(
-    (getParamString(searchParams.type) as "title" | "tag") || "title",
+    initialFilters.type,
   );
   const [debouncedQuery, setDebouncedQuery] = createSignal("");
   const [tagInput, setTagInput] = createSignal("");
   const [selectedTags, setSelectedTags] = createSignal<string[]>(
-    parseTagsParam(searchParams.tags),
+    initialFilters.tags,
   );
-  const initialPage = Math.max(
-    1,
-    Number.parseInt(getParamString(searchParams.page) || "1", 10) || 1,
-  );
-  const [page, setPage] = createSignal(initialPage);
+  const [page, setPage] = createSignal(initialFilters.page);
   const [availablePages, setAvailablePages] = createSignal(1);
 
   // Debounce search input

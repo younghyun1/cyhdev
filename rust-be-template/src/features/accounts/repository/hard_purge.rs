@@ -19,6 +19,7 @@ use crate::{
 };
 
 use super::lifecycle::{anonymize_live_chat_history, anonymize_photograph_locations};
+use super::retention_notification_outcomes::cancel_retention_notifications_for_hard_purge;
 
 impl AccountRepository {
     /// Deletes retained private identity while preserving the authored-content tombstone.
@@ -60,6 +61,12 @@ impl AccountRepository {
                 let purge_after = purge_after.ok_or(AccountError::AccountNotDeleted)?;
                 let effective_hard_purged_at = match previous_hard_purge {
                     Some(previous_hard_purge) => {
+                        cancel_retention_notifications_for_hard_purge(
+                            connection,
+                            user_id,
+                            previous_hard_purge,
+                        )
+                        .await?;
                         diesel::delete(
                             deleted_account_retention::table.filter(
                                 deleted_account_retention::deleted_account_retention_user_id
@@ -74,6 +81,12 @@ impl AccountRepository {
                         if hard_purged_at < purge_after {
                             return Err(AccountError::RetentionPeriodActive { purge_after });
                         }
+                        cancel_retention_notifications_for_hard_purge(
+                            connection,
+                            user_id,
+                            hard_purged_at,
+                        )
+                        .await?;
                         anonymize_live_chat_history(connection, user_id).await?;
                         anonymize_photograph_locations(connection, user_id).await?;
                         let deleted_retention = diesel::delete(
