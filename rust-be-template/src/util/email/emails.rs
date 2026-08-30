@@ -70,12 +70,7 @@ impl ValidateEmailEmail {
     ) -> Self {
         self.email = self
             .email
-            .replace(
-                "$1",
-                &format!(
-                    "https://{DOMAIN_NAME}/api/auth/verify-user-email?email_validation_token_id={token_id}"
-                ),
-            )
+            .replace("$1", &verification_confirmation_link(token_id))
             .replace("$2", &valid_until.to_string());
         self
     }
@@ -100,6 +95,11 @@ impl ValidateEmailEmail {
     }
 }
 
+/// Builds the same-origin SPA link without exposing the token to HTTP servers or referrers.
+fn verification_confirmation_link(token_id: uuid::Uuid) -> String {
+    format!("https://{DOMAIN_NAME}/verify-email#token={token_id}")
+}
+
 fn parse_mailbox(raw: &str, field: &'static str) -> anyhow::Result<Mailbox> {
     match raw.parse::<Mailbox>() {
         Ok(mailbox) => Ok(mailbox),
@@ -107,5 +107,20 @@ fn parse_mailbox(raw: &str, field: &'static str) -> anyhow::Result<Mailbox> {
             error!(field, error = %e, "Failed to parse email mailbox");
             Err(e.into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::verification_confirmation_link;
+
+    #[test]
+    fn verification_link_targets_the_spa_with_a_fragment_token() {
+        let token = uuid::Uuid::new_v4();
+        let link = verification_confirmation_link(token);
+
+        assert_eq!(link, format!("https://cyhdev.com/verify-email#token={token}"));
+        assert!(!link.contains("/api/"));
+        assert!(!link.contains('?'));
     }
 }

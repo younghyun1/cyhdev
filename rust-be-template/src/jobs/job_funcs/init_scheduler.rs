@@ -18,6 +18,7 @@ use crate::{
         maintenance::{
             compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
             flush_visitor_logs::flush_visitor_logs, prune_live_chat::prune_live_chat_state,
+            prune_auth_abuse::prune_auth_abuse,
             prune_photograph_batches::prune_photograph_batches,
             retry_media_cleanup::retry_media_object_cleanup,
         },
@@ -138,6 +139,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("FLUSH_VISITOR_LOGS"),
                 0,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("PRUNE_AUTH_ABUSE", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_minute_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    prune_auth_abuse(coroutine_state).await
+                },
+                String::from("PRUNE_AUTH_ABUSE"),
+                10,
                 0,
             )
         });

@@ -341,6 +341,34 @@ impl CodeError {
         message: "Profile picture was not found!",
         log_level: Level::INFO,
     };
+    pub const AUTH_THROTTLED: CodeError = CodeError {
+        success: false,
+        error_code: 59,
+        http_status_code: StatusCode::TOO_MANY_REQUESTS,
+        message: "Too many authentication attempts. Try again later.",
+        log_level: Level::WARN,
+    };
+    pub const INVALID_CREDENTIALS: CodeError = CodeError {
+        success: false,
+        error_code: 60,
+        http_status_code: StatusCode::UNAUTHORIZED,
+        message: "Invalid email or password.",
+        log_level: Level::INFO,
+    };
+    pub const ACCOUNT_IDENTITY_UNAVAILABLE: CodeError = CodeError {
+        success: false,
+        error_code: 61,
+        http_status_code: StatusCode::CONFLICT,
+        message: "The requested account identity is unavailable.",
+        log_level: Level::INFO,
+    };
+    pub const PASSWORD_RESET_REJECTED: CodeError = CodeError {
+        success: false,
+        error_code: 62,
+        http_status_code: StatusCode::BAD_REQUEST,
+        message: "The password reset request is invalid or no longer active.",
+        log_level: Level::INFO,
+    };
     pub const COULD_NOT_SYNC_18N_CACHE: CodeError = CodeError {
         success: false,
         error_code: 39,
@@ -428,6 +456,7 @@ pub fn code_err(cerr: CodeError, e: impl ToString) -> CodeErrorResp {
         message: cerr.message.to_string(),
         error_message: e.to_string(),
         log_level: cerr.log_level,
+        retry_after_seconds: None,
     }
 }
 
@@ -451,6 +480,19 @@ pub struct CodeErrorResp {
     pub error_message: String,
     #[serde(skip_serializing)]
     pub log_level: Level,
+    #[serde(skip_serializing)]
+    retry_after_seconds: Option<u64>,
+}
+
+impl CodeErrorResp {
+    pub fn with_retry_after(mut self, retry_after: std::time::Duration) -> Self {
+        let rounded = retry_after
+            .as_secs()
+            .saturating_add(u64::from(retry_after.subsec_nanos() > 0))
+            .max(1);
+        self.retry_after_seconds = Some(rounded);
+        self
+    }
 }
 
 // Implement std::fmt::Display for CodeErrorResp
@@ -468,6 +510,17 @@ impl IntoResponse for CodeErrorResp {
     fn into_response(self) -> axum::response::Response {
         let body = Json(&self);
         let mut response = (self.http_status_code, body).into_response();
+
+        if let Some(seconds) = self.retry_after_seconds {
+            match axum::http::HeaderValue::from_str(&seconds.to_string()) {
+                Ok(value) => {
+                    response.headers_mut().insert(axum::http::header::RETRY_AFTER, value);
+                }
+                Err(error) => {
+                    tracing::warn!(error = %error, "Failed to encode Retry-After header");
+                }
+            }
+        }
 
         response.extensions_mut().insert(CodeErrorLogContext {
             log_level: self.log_level,
@@ -491,6 +544,7 @@ impl From<CodeError> for CodeErrorResp {
             message: cerr.message.to_string(),
             error_message: "".to_string(),
             log_level: cerr.log_level,
+            retry_after_seconds: None,
         }
     }
 }

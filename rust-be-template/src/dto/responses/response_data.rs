@@ -32,6 +32,19 @@ pub fn http_resp<D: serde::Serialize, M: serde::Serialize>(
     }
 }
 
+/// Build a response without exposing high-resolution server processing time.
+pub fn http_resp_sensitive<D: serde::Serialize, M: serde::Serialize>(
+    data: D,
+    meta: M,
+    _start: tokio::time::Instant,
+) -> Response<D, M> {
+    Response {
+        success: true,
+        data,
+        meta: ResponseMeta::redacted(meta),
+    }
+}
+
 pub struct ResponseWithCookies<'a, D: serde::Serialize, M: serde::Serialize> {
     response: Response<D, M>,
     cookies_to_set: Option<Vec<axum_extra::extract::cookie::Cookie<'a>>>,
@@ -83,6 +96,21 @@ pub fn http_resp_with_cookies<'a, D: serde::Serialize, M: serde::Serialize>(
 ) -> ResponseWithCookies<'a, D, M> {
     ResponseWithCookies {
         response: http_resp(data, meta, start),
+        cookies_to_set,
+        cookies_to_unset,
+    }
+}
+
+/// Build a cookie-setting response without exposing authentication timing.
+pub fn http_resp_with_cookies_sensitive<'a, D: serde::Serialize, M: serde::Serialize>(
+    data: D,
+    meta: M,
+    start: tokio::time::Instant,
+    cookies_to_set: Option<Vec<axum_extra::extract::cookie::Cookie<'a>>>,
+    cookies_to_unset: Option<Vec<axum_extra::extract::cookie::Cookie<'a>>>,
+) -> ResponseWithCookies<'a, D, M> {
+    ResponseWithCookies {
+        response: http_resp_sensitive(data, meta, start),
         cookies_to_set,
         cookies_to_unset,
     }

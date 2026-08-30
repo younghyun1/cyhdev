@@ -3,7 +3,8 @@ use diesel_async::pooled_connection::bb8::PooledConnection;
 use std::sync::Arc;
 use super::ServerState;
 use crate::features::accounts::service::{
-    account_service::AccountService, session_service::SessionService,
+    account_service::AccountService, auth_abuse::AuthAbuseService,
+    session_service::SessionService,
 };
 use crate::init::state::{DeploymentEnvironment, ServerStateBuilder};
 
@@ -26,6 +27,10 @@ impl ServerState {
 
     pub fn account_service(&self) -> Arc<AccountService> {
         Arc::clone(&self.account_service)
+    }
+
+    pub fn auth_abuse_service(&self) -> Arc<AuthAbuseService> {
+        Arc::clone(&self.auth_abuse_service)
     }
 
     pub fn session_service(&self) -> Arc<SessionService> {

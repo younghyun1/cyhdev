@@ -20,6 +20,8 @@ pub enum AccountError {
     DuplicateUserName(#[source] DieselError),
     #[error("account was not found")]
     AccountNotFound,
+    #[error("credentials were not accepted")]
+    InvalidCredentials,
     #[error("the protected system actor cannot be deleted or purged")]
     SystemActorProtected,
     #[error("current database role does not authorize account hard purge")]
@@ -72,6 +74,8 @@ pub enum AccountError {
     InvalidPassword,
     #[error("password did not match")]
     WrongPassword,
+    #[error("password work queue reached its fixed limit of {max_jobs} jobs")]
+    PasswordWorkSaturated { max_jobs: usize },
     #[error("password hashing failed")]
     PasswordHash(#[source] anyhow::Error),
     #[error("password verification failed")]
@@ -107,6 +111,7 @@ impl AccountError {
     pub fn is_retryable(&self) -> bool {
         match self {
             Self::Pool(_)
+            | Self::PasswordWorkSaturated { .. }
             | Self::SessionEntropy(_)
             | Self::SessionTokenCollision
             | Self::SessionStoreSaturated { .. } => true,

@@ -13,7 +13,8 @@ use crate::domain::live_chat::cache::LiveChatCache;
 use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine, RtcRoom};
 use crate::domain::photography::batch::session::BatchSession;
 use crate::features::accounts::service::{
-    account_service::AccountService, session_service::SessionService,
+    account_service::AccountService, auth_abuse::AuthAbuseService,
+    session_service::SessionService,
 };
 use crate::init::load_cache::fastfetch_cache::FastFetchCache;
 use crate::init::load_cache::{
@@ -44,6 +45,7 @@ pub struct ServerState {
     pub(crate) pool: Pool<AsyncPgConnection>,
     pub(crate) responses_handled: AtomicU64,
     pub(crate) account_service: Arc<AccountService>,
+    pub(crate) auth_abuse_service: Arc<AuthAbuseService>,
     pub(crate) session_service: Arc<SessionService>,
     pub(crate) blog_posts_cache: scc::HashMap<uuid::Uuid, CachedPostInfo>,
     pub(crate) blog_post_slug_cache: scc::HashMap<String, uuid::Uuid>,

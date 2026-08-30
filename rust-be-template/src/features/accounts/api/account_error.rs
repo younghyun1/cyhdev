@@ -24,6 +24,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::DuplicateEmail(_) => CodeError::EMAIL_MUST_BE_UNIQUE,
         AccountError::DuplicateUserName(_) => CodeError::USER_NAME_INVALID,
         AccountError::AccountNotFound => CodeError::USER_NOT_FOUND,
+        AccountError::InvalidCredentials => CodeError::INVALID_CREDENTIALS,
         AccountError::SystemActorProtected => CodeError::SYSTEM_ACTOR_PROTECTED,
         AccountError::HardPurgeRequesterUnauthorized => CodeError::IS_NOT_SUPERUSER,
         AccountError::MediaCleanupNotFound => CodeError::MEDIA_CLEANUP_NOT_FOUND,
@@ -51,6 +52,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::InvalidAccountGeography => CodeError::INVALID_REQUEST,
         AccountError::InvalidPassword => CodeError::PASSWORD_INVALID,
         AccountError::WrongPassword => CodeError::WRONG_PW,
+        AccountError::PasswordWorkSaturated { .. } => CodeError::AUTH_THROTTLED,
         AccountError::PasswordHash(_) => CodeError::COULD_NOT_HASH_PW,
         AccountError::PasswordVerification(_) => CodeError::COULD_NOT_VERIFY_PW,
         AccountError::EmailVerificationTokenExpired => CodeError::EMAIL_VERIFICATION_TOKEN_EXPIRED,
@@ -69,5 +71,50 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::SessionStoreSaturated { .. } => CodeError::SESSION_STORE_SATURATED,
     };
 
-    code_err(code, error)
+    let response = code_err(code, &error);
+    match error {
+        AccountError::PasswordWorkSaturated { .. } => {
+            tracing::warn!(
+                event = "auth_password_work_rejected",
+                max_jobs = crate::features::accounts::service::account_service::MAX_PASSWORD_JOBS,
+                "Authentication password work rejected"
+            );
+            response.with_retry_after(std::time::Duration::from_secs(1))
+        }
+        _ => response,
+    }
+}
+
+pub(super) fn map_login_error(error: AccountError) -> CodeErrorResp {
+    match error {
+        AccountError::InvalidCredentials => code_err(
+            CodeError::INVALID_CREDENTIALS,
+            "credentials were not accepted",
+        ),
+        error => map_account_error(error, AccountMutation::Update),
+    }
+}
+
+pub(super) fn map_signup_error(error: AccountError) -> CodeErrorResp {
+    match error {
+        AccountError::DuplicateEmail(_) | AccountError::DuplicateUserName(_) => code_err(
+            CodeError::ACCOUNT_IDENTITY_UNAVAILABLE,
+            "requested account identity unavailable",
+        ),
+        error => map_account_error(error, AccountMutation::Insert),
+    }
+}
+
+pub(super) fn map_password_reset_error(error: AccountError) -> CodeErrorResp {
+    match error {
+        AccountError::PasswordResetTokenNotFound
+        | AccountError::PasswordResetTokenExpired
+        | AccountError::PasswordResetTokenFabricated
+        | AccountError::PasswordResetTokenAlreadyUsed
+        | AccountError::TokenAlreadyConsumed => code_err(
+            CodeError::PASSWORD_RESET_REJECTED,
+            "password reset capability was not accepted",
+        ),
+        error => map_account_error(error, AccountMutation::Update),
+    }
 }

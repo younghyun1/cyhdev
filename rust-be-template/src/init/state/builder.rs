@@ -11,7 +11,10 @@ use crate::domain::live_chat::cache::LiveChatCache;
 use crate::domain::live_chat::rtc::{RtcConfig, RtcEngine};
 use crate::features::accounts::{
     repository::account_repository::AccountRepository,
-    service::{account_service::AccountService, session_service::SessionService},
+    service::{
+        account_service::AccountService, auth_abuse::AuthAbuseService,
+        session_service::SessionService,
+    },
 };
 use crate::init::load_cache::fastfetch_cache::FastFetchCache;
 use crate::init::load_cache::system_info::SystemInfoState;
@@ -20,10 +23,13 @@ use crate::init::search::PostSearchIndex;
 use crate::util::geographic::ip_info_lookup::decompress_and_deserialize;
 use tokio::sync::RwLock;
 use tracing::{error, info};
+use zeroize::Zeroizing;
 
 use super::deployment_environment::DeploymentEnvironment;
 use super::server_state::ServerState;
 use super::server_state::blog_cache_policy::BlogCacheMetrics;
+
+const DUMMY_PASSWORD: &str = "AuthTimingOnly4791";
 
 #[derive(Default)]
 pub struct ServerStateBuilder {
@@ -63,13 +69,22 @@ impl ServerStateBuilder {
             .email_client
             .ok_or_else(|| anyhow::anyhow!("email_client is required"))?;
         let account_repository = Arc::new(AccountRepository::new(pool.clone()));
+        let auth_abuse_service = Arc::new(AuthAbuseService::new().map_err(|error| {
+            anyhow::anyhow!("operating-system entropy unavailable for auth limiter: {error}")
+        })?);
         let session_service = Arc::new(SessionService::new());
         let live_chat_cache = Arc::new(LiveChatCache::default());
+        let dummy_password_hash = crate::util::crypto::hash_pw::hash_pw(Zeroizing::new(
+            DUMMY_PASSWORD.to_owned(),
+        ))
+        .await
+        .map_err(|error| anyhow::anyhow!("failed to initialize dummy password hash: {error}"))?;
         let account_service = Arc::new(AccountService::new(
             account_repository,
             Arc::clone(&session_service),
             Arc::clone(&live_chat_cache),
             email_client,
+            dummy_password_hash,
         ));
 
         let aws_profile_picture_config = {
@@ -124,6 +139,7 @@ impl ServerStateBuilder {
             pool,
             responses_handled: AtomicU64::new(0u64),
             account_service,
+            auth_abuse_service,
             session_service,
             blog_posts_cache: scc::HashMap::new(),
             blog_post_slug_cache: scc::HashMap::new(),

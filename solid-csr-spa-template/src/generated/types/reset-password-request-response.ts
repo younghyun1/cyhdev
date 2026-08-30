@@ -2,6 +2,5 @@
 
 
 export type ResetPasswordRequestResponse = {
-  readonly user_email: string;
-  readonly verify_by: string;
+  readonly message: string;
 };

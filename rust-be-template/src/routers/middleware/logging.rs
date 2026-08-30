@@ -128,18 +128,12 @@ pub async fn log_middleware(
 
 fn request_id_from_headers(headers: &HeaderMap) -> String {
     match headers.get("x-request-id") {
-        Some(value) => match value.to_str() {
-            Ok(parsed) => {
-                let trimmed = parsed.trim();
-                if trimmed.is_empty() {
-                    Uuid::new_v4().to_string()
-                } else {
-                    trimmed.to_owned()
-                }
-            }
-            Err(_) => Uuid::new_v4().to_string(),
-        },
-        None => Uuid::new_v4().to_string(),
+        Some(value) if value.as_bytes().len() == 36 => value
+            .to_str()
+            .ok()
+            .and_then(|value| Uuid::parse_str(value).ok())
+            .map_or_else(|| Uuid::now_v7().to_string(), |value| value.to_string()),
+        Some(_) | None => Uuid::now_v7().to_string(),
     }
 }
 

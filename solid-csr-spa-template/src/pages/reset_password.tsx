@@ -1,11 +1,14 @@
-import { createSignal, Show, onSettled, onCleanup } from "solid-js";
-import { useNavigate, useSearchParams } from "@solidjs/router";
+import { createSignal, Show, onMount, onCleanup } from "solid-js";
+import { useNavigate } from "@solidjs/router";
 import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
+const CANONICAL_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function ResetPasswordPage() {
-  const [searchParams] = useSearchParams();
+  const [resetToken, setResetToken] = createSignal<string | null>(null);
   const [password, setPassword] = createSignal("");
   const [confirmPassword, setConfirmPassword] = createSignal("");
   const [loading, setLoading] = createSignal(false);
@@ -17,16 +20,32 @@ function ResetPasswordPage() {
     if (redirectTimer !== undefined) clearTimeout(redirectTimer);
   });
 
-  onSettled(() => {
-    if (!searchParams.token) {
+  onMount(() => {
+    if (typeof window === "undefined") {
+      setError(t("auth.reset_password.missing_token_link"));
+      return;
+    }
+    const rawFragment = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const entries = [...new URLSearchParams(rawFragment).entries()];
+    const onlyEntry = entries.length === 1 ? entries[0] : undefined;
+    const token = onlyEntry?.[0] === "token" ? onlyEntry[1] : undefined;
+    window.history.replaceState(
+      window.history.state,
+      "",
+      window.location.pathname,
+    );
+    if (token !== undefined && CANONICAL_UUID.test(token)) {
+      setResetToken(token);
+    } else {
       setError(t("auth.reset_password.missing_token_link"));
     }
   });
 
   const handleResetPassword = async (e: Event) => {
     e.preventDefault();
-    const val = searchParams.token;
-    const token = Array.isArray(val) ? val[0] : val;
+    const token = resetToken();
 
     if (!token) {
       setError(t("auth.reset_password.missing_token"));
@@ -34,8 +53,10 @@ function ResetPasswordPage() {
     }
 
     const pw = password();
+    const passwordBytes = new TextEncoder().encode(pw).byteLength;
     if (
       pw.length < 8 ||
+      passwordBytes > 128 ||
       !/[a-z]/.test(pw) ||
       !/[A-Z]/.test(pw) ||
       !/[0-9]/.test(pw)
@@ -57,22 +78,15 @@ function ResetPasswordPage() {
         password_reset_token: token,
         new_password: password(),
       });
+      setResetToken(null);
       setSuccess(true);
       // Optional: Automatically redirect after a few seconds
       redirectTimer = setTimeout(() => navigate("/login"), 3000);
-    } catch (e: unknown) {
-      let msg =
-        e instanceof Error
-          ? e.message
-          : t("auth.find_password.unexpected_error");
-      try {
-        const json = JSON.parse(msg);
-        if (json.message) msg = json.message;
-      } catch {
-        // ignore
-      }
-      setError(msg);
+    } catch {
+      setError(t("auth.find_password.unexpected_error"));
     } finally {
+      setPassword("");
+      setConfirmPassword("");
       setLoading(false);
     }
   };
@@ -122,6 +136,8 @@ function ResetPasswordPage() {
               class={`${pageStyles.input} mb-4`}
               required
               minlength={8}
+              maxlength={128}
+              autocomplete="new-password"
             />
 
             <input
@@ -131,6 +147,8 @@ function ResetPasswordPage() {
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
               class={`${pageStyles.input} mb-4`}
               required
+              maxlength={128}
+              autocomplete="new-password"
             />
 
             <Show when={error()}>
@@ -142,7 +160,7 @@ function ResetPasswordPage() {
             <button
               class={`${pageStyles.buttonPrimary} w-full mb-3 py-3`}
               type="submit"
-              disabled={loading() || !searchParams.token}
+              disabled={loading() || !resetToken()}
             >
               {loading()
                 ? t("auth.reset_password.resetting")

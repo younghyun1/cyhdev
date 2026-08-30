@@ -9,7 +9,10 @@ use crate::{
             ACCOUNT_RETENTION_DAYS, HardPurgeAccountReceipt, SoftDeleteAccountReceipt,
         },
         error::AccountError,
-        service::account_service::AccountService,
+        service::{
+            account_service::AccountService,
+            authentication::password_within_auth_bound,
+        },
     },
     util::crypto::verify_pw::verify_pw,
 };
@@ -21,14 +24,19 @@ impl AccountService {
         user_id: Uuid,
         current_password: &str,
     ) -> Result<SoftDeleteAccountReceipt, AccountError> {
+        if !password_within_auth_bound(current_password) {
+            return Err(AccountError::InvalidPassword);
+        }
         let session_consistency_read = self.session_consistency.read().await;
         let candidate = self.repository.account_deletion_candidate(user_id).await?;
         if candidate.is_system_actor {
             return Err(AccountError::SystemActorProtected);
         }
+        let password_job = self.try_password_job()?;
         let password_matches = verify_pw(current_password, &candidate.password_hash)
             .await
             .map_err(AccountError::PasswordVerification)?;
+        drop(password_job);
         if !password_matches {
             return Err(AccountError::WrongPassword);
         }

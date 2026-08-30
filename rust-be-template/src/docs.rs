@@ -1,7 +1,7 @@
 //! OpenAPI documentation registration for Swagger UI.
 use utoipa::OpenApi;
 use crate::features::accounts::api::{
-    check_if_user_exists, delete_account, hard_purge_account, is_superuser, login, logout,
+    delete_account, hard_purge_account, is_superuser, login, logout,
     media_cleanup, me, public_user, reset_password, reset_password_request, signup,
     update_profile, verify_user_email,
 };
@@ -46,11 +46,11 @@ use crate::dto::{
     requests::{
         admin::media_cleanup_request::ResolveMediaCleanupRequest,
         auth::{
-            check_if_user_exists_request::CheckIfUserExistsRequest, login_request::LoginRequest,
+            login_request::LoginRequest,
             reset_password::ResetPasswordProcessRequest,
             reset_password_request::ResetPasswordRequest, signup_request::SignupRequest,
             update_profile_request::UpdateProfileRequest,
-            verify_user_email_request::EmailValidationToken,
+            verify_user_email_request::VerifyUserEmailRequest,
         },
         blog::{
             get_posts_request::GetPostsRequest, submit_comment::SubmitCommentRequest,
@@ -81,6 +81,7 @@ use crate::dto::{
             reset_password_request_response::ResetPasswordRequestResponse,
             reset_password_response::ResetPasswordResponse, signup_response::SignupResponse,
             update_profile_response::UpdateProfileResponse,
+            verify_user_email_response::VerifyUserEmailResponse,
         },
         blog::{
             delete_comment_response::DeleteCommentResponse,
@@ -112,7 +113,6 @@ use crate::dto::{
     },
 };
 use crate::errors::code_error::CodeErrorResp;
-use crate::features::accounts::api::check_if_user_exists::CheckIfUserExistsResponse;
 use crate::dto::requests::auth::delete_account_request::DeleteAccountRequest;
 use crate::handlers::{
     blog::search_posts::SearchPostsResponse,
@@ -142,7 +142,6 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
         signup::signup_handler,
         is_superuser::is_superuser_handler,
         me::me_handler,
-        check_if_user_exists::check_if_user_exists_handler,
         login::login,
         reset_password_request::reset_password_request_process,
         reset_password::reset_password,
@@ -201,8 +200,6 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             CodeErrorResp,
             SignupRequest,
             SignupResponse,
-            CheckIfUserExistsRequest,
-            CheckIfUserExistsResponse,
             LoginRequest,
             LoginResponse,
             LogoutResponse,
@@ -222,7 +219,8 @@ use crate::util::geographic::ip_info_lookup::IpInfo;
             ResetPasswordRequestResponse,
             ResetPasswordProcessRequest,
             ResetPasswordResponse,
-            EmailValidationToken,
+            VerifyUserEmailRequest,
+            VerifyUserEmailResponse,
             GetPostsRequest,
             GetPostsResponse,
             ReadPostResponse,

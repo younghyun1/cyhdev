@@ -146,9 +146,8 @@ Shared API layers:
 - `log_middleware`: increments response count, extracts client IP, assigns or
   propagates `x-request-id`, adds build headers, logs completion, and enqueues
   visitor logs in production.
-- `DefaultBodyLimit`: 150 MB.
-- `GovernorLayer`: global rate limiter, configured with 1024 burst and
-  replenishment every 63 ms.
+- `DefaultBodyLimit`: 150 MB globally; public authentication and protected account JSON routes override it with 8 KiB.
+- Public authentication POST routes use fixed-capacity source-IP and identity/token windows before expensive work.
 - Credentialed CORS with an exact trusted-origin list.
 - `require_trusted_origin`: rejects unsafe requests and WebSocket upgrades when
   the `Origin` header is missing, duplicated, or not trusted.
@@ -201,11 +200,10 @@ Public HTTP routes:
 - `POST /api/auth/signup`
 - `GET /api/auth/me`
 - `GET /api/auth/is-superuser`
-- `POST /api/auth/check-if-user-exists`
 - `POST /api/auth/login`
 - `POST /api/auth/reset-password-request`
 - `POST /api/auth/reset-password`
-- `GET /api/auth/verify-user-email`
+- `POST /api/auth/verify-user-email`
 - `GET /api/users/{user_name}`
 - `GET /api/blog/posts`
 - `GET /api/blog/posts/{post_id}`

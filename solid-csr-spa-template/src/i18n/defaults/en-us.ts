@@ -101,6 +101,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "page.signup.title": "Sign Up",
   "page.find_password.title": "Find Password",
   "page.reset_password.title": "Reset Password",
+  "page.verify_email.title": "Verify Email",
   "page.edit_profile.title": "Edit Profile",
   "page.not_found.title": "Not Found",
   "home.hero.role": "Experienced backend, infrastructure, and data engineer.",
@@ -147,6 +148,22 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "auth.reset_password.new_password": "New Password",
   "auth.reset_password.confirm_password": "Confirm Password",
   "auth.reset_password.resetting": "Resetting...",
+  "auth.verify_email.no_automatic_change":
+    "Opening this page did not change your account. Verification occurs only after you confirm.",
+  "auth.verify_email.checking": "Checking the verification link...",
+  "auth.verify_email.token_ready":
+    "The verification link is ready. Confirm below to verify your email address.",
+  "auth.verify_email.token_missing":
+    "This link does not contain an email verification token.",
+  "auth.verify_email.token_invalid":
+    "This email verification link is malformed or unavailable.",
+  "auth.verify_email.confirm": "Confirm Email Verification",
+  "auth.verify_email.confirming": "Confirming...",
+  "auth.verify_email.success": "Your email address is verified.",
+  "auth.verify_email.failed":
+    "Email verification failed. Request a new link and try again.",
+  "auth.verify_email.verified_at": "Verified at {date}",
+  "auth.verify_email.go_to_login": "Go to Login",
   "profile.change_picture": "Change Profile Picture",
   "profile.picture_alt": "Profile",
   "profile.choose_image": "Choose Image",

@@ -24,18 +24,8 @@ function FindPasswordPage() {
 
       setSuccessMessage(t("auth.find_password.success"));
       setEmail(""); // Clear the input on success
-    } catch (e: unknown) {
-      let msg =
-        e instanceof Error
-          ? e.message
-          : t("auth.find_password.unexpected_error");
-      try {
-        const json = JSON.parse(msg);
-        if (json.message) msg = json.message;
-      } catch {
-        // ignore
-      }
-      setError(msg);
+    } catch {
+      setError(t("auth.find_password.unexpected_error"));
     } finally {
       setLoading(false);
     }
@@ -66,6 +56,7 @@ function FindPasswordPage() {
             class={`${pageStyles.input} mb-4`}
             autocomplete="email"
             required
+            maxlength={254}
           />
 
           <Show when={error()}>
