@@ -47,7 +47,7 @@ Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No
 - Class strategy: `.dark` on `<html>`; state in `src/state/theme.ts` (localStorage `theme` -> `prefers-color-scheme` -> light).
 - A blocking inline script in `index.html` applies the class and `meta[name=theme-color]` before first paint (no flash); `applyTheme()` keeps the meta in sync on toggle.
 - `color-scheme` is set per mode so native controls and scrollbars match.
-- The EU5 iframe receives the resolved mode through the bounded same-origin `cyhdev:eu5-theme:{light|dark}` protocol. It announces readiness before WASM initialization so the initial mode is queued without reloading the iframe.
+- The EU5 iframe receives the resolved mode through the bounded same-origin `cyhdev:eu5-theme:{light|dark}` protocol. It announces readiness before WASM initialization so the initial mode is queued without reloading the iframe, then interpolates its semantic palette over the same 90ms default easing as the Solid shell.
 - Components should not need `dark:` variants; if one seems required, the token set is missing a role.
 
 ## Interaction
