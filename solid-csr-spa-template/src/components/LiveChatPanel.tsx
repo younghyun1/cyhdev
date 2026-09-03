@@ -503,14 +503,14 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     <section
       class={[
         pageStyles.card,
-        "flex min-h-0 flex-col",
+        "live-chat-panel flex min-h-0 flex-col",
         isFull()
           ? "h-[calc(100vh-12rem)] max-h-[44rem]"
           : "h-[28rem] max-h-[calc(100vh-10rem)]",
       ]}
     >
       <header
-        class={`${pageStyles.cardHeader} flex items-center justify-between gap-3`}
+        class={`${pageStyles.cardHeader} live-chat-panel-header flex items-center justify-between gap-3`}
       >
         <div>
           <h2 class="text-lg font-semibold">{t("page.live_chat.title")}</h2>
@@ -622,7 +622,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       </Show>
 
       <form
-        class={`${pageStyles.cardFooter} flex items-start gap-2`}
+        class={`${pageStyles.cardFooter} live-chat-composer flex items-start gap-2`}
         onSubmit={sendMessage}
       >
         <div class="min-w-0 flex-1">

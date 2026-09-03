@@ -444,6 +444,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "stats.websocket_error": "WebSocket 오류",
   "stats.websocket_closed": "WebSocket 종료됨",
   "projects.subtitle": "인터랙티브 WASM 데모와 프로젝트입니다. 카드를 클릭해 데모를 실행하세요.",
+  "projects.open_separately": "별도 창에서 열기",
   "projects.manage": "프로젝트 관리",
   "projects.manage_subtitle": "새 번들을 업로드하거나 세부 정보를 업데이트하거나 오래된 데모를 제거합니다.",
   "projects.signed_in_as": "로그인 계정",

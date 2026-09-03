@@ -423,6 +423,7 @@ export const UI_TEXT_KEYS = [
   "stats.websocket_error",
   "stats.websocket_closed",
   "projects.subtitle",
+  "projects.open_separately",
   "projects.manage",
   "projects.manage_subtitle",
   "projects.signed_in_as",

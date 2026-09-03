@@ -51,7 +51,10 @@ export default function AuthorizationPermissionsPanel(props: Props) {
             <For each={props.permissions}>
               {(permission) => (
                 <tr>
-                  <th scope="row">
+                  <th
+                    scope="row"
+                    data-label={t("authorization.permission")}
+                  >
                     <span>{permission.permission_name}</span>
                     <small>{permission.description ?? ""}</small>
                   </th>
@@ -59,7 +62,7 @@ export default function AuthorizationPermissionsPanel(props: Props) {
                     {(role) => {
                       const granted = () => enabled(role, permission);
                       return (
-                        <td>
+                        <td data-label={role.role_name}>
                           <button
                             type="button"
                             class={granted() ? "authorization-binding-enabled" : undefined}

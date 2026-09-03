@@ -4,9 +4,9 @@ import { pageStyles } from "../styles/pageStyles";
 
 export default function LiveChatPage() {
   return (
-    <main class={pageStyles.page}>
-      <div class={`${pageStyles.pageInner} max-w-5xl`}>
-        <div class="mb-6">
+    <main class={`${pageStyles.page} live-chat-page`}>
+      <div class={`${pageStyles.pageInner} live-chat-shell max-w-5xl`}>
+        <div class="live-chat-page-heading mb-6">
           <h1 class={pageStyles.title}>{t("page.live_chat.title")}</h1>
           <p class={pageStyles.subtitle}>{t("page.live_chat.subtitle")}</p>
         </div>

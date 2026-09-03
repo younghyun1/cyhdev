@@ -26,8 +26,6 @@ import { t } from "../../state/i18n";
 import { UserBadge } from "../UserBadge";
 import type { PhotographCommentResponse, VoteState } from "../../generated";
 
-const COMMENT_INDENT_PX = 16;
-
 interface CommentNode extends PhotographCommentResponse {
   children: CommentNode[];
 }
@@ -322,8 +320,8 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         const id = () => comment().photograph_comment_id;
         return (
           <div
-            class="mt-2 pl-3 border-l border-line"
-            style={{ "margin-left": `${depth * COMMENT_INDENT_PX}px` }}
+            class="threaded-comment mt-2 pl-3 border-l border-line"
+            style={{ "--comment-depth": depth }}
           >
             <div class="mb-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <UserBadge

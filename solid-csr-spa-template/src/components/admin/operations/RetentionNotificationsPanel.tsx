@@ -8,6 +8,7 @@ import type { AdminOperationsApi } from "../../../services/contracts/admin_opera
 import { adminOperationsApi } from "../../../services/contracts/admin_operations";
 import { t, tx } from "../../../state/i18n";
 import { ADMIN_OPERATION_SECTION_IDS } from "../navigation";
+import { MobileDialog } from "../../MobileDialog";
 import {
   formatAdminTimestamp,
   operationErrorMessage,
@@ -152,7 +153,7 @@ export default function RetentionNotificationsPanel(props: Props) {
               <For each={notifications()}>
                 {(item) => (
                   <tr>
-                    <td>
+                    <td data-label={t("operations.retention.notification")}>
                       <strong>{t(retentionStageKey(item.stage))}</strong>
                       <small>{item.notification_id}</small>
                       <small>
@@ -161,7 +162,7 @@ export default function RetentionNotificationsPanel(props: Props) {
                         })}
                       </small>
                     </td>
-                    <td>
+                    <td data-label={t("operations.retention.schedule")}>
                       {formatAdminTimestamp(item.scheduled_for)}
                       <small>
                         {tx("operations.retention.next_attempt", {
@@ -174,7 +175,7 @@ export default function RetentionNotificationsPanel(props: Props) {
                         })}
                       </small>
                     </td>
-                    <td>
+                    <td data-label={t("operations.retention.status")}>
                       <span class="operations-status">
                         {t(retentionStatusKey(item))}
                       </span>
@@ -186,7 +187,7 @@ export default function RetentionNotificationsPanel(props: Props) {
                         )}
                       </Show>
                     </td>
-                    <td>
+                    <td data-label={t("authorization.action")}>
                       <button
                         type="button"
                         disabled={item.sent_at != null ||
@@ -228,13 +229,14 @@ export default function RetentionNotificationsPanel(props: Props) {
       </Show>
       <Show when={pendingRetry()}>
         {(item) => (
-          <div class="operations-dialog-backdrop" role="presentation">
-            <section
-              class="operations-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="retry-title"
-            >
+          <MobileDialog
+            onClose={() => {
+              if (retryingId() === null) setPendingRetry(null);
+            }}
+            overlayClass="operations-dialog-backdrop"
+            panelClass="operations-dialog"
+            ariaLabelledBy="retry-title"
+          >
               <h3 id="retry-title">
                 {t("operations.retention.retry_confirm_title")}
               </h3>
@@ -276,8 +278,7 @@ export default function RetentionNotificationsPanel(props: Props) {
                     : t("operations.retention.retry")}
                 </button>
               </div>
-            </section>
-          </div>
+          </MobileDialog>
         )}
       </Show>
     </section>

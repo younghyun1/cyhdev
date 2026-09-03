@@ -189,10 +189,10 @@ export default function ProfilePicturePanel() {
   };
 
   return (
-    <section class={pageStyles.cardPadded}>
+    <section class={`${pageStyles.cardPadded} profile-picture-panel`}>
       <h2 class="text-lg font-semibold">{t("profile.change_picture")}</h2>
       <hr class={`my-3 ${pageStyles.divider}`} />
-      <div class="flex items-start gap-6">
+      <div class="profile-picture-layout flex items-start gap-6">
         <div class="h-32 w-32 shrink-0 overflow-hidden rounded-full ring-2 ring-line shadow">
           <img
             src={
@@ -213,7 +213,7 @@ export default function ProfilePicturePanel() {
             onChange={handleFileChange}
             class="hidden"
           />
-          <div class="mt-1 flex flex-wrap gap-2">
+          <div class="profile-picture-actions mt-1 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => fileInput?.click()}

@@ -155,3 +155,19 @@
     scroll-margin-top: 7.5rem;
   }
 }
+
+@media (max-width: 767px) {
+  .admin-workspace {
+    min-height: calc(100dvh - var(--site-header-height) - var(--site-footer-height));
+  }
+
+  .admin-workspace-mobile-navigation {
+    top: var(--site-header-height);
+    padding-right: max(0.75rem, var(--safe-area-right));
+    padding-left: max(0.75rem, var(--safe-area-left));
+  }
+
+  .admin-workspace-mobile-navigation .admin-workspace-link {
+    min-height: 44px;
+  }
+}

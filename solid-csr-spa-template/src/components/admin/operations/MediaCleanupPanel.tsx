@@ -8,6 +8,7 @@ import {
 } from "../../../services/contracts/admin_operations";
 import { t, tx } from "../../../state/i18n";
 import { ADMIN_OPERATION_SECTION_IDS } from "../navigation";
+import { MobileDialog } from "../../MobileDialog";
 import {
   formatAdminTimestamp,
   operationErrorMessage,
@@ -193,13 +194,13 @@ export default function MediaCleanupPanel(props: Props) {
       </Show>
       <Show when={pending()}>
         {(record) => (
-          <div class="operations-dialog-backdrop" role="presentation">
-            <section
-              class="operations-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="media-dialog-title"
-            >
+          <MobileDialog
+            onClose={() => closeDialog()}
+            overlayClass="operations-dialog-backdrop"
+            panelClass="operations-dialog"
+            ariaLabelledBy="media-dialog-title"
+            initialFocusSelector="#cleanup-key"
+          >
               <h3 id="media-dialog-title">
                 {t("operations.media.dialog_title")}
               </h3>
@@ -269,8 +270,7 @@ export default function MediaCleanupPanel(props: Props) {
                   </button>
                 </div>
               </form>
-            </section>
-          </div>
+          </MobileDialog>
         )}
       </Show>
     </section>

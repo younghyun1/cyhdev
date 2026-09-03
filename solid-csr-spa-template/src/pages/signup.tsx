@@ -170,9 +170,9 @@ function SignupPage() {
 
   return (
     <div
-      class={`${pageStyles.page} flex items-center justify-center px-6 py-10`}
+      class={`${pageStyles.page} auth-page flex items-center justify-center px-6 py-10`}
     >
-      <div class={`${pageStyles.card} w-full max-w-md p-8`}>
+      <div class={`${pageStyles.card} auth-card w-full max-w-md p-8`}>
         <h2 class={`${pageStyles.titleSm} mb-6`}>{t("page.signup.title")}</h2>
 
         <Show

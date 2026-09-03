@@ -91,7 +91,7 @@ export default function OidcAccountPanel() {
 
   return (
     <Show when={status()?.enabled}>
-      <section class={`${pageStyles.card} p-6`}>
+      <section class={`${pageStyles.card} oidc-account-panel p-6`}>
         <h2 class="text-lg font-semibold">{t("profile.oidc.title")}</h2>
         <p class={`${pageStyles.muted} mt-2`}>
           {t("profile.oidc.description")}

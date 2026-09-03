@@ -444,6 +444,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "stats.websocket_error": "WebSocket error",
   "stats.websocket_closed": "WebSocket closed",
   "projects.subtitle": "Interactive WASM demos and projects. Click a card to launch the demo.",
+  "projects.open_separately": "Open separately",
   "projects.manage": "Manage Projects",
   "projects.manage_subtitle": "Upload new bundles, update details, or remove old demos.",
   "projects.signed_in_as": "Signed in as",

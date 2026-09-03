@@ -159,3 +159,7 @@ main {
     position: absolute;
     inset: 0;
 }
+
+.mobile-only {
+    display: none;
+}
