@@ -59,3 +59,36 @@ fn parse_bundle(locale: UiLocale, raw: &str) -> anyhow::Result<UiTextSourceBundl
     }
     Ok(UiTextSourceBundle { locale, entries })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::source_bundles;
+    use crate::features::i18n::domain::{keys::REQUIRED_UI_TEXT_KEYS, locale::UiLocale};
+
+    #[test]
+    fn locale_sources_cover_the_registry_and_translate_eu5_navigation() -> anyhow::Result<()> {
+        let bundles = source_bundles()?;
+        assert_eq!(bundles.len(), 2);
+        for bundle in &bundles {
+            assert_eq!(bundle.entries.len(), REQUIRED_UI_TEXT_KEYS.len());
+        }
+        let translations = bundles
+            .iter()
+            .filter_map(|bundle| {
+                bundle
+                    .entries
+                    .iter()
+                    .find(|entry| entry.key == "top_bar.nav.eu5_locations_db")
+                    .map(|entry| (bundle.locale, entry.content.as_str()))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            translations,
+            [
+                (UiLocale::EnUs, "EU5 Locations DB"),
+                (UiLocale::KoKr, "EU5 위치 데이터베이스"),
+            ]
+        );
+        Ok(())
+    }
+}

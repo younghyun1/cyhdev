@@ -1,0 +1,18 @@
+.eu5-locations-db-page {
+  position: fixed;
+  inset: 3rem 0 2.5rem;
+  background: #11161d;
+}
+
+.eu5-locations-db-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+@media (min-width: 640px) {
+  .eu5-locations-db-page {
+    top: 3.5rem;
+  }
+}

@@ -1,0 +1,3 @@
+[submodule "vendor/eu5-location-filter"]
+	path = vendor/eu5-location-filter
+	url = https://github.com/younghyun1/eu5-location-filter.git

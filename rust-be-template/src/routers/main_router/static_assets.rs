@@ -1,208 +1,284 @@
 use axum::{
-    http::{HeaderMap, StatusCode, Uri, header},
+    http::{HeaderMap, HeaderValue, StatusCode, Uri, header},
     response::{IntoResponse, Response},
 };
 use mime_guess::from_path;
-use rust_embed::Embed;
+use rust_embed::{Embed, EmbeddedFile};
+
+const CACHE_POLICY: &str = "public, max-age=0, must-revalidate";
+const EU5_APPLICATION_PREFIX: &str = "eu5-locations-db/app/";
 
 #[derive(Embed)]
 #[folder = "../solid-csr-spa-template/dist/"]
 struct EmbeddedAssets;
 
-/// Serves static files embedded in the binary, prioritizing pre-compressed .zst files.
-#[derive(Clone, Copy)]
-enum ContentCodingPreference {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ContentCoding {
     Zstd,
     Gzip,
     Identity,
 }
 
+impl ContentCoding {
+    const fn priority(self) -> u8 {
+        match self {
+            Self::Zstd => 3,
+            Self::Gzip => 2,
+            Self::Identity => 1,
+        }
+    }
+
+    const fn extension(self) -> &'static str {
+        match self {
+            Self::Zstd => ".zst",
+            Self::Gzip => ".gz",
+            Self::Identity => "",
+        }
+    }
+
+    const fn header_value(self) -> Option<&'static str> {
+        match self {
+            Self::Zstd => Some("zstd"),
+            Self::Gzip => Some("gzip"),
+            Self::Identity => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Preference {
+    coding: ContentCoding,
+    quality: f32,
+}
+
 fn parse_quality(raw: &str) -> f32 {
     match raw.trim().parse::<f32>() {
         Ok(value) if (0.0..=1.0).contains(&value) => value,
-        Ok(_) => 0.0,
-        Err(_) => 0.0,
+        Ok(_) | Err(_) => 0.0,
     }
 }
 
 fn set_max_quality(slot: &mut Option<f32>, quality: f32) {
-    match *slot {
-        Some(current) if current >= quality => {}
-        _ => *slot = Some(quality),
+    if slot.is_none_or(|current| current < quality) {
+        *slot = Some(quality);
     }
 }
 
-#[allow(
-    clippy::manual_unwrap_or_default,
-    clippy::manual_unwrap_or,
-    clippy::needless_late_init
-)]
-fn select_static_encoding(headers: &HeaderMap) -> ContentCodingPreference {
-    let accept_encoding = match headers.get(header::ACCEPT_ENCODING) {
-        Some(value) => match value.to_str() {
-            Ok(parsed) => parsed,
-            Err(_) => return ContentCodingPreference::Identity,
-        },
-        None => return ContentCodingPreference::Identity,
-    };
+fn accepted_codings(headers: &HeaderMap) -> Vec<Preference> {
+    let mut zstd = None;
+    let mut gzip = None;
+    let mut identity = None;
+    let mut wildcard = None;
+    let mut header_present = false;
 
-    let mut zstd_q: Option<f32> = None;
-    let mut gzip_q: Option<f32> = None;
-    let mut identity_q: Option<f32> = None;
-    let mut wildcard_q: Option<f32> = None;
-
-    for encoding_entry in accept_encoding.split(',') {
-        let mut parts = encoding_entry.trim().split(';');
-        let encoding_name = match parts.next() {
-            Some(value) => value.trim().to_ascii_lowercase(),
-            None => continue,
-        };
-        if encoding_name.is_empty() {
-            continue;
-        }
-
-        let mut quality = 1.0_f32;
-        for parameter in parts {
-            let mut key_value = parameter.trim().splitn(2, '=');
-            let key = match key_value.next() {
-                Some(value) => value.trim(),
-                None => "",
-            };
-            if key.eq_ignore_ascii_case("q") {
-                let raw_quality: &str;
-                match key_value.next() {
-                    Some(value) => raw_quality = value,
-                    None => raw_quality = "",
+    for value in headers.get_all(header::ACCEPT_ENCODING) {
+        header_present = true;
+        let Ok(value) = value.to_str() else { continue };
+        for entry in value.split(',') {
+            let mut parts = entry.trim().split(';');
+            let Some(name) = parts.next() else { continue };
+            let mut quality = 1.0;
+            for parameter in parts {
+                let Some((key, value)) = parameter.trim().split_once('=') else {
+                    continue;
+                };
+                if key.trim().eq_ignore_ascii_case("q") {
+                    quality = parse_quality(value);
                 }
-                quality = parse_quality(raw_quality);
+            }
+            match name.trim().to_ascii_lowercase().as_str() {
+                "zstd" => set_max_quality(&mut zstd, quality),
+                "gzip" | "x-gzip" => set_max_quality(&mut gzip, quality),
+                "identity" => set_max_quality(&mut identity, quality),
+                "*" => set_max_quality(&mut wildcard, quality),
+                _ => {}
             }
         }
-
-        match encoding_name.as_str() {
-            "zstd" => set_max_quality(&mut zstd_q, quality),
-            "gzip" | "x-gzip" => set_max_quality(&mut gzip_q, quality),
-            "identity" => set_max_quality(&mut identity_q, quality),
-            "*" => set_max_quality(&mut wildcard_q, quality),
-            _ => {}
-        }
     }
 
-    let wildcard_default: f32;
-    match wildcard_q {
-        Some(value) => wildcard_default = value,
-        None => wildcard_default = 0.0,
+    if !header_present {
+        return vec![Preference {
+            coding: ContentCoding::Identity,
+            quality: 1.0,
+        }];
     }
-    let zstd_effective = match zstd_q {
-        Some(value) => value,
-        None => wildcard_default,
-    };
-    let gzip_effective = match gzip_q {
-        Some(value) => value,
-        None => wildcard_default,
-    };
-    let identity_effective = match identity_q {
-        Some(value) => value,
-        None => match wildcard_q {
-            Some(0.0) => 0.0,
-            _ => 1.0,
+
+    let wildcard_quality = wildcard.unwrap_or(0.0);
+    let identity_quality =
+        identity.unwrap_or_else(|| if wildcard == Some(0.0) { 0.0 } else { 1.0 });
+    let mut preferences = Vec::with_capacity(3);
+    for preference in [
+        Preference {
+            coding: ContentCoding::Zstd,
+            quality: zstd.unwrap_or(wildcard_quality),
         },
-    };
-
-    if zstd_effective > 0.0
-        && zstd_effective >= gzip_effective
-        && zstd_effective >= identity_effective
-    {
-        return ContentCodingPreference::Zstd;
-    }
-
-    if gzip_effective > 0.0 && gzip_effective >= identity_effective {
-        return ContentCodingPreference::Gzip;
-    }
-
-    ContentCodingPreference::Identity
-}
-
-fn serve_compressed_asset(path: &str, coding: ContentCodingPreference) -> Option<Response> {
-    let (extension, encoding_name) = match coding {
-        ContentCodingPreference::Zstd => (".zst", "zstd"),
-        ContentCodingPreference::Gzip => (".gz", "gzip"),
-        ContentCodingPreference::Identity => return None,
-    };
-
-    let compressed_path = format!("{path}{extension}");
-    match EmbeddedAssets::get(&compressed_path) {
-        Some(content) => {
-            let mime = from_path(path).first_or_octet_stream();
-            Some(
-                (
-                    StatusCode::OK,
-                    [
-                        (header::CONTENT_TYPE, mime.as_ref()),
-                        (header::CONTENT_ENCODING, encoding_name),
-                        (header::VARY, "Accept-Encoding"),
-                    ],
-                    content.data,
-                )
-                    .into_response(),
-            )
+        Preference {
+            coding: ContentCoding::Gzip,
+            quality: gzip.unwrap_or(wildcard_quality),
+        },
+        Preference {
+            coding: ContentCoding::Identity,
+            quality: identity_quality,
+        },
+    ] {
+        if preference.quality > 0.0 {
+            preferences.push(preference);
         }
-        None => None,
     }
+    preferences.sort_by(|left, right| {
+        right
+            .quality
+            .total_cmp(&left.quality)
+            .then_with(|| right.coding.priority().cmp(&left.coding.priority()))
+    });
+    preferences
 }
 
-fn serve_uncompressed_asset(path: &str) -> Option<Response> {
-    match EmbeddedAssets::get(path) {
-        Some(content) => {
-            let mime = from_path(path).first_or_octet_stream();
-            Some(
-                (
-                    StatusCode::OK,
-                    [
-                        (header::CONTENT_TYPE, mime.as_ref()),
-                        (header::VARY, "Accept-Encoding"),
-                    ],
-                    content.data,
-                )
-                    .into_response(),
-            )
+enum AssetOutcome {
+    Found(Response),
+    NotAcceptable,
+    NotFound,
+}
+
+fn serve_path<A: Embed>(
+    path: &str,
+    preferences: &[Preference],
+    request_headers: &HeaderMap,
+) -> AssetOutcome {
+    for preference in preferences {
+        let representation_path = format!("{path}{}", preference.coding.extension());
+        if let Some(content) = A::get(&representation_path) {
+            return AssetOutcome::Found(asset_response(
+                path,
+                preference.coding,
+                content,
+                request_headers,
+            ));
         }
-        None => None,
+    }
+
+    let has_representation = [
+        ContentCoding::Zstd,
+        ContentCoding::Gzip,
+        ContentCoding::Identity,
+    ]
+    .into_iter()
+    .any(|coding| A::get(&format!("{path}{}", coding.extension())).is_some());
+    if has_representation {
+        AssetOutcome::NotAcceptable
+    } else {
+        AssetOutcome::NotFound
     }
 }
 
-/// Serves static files embedded in the binary and negotiates zstd/gzip via Accept-Encoding.
+fn strong_etag(content: &EmbeddedFile) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut etag = String::with_capacity(66);
+    etag.push('"');
+    for byte in content.metadata.sha256_hash() {
+        etag.push(char::from(HEX[usize::from(byte >> 4)]));
+        etag.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    etag.push('"');
+    etag
+}
+
+fn if_none_match(headers: &HeaderMap, etag: &str) -> bool {
+    headers.get_all(header::IF_NONE_MATCH).iter().any(|value| {
+        value.to_str().is_ok_and(|value| {
+            value.split(',').any(|candidate| {
+                let candidate = candidate.trim();
+                candidate == "*" || candidate == etag || candidate.strip_prefix("W/") == Some(etag)
+            })
+        })
+    })
+}
+
+fn asset_response(
+    path: &str,
+    coding: ContentCoding,
+    content: EmbeddedFile,
+    request_headers: &HeaderMap,
+) -> Response {
+    let etag = strong_etag(&content);
+    let Ok(etag_header) = HeaderValue::from_str(&etag) else {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Invalid embedded asset hash",
+        );
+    };
+    let not_modified = if_none_match(request_headers, &etag);
+    let mut response = if not_modified {
+        StatusCode::NOT_MODIFIED.into_response()
+    } else {
+        (StatusCode::OK, content.data).into_response()
+    };
+    let response_headers = response.headers_mut();
+    response_headers.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+    response_headers.insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_POLICY),
+    );
+    response_headers.insert(header::ETAG, etag_header);
+    if let Some(encoding) = coding.header_value() {
+        response_headers.insert(header::CONTENT_ENCODING, HeaderValue::from_static(encoding));
+    }
+    if !not_modified {
+        let mime = from_path(path).first_or_octet_stream();
+        let content_type = match HeaderValue::from_str(mime.as_ref()) {
+            Ok(content_type) => content_type,
+            Err(_) => HeaderValue::from_static("application/octet-stream"),
+        };
+        response_headers.insert(header::CONTENT_TYPE, content_type);
+    }
+    response
+}
+
+fn error_response(status: StatusCode, message: &'static str) -> Response {
+    let mut response = (status, message).into_response();
+    response
+        .headers_mut()
+        .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_POLICY),
+    );
+    response
+}
+
+fn serve_static<A: Embed>(uri: &Uri, headers: &HeaderMap) -> Response {
+    let path = match uri.path().trim_start_matches('/') {
+        "" => "index.html",
+        path => path,
+    };
+    let preferences = accepted_codings(headers);
+    match serve_path::<A>(path, &preferences, headers) {
+        AssetOutcome::Found(response) => response,
+        AssetOutcome::NotAcceptable => error_response(
+            StatusCode::NOT_ACCEPTABLE,
+            "No acceptable asset representation",
+        ),
+        AssetOutcome::NotFound
+            if path == "eu5-locations-db/app" || path.starts_with(EU5_APPLICATION_PREFIX) =>
+        {
+            error_response(StatusCode::NOT_FOUND, "EU5 application asset not found")
+        }
+        AssetOutcome::NotFound => match serve_path::<A>("index.html", &preferences, headers) {
+            AssetOutcome::Found(response) => response,
+            AssetOutcome::NotAcceptable => error_response(
+                StatusCode::NOT_ACCEPTABLE,
+                "No acceptable asset representation",
+            ),
+            AssetOutcome::NotFound => error_response(StatusCode::NOT_FOUND, "Not Found"),
+        },
+    }
+}
+
+/// Serves embedded static files using the best available accepted representation.
 pub(super) async fn static_asset_handler(uri: Uri, headers: HeaderMap) -> impl IntoResponse {
-    let mut path = uri.path().trim_start_matches('/').to_string();
-    if path.is_empty() {
-        path = "index.html".to_string();
-    }
-
-    let selected_encoding = select_static_encoding(&headers);
-
-    // 1. Try an encoded version matching client support.
-    if let Some(response) = serve_compressed_asset(&path, selected_encoding) {
-        return response;
-    }
-
-    // 2. Fallback to the uncompressed direct path.
-    if let Some(response) = serve_uncompressed_asset(&path) {
-        return response;
-    }
-
-    // 3. SPA fallback: serve encoded index.html first, then plain index.html.
-    if let Some(response) = serve_compressed_asset("index.html", selected_encoding) {
-        return response;
-    }
-
-    if let Some(response) = serve_uncompressed_asset("index.html") {
-        return response;
-    }
-
-    // 4. If nothing is found, return an error.
-    (
-        StatusCode::NOT_FOUND,
-        [(header::VARY, "Accept-Encoding")],
-        "Not Found",
-    )
-        .into_response()
+    serve_static::<EmbeddedAssets>(&uri, &headers)
 }
+
+#[cfg(test)]
+#[path = "static_assets_tests.rs"]
+mod tests;

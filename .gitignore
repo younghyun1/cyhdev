@@ -16,7 +16,10 @@
 **/node_modules/
 **/dist/
 **/pkg/
+!rust-be-template/src/routers/main_router/static_asset_fixtures/eu5-locations-db/app/pkg/
+!rust-be-template/src/routers/main_router/static_asset_fixtures/eu5-locations-db/app/pkg/*
 rust-be-template/fe/
+solid-csr-spa-template/public/eu5-locations-db/app/
 
 # Generated source
 **/src/build_info.rs

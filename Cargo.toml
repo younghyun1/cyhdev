@@ -6,6 +6,7 @@ members = [
     "wasm_demos/block_breaker",
     "wasm_demos/ray_tracer",
 ]
+exclude = ["vendor/eu5-location-filter"]
 default-members = [
     "rust-be-template",
     "tools/xtask",

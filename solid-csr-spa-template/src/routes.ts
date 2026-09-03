@@ -107,6 +107,10 @@ export const routes = defineRoutes([
     component: lazy(() => import("./pages/geo_ip_info")),
   },
   {
+    path: "/eu5-locations-db",
+    component: lazy(() => import("./pages/eu5_locations_db")),
+  },
+  {
     path: "/backend-stats",
     component: lazy(() => import("./pages/backend_stats")),
   },

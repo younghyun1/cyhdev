@@ -27,6 +27,7 @@ describe("application routes", () => {
     ["/forum/notifications", "/forum/notifications"],
     ["/forum/0198f4d0-aaaa-7000-8000-000000000001", "/forum/:topic_id"],
     ["/photographs/42", "/photographs/:photograph_id"],
+    ["/eu5-locations-db", "/eu5-locations-db"],
     ["/admin/authorization", "/admin/authorization"],
     ["/admin/operations", "/admin/operations"],
   ])("matches %s with the expected route", (url, pattern) => {
