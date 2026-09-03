@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@solidjs/testing-library";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@solidjs/router", () => ({
@@ -53,7 +59,7 @@ describe("EU5 Locations DB page", () => {
     );
   });
 
-  it("shows the exact public label in desktop and logged-out mobile navigation", () => {
+  it("shows the exact public label in desktop and logged-out mobile navigation", async () => {
     expect(NAV_LINKS).toContainEqual({
       href: "/eu5-locations-db",
       labelKey: "top_bar.nav.eu5_locations_db",
@@ -69,22 +75,64 @@ describe("EU5 Locations DB page", () => {
     ]);
 
     render(() => <TopBar />);
-    const projects = screen.getByText("Projects", { selector: "summary" });
-    expect(projects).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     expect(
-      screen.getByRole("link", { name: "EU5 Locations DB" }),
+      await screen.findByRole("link", { name: "EU5 Locations DB" }),
     ).not.toBeNull();
 
+    cleanup();
     render(() => (
       <ul>
         <PublicNavigation variant="mobile" isActive={() => false} />
       </ul>
     ));
+    fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     expect(
-      screen.getAllByText("Projects", { selector: "summary" }),
-    ).toHaveLength(2);
+      await screen.findByRole("link", { name: "EU5 Locations DB" }),
+    ).not.toBeNull();
+  });
+
+  it("keeps one dropdown open and closes it after navigation or outside input", async () => {
+    render(() => (
+      <ul>
+        <PublicNavigation variant="desktop" isActive={() => false} />
+      </ul>
+    ));
+
+    fireEvent.click(screen.getByRole("button", { name: "About" }));
+    expect(await screen.findByRole("link", { name: "About Me" })).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Community" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("link", { name: "About Me" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Forum" })).not.toBeNull();
+    });
+
+    const forumLink = screen.getByRole("link", { name: "Forum" });
+    forumLink.addEventListener("click", (event) => event.preventDefault(), {
+      once: true,
+    });
+    fireEvent.click(forumLink);
+    await waitFor(() => {
+      expect(screen.queryByRole("link", { name: "Forum" })).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     expect(
-      screen.getAllByRole("link", { name: "EU5 Locations DB" }),
-    ).toHaveLength(2);
+      await screen.findByRole("link", { name: "EU5 Locations DB" }),
+    ).not.toBeNull();
+    fireEvent.pointerDown(document.body);
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("link", { name: "EU5 Locations DB" }),
+      ).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "About" }));
+    await screen.findByRole("link", { name: "About Me" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("link", { name: "About Me" })).toBeNull();
+    });
   });
 });
