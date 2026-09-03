@@ -212,3 +212,102 @@
         width: 100%;
     }
 }
+
+@media (max-width: 767px) {
+    .authorization-page {
+        padding: 1.5rem 0.75rem 4rem;
+    }
+
+    .authorization-panel {
+        padding: 1rem;
+    }
+
+    .authorization-search {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .authorization-search input,
+    .authorization-search button,
+    .authorization-table select,
+    .authorization-table button {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .authorization-table-wrap {
+        overflow: visible;
+    }
+
+    .authorization-table,
+    .authorization-table tbody,
+    .authorization-table tr,
+    .authorization-table td,
+    .authorization-table th[scope="row"] {
+        display: block;
+        width: 100%;
+    }
+
+    .authorization-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .authorization-table tr {
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        border: 1px solid var(--line);
+        border-radius: 0.5rem;
+        background: var(--paper);
+    }
+
+    .authorization-table td,
+    .authorization-table th[scope="row"] {
+        display: grid;
+        grid-template-columns: minmax(6rem, 35%) minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: start;
+        padding: 0.55rem 0;
+        border-bottom: 1px solid var(--line);
+        overflow-wrap: anywhere;
+    }
+
+    .authorization-table td:last-child {
+        border-bottom: 0;
+    }
+
+    .authorization-table td::before,
+    .authorization-table th[scope="row"]::before {
+        content: attr(data-label);
+        color: var(--ink-muted);
+        font: 600 0.7rem/1.3 var(--font-mono);
+        text-transform: uppercase;
+    }
+
+    .authorization-permission-table th:first-child {
+        min-width: 0;
+    }
+
+    .authorization-dialog-backdrop {
+        align-items: end;
+        padding: var(--safe-area-top) 0 0;
+    }
+
+    .authorization-dialog {
+        width: 100%;
+        max-height: min(88dvh, 44rem);
+        overflow-y: auto;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1rem max(1rem, var(--safe-area-right)) calc(1rem + var(--safe-area-bottom)) max(1rem, var(--safe-area-left));
+    }
+
+    .authorization-dialog-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+}

@@ -2,6 +2,7 @@ import { createEffect, createSignal, Show } from "solid-js";
 
 import { t } from "../../state/i18n";
 import type { PendingAuthorizationChange } from "./authorizationTypes";
+import { MobileDialog } from "../MobileDialog";
 
 type Props = {
   readonly change: PendingAuthorizationChange | null;
@@ -45,13 +46,13 @@ export default function AuthorizationConfirmation(props: Props) {
 
   return (
     <Show when={props.change !== null}>
-      <div class="authorization-dialog-backdrop" role="presentation">
-        <section
-          class="authorization-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="authorization-confirm-title"
-        >
+      <MobileDialog
+        onClose={() => props.onCancel()}
+        overlayClass="authorization-dialog-backdrop"
+        panelClass="authorization-dialog"
+        ariaLabelledBy="authorization-confirm-title"
+        initialFocusSelector="#authorization-reason"
+      >
           <h2 id="authorization-confirm-title">
             {t("authorization.confirm.title")}
           </h2>
@@ -102,8 +103,7 @@ export default function AuthorizationConfirmation(props: Props) {
               </button>
             </div>
           </form>
-        </section>
-      </div>
+      </MobileDialog>
     </Show>
   );
 }

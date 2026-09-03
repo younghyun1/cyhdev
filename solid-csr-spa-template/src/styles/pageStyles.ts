@@ -53,7 +53,7 @@ export const pageStyles = {
   chipFailed: "bg-danger/15 text-danger",
   callPanel: "border-b border-line px-4 py-3 space-y-3",
   callHeader: "flex items-center justify-between gap-2",
-  callGrid: "grid gap-2 grid-cols-2 sm:grid-cols-3",
+  callGrid: "call-grid grid gap-2 grid-cols-2 sm:grid-cols-3",
   callTile:
     "relative aspect-video overflow-hidden rounded-sm border border-line bg-black",
   callVideo: "h-full w-full object-cover",
@@ -63,7 +63,7 @@ export const pageStyles = {
     "flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 object-cover text-lg font-semibold uppercase text-ink",
   callTileOverlay:
     "absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/50 px-2 py-1 text-xs text-white",
-  callControls: "flex flex-wrap items-center gap-2",
+  callControls: "call-controls flex flex-wrap items-center gap-2",
   callError:
     "rounded-sm border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger",
   callPill:

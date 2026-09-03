@@ -481,8 +481,8 @@ export default function PostViewPage() {
 
           return (
             <div
-              class={`mt-2 pl-3 md:pl-4 border-l border-line`}
-              style={{ "margin-left": `${depth * 16}px` }}
+              class="threaded-comment mt-2 pl-3 md:pl-4 border-l border-line"
+              style={{ "--comment-depth": depth }}
             >
               <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                 <UserBadge
@@ -662,7 +662,7 @@ export default function PostViewPage() {
 
   return (
     <main class={pageStyles.page}>
-      <div class={`${pageStyles.pageInner} max-w-5xl flex flex-row gap-8`}>
+      <div class={`${pageStyles.pageInner} blog-post-layout max-w-5xl flex flex-row gap-8`}>
         <div class="flex-1">
           <Show when={postLoading()}>
             <div class={pageStyles.muted}>{t("blog.loading_posts")}</div>
@@ -725,8 +725,8 @@ export default function PostViewPage() {
 
               return (
                 <>
-                  <div class="mb-4 flex flex-row items-start gap-4">
-                    <div class="flex flex-col items-center pr-4 select-none border-r border-line mr-2">
+                  <div class="blog-post-shell mb-4 flex flex-row items-start gap-4">
+                    <div class="blog-vote-rail flex flex-col items-center pr-4 select-none border-r border-line mr-2">
                       <button
                         class={[
                           "text-2xl transition",
@@ -766,8 +766,8 @@ export default function PostViewPage() {
                       </button>
                     </div>
                     <div class="flex-1">
-                      <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center gap-3">
+                      <div class="blog-post-heading-row flex justify-between items-start mb-2">
+                        <div class="blog-post-title-group flex items-center gap-3">
                           <h1 class="text-3xl font-bold">
                             {data().post.post_title}
                           </h1>
@@ -783,7 +783,7 @@ export default function PostViewPage() {
                             data().post.user_id === user()?.user_info?.user_id
                           }
                         >
-                          <div class="flex gap-2 ml-4">
+                          <div class="blog-post-actions flex gap-2 ml-4">
                             <button
                               class={`${pageStyles.buttonSecondary} whitespace-nowrap`}
                               onClick={() =>
@@ -858,7 +858,7 @@ export default function PostViewPage() {
                   </div>
                   <hr class={`my-5 ${pageStyles.divider}`} />
                   <section>
-                    <div class="mb-3 flex items-center justify-between">
+                    <div class="blog-comments-heading mb-3 flex items-center justify-between">
                       <h2 class="text-xl font-semibold">
                         {t("blog.comments.title")}
                       </h2>

@@ -86,7 +86,7 @@ export default function NewPostPage() {
                 {t("blog.post.draft_visibility_new")}
               </div>
             )}
-            <div class="w-full min-w-0 mb-8 relative z-0">
+            <div class="blog-editor w-full min-w-0 mb-8 relative z-0">
               <label class="font-medium text-ink mb-2 block">
                 {t("blog.post.content_markdown")}
               </label>
@@ -97,7 +97,7 @@ export default function NewPostPage() {
               />
             </div>
             {error() && <div class={pageStyles.alertError}>{error()}</div>}
-            <div class="flex gap-4 relative z-10">
+            <div class="blog-form-actions flex gap-4 relative z-10">
               <button
                 type="submit"
                 disabled={isSubmitting()}

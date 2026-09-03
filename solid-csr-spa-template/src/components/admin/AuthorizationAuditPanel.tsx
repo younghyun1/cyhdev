@@ -37,20 +37,26 @@ export default function AuthorizationAuditPanel(props: Props) {
             <For each={props.events}>
               {(event) => (
                 <tr>
-                  <td>{new Date(event.created_at).toLocaleString()}</td>
-                  <td>
+                  <td data-label={t("authorization.audit.time")}>
+                    {new Date(event.created_at).toLocaleString()}
+                  </td>
+                  <td data-label={t("authorization.audit.actor")}>
                     <span>{event.actor_display_name}</span>
                     <small>{event.actor_user_id}</small>
                   </td>
-                  <td>
+                  <td data-label={t("authorization.audit.change")}>
                     <span>{event.kind}</span>
                     <small>
                       {event.target_display_name ?? event.role_name}: {event.old_value} →{" "}
                       {event.new_value}
                     </small>
                   </td>
-                  <td>{event.reason}</td>
-                  <td>{event.request_id ?? t("common.n_a")}</td>
+                  <td data-label={t("authorization.audit.reason")}>
+                    {event.reason}
+                  </td>
+                  <td data-label={t("authorization.audit.request")}>
+                    {event.request_id ?? t("common.n_a")}
+                  </td>
                 </tr>
               )}
             </For>
