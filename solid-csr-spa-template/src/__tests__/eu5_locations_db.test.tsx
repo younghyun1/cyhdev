@@ -23,7 +23,9 @@ import PublicNavigation, {
 import TopBar from "../components/TopBar";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import { KO_KR_DEFAULT_TEXTS } from "../i18n/defaults/ko-kr";
-import Eu5LocationsDb from "../pages/eu5_locations_db";
+import Eu5LocationsDb, {
+  calculateViewportOffsets,
+} from "../pages/eu5_locations_db";
 import { setAuthenticated } from "../state/auth";
 import { setLocaleSignal, setTexts } from "../state/i18n";
 
@@ -35,6 +37,13 @@ describe("EU5 Locations DB page", () => {
   });
 
   afterEach(() => cleanup());
+
+  it("calculates the remaining viewport between the measured site bars", () => {
+    expect(calculateViewportOffsets(63.2, 940.4, 984)).toEqual({
+      top: 64,
+      bottom: 44,
+    });
+  });
 
   it("loads the first-party Slint host eagerly with browser permissions", () => {
     const result = render(() => <Eu5LocationsDb />);

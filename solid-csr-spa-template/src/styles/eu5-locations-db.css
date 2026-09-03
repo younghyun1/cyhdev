@@ -1,6 +1,13 @@
 .eu5-locations-db-page {
+  --eu5-top-bar-offset: 3rem;
+  --eu5-bottom-bar-offset: var(--fixed-footer-clearance);
+  --eu5-viewport-margin: 2px;
+
   position: fixed;
-  inset: 3rem 0 var(--fixed-footer-clearance);
+  top: calc(var(--eu5-top-bar-offset) + var(--eu5-viewport-margin));
+  right: var(--eu5-viewport-margin);
+  bottom: calc(var(--eu5-bottom-bar-offset) + var(--eu5-viewport-margin));
+  left: var(--eu5-viewport-margin);
   background: #11161d;
 }
 
@@ -13,6 +20,6 @@
 
 @media (min-width: 640px) {
   .eu5-locations-db-page {
-    top: 3.5rem;
+    --eu5-top-bar-offset: 3.5rem;
   }
 }

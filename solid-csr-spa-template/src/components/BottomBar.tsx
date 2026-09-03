@@ -169,6 +169,7 @@ const BottomBar: Component = () => {
       </Show>
 
       <footer
+        data-site-bar="bottom"
         class="fixed bottom-0 left-0 w-full transition-colors duration-90 border-t border-line bg-paper/90 backdrop-blur text-[9px] sm:text-[11px]"
         style={{
           "z-index": 50,

@@ -91,7 +91,10 @@ const TopBar = () => {
 
   return (
     <>
-      <header class="fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper/85 text-ink backdrop-blur transition-colors duration-90">
+      <header
+        data-site-bar="top"
+        class="fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper/85 text-ink backdrop-blur transition-colors duration-90"
+      >
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="flex items-center justify-between gap-2 py-2 sm:py-3">
             <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
