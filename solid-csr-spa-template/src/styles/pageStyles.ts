@@ -8,34 +8,34 @@
  * avatars. Focus visibility comes from the global :focus-visible outline.
  */
 export const pageStyles = {
-  page: "min-h-screen w-full bg-transparent text-ink transition-colors",
-  pageInner: "mx-auto w-full max-w-6xl px-6 py-10",
-  pageInnerNarrow: "mx-auto w-full max-w-xl px-6 py-10",
-  titleRow: "flex items-center justify-between gap-4",
-  title: "text-3xl font-semibold tracking-tight",
-  titleSm: "text-2xl font-semibold tracking-tight",
+  page: "app-page min-h-screen w-full bg-transparent text-ink transition-colors",
+  pageInner: "page-inner mx-auto w-full max-w-6xl px-6 py-10",
+  pageInnerNarrow: "page-inner-narrow mx-auto w-full max-w-xl px-6 py-10",
+  titleRow: "page-title-row flex items-center justify-between gap-4",
+  title: "page-title text-3xl font-semibold tracking-tight",
+  titleSm: "page-title-small text-2xl font-semibold tracking-tight",
   subtitle: "text-sm text-ink-muted",
   sectionTitle: "text-xl font-semibold tracking-tight",
   sectionSubtitle: "text-sm text-ink-muted",
   card: "rounded-sm border border-line bg-surface",
   cardHeader: "px-6 py-4 border-b border-line",
-  cardBody: "px-6 py-6",
+  cardBody: "ui-card-body px-6 py-6",
   cardFooter: "px-6 py-4 border-t border-line",
-  cardPadded: "rounded-sm border border-line bg-surface p-6",
+  cardPadded: "ui-card-padded rounded-sm border border-line bg-surface p-6",
   input:
-    "w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint",
+    "ui-control w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint",
   textarea:
-    "w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint min-h-[120px]",
+    "ui-control w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint min-h-[120px]",
   select:
-    "w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink",
+    "ui-control w-full rounded-sm border border-line bg-surface px-3 py-2 text-sm text-ink",
   buttonPrimary:
-    "inline-flex items-center justify-center rounded-sm bg-ink text-paper px-4 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed",
+    "ui-button inline-flex items-center justify-center rounded-sm bg-ink text-paper px-4 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed",
   buttonSecondary:
-    "inline-flex items-center justify-center rounded-sm border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-2 transition disabled:opacity-60 disabled:cursor-not-allowed",
+    "ui-button inline-flex items-center justify-center rounded-sm border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-2 transition disabled:opacity-60 disabled:cursor-not-allowed",
   buttonDanger:
-    "inline-flex items-center justify-center rounded-sm bg-danger text-paper px-4 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed",
+    "ui-button inline-flex items-center justify-center rounded-sm bg-danger text-paper px-4 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-60 disabled:cursor-not-allowed",
   buttonGhost:
-    "inline-flex items-center justify-center rounded-sm px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition",
+    "ui-button inline-flex items-center justify-center rounded-sm px-3 py-2 text-sm font-medium text-ink-muted hover:text-ink hover:bg-surface-2 transition",
   divider: "border-line",
   muted: "text-sm text-ink-muted",
   link: "text-accent hover:text-accent-strong underline underline-offset-4 decoration-accent/40 hover:decoration-accent transition-colors",

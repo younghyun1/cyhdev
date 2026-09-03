@@ -15,8 +15,10 @@ import { updateServerBuildInfo } from "./state/server_info";
 import { applyLocale, loadUiTextBundle, locale, t } from "./state/i18n";
 import { LiveChatSocketProvider } from "./state/live_chat_socket";
 import { RtcProvider } from "./state/rtc";
+import { useSiteBarMeasurements } from "./utils/siteBars";
 
 const App: ParentComponent = (props) => {
+  useSiteBarMeasurements();
   const bootstrap = async () => {
     applyLocale(locale());
     void loadUiTextBundle(locale());
