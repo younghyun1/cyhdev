@@ -12,6 +12,8 @@ app.config.timestamp_*.js
 
 # dependencies
 /node_modules
+/test-results
+/playwright-report
 
 # IDEs and editors
 /.idea

@@ -482,7 +482,11 @@ export default function PostViewPage() {
           return (
             <div
               class="threaded-comment mt-2 pl-3 md:pl-4 border-l border-line"
-              style={{ "--comment-depth": depth }}
+              style={{
+                "--comment-depth": depth,
+                "--mobile-comment-indent":
+                  depth > 0 && depth <= 3 ? "0.75rem" : "0px",
+              }}
             >
               <div class="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                 <UserBadge

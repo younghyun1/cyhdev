@@ -84,6 +84,7 @@ export default function AuthorizationUsersPanel(props: Props) {
                   <td data-label={t("common.email")}>{user.user_email}</td>
                   <td data-label={t("authorization.role")}>
                     <select
+                      aria-label={`${t("authorization.role")}: ${user.user_name}`}
                       value={selectedRoleId(user)}
                       onChange={(event) =>
                         setSelectedRoles((current) => ({
