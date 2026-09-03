@@ -944,11 +944,7 @@ impl State {
             self.window_rays = 0;
         }
 
-        let data = match ImageData::new_with_u8_clamped_array_and_sh(
-            Clamped(&self.pixels),
-            w,
-            h,
-        ) {
+        let data = match ImageData::new_with_u8_clamped_array_and_sh(Clamped(&self.pixels), w, h) {
             Ok(data) => data,
             Err(error) => {
                 log(&format!("Could not prepare the rendered frame: {error:?}"));
