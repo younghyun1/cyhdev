@@ -3,6 +3,19 @@ use std::path::Path;
 use super::{eu5_web, throughput_harness_command};
 
 #[test]
+fn optimized_build_reports_an_uninitialized_eu5_submodule() {
+    let result = eu5_web::require_checkout(Path::new("/cyhdev-test-root-without-an-eu5-submodule"));
+    assert!(result.is_err());
+    let Err(error) = result else { return };
+
+    assert!(
+        error
+            .to_string()
+            .contains("git submodule update --init --recursive")
+    );
+}
+
+#[test]
 fn eu5_browser_build_uses_development_profile_and_web_features() {
     let command = eu5_web::command(
         Path::new("/workspace"),

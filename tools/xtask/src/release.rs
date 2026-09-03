@@ -27,6 +27,7 @@ struct ReleaseOptions {
 }
 
 pub(crate) fn run(root: &Path) -> TaskResult<()> {
+    crate::eu5_web::require_checkout(root)?;
     let options = ReleaseOptions::from_environment(root)?;
     let output_directory = artifact_directory(root, &options.target_triple);
     fs::create_dir_all(&output_directory).map_err(|error| {
