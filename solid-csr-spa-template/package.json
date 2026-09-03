@@ -14,12 +14,18 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
-    "test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest"
+    "test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:performance": "playwright test --config=playwright.performance.config.ts"
   },
   "license": "MIT",
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@solidjs/testing-library": "1.0.0-beta.2",
+    "@solidjs/vite-plugin": "3.0.0-next.36",
     "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/jest-dom": "^7.0.1",
@@ -35,7 +41,6 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
-    "@solidjs/vite-plugin": "3.0.0-next.36",
     "vitest": "^4.1.11"
   },
   "dependencies": {
