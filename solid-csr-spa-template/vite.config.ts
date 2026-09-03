@@ -3,9 +3,10 @@ import { defineConfig } from "vite";
 import solidPlugin from "@solidjs/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 import { resolveBuildTimestamp } from "./src/config/buildTimestamp.ts";
+import { initialAssetBudgetPlugin } from "./build/initialAssetBudget.ts";
 
 export default defineConfig({
-  plugins: [solidPlugin()],
+  plugins: [solidPlugin(), initialAssetBudgetPlugin()],
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(
       resolveBuildTimestamp(process.env.SOURCE_DATE_EPOCH),
@@ -25,6 +26,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    include: ["src/**/*.test.{ts,tsx}"],
     transformMode: { web: [/\.[jt]sx?$/] },
   },
 });

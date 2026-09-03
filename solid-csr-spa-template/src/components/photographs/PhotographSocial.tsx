@@ -321,7 +321,11 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         return (
           <div
             class="threaded-comment mt-2 pl-3 border-l border-line"
-            style={{ "--comment-depth": depth }}
+            style={{
+              "--comment-depth": depth,
+              "--mobile-comment-indent":
+                depth > 0 && depth <= 3 ? "0.75rem" : "0px",
+            }}
           >
             <div class="mb-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
               <UserBadge
