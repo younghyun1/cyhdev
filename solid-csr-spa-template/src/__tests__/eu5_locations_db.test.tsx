@@ -24,16 +24,20 @@ import TopBar from "../components/TopBar";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
 import { KO_KR_DEFAULT_TEXTS } from "../i18n/defaults/ko-kr";
 import Eu5LocationsDb, {
+  EU5_THEME_READY_MESSAGE,
   calculateViewportOffsets,
+  serializeEu5Theme,
 } from "../pages/eu5_locations_db";
 import { setAuthenticated } from "../state/auth";
 import { setLocaleSignal, setTexts } from "../state/i18n";
+import { setTheme } from "../state/theme";
 
 describe("EU5 Locations DB page", () => {
   beforeEach(() => {
     setAuthenticated(false);
     setLocaleSignal("en-US");
     setTexts(EN_US_DEFAULT_TEXTS);
+    setTheme("light");
   });
 
   afterEach(() => cleanup());
@@ -57,6 +61,73 @@ describe("EU5 Locations DB page", () => {
     expect(frame?.getAttribute("sandbox")).toContain("allow-scripts");
     expect(frame?.getAttribute("sandbox")).toContain("allow-same-origin");
     expect(frame?.getAttribute("sandbox")).toContain("allow-popups");
+  });
+
+  it("serializes the bounded iframe theme protocol", () => {
+    expect(serializeEu5Theme("light")).toBe("cyhdev:eu5-theme:light");
+    expect(serializeEu5Theme("dark")).toBe("cyhdev:eu5-theme:dark");
+  });
+
+  it("sends the current theme when the iframe loads and whenever it changes", async () => {
+    const result = render(() => <Eu5LocationsDb />);
+    const frame = result.container.querySelector("iframe");
+    const target = frame?.contentWindow;
+    expect(frame).not.toBeNull();
+    expect(target).not.toBeNull();
+    if (!frame || !target) return;
+    const postMessage = vi.spyOn(target, "postMessage");
+
+    fireEvent.load(frame);
+    expect(postMessage).toHaveBeenCalledWith(
+      "cyhdev:eu5-theme:light",
+      window.location.origin,
+    );
+
+    setTheme("dark");
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith(
+        "cyhdev:eu5-theme:dark",
+        window.location.origin,
+      );
+    });
+  });
+
+  it("answers only a same-origin ready message from its own iframe", () => {
+    const result = render(() => <Eu5LocationsDb />);
+    const frame = result.container.querySelector("iframe");
+    const target = frame?.contentWindow;
+    expect(target).not.toBeNull();
+    if (!target) return;
+    const postMessage = vi.spyOn(target, "postMessage");
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: EU5_THEME_READY_MESSAGE,
+        origin: "https://invalid.example",
+        source: target,
+      }),
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: "unrelated-message",
+        origin: window.location.origin,
+        source: target,
+      }),
+    );
+    expect(postMessage).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: EU5_THEME_READY_MESSAGE,
+        origin: window.location.origin,
+        source: target,
+      }),
+    );
+    expect(postMessage).toHaveBeenCalledOnce();
+    expect(postMessage).toHaveBeenCalledWith(
+      "cyhdev:eu5-theme:light",
+      window.location.origin,
+    );
   });
 
   it("keeps the exact English label and a Korean translation", () => {
