@@ -747,9 +747,9 @@ impl GpuState {
         canvas.set_width(width);
         canvas.set_height(height);
 
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::GL,
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
 
         let surface = instance
@@ -761,6 +761,7 @@ impl GpuState {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
+                apply_limit_buckets: false,
             })
             .await
             .map_err(|e| format!("request_adapter failed: {e}"))?;
@@ -801,6 +802,7 @@ impl GpuState {
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
+            color_space: wgpu::SurfaceColorSpace::Auto,
             width,
             height,
             present_mode,
@@ -890,7 +892,7 @@ impl GpuState {
         let trace_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("trace pipeline layout"),
-                bind_group_layouts: &[&trace_bind_group_layout],
+                bind_group_layouts: &[Some(&trace_bind_group_layout)],
                 immediate_size: 0,
             });
         let trace_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -922,7 +924,7 @@ impl GpuState {
         let present_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("present pipeline layout"),
-                bind_group_layouts: &[&present_bind_group_layout],
+                bind_group_layouts: &[Some(&present_bind_group_layout)],
                 immediate_size: 0,
             });
         let present_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -1304,14 +1306,24 @@ impl GpuState {
 
     fn present_current_surface(&mut self) {
         let surface_tex = match self.surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(_) => {
+            wgpu::CurrentSurfaceTexture::Success(frame)
+            | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
+            wgpu::CurrentSurfaceTexture::Outdated => {
                 self.surface.configure(&self.device, &self.surface_config);
                 match self.surface.get_current_texture() {
-                    Ok(frame) => frame,
-                    Err(_) => return,
+                    wgpu::CurrentSurfaceTexture::Success(frame)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
+                    wgpu::CurrentSurfaceTexture::Timeout
+                    | wgpu::CurrentSurfaceTexture::Occluded
+                    | wgpu::CurrentSurfaceTexture::Outdated
+                    | wgpu::CurrentSurfaceTexture::Lost
+                    | wgpu::CurrentSurfaceTexture::Validation => return,
                 }
             }
+            wgpu::CurrentSurfaceTexture::Timeout
+            | wgpu::CurrentSurfaceTexture::Occluded
+            | wgpu::CurrentSurfaceTexture::Lost
+            | wgpu::CurrentSurfaceTexture::Validation => return,
         };
         let surface_view = surface_tex
             .texture
@@ -1346,7 +1358,7 @@ impl GpuState {
         }
 
         self.queue.submit(Some(encoder.finish()));
-        surface_tex.present();
+        self.queue.present(surface_tex);
     }
 
     fn draw_frame(&mut self) {
