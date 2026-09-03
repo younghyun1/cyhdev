@@ -10,6 +10,7 @@ const EU5_APPLICATION_PREFIX: &str = "eu5-locations-db/app/";
 
 #[derive(Embed)]
 #[folder = "../solid-csr-spa-template/dist/"]
+#[allow_missing = true]
 struct EmbeddedAssets;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
