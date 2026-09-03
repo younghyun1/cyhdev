@@ -119,10 +119,10 @@ function LoginPage() {
 
   return (
     <div
-      class={`${pageStyles.page} flex justify-center items-center px-6 py-10`}
+      class={`${pageStyles.page} auth-page flex justify-center items-center px-6 py-10`}
     >
       <div
-        class={`${pageStyles.card} w-full max-w-md p-8 flex flex-col items-center`}
+        class={`${pageStyles.card} auth-card w-full max-w-md p-8 flex flex-col items-center`}
       >
         <h2 class={`${pageStyles.titleSm} mb-6`}>{t("page.login.title")}</h2>
         <form onSubmit={handleLogin} class="w-full flex flex-col items-center">

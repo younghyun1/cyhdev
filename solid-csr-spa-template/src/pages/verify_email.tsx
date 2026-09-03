@@ -63,9 +63,9 @@ function VerifyEmailPage() {
 
   return (
     <div
-      class={`${pageStyles.page} flex items-center justify-center px-6 py-10`}
+      class={`${pageStyles.page} auth-page flex items-center justify-center px-6 py-10`}
     >
-      <section class={`${pageStyles.card} w-full max-w-md p-8`}>
+      <section class={`${pageStyles.card} auth-card w-full max-w-md p-8`}>
         <h1 class={`${pageStyles.titleSm} mb-4`}>
           {t("page.verify_email.title")}
         </h1>

@@ -24,10 +24,46 @@ import badgeUbuntuE95420 from "../assets/badges/Ubuntu-E95420.svg";
 import badgeWebSockets010101 from "../assets/badges/WebSockets-010101.svg";
 import badgeWindows0078D6 from "../assets/badges/Windows-0078D6.svg";
 import badgemacOS000000 from "../assets/badges/macOS-000000.svg";
+import { For } from "solid-js";
+import { createMediaQuery } from "../utils/mediaQuery";
+
+const BADGES = [
+  [badgeRust000000, "Rust"],
+  [badgeCA8B9CC, "C"],
+  [badgeTypeScript3178C6, "TypeScript"],
+  [badgePython3776AB, "Python"],
+  [badgeJava007396, "Java"],
+  [badgeAxum000000, "Axum"],
+  [badgeSpringBoot6DB33F, "Spring Boot"],
+  [badgeDjango092E20, "Django"],
+  [badgePostgreSQL316192, "PostgreSQL"],
+  [badgeMySQL4479A1, "MySQL"],
+  [badgeAWS232F3E, "AWS"],
+  [badgeGoogleCloud4285F4, "Google Cloud"],
+  [badgeDocker2496ED, "Docker"],
+  [badgeKubernetes326CE5, "Kubernetes"],
+  [badgeNGINX009639, "NGINX"],
+  [badgeLinuxFCC624, "Linux"],
+  [badgeArchLinux1793D1, "Arch Linux"],
+  [badgeUbuntuE95420, "Ubuntu"],
+  [badgeAmazonLinux232F3E, "Amazon Linux"],
+  [badgeWindows0078D6, "Windows"],
+  [badgemacOS000000, "macOS"],
+  [badgeProtocolBuffers3367D6, "Protocol Buffers"],
+  [badgeBACnet004B87, "BACnet"],
+  [badgeModbusFFCC00, "Modbus"],
+  [badgeWebSockets010101, "WebSockets"],
+] as const;
 
 export default function About() {
+  const isMobile = createMediaQuery("(max-width: 767px)");
+  const deferredLoading = (): "lazy" | "eager" =>
+    isMobile() ? "lazy" : "eager";
+  const deferredDecoding = (): "async" | "auto" =>
+    isMobile() ? "async" : "auto";
+
   return (
-    <main class={pageStyles.page}>
+    <main class={`${pageStyles.page} about-page`}>
       <section
         class={`${pageStyles.pageInnerNarrow} text-ink`}
       >
@@ -64,8 +100,11 @@ export default function About() {
                 <img
                   src="https://cyhdev-img.s3.us-west-1.amazonaws.com/thumbnails/05da63f0-0a8e-4d96-807f-280ded45a6d5.avif"
                   alt="Portrait"
+                  width="112"
+                  height="112"
                   class="h-28 w-28 rounded-full object-cover shadow-sm ring-2 ring-line"
-                  loading="lazy"
+                  loading={deferredLoading()}
+                  decoding={deferredDecoding()}
                 />
               </a>
               <figcaption class="mt-1 text-xs text-ink-muted text-center sm:text-right max-w-44" />
@@ -104,132 +143,19 @@ export default function About() {
             </ul>
           </div>
           <br />
-          <div class="flex flex-wrap gap-2 mb-6">
-            <img
-              src={badgeRust000000}
-              alt="Rust"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeCA8B9CC}
-              alt="C"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeTypeScript3178C6}
-              alt="TypeScript"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgePython3776AB}
-              alt="Python"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeJava007396}
-              alt="Java"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeAxum000000}
-              alt="Axum"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeSpringBoot6DB33F}
-              alt="Spring Boot"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeDjango092E20}
-              alt="Django"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgePostgreSQL316192}
-              alt="PostgreSQL"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeMySQL4479A1}
-              alt="MySQL"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeAWS232F3E}
-              alt="AWS"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeGoogleCloud4285F4}
-              alt="Google Cloud"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeDocker2496ED}
-              alt="Docker"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeKubernetes326CE5}
-              alt="Kubernetes"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeNGINX009639}
-              alt="NGINX"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeLinuxFCC624}
-              alt="Linux"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeArchLinux1793D1}
-              alt="Arch Linux"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeUbuntuE95420}
-              alt="Ubuntu"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeAmazonLinux232F3E}
-              alt="Amazon Linux"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeWindows0078D6}
-              alt="Windows"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgemacOS000000}
-              alt="macOS"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeProtocolBuffers3367D6}
-              alt="Protocol Buffers"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeBACnet004B87}
-              alt="BACnet"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeModbusFFCC00}
-              alt="Modbus"
-              class="h-7 w-auto"
-            />
-            <img
-              src={badgeWebSockets010101}
-              alt="WebSockets"
-              class="h-7 w-auto"
-            />
+          <div class="about-badges flex flex-wrap gap-2 mb-6">
+            <For each={BADGES}>
+              {([source, label]) => (
+                <img
+                  src={source}
+                  alt={label}
+                  height="28"
+                  class="h-7 w-auto"
+                  loading={deferredLoading()}
+                  decoding={deferredDecoding()}
+                />
+              )}
+            </For>
           </div>
           <p class="mb-4 leading-relaxed">
             I am a backend-focused software engineer with experience shipping

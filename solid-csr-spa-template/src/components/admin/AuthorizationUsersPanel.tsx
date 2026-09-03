@@ -80,9 +80,9 @@ export default function AuthorizationUsersPanel(props: Props) {
             <For each={props.users}>
               {(user) => (
                 <tr>
-                  <td>{user.user_name}</td>
-                  <td>{user.user_email}</td>
-                  <td>
+                  <td data-label={t("common.username")}>{user.user_name}</td>
+                  <td data-label={t("common.email")}>{user.user_email}</td>
+                  <td data-label={t("authorization.role")}>
                     <select
                       value={selectedRoleId(user)}
                       onChange={(event) =>
@@ -99,7 +99,7 @@ export default function AuthorizationUsersPanel(props: Props) {
                       </For>
                     </select>
                   </td>
-                  <td>
+                  <td data-label={t("authorization.action")}>
                     <button
                       type="button"
                       disabled={selectedRoleId(user) === user.role_id}

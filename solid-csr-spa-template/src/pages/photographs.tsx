@@ -7,28 +7,38 @@ import {
   onSettled,
   createMemo,
   untrack,
+  lazy,
+  Loading,
 } from "solid-js";
 import { useNavigate, useLocation } from "@solidjs/router";
 import type { RouteSectionProps } from "@solidjs/router";
 import { photographyApi } from "../services/all_api";
 import { isSuperuser } from "../state/auth";
 import { pageStyles } from "../styles/pageStyles";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 import type {
   GetPhotographsResponse,
   PhotographItem,
 } from "../generated";
 import { t, tx, locale } from "../state/i18n";
-import BatchUploadFields from "../components/photographs/BatchUploadFields";
-import ProcessingModal from "../components/photographs/ProcessingModal";
 import PhotographSocial from "../components/photographs/PhotographSocial";
 import {
   trackFromUpload,
   setBatchCompletionHandler,
   activeBatchCount,
 } from "../state/photo_batches";
+import { createMediaQuery } from "../utils/mediaQuery";
+import { MobileDialog } from "../components/MobileDialog";
+
+const loadBatchUploadFields = () =>
+  import("../components/photographs/BatchUploadFields");
+const loadProcessingModal = () =>
+  import("../components/photographs/ProcessingModal");
+const loadPhotographMap = () =>
+  import("../components/photographs/PhotographMap");
+const BatchUploadFields = lazy(loadBatchUploadFields);
+const ProcessingModal = lazy(loadProcessingModal);
+const PhotographMap = lazy(loadPhotographMap);
 
 // --- Styles ---
 const styles = `
@@ -213,6 +223,7 @@ const styles = `
 `;
 
 export default function Photographs(props: RouteSectionProps) {
+  const isMobile = createMediaQuery("(max-width: 767px)");
   // State
   const [photos, setPhotos] = createSignal<PhotographItem[]>([]);
   const [page, setPage] = createSignal(1);
@@ -239,6 +250,17 @@ export default function Photographs(props: RouteSectionProps) {
   const [uploading, setUploading] = createSignal(false);
   const [uploadProgress, setUploadProgress] = createSignal(0);
   const [showProcessing, setShowProcessing] = createSignal(false);
+  let detailTouchStartX = 0;
+  let detailTouchStartY = 0;
+
+  onSettled(() => {
+    if (isMobile()) return;
+    void Promise.all([
+      loadBatchUploadFields(),
+      loadProcessingModal(),
+      loadPhotographMap(),
+    ]);
+  });
 
   // --- URL-synced detail modal ---
   // The detail view is /photographs/:photograph_id rendered as a modal over the
@@ -393,7 +415,10 @@ export default function Photographs(props: RouteSectionProps) {
     fetchInFlight = true;
     setLoading(true);
     try {
-      const resp = await photographyApi.getPhotographs(page(), 24);
+      const resp = await photographyApi.getPhotographs(
+        page(),
+        isMobile() ? 12 : 24,
+      );
       const data: GetPhotographsResponse = resp.data;
 
       if (data.items.length === 0) {
@@ -488,47 +513,6 @@ export default function Photographs(props: RouteSectionProps) {
   // State for external map links popup
   const [showMapLinks, setShowMapLinks] = createSignal(false);
 
-  // Map Component for Details - uses key prop to force remount on photo change
-  const DetailsMap = (props: { lat: number; lon: number }) => {
-    let mapDiv: HTMLDivElement | undefined;
-    let map: L.Map | null = null;
-    let marker: L.Marker | null = null;
-
-    const emojiIcon = L.divIcon({
-      className: "emoji-marker",
-      html: "📍",
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-    });
-
-    onSettled(() => {
-      map = L.map(mapDiv!).setView([props.lat, props.lon], 13);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(map);
-
-      marker = L.marker([props.lat, props.lon], { icon: emojiIcon }).addTo(map);
-
-      return () => {
-        map?.remove();
-      };
-    });
-
-    // React to prop changes
-    createEffect(
-      () => [props.lat, props.lon] as const,
-      ([lat, lon]) => {
-        if (map && marker) {
-          map.setView([lat, lon], 13);
-          marker.setLatLng([lat, lon]);
-        }
-      },
-    );
-
-    return <div ref={(el) => (mapDiv = el)} class="map-container" />;
-  };
-
   // External map link generators
   const getGoogleMapsUrl = (lat: number, lon: number) =>
     `https://www.google.com/maps?q=${lat},${lon}`;
@@ -604,7 +588,7 @@ export default function Photographs(props: RouteSectionProps) {
       <main class={pageStyles.page}>
         <div class="flex flex-col items-center w-full">
           {/* Header / Actions */}
-          <div class="w-full max-w-400 px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
+          <div class="photographs-toolbar w-full max-w-400 px-6 py-6 flex flex-wrap gap-4 justify-between items-center">
             <h1 class={pageStyles.titleSm}>{t("page.photographs.title")}</h1>
             <Show when={isSuperuser()}>
               <button
@@ -629,7 +613,7 @@ export default function Photographs(props: RouteSectionProps) {
               </button>
             </Show>
 
-            <div class="flex gap-2 ml-4">
+            <div class="photographs-selection-actions flex gap-2 ml-4">
               <Show when={isSuperuser()}>
                 <Show
                   when={isSelectionMode()}
@@ -691,6 +675,19 @@ export default function Photographs(props: RouteSectionProps) {
                                 }
                               }}
                               title={photo.photograph_comments}
+                              role="button"
+                              tabindex={0}
+                              onKeyDown={(event) => {
+                                if (event.key !== "Enter" && event.key !== " ") {
+                                  return;
+                                }
+                                event.preventDefault();
+                                if (isSelectionMode()) {
+                                  toggleSelection(photo.photograph_id);
+                                } else {
+                                  openPhoto(photo.photograph_id);
+                                }
+                              }}
                             >
                               <img
                                 src={
@@ -698,7 +695,9 @@ export default function Photographs(props: RouteSectionProps) {
                                   photo.photograph_link
                                 }
                                 alt={photo.photograph_comments}
+                                class="photo-thumbnail"
                                 loading="lazy"
+                                decoding="async"
                               />
                               <Show when={isSelectionMode()}>
                                 <div
@@ -780,44 +779,68 @@ export default function Photographs(props: RouteSectionProps) {
 
       {/* Upload Modal */}
       <Show when={showUpload()}>
-        <div
-          class="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowUpload(false);
-          }}
+        <MobileDialog
+          onClose={() => setShowUpload(false)}
+          overlayClass="modal-overlay"
+          panelClass="modal-content upload-modal p-6"
+          ariaLabel={t("photos.batch_upload_title")}
         >
-          <div class="modal-content upload-modal p-6">
+          <Loading
+            fallback={<p class={pageStyles.muted}>{t("common.loading")}</p>}
+          >
             <BatchUploadFields
               submitting={uploading()}
               progress={uploadProgress()}
               onSubmit={handleBatchUpload}
               onCancel={() => setShowUpload(false)}
             />
-          </div>
-        </div>
+          </Loading>
+        </MobileDialog>
       </Show>
 
-      <ProcessingModal
-        show={showProcessing()}
-        onClose={() => setShowProcessing(false)}
-      />
+      <Show when={showProcessing()}>
+        <Loading fallback={null}>
+          <ProcessingModal
+            show={true}
+            onClose={() => setShowProcessing(false)}
+          />
+        </Loading>
+      </Show>
 
       {/* Details Modal */}
       <Show when={selectedPhoto()}>
-        <div
-          class="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) closePhoto();
-          }}
+        <MobileDialog
+          onClose={closePhoto}
+          overlayClass="modal-overlay"
+          panelClass="modal-content details-modal"
+          ariaLabel={t("page.photographs.title")}
+          initialFocusSelector="[data-photo-close]"
         >
-          <div class="modal-content details-modal">
             <button
+              data-photo-close
+              type="button"
               onClick={() => closePhoto()}
-              class="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              class="details-close-button absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              aria-label={t("common.close")}
             >
               ✕
             </button>
-            <div class="details-image-container">
+            <div
+              class="details-image-container"
+              onTouchStart={(event) => {
+                detailTouchStartX = event.touches[0]?.clientX ?? 0;
+                detailTouchStartY = event.touches[0]?.clientY ?? 0;
+              }}
+              onTouchEnd={(event) => {
+                const touch = event.changedTouches[0];
+                const deltaX = (touch?.clientX ?? 0) - detailTouchStartX;
+                const deltaY = (touch?.clientY ?? 0) - detailTouchStartY;
+                if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+                  return;
+                }
+                void navigatePhoto(deltaX > 0 ? "prev" : "next");
+              }}
+            >
               {/* --- PREV BUTTON --- */}
               <Show
                 when={
@@ -855,6 +878,7 @@ export default function Photographs(props: RouteSectionProps) {
               <img
                 src={selectedPhoto()!.photograph_link}
                 alt={selectedPhoto()!.photograph_comments}
+                decoding="async"
               />
 
               {/* --- NEXT BUTTON --- */}
@@ -1062,10 +1086,12 @@ export default function Photographs(props: RouteSectionProps) {
                   </div>
                 </div>
                 <div class="mt-2 h-50 rounded-sm overflow-hidden relative">
-                  <DetailsMap
-                    lat={selectedPhoto()!.photograph_lat}
-                    lon={selectedPhoto()!.photograph_lon}
-                  />
+                  <Loading fallback={<div class="map-container bg-surface-2" />}>
+                    <PhotographMap
+                      lat={selectedPhoto()!.photograph_lat}
+                      lon={selectedPhoto()!.photograph_lon}
+                    />
+                  </Loading>
                 </div>
               </div>
 
@@ -1073,8 +1099,7 @@ export default function Photographs(props: RouteSectionProps) {
                 photographId={selectedPhoto()!.photograph_id}
               />
             </div>
-          </div>
-        </div>
+        </MobileDialog>
       </Show>
     </>
   );

@@ -3,12 +3,14 @@ import type { ChartOptions, ChartData, ScriptableContext } from "chart.js";
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
 import { t } from "../state/i18n";
+import { createMediaQuery } from "../utils/mediaQuery";
 
 export default function CpuStatsCard(props: {
   data: HostStatPoint[];
   limit: number;
 }) {
   const isDark = () => theme() === "dark";
+  const isMobile = createMediaQuery("(max-width: 767px)");
 
   const C = () => ({
     bg: isDark() ? "#1f2937" : "#fff",
@@ -70,16 +72,22 @@ export default function CpuStatsCard(props: {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x: { grid: { color: C().border }, ticks: { color: C().font } },
+      x: {
+        grid: { color: C().border },
+        ticks: { color: C().font, maxTicksLimit: isMobile() ? 4 : 11 },
+      },
       y: {
         min: 0,
         max: 100,
         grid: { color: C().border },
-        ticks: { color: C().font },
+        ticks: { color: C().font, maxTicksLimit: isMobile() ? 5 : 11 },
       },
     },
     plugins: {
-      legend: { labels: { color: C().font } },
+      legend: {
+        display: !isMobile(),
+        labels: { color: C().font },
+      },
       tooltip: {
         backgroundColor: C().bg,
         titleColor: C().font,
@@ -91,8 +99,8 @@ export default function CpuStatsCard(props: {
   });
 
   return (
-    <div class="flex flex-col gap-2">
-      <div class="flex items-center justify-between px-1">
+    <div class="stats-chart-card flex flex-col gap-2">
+      <div class="stats-metric-heading flex items-center justify-between px-1">
         <div class="flex items-center gap-2">
           <div
             class="w-2 h-2 rounded-full"
@@ -114,7 +122,7 @@ export default function CpuStatsCard(props: {
       </div>
 
       <div
-        class="relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
+        class="stats-chart relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
         style={{
           border: `1px solid ${C().border}`,
           background: C().bg,

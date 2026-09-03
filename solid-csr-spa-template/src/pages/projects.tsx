@@ -15,6 +15,7 @@ import {
 } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t, tx } from "../state/i18n";
+import { MobileDialog } from "../components/MobileDialog";
 
 const styles = `
 .projects-grid {
@@ -595,20 +596,28 @@ export default function Projects() {
 
       {/* WASM Module Modal */}
       <Show when={selectedModule()}>
-        <div
-          class="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setSelectedModule(null);
-            }
-          }}
+        <MobileDialog
+          onClose={() => setSelectedModule(null)}
+          overlayClass="modal-overlay"
+          panelClass="wasm-modal"
+          ariaLabelledBy="wasm-modal-title"
+          initialFocusSelector="[data-project-close]"
         >
-          <div class="wasm-modal">
             <div class="wasm-modal-header">
-              <h2 class="wasm-modal-title">
+              <h2 id="wasm-modal-title" class="wasm-modal-title">
                 {selectedModule()!.wasm_module_title}
               </h2>
+              <a
+                href={selectedModule()!.wasm_module_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                class={`${pageStyles.buttonSecondary} mobile-only wasm-open-separately`}
+              >
+                {t("projects.open_separately")}
+              </a>
               <button
+                data-project-close
+                type="button"
                 class="close-button"
                 onClick={() => setSelectedModule(null)}
               >
@@ -623,23 +632,24 @@ export default function Projects() {
                 sandbox="allow-scripts"
               />
             </div>
-          </div>
-        </div>
+        </MobileDialog>
       </Show>
 
       {/* Upload Modal */}
       <Show when={showUpload()}>
-        <div
-          class="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowUpload(false);
-            }
+        <MobileDialog
+          onClose={() => {
+            if (!uploading()) setShowUpload(false);
           }}
+          overlayClass="modal-overlay"
+          panelClass="admin-modal"
+          ariaLabelledBy="project-upload-title"
+          initialFocusSelector="#wasm-title"
         >
-          <div class="admin-modal">
             <div class="admin-modal-header">
-              <h2 class="wasm-modal-title">{t("projects.upload_project")}</h2>
+              <h2 id="project-upload-title" class="wasm-modal-title">
+                {t("projects.upload_project")}
+              </h2>
               <button class="close-button" onClick={() => setShowUpload(false)}>
                 {t("common.close")}
               </button>
@@ -740,23 +750,22 @@ export default function Projects() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+        </MobileDialog>
       </Show>
 
       {/* Edit Modal */}
       <Show when={editingModule()}>
-        <div
-          class="modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setEditingModule(null);
-            }
+        <MobileDialog
+          onClose={() => {
+            if (!savingEdit()) setEditingModule(null);
           }}
+          overlayClass="modal-overlay"
+          panelClass="admin-modal"
+          ariaLabelledBy="project-edit-title"
+          initialFocusSelector="#edit-title"
         >
-          <div class="admin-modal">
             <div class="admin-modal-header">
-              <h2 class="wasm-modal-title">
+              <h2 id="project-edit-title" class="wasm-modal-title">
                 {t("projects.edit_project_details")}
               </h2>
               <button
@@ -846,8 +855,7 @@ export default function Projects() {
                 </div>
               </form>
             </div>
-          </div>
-        </div>
+        </MobileDialog>
       </Show>
     </main>
   );

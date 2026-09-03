@@ -4,7 +4,7 @@
 // module-scoped batch store directly. Reuses the page's `.modal-overlay` /
 // `.modal-content` shell plus a `.processing-modal` rule in the inline <style>.
 
-import { Show, createMemo, onSettled, untrack } from "solid-js";
+import { Show, createMemo } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import {
   batches,
@@ -15,6 +15,7 @@ import { pageStyles, chipClass } from "../../styles/pageStyles";
 import { t, tx } from "../../state/i18n";
 import type { UiTextKey } from "../../i18n/keys";
 import type { BatchItemStatus, ProcessingStatus } from "../../generated";
+import { MobileDialog } from "../MobileDialog";
 
 interface ProcessingModalProps {
   show: boolean;
@@ -49,15 +50,6 @@ export default function ProcessingModal(props: ProcessingModalProps) {
       }),
   );
 
-  onSettled(() => {
-    const handleKeyDown = (event: KeyboardEvent) =>
-      untrack(() => {
-        if (event.key === "Escape") props.onClose();
-      });
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  });
-
   const progressPercent = (entry: BatchEntry): number => {
     const status = entry.status;
     if (!status || status.total === 0) return 0;
@@ -67,22 +59,18 @@ export default function ProcessingModal(props: ProcessingModalProps) {
 
   return (
     <Show when={props.show}>
-      <div
-        class="modal-overlay"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) props.onClose();
-        }}
+      <MobileDialog
+        onClose={() => props.onClose()}
+        overlayClass="modal-overlay"
+        panelClass="modal-content processing-modal p-6"
+        ariaLabel={t("photos.processing")}
+        initialFocusSelector="[data-processing-close]"
       >
-        <div
-          class="modal-content processing-modal p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("photos.processing")}
-        >
           <div class="flex items-center justify-between mb-4">
             <h2 class={pageStyles.sectionTitle}>{t("photos.processing")}</h2>
             <div class="flex items-center gap-2">
               <button
+                data-processing-close
                 type="button"
                 class={pageStyles.buttonSecondary}
                 onClick={() => clearFinishedBatches()}
@@ -143,8 +131,7 @@ export default function ProcessingModal(props: ProcessingModalProps) {
               </Key>
             </div>
           </Show>
-        </div>
-      </div>
+      </MobileDialog>
     </Show>
   );
 }

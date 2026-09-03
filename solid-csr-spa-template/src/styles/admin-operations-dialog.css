@@ -129,3 +129,22 @@
         width: 100%;
     }
 }
+
+@media (max-width: 767px) {
+    .operations-dialog-backdrop {
+        align-items: end;
+        padding: var(--safe-area-top) 0 0;
+    }
+
+    .operations-dialog {
+        width: 100%;
+        max-height: min(88dvh, 44rem);
+        padding: 1rem max(1rem, var(--safe-area-right)) calc(1rem + var(--safe-area-bottom)) max(1rem, var(--safe-area-left));
+        border-radius: 0.75rem 0.75rem 0 0;
+    }
+
+    .operations-dialog-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+}
