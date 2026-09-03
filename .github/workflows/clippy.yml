@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
       - name: Install native dependencies
         run: sudo apt-get update && sudo apt-get install --yes clang lld libpq-dev libzstd-dev pkg-config
       - name: Install configured Rust toolchain
