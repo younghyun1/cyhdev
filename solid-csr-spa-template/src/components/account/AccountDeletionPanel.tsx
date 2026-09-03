@@ -74,7 +74,7 @@ export default function AccountDeletionPanel() {
   };
 
   return (
-    <section class={`${pageStyles.cardPadded} border-danger/40`}>
+    <section class={`${pageStyles.cardPadded} account-deletion-panel border-danger/40`}>
       <h2 class="text-lg font-semibold text-danger">
         {t("profile.delete_account.title")}
       </h2>

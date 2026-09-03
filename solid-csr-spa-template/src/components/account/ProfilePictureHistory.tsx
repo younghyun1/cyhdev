@@ -87,7 +87,7 @@ export default function ProfilePictureHistory(
   };
 
   return (
-    <div class="mt-6 border-t border-line pt-5">
+    <div class="profile-picture-history mt-6 border-t border-line pt-5">
       <div class="flex items-baseline justify-between gap-3">
         <h3 class="font-semibold">{t("profile.picture_history.title")}</h3>
         <span class={pageStyles.muted}>
@@ -117,7 +117,7 @@ export default function ProfilePictureHistory(
           when={visibleItems().length > 0}
           fallback={<p class={`${pageStyles.muted} mt-3`}>{t("profile.picture_history.empty")}</p>}
         >
-          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div class="profile-history-grid mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <For each={visibleItems()}>
               {(item) => (
                 <article class="overflow-hidden rounded-sm border border-line bg-surface-2">
@@ -138,7 +138,7 @@ export default function ProfilePictureHistory(
                         </span>
                       </Show>
                     </div>
-                    <div class="flex flex-wrap gap-1">
+                    <div class="profile-history-actions flex flex-wrap gap-1">
                       <button
                         type="button"
                         class={pageStyles.buttonSecondary}

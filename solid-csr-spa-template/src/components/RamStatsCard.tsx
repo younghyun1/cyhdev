@@ -9,6 +9,7 @@ import type {
 import { theme } from "../state/theme";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
 import { t } from "../state/i18n";
+import { createMediaQuery } from "../utils/mediaQuery";
 
 function formatMem(bytes: number): string {
   if (bytes < 1024) return `${bytes.toFixed(0)} B`;
@@ -23,6 +24,7 @@ export default function RamStatsCard(props: {
   limit: number;
 }) {
   const isDark = () => theme() === "dark";
+  const isMobile = createMediaQuery("(max-width: 767px)");
 
   const C = () => ({
     bg: isDark() ? "#1f2937" : "#fff",
@@ -92,16 +94,22 @@ export default function RamStatsCard(props: {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x: { grid: { color: C().border }, ticks: { color: C().font } },
+      x: {
+        grid: { color: C().border },
+        ticks: { color: C().font, maxTicksLimit: isMobile() ? 4 : 11 },
+      },
       y: {
         beginAtZero: true,
         grid: { color: C().border },
-        ticks: { color: C().font },
+        ticks: { color: C().font, maxTicksLimit: isMobile() ? 5 : 11 },
         max: yMax(),
       },
     },
     plugins: {
-      legend: { labels: { color: C().font } },
+      legend: {
+        display: !isMobile(),
+        labels: { color: C().font },
+      },
       tooltip: {
         callbacks: {
           label: (ctx: TooltipItem<"line">) => {
@@ -119,8 +127,8 @@ export default function RamStatsCard(props: {
   });
 
   return (
-    <div class="flex flex-col gap-2">
-      <div class="flex items-center justify-between px-1">
+    <div class="stats-chart-card flex flex-col gap-2">
+      <div class="stats-metric-heading flex items-center justify-between px-1">
         <div class="flex items-center gap-2">
           <div
             class="w-2 h-2 rounded-full"
@@ -146,7 +154,7 @@ export default function RamStatsCard(props: {
       </div>
 
       <div
-        class="relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
+        class="stats-chart relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
         style={{
           border: `1px solid ${C().border}`,
           background: C().bg,

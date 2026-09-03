@@ -56,6 +56,7 @@ export default function VisitorBoard() {
   let map: L.Map | null = null;
   let markers: L.Marker[] = [];
   let markerCounts: number[] = [];
+  let resizeObserver: ResizeObserver | null = null;
 
   onSettled(() => {
     async function loadVisitorBoard() {
@@ -103,6 +104,13 @@ export default function VisitorBoard() {
         if (markers.length > 0) {
           markers[0]?.openPopup();
         }
+        resizeObserver =
+          typeof ResizeObserver === "undefined" || !mapDiv
+            ? null
+            : new ResizeObserver(() =>
+                map?.invalidateSize({ animate: false }),
+              );
+        if (mapDiv) resizeObserver?.observe(mapDiv);
       } catch {
         if (map && map.remove) map.remove();
         map = null;
@@ -118,6 +126,8 @@ export default function VisitorBoard() {
       }
       markers = [];
       markerCounts = [];
+      resizeObserver?.disconnect();
+      resizeObserver = null;
     };
   });
 

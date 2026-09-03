@@ -212,7 +212,7 @@ export default function PostsList() {
     <main class={pageStyles.page}>
       <div class={pageStyles.pageInner}>
         {/* 1. LAYOUT FIX: Align title and button in a row */}
-        <div class="flex flex-row items-center justify-between mb-4">
+        <div class="blog-list-title-row flex flex-row items-center justify-between mb-4">
           <h1 class={pageStyles.titleSm}>{t("page.blog.list_title")}</h1>
           <Show when={isSuperuser()}>
             <button
@@ -227,7 +227,7 @@ export default function PostsList() {
         <hr class={`${pageStyles.divider} mb-4`} />
 
         {/* Search UI */}
-        <div class="flex flex-col sm:flex-row gap-2 mb-6">
+        <div class="blog-search-row flex flex-col sm:flex-row gap-2 mb-6">
           <div class="flex-1 relative">
             <input
               type="text"
@@ -464,7 +464,7 @@ export default function PostsList() {
         </Show>
 
         <Show when={availablePages() > 1}>
-          <div class="mt-6 flex items-center justify-between">
+          <div class="blog-pagination mt-6 flex items-center justify-between">
             <button
               class={pageStyles.buttonSecondary}
               disabled={page() <= 1}

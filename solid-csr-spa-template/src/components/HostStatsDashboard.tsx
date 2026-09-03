@@ -11,6 +11,7 @@ import CpuStatsCard from "./CpuStatsCard";
 import RamStatsCard from "./RamStatsCard";
 import type { HostStatsRaw, HostStatPoint } from "../dtos/shared/host_stats";
 import { t, tx } from "../state/i18n";
+import { createMediaQuery } from "../utils/mediaQuery";
 
 // parse exactly 20 bytes: [f32][u64][u64] (all big-endian)
 function parseHostStats(buf: ArrayBuffer): HostStatsRaw | null {
@@ -29,6 +30,7 @@ export default function HostStatsDashboard(props: {
 }) {
   const [history, setHistory] = createSignal<HostStatPoint[]>([]);
   const [error, setError] = createSignal<string | null>(null);
+  const isMobile = createMediaQuery("(max-width: 767px)");
   const isDark = () => theme() === "dark";
 
   // simple palette helper
@@ -68,7 +70,13 @@ export default function HostStatsDashboard(props: {
       .replace(/\/$/, "") + "/ws/host-stats";
 
   const scheduleReconnect = () => {
-    if (disposed || reconnectTimer !== undefined) return;
+    if (
+      disposed ||
+      reconnectTimer !== undefined ||
+      (isMobile() && document.hidden)
+    ) {
+      return;
+    }
     const delay = Math.min(1000 * 2 ** retry, 15000);
     retry += 1;
     reconnectTimer = setTimeout(() => {
@@ -78,7 +86,14 @@ export default function HostStatsDashboard(props: {
   };
 
   const connect = () => {
-    if (disposed) return;
+    if (
+      disposed ||
+      (isMobile() && document.hidden) ||
+      ws?.readyState === WebSocket.OPEN ||
+      ws?.readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
     try {
       ws = new WebSocket(wsUrl());
       ws.binaryType = "arraybuffer";
@@ -115,6 +130,7 @@ export default function HostStatsDashboard(props: {
 
     ws.onerror = () => setError(t("stats.websocket_error"));
     ws.onclose = () => {
+      ws = null;
       setError((e) => e || t("stats.websocket_closed"));
       scheduleReconnect();
     };
@@ -122,8 +138,31 @@ export default function HostStatsDashboard(props: {
 
   onSettled(connect);
 
+  function handleVisibility() {
+    if (!isMobile()) return;
+    if (document.hidden) {
+      if (reconnectTimer !== undefined) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+      const current = ws;
+      ws = null;
+      if (current) {
+        current.onclose = null;
+        current.close();
+      }
+      return;
+    }
+    connect();
+  }
+
+  onSettled(() => {
+    document.addEventListener("visibilitychange", handleVisibility);
+  });
+
   onCleanup(() => {
     disposed = true;
+    document.removeEventListener("visibilitychange", handleVisibility);
     if (reconnectTimer !== undefined) {
       clearTimeout(reconnectTimer);
       reconnectTimer = undefined;
@@ -145,10 +184,10 @@ export default function HostStatsDashboard(props: {
         </div>
       </Show>
 
-      <div class="w-full max-w-7xl mx-auto space-y-6">
+      <div class="stats-dashboard w-full max-w-7xl mx-auto space-y-6">
         {/* Backend Health Stats Panel */}
         <div
-          class="p-6 rounded-sm shadow-lg border-2"
+          class="stats-panel p-6 rounded-sm shadow-lg border-2"
           style={{
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
@@ -242,7 +281,7 @@ export default function HostStatsDashboard(props: {
 
         {/* Live Host Stats Panel */}
         <div
-          class="p-6 rounded-sm shadow-lg border-2"
+          class="stats-panel p-6 rounded-sm shadow-lg border-2"
           style={{
             background: isDark()
               ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
@@ -251,7 +290,7 @@ export default function HostStatsDashboard(props: {
           }}
         >
           <div
-            class="flex items-center gap-3 mb-6 pb-2 border-b"
+            class="stats-panel-heading flex items-center gap-3 mb-6 pb-2 border-b"
             style={{ "border-color": C().border }}
           >
             <div

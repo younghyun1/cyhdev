@@ -26,9 +26,9 @@ export default function BackendStats() {
     });
 
   return (
-    <main class={pageStyles.page}>
+    <main class={`${pageStyles.page} backend-stats-page`}>
       <div
-        class={`${pageStyles.pageInner} max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
+        class={`${pageStyles.pageInner} backend-stats-layout max-w-[1700px] flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-8`}
       >
         <div class="w-full max-w-7xl xl:w-[56rem] 2xl:w-[64rem]">
           <HostStatsDashboard />

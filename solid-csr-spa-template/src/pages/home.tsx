@@ -19,11 +19,11 @@ export default function Home() {
     <main class={`${pageStyles.page} font-sans`}>
       {/* Top Navigation / Compact Hero */}
       <header class="border-b border-line">
-        <div class="max-w-7xl mx-auto px-6 py-8 md:py-10">
+        <div class="home-hero-inner max-w-7xl mx-auto px-6 py-8 md:py-10">
           <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
             {/* Identity Block */}
             <div class="space-y-2 max-w-2xl">
-              <h1 class="text-4xl md:text-3xl font-bold tracking-tighter uppercase font-mono">
+              <h1 class="home-hero-title text-4xl md:text-3xl font-bold tracking-tighter uppercase font-mono">
                 Younghyun Chi //{" "}
                 <span class="font-sans tracking-normal normal-case">
                   지영현
@@ -76,7 +76,7 @@ export default function Home() {
           </div>
 
           {/* Action Bar */}
-          <div class="mt-8 flex gap-4">
+          <div class="home-actions mt-8 flex gap-4">
             <a
               href="/blog"
               class={`${pageStyles.buttonPrimary} px-6 py-3 text-base font-mono`}
@@ -95,11 +95,11 @@ export default function Home() {
 
       {/* Main Content Grid */}
       <div class="grow">
-        <div class="relative mx-auto max-w-7xl px-6 py-12">
+        <div class="home-content relative mx-auto max-w-7xl px-6 py-12">
           <div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Latest Blog Posts - Spans 7 columns */}
             <section class="lg:col-span-7 flex flex-col h-full">
-              <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-line">
+              <div class="home-section-header flex items-end justify-between mb-6 pb-2 border-b border-dashed border-line">
                 <h2 class="text-2xl font-bold uppercase font-mono tracking-tight flex items-center gap-2">
                   <span class="w-3 h-3 bg-accent" /> {t("home.latest_posts")}
                 </h2>
@@ -172,7 +172,7 @@ export default function Home() {
 
             {/* Recent Photographs - Spans 5 columns */}
             <section class="lg:col-span-5 flex flex-col h-full">
-              <div class="flex items-end justify-between mb-6 pb-2 border-b border-dashed border-line">
+              <div class="home-section-header flex items-end justify-between mb-6 pb-2 border-b border-dashed border-line">
                 <h2 class="text-2xl font-bold uppercase font-mono tracking-tight flex items-center gap-2">
                   <span class="w-3 h-3 bg-accent" /> {t("home.photography")}
                 </h2>
@@ -218,6 +218,7 @@ export default function Home() {
                             alt={photo.photograph_comments || t("home.photography")}
                             class="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                             loading="lazy"
+                            decoding="async"
                           />
                           {/* Crosshair overlay effect */}
                           <div class="absolute inset-0 border-2 border-transparent group-hover:border-accent/50 transition-colors pointer-events-none z-10" />
