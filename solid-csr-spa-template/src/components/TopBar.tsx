@@ -1,4 +1,4 @@
-import { Show, createSignal, For, onCleanup } from "solid-js";
+import { Show, createSignal, onCleanup } from "solid-js";
 import { useLocation } from "@solidjs/router";
 import {
   isAuthenticated,
@@ -11,9 +11,9 @@ import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import LanguageSelect from "./LanguageSelect";
 import ThemeToggle from "./ThemeToggle";
-import type { UiTextKey } from "../i18n/keys";
 import { t } from "../state/i18n";
 import AdminNavigation from "./AdminNavigation";
+import PublicNavigation, { NAV_LINKS } from "./PublicNavigation";
 
 const [menuOpen, setMenuOpen] = createSignal(false);
 const [sidebarOpen, setSidebarOpen] = createSignal(false);
@@ -58,25 +58,6 @@ const handleLogout = async () => {
   setSuperuser(false);
   setMenuOpen(false);
 };
-
-type NavLink = {
-  href: string;
-  labelKey: UiTextKey;
-};
-
-const NAV_LINKS: NavLink[] = [
-  { href: "/", labelKey: "top_bar.nav.home" },
-  { href: "/about", labelKey: "top_bar.nav.about" },
-  { href: "/about-blog", labelKey: "top_bar.nav.about_blog" },
-  { href: "/blog", labelKey: "top_bar.nav.blog" },
-  { href: "/forum", labelKey: "top_bar.nav.forum" },
-  { href: "/photographs", labelKey: "top_bar.nav.photographs" },
-  { href: "/live-chat", labelKey: "top_bar.nav.live_chat" },
-  { href: "/projects", labelKey: "top_bar.nav.projects" },
-  { href: "/visitor-board", labelKey: "top_bar.nav.visitor_board" },
-  { href: "/geo-ip-db", labelKey: "top_bar.nav.geo_ip" },
-  { href: "/backend-stats", labelKey: "top_bar.nav.backend_stats" },
-];
 
 const TopBar = () => {
   const location = useLocation();
@@ -147,23 +128,7 @@ const TopBar = () => {
               {/* Nav: Hidden on mobile, inline on md+ */}
               <nav class="hidden md:block flex-1 overflow-x-auto md:overflow-visible ml-2">
                 <ul class="flex items-center font-mono text-sm min-w-max md:min-w-0">
-                  <For each={NAV_LINKS}>
-                    {(link) => (
-                      <li class="py-1 px-2 md:px-3">
-                        <a
-                          href={link.href}
-                          class={[
-                            "whitespace-nowrap transition-colors duration-90",
-                            isActive(link.href)
-                              ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
-                              : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8",
-                          ]}
-                        >
-                          {t(link.labelKey)}
-                        </a>
-                      </li>
-                    )}
-                  </For>
+                  <PublicNavigation variant="desktop" isActive={isActive} />
                   <AdminNavigation variant="desktop" isActive={isActive} />
                 </ul>
               </nav>
@@ -315,24 +280,11 @@ const TopBar = () => {
             </div>
             <nav class="flex-1 overflow-y-auto py-4">
               <ul class="space-y-1 px-2">
-                <For each={NAV_LINKS}>
-                  {(link) => (
-                    <li>
-                      <a
-                        href={link.href}
-                        class={[
-                          "block px-4 py-2 font-mono text-sm rounded-sm transition-colors",
-                          isActive(link.href)
-                            ? "text-ink bg-surface-2 border-l-2 border-accent"
-                            : "text-ink-muted hover:text-ink hover:bg-surface-2",
-                        ]}
-                        onClick={() => setSidebarOpen(false)}
-                      >
-                        {t(link.labelKey)}
-                      </a>
-                    </li>
-                  )}
-                </For>
+                <PublicNavigation
+                  variant="mobile"
+                  isActive={isActive}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
                 <AdminNavigation
                   variant="mobile"
                   isActive={isActive}

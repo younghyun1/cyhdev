@@ -3,6 +3,20 @@
 ARG APP_NAME=rust-be-template
 ARG RUST_DOCKER_TAG=nightly
 
+# Build the pinned EU5 source revision as a browser-native ES module package.
+FROM rustlang/rust:nightly-alpine AS eu5-wasm
+ARG WASM_PACK_VERSION=0.15.0
+ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
+RUN apk add --no-cache clang lld musl-dev git ca-certificates make perl \
+    && rustup target add wasm32-unknown-unknown --toolchain "$RUSTUP_TOOLCHAIN" \
+    && cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked
+WORKDIR /workspace/vendor/eu5-location-filter
+COPY vendor/eu5-location-filter/ ./
+RUN wasm-pack build --release --target web --no-pack --no-typescript -- \
+        --locked --no-default-features --features web \
+    && test -s pkg/eu5_location_filter.js \
+    && test "$(od -An -tx1 -N4 pkg/eu5_location_filter_bg.wasm | tr -d ' \n')" = "0061736d"
+
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
 FROM node:24-alpine AS frontend
@@ -12,9 +26,15 @@ RUN apk add --no-cache gzip zstd
 COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
 RUN npm ci --legacy-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
+COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/web/index.html ./public/eu5-locations-db/app/index.html
+COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter.js ./public/eu5-locations-db/app/pkg/eu5_location_filter.js
+COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter_bg.wasm ./public/eu5-locations-db/app/pkg/eu5_location_filter_bg.wasm
 RUN npm run build \
     && find ./dist -type f ! -iname '*.png' ! -iname '*.jpg' ! -iname '*.gz' ! -iname '*.zst' \
-        -exec sh -c 'gzip -9 -c "$1" > "$1.gz"; zstd --ultra -22 -q -c "$1" > "$1.zst"' _ {} \;
+        -exec sh -c 'gzip -9 -c "$1" > "$1.gz"; zstd --ultra -22 -q -c "$1" > "$1.zst"' _ {} \; \
+    && find ./dist/eu5-locations-db/app -type f ! -name '*.gz' -delete \
+    && test -z "$(find ./dist/eu5-locations-db/app -type f ! -name '*.gz' -print -quit)" \
+    && find ./dist/eu5-locations-db/app -type f -name '*.gz' -exec gzip -t {} +
 
 # The compatibility artifact preserves the original build.sh ABI and output:
 # glibc, Zen 3 tuning, no UPX, and a host-visible Cargo release path.

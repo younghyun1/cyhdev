@@ -2,15 +2,25 @@
 
 This repository contains the backend, web application, maintenance utilities, and WebAssembly demos for cyhdev.
 
+Clone with submodules, or initialize them after an existing checkout:
+
+```bash
+git clone --recurse-submodules https://github.com/younghyun1/cyhdev.git
+git submodule update --init --recursive
+```
+
 ## Packages
 
 - `rust-be-template`: Axum and PostgreSQL backend.
 - `solid-csr-spa-template`: SolidJS web application.
 - `wasm_demos`: Browser demos built with Rust and WebAssembly.
+- `vendor/eu5-location-filter`: Public Slint desktop/browser source pinned as a Git submodule.
 
 ## Development
 
 Use `cargo xtask --help` for root-relative development, verification, and image commands. During implementation, `cargo xtask clippy` is the only stage gate; it checks native packages for the host and browser packages for `wasm32-unknown-unknown`. Run the broader final-review commands only after the implementation waves are complete.
+
+Run `cargo xtask eu5-web-stage` to build the EU5 Locations DB development package with `wasm-pack --dev` and stage its host document, JavaScript, and WASM in the frontend's ignored public assets. Run the frontend development server afterward. Optimized EU5 WebAssembly builds are confined to the normal Docker pipeline.
 
 ## Optimized build
 
