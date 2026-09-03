@@ -1,6 +1,6 @@
 .eu5-locations-db-page {
   position: fixed;
-  inset: 3rem 0 2.5rem;
+  inset: 3rem 0 var(--fixed-footer-clearance);
   background: #11161d;
 }
 

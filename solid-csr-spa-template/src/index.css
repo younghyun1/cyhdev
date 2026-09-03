@@ -31,6 +31,7 @@
     --danger: #be123c;
     --glow-ok: color-mix(in srgb, var(--ok) 60%, transparent);
     --glow-danger: color-mix(in srgb, var(--danger) 60%, transparent);
+    --fixed-footer-clearance: 2.5rem;
     color-scheme: light;
 }
 .dark {
@@ -114,6 +115,16 @@ main {
     min-height: 100%;
     display: flex;
     flex-direction: column;
+}
+
+.site-main {
+    padding-bottom: var(--fixed-footer-clearance);
+}
+
+@media (min-width: 640px) {
+    :root {
+        --fixed-footer-clearance: 3rem;
+    }
 }
 
 ::selection {
