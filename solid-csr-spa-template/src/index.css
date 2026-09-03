@@ -163,3 +163,7 @@ main {
 .mobile-only {
     display: none;
 }
+
+.threaded-comment {
+    margin-left: calc(var(--comment-depth, 0) * 16px);
+}

@@ -1,4 +1,13 @@
 @media (max-width: 767px) {
+  html:root {
+    --ink-faint: #655d53;
+    --accent: #92400e;
+  }
+
+  html.dark {
+    --ink-faint: #aaa196;
+  }
+
   html,
   body,
   #root,
@@ -64,6 +73,11 @@
     min-height: 44px;
     align-items: center;
     padding-inline: max(0.75rem, var(--safe-area-left)) max(0.75rem, var(--safe-area-right));
+  }
+
+  .site-status-mobile > :last-child {
+    color: var(--ink-muted);
+    opacity: 1 !important;
   }
 
   .app-page {
@@ -319,6 +333,13 @@
     font-size: 1.25rem;
   }
 
+  .home-content article h3,
+  .home-content article h3 a {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .auth-page {
     min-height: calc(100dvh - var(--site-header-height) - var(--site-footer-height));
     align-items: flex-start !important;
@@ -404,6 +425,16 @@
     gap: 0.75rem;
   }
 
+  .blog-post-layout,
+  .blog-post-shell,
+  .blog-post-shell > div,
+  .blog-post-heading-row,
+  .blog-post-title-group,
+  .blog-post-actions {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .blog-vote-rail {
     flex-direction: row;
     align-self: flex-start;
@@ -430,6 +461,12 @@
     grid-template-columns: 1fr;
     width: 100%;
     margin-left: 0;
+  }
+
+  .blog-post-actions .ui-button {
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .blog-form-actions {
@@ -462,7 +499,7 @@
   }
 
   .threaded-comment {
-    margin-left: min(calc(var(--comment-depth, 0) * 0.75rem), 2.25rem) !important;
+    margin-left: var(--mobile-comment-indent, 0) !important;
     overflow-wrap: anywhere;
   }
 
@@ -659,7 +696,7 @@
   }
 
   .mobile-only {
-    display: inline-flex;
+    display: inline-flex !important;
   }
 
   .wasm-open-separately,
