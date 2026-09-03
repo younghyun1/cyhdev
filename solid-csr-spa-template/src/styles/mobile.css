@@ -1,0 +1,304 @@
+@media (max-width: 767px) {
+  html,
+  body,
+  #root,
+  #app-root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  html {
+    scroll-padding-top: var(--site-header-height);
+  }
+
+  #app-root {
+    min-height: 100dvh;
+  }
+
+  .site-main {
+    min-height: 100dvh;
+    padding-top: var(--site-header-height) !important;
+    padding-bottom: var(--site-footer-height) !important;
+  }
+
+  .site-header {
+    padding-top: var(--safe-area-top);
+  }
+
+  .site-header-row {
+    min-height: 44px;
+    padding-block: 0 !important;
+  }
+
+  .site-header-menu-button {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .site-header-mobile-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1rem;
+  }
+
+  .site-header-actions {
+    display: none;
+  }
+
+  .site-status-bar {
+    min-height: calc(44px + var(--safe-area-bottom));
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .site-status-bar--keyboard-hidden {
+    display: none;
+  }
+
+  .site-status-mobile {
+    min-height: 44px;
+    align-items: center;
+    padding-inline: max(0.75rem, var(--safe-area-left)) max(0.75rem, var(--safe-area-right));
+  }
+
+  .app-page {
+    min-height: auto;
+  }
+
+  .page-inner,
+  .page-inner-narrow {
+    padding: 1.5rem 1rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .page-title-small {
+    font-size: 1.5rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .page-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ui-card-body,
+  .ui-card-padded {
+    padding: 1rem;
+  }
+
+  .ui-control,
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  button,
+  [role="button"] {
+    min-width: 24px;
+    min-height: 24px;
+  }
+
+  .ui-button,
+  .forum-button,
+  .forum-link-button,
+  .authorization-page button,
+  .authorization-dialog button,
+  .operations-page button,
+  .operations-dialog button {
+    min-height: 44px;
+  }
+
+  .mobile-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: color-mix(in srgb, #000 58%, transparent);
+  }
+
+  .mobile-drawer {
+    width: min(22rem, calc(100vw - 2.5rem));
+    height: 100dvh;
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 1rem 0 3rem color-mix(in srgb, #000 35%, transparent);
+  }
+
+  .mobile-drawer-header {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0.75rem 0.25rem 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .mobile-drawer-close {
+    display: inline-flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+  }
+
+  .mobile-drawer-scroll {
+    height: calc(100% - 52px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .mobile-drawer-navigation {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.75rem;
+  }
+
+  .mobile-drawer-navigation a,
+  .mobile-drawer-navigation button {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .mobile-drawer-section {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.9rem 1rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .mobile-drawer-section-title {
+    color: var(--ink-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .mobile-drawer-control-row {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .mobile-drawer-control-row button,
+  .mobile-drawer-control-row select {
+    min-height: 44px;
+  }
+
+  .mobile-drawer-action {
+    display: flex;
+    min-height: 44px;
+    width: 100%;
+    align-items: center;
+    gap: 0.6rem;
+    border-radius: 0.2rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--ink);
+    text-align: left;
+  }
+
+  .mobile-drawer-action:hover {
+    background: var(--surface-2);
+  }
+
+  .mobile-drawer-status {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 999px;
+    background: var(--ok);
+  }
+
+  .mobile-drawer-status-offline {
+    background: var(--danger);
+  }
+
+  .mobile-drawer-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0.75rem 0.5rem;
+  }
+
+  .mobile-drawer-identity img {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    object-fit: cover;
+  }
+
+  .mobile-drawer-identity strong,
+  .mobile-drawer-identity small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-drawer-identity small {
+    color: var(--ink-muted);
+    font-size: 0.75rem;
+  }
+
+  .system-status-details {
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-top: var(--safe-area-top);
+    background: color-mix(in srgb, #000 60%, transparent);
+  }
+
+  .mobile-sheet {
+    width: 100%;
+    max-height: min(78dvh, 44rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: 0.5rem 0.5rem 0 0;
+    padding: 1rem max(1rem, var(--safe-area-right)) calc(1rem + var(--safe-area-bottom)) max(1rem, var(--safe-area-left));
+    background: var(--surface);
+    box-shadow: 0 -1rem 3rem color-mix(in srgb, #000 35%, transparent);
+  }
+
+  *,
+  *::before,
+  *::after {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+}

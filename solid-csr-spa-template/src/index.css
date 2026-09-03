@@ -7,6 +7,7 @@
 
 @import "./styles/prose.css";
 @import "./styles/code.css";
+@import "./styles/mobile.css";
 
 @plugin "@tailwindcss/typography";
 
@@ -32,6 +33,12 @@
     --glow-ok: color-mix(in srgb, var(--ok) 60%, transparent);
     --glow-danger: color-mix(in srgb, var(--danger) 60%, transparent);
     --fixed-footer-clearance: 2.5rem;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --site-header-height: 3rem;
+    --site-footer-height: var(--fixed-footer-clearance);
     color-scheme: light;
 }
 .dark {
