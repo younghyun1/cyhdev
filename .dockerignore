@@ -6,6 +6,7 @@
 **/node_modules
 **/dist
 **/pkg
+**/logs
 **/certs
 **/*.pem
 **/*.key

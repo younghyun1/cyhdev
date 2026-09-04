@@ -8,6 +8,7 @@ use std::{
 
 use serde_json::Value;
 
+const APP_BUILD_EPOCH: &str = "APP_BUILD_EPOCH";
 const SOURCE_DATE_EPOCH: &str = "SOURCE_DATE_EPOCH";
 
 fn main() -> ExitCode {
@@ -50,6 +51,7 @@ fn generate_build_info() -> Result<(), String> {
         "cargo:rerun-if-changed={}",
         metadata.workspace_root.join("Cargo.lock").display()
     );
+    println!("cargo:rerun-if-env-changed={APP_BUILD_EPOCH}");
     println!("cargo:rerun-if-env-changed={SOURCE_DATE_EPOCH}");
     Ok(())
 }
@@ -64,23 +66,33 @@ fn required_env(key: &str) -> Result<String, String> {
 }
 
 fn build_time_utc() -> Result<String, String> {
-    let seconds = match env::var(SOURCE_DATE_EPOCH) {
-        Ok(value) => value.parse::<i64>().map_err(|error| {
-            format!("{SOURCE_DATE_EPOCH} must be an integer Unix timestamp: {error}")
-        })?,
-        Err(env::VarError::NotPresent) => return Ok(chrono::Utc::now().to_rfc3339()),
+    let configured = match env::var(APP_BUILD_EPOCH) {
+        Ok(value) => Some((APP_BUILD_EPOCH, value)),
+        Err(env::VarError::NotPresent) => match env::var(SOURCE_DATE_EPOCH) {
+            Ok(value) => Some((SOURCE_DATE_EPOCH, value)),
+            Err(env::VarError::NotPresent) => None,
+            Err(env::VarError::NotUnicode(_)) => {
+                return Err(format!("{SOURCE_DATE_EPOCH} must contain valid UTF-8"));
+            }
+        },
         Err(env::VarError::NotUnicode(_)) => {
-            return Err(format!("{SOURCE_DATE_EPOCH} must contain valid UTF-8"));
+            return Err(format!("{APP_BUILD_EPOCH} must contain valid UTF-8"));
         }
     };
+    let Some((source, value)) = configured else {
+        return Ok(chrono::Utc::now().to_rfc3339());
+    };
+    let seconds = value
+        .parse::<i64>()
+        .map_err(|error| format!("{source} must be an integer Unix timestamp: {error}"))?;
     if seconds < 0 {
-        return Err(format!("{SOURCE_DATE_EPOCH} must not be negative"));
+        return Err(format!("{source} must not be negative"));
     }
 
     match chrono::DateTime::<chrono::Utc>::from_timestamp(seconds, 0) {
         Some(timestamp) => Ok(timestamp.to_rfc3339()),
         None => Err(format!(
-            "{SOURCE_DATE_EPOCH} value {seconds} is outside Chrono's supported range"
+            "{source} value {seconds} is outside Chrono's supported range"
         )),
     }
 }

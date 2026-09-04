@@ -2,14 +2,17 @@
 import { defineConfig } from "vite";
 import solidPlugin from "@solidjs/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
-import { resolveBuildTimestamp } from "./src/config/buildTimestamp.ts";
+import { resolveConfiguredBuildTimestamp } from "./src/config/buildTimestamp.ts";
 import { initialAssetBudgetPlugin } from "./build/initialAssetBudget.ts";
 
 export default defineConfig({
   plugins: [solidPlugin(), initialAssetBudgetPlugin()],
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(
-      resolveBuildTimestamp(process.env.SOURCE_DATE_EPOCH),
+      resolveConfiguredBuildTimestamp(
+        process.env.APP_BUILD_EPOCH,
+        process.env.SOURCE_DATE_EPOCH,
+      ),
     ),
     __SOLID_VERSION__: JSON.stringify(pkg.dependencies["solid-js"] || ""),
     __APP_NAME__: JSON.stringify(pkg.name),

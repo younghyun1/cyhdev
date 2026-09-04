@@ -30,7 +30,7 @@ Run the restored compatibility entry point from any directory:
 ./build.sh
 ```
 
-It is equivalent to `cargo xtask build`. The build uses locked frontend and Cargo inputs, rolling nightly, `build-std`, the workspace release profile, gzip-9/zstd-22 frontend assets, and `target-cpu=znver3`. It exports the uncompressed glibc executable to `target/x86_64-unknown-linux-gnu/release/rust-be-template` and rejects unresolved dynamic libraries. `APP_NAME`, `TARGET_TRIPLE`, `TARGET_CPU`, `RUST_DOCKER_TAG`, `DOCKER_PLATFORM`, and `SOURCE_DATE_EPOCH` are the supported environment controls. The compatibility builder intentionally does not restore dependency updates or Git pulls.
+It is equivalent to `cargo xtask build`. The build uses locked frontend and Cargo inputs, digest-pinned nightly builders, `build-std`, the workspace release profile, gzip-9/zstd-22 frontend assets, and `target-cpu=znver3`. It exports the uncompressed glibc executable to `target/x86_64-unknown-linux-gnu/release/rust-be-template` and rejects unresolved dynamic libraries. `APP_NAME`, `TARGET_TRIPLE`, `TARGET_CPU`, `RUST_DOCKER_TAG`, `DOCKER_PLATFORM`, and `SOURCE_DATE_EPOCH` are the supported environment controls. Overriding `RUST_DOCKER_TAG` opts into a different host builder. The compatibility builder intentionally does not restore dependency updates or Git pulls.
 
 `build.sh` and `cargo xtask image` validate the pinned EU5 submodule before starting Docker. Both local optimized paths build the EU5 browser package inside the container, stage it into the frontend, retain only gzip-9 representations under `/eu5-locations-db/app/`, and compile those assets into the backend executable. If the submodule is absent, initialize it with `git submodule update --init --recursive` and rerun the command.
 
@@ -46,8 +46,8 @@ Database gates require `TEST_DATABASE_URL` to name a disposable PostgreSQL 18 ma
 
 The checked-in `tools/final-review/evidence.manifest` is the executable W3/W8 evidence contract. The final review validates its xtask command and review-step registrations, required repository evidence, and the throughput and redacted secret-scan reports, then writes a deterministic receipt to `target/final-review/evidence.json`.
 
-All root Cargo commands use `Cargo.lock`; frontend builds use `npm ci` and `package-lock.json`. Use `./build.sh` or the corresponding `cargo xtask` commands instead of package-local build scripts. Optimized backend and image commands pull rolling nightly, build the frontend inside Docker, rebuild the Rust standard library, and apply the root release profile.
+All root Cargo commands use `Cargo.lock`; frontend builds use `npm ci` and `package-lock.json`. Use `./build.sh` or the corresponding `cargo xtask` commands instead of package-local build scripts. Optimized backend and image commands verify digest-pinned nightly builders, build the frontend inside Docker, rebuild the Rust standard library, and apply the root release profile.
 
-Frontend and backend build metadata use `SOURCE_DATE_EPOCH` when set. Root optimized and image commands otherwise use the current Git commit timestamp, which is meaningful without invalidating Docker caches or making identical source builds vary with wall-clock time. Direct development builds without Git orchestration use their compilation time.
+Frontend and backend build metadata use `SOURCE_DATE_EPOCH` when set. Root optimized and image commands otherwise use the current Git commit timestamp. The Docker orchestration transports that timestamp as `APP_BUILD_EPOCH`, limiting invalidation to steps whose output contains the metadata; direct Docker builds retain `SOURCE_DATE_EPOCH` as a fallback. Direct development builds without Git orchestration use their compilation time.
 
 Runtime credentials stay in ignored environment or provider credential files. The repository does not provision external accounts, OAuth clients, or deployment secrets.

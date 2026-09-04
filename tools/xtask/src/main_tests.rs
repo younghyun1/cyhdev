@@ -2,6 +2,15 @@ use std::path::Path;
 
 use super::{eu5_web, throughput_harness_command};
 
+fn required_index(contents: &str, needle: &str) -> usize {
+    let index = contents.find(needle).unwrap_or(contents.len());
+    assert!(
+        index < contents.len(),
+        "required build instruction is missing: {needle}"
+    );
+    index
+}
+
 #[test]
 fn optimized_build_reports_an_uninitialized_eu5_submodule() {
     let result = eu5_web::require_checkout(Path::new("/cyhdev-test-root-without-an-eu5-submodule"));
@@ -90,5 +99,49 @@ fn throughput_harness_forwards_arguments_after_cargo_options() {
             "record",
             "--target"
         ]
+    );
+}
+
+#[test]
+fn container_build_epochs_follow_stable_dependency_layers() {
+    let dockerfile = include_str!("../../../rust-be-template/Dockerfile");
+    let frontend_start = required_index(dockerfile, " AS frontend");
+    let host_start = required_index(dockerfile, " AS host-release");
+    let frontend = &dockerfile[frontend_start..host_start];
+    assert!(
+        required_index(frontend, "RUN --mount=type=cache,id=cyhdev-npm-cache")
+            < required_index(frontend, "ARG APP_BUILD_EPOCH")
+    );
+
+    let artifact_start = required_index(dockerfile, "FROM scratch AS artifact");
+    let host = &dockerfile[host_start..artifact_start];
+    assert!(
+        required_index(host, "rustup component add rust-src")
+            < required_index(host, "ARG APP_BUILD_EPOCH")
+    );
+    assert!(
+        required_index(host, "COPY --from=frontend") < required_index(host, "ARG APP_BUILD_EPOCH")
+    );
+}
+
+#[test]
+fn container_build_persists_expensive_package_caches() {
+    let dockerfile = include_str!("../../../rust-be-template/Dockerfile");
+    for cache_id in [
+        "id=cyhdev-eu5-target",
+        "id=cyhdev-eu5-cargo-registry",
+        "id=cyhdev-eu5-cargo-git",
+        "id=cyhdev-wasm-pack-cache",
+        "id=cyhdev-npm-cache",
+    ] {
+        assert!(
+            dockerfile.contains(cache_id),
+            "missing cache mount {cache_id}"
+        );
+    }
+    assert!(
+        include_str!("../../../.dockerignore")
+            .lines()
+            .any(|line| line == "**/logs")
     );
 }
