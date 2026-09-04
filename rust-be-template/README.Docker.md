@@ -8,7 +8,7 @@ The application will be available at https://localhost:30737.
 
 ### Deploying your application to the cloud
 
-Build the development image without credentials from the repository root with `cargo xtask image`. The command pulls the rolling nightly base and passes `SOURCE_DATE_EPOCH`, defaulting to the current Git commit timestamp for meaningful, reproducible metadata.
+Build the development image without credentials from the repository root with `cargo xtask image`. The command verifies the digest-pinned nightly builder and passes `APP_BUILD_EPOCH`, defaulting to the current Git commit timestamp for meaningful, reproducible metadata. An explicitly supplied `SOURCE_DATE_EPOCH` remains the source for that value.
 
 If the deployment uses a different CPU architecture than the development machine, invoke Docker from the repository root with the required `--platform` and `--pull` options.
 

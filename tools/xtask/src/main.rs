@@ -183,7 +183,7 @@ fn run_image(root: &Path) -> TaskResult<()> {
             "cyhdev-backend:dev",
             "--build-arg",
         ])
-        .arg(format!("SOURCE_DATE_EPOCH={source_date_epoch}"))
+        .arg(format!("APP_BUILD_EPOCH={source_date_epoch}"))
         .arg(".")
         .current_dir(root);
     run_command(&mut command)

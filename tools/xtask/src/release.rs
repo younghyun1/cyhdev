@@ -15,7 +15,8 @@ const DEFAULT_APP_NAME: &str = "rust-be-template";
 const DEFAULT_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const DEFAULT_TARGET_CPU: &str = "znver3";
 const DEFAULT_DOCKER_PLATFORM: &str = "linux/amd64";
-const DEFAULT_RUST_DOCKER_TAG: &str = "nightly";
+const DEFAULT_RUST_DOCKER_TAG: &str =
+    "nightly@sha256:dfd905886275b22be070dad4e8f2c2264bae8341ba7a4b2ceea370249190b044";
 
 struct ReleaseOptions {
     app_name: String,
@@ -23,7 +24,7 @@ struct ReleaseOptions {
     target_cpu: String,
     docker_platform: String,
     rust_docker_tag: String,
-    source_date_epoch: String,
+    app_build_epoch: String,
 }
 
 pub(crate) fn run(root: &Path) -> TaskResult<()> {
@@ -60,7 +61,7 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
         ])
         .args([
             "--build-arg",
-            &format!("SOURCE_DATE_EPOCH={}", options.source_date_epoch),
+            &format!("APP_BUILD_EPOCH={}", options.app_build_epoch),
         ])
         .args([
             "--build-arg",
@@ -86,7 +87,7 @@ impl ReleaseOptions {
         let target_cpu = environment_value("TARGET_CPU", DEFAULT_TARGET_CPU)?;
         let docker_platform = environment_value("DOCKER_PLATFORM", DEFAULT_DOCKER_PLATFORM)?;
         let rust_docker_tag = environment_value("RUST_DOCKER_TAG", DEFAULT_RUST_DOCKER_TAG)?;
-        let source_date_epoch = source_date_epoch(root)?;
+        let app_build_epoch = source_date_epoch(root)?;
 
         validate_token("APP_NAME", &app_name, 64, false)?;
         validate_token("TARGET_TRIPLE", &target_triple, 64, false)?;
@@ -97,14 +98,14 @@ impl ReleaseOptions {
         }
         validate_token("TARGET_CPU", &target_cpu, 64, true)?;
         validate_token("DOCKER_PLATFORM", &docker_platform, 64, true)?;
-        validate_token("RUST_DOCKER_TAG", &rust_docker_tag, 64, true)?;
+        validate_rust_docker_tag(&rust_docker_tag)?;
         Ok(Self {
             app_name,
             target_triple,
             target_cpu,
             docker_platform,
             rust_docker_tag,
-            source_date_epoch,
+            app_build_epoch,
         })
     }
 }
@@ -197,6 +198,32 @@ fn validate_token(
     }
 }
 
+fn validate_rust_docker_tag(value: &str) -> TaskResult<()> {
+    let valid_tag = |tag: &str| {
+        !tag.is_empty()
+            && tag.len() <= 64
+            && tag
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+    };
+    let valid = match value.split_once("@sha256:") {
+        Some((tag, digest)) => {
+            valid_tag(tag)
+                && digest.len() == 64
+                && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+        }
+        None => valid_tag(value),
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(TaskError(
+            "RUST_DOCKER_TAG must be an ASCII tag, optionally pinned by a 64-character sha256 digest"
+                .to_owned(),
+        ))
+    }
+}
+
 fn artifact_directory(root: &Path, target_triple: &str) -> PathBuf {
     root.join("target").join(target_triple).join("release")
 }
@@ -228,7 +255,10 @@ fn validate_artifact(path: &Path) -> TaskResult<()> {
 mod tests {
     use std::path::Path;
 
-    use super::{artifact_directory, normalize_source_date_epoch, validate_token};
+    use super::{
+        DEFAULT_RUST_DOCKER_TAG, artifact_directory, normalize_source_date_epoch,
+        validate_rust_docker_tag, validate_token,
+    };
 
     #[test]
     fn build_tokens_reject_shell_and_path_injection() {
@@ -237,6 +267,18 @@ mod tests {
         assert!(validate_token("TARGET_CPU", "znver3", 64, true).is_ok());
         assert!(validate_token("TARGET_CPU", "znver3;touch", 64, true).is_err());
         assert!(validate_token("DOCKER_PLATFORM", "linux/amd64", 64, true).is_ok());
+    }
+
+    #[test]
+    fn rust_builder_accepts_named_and_digest_pinned_tags() {
+        assert!(validate_rust_docker_tag("nightly").is_ok());
+        assert!(validate_rust_docker_tag(DEFAULT_RUST_DOCKER_TAG).is_ok());
+        assert!(
+            include_str!("../../../rust-be-template/Dockerfile")
+                .contains(&format!("ARG RUST_DOCKER_TAG={DEFAULT_RUST_DOCKER_TAG}"))
+        );
+        assert!(validate_rust_docker_tag("nightly@sha256:short").is_err());
+        assert!(validate_rust_docker_tag("nightly;touch").is_err());
     }
 
     #[test]

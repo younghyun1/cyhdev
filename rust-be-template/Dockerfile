@@ -1,10 +1,14 @@
 # syntax=docker/dockerfile:1
 
 ARG APP_NAME=rust-be-template
-ARG RUST_DOCKER_TAG=nightly
+# Keep local cache keys stable until these reviewed builder revisions are
+# intentionally advanced. The tags retain their human-readable provenance.
+ARG RUST_DOCKER_TAG=nightly@sha256:dfd905886275b22be070dad4e8f2c2264bae8341ba7a4b2ceea370249190b044
+ARG RUST_ALPINE_DOCKER_TAG=nightly-alpine@sha256:ad0a86a1629fcf9e77b8b6d92a7803e16ce011a1c80a9602786abd5cb225d615
+ARG NODE_DOCKER_TAG=24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
 
 # Build the pinned EU5 source revision as a browser-native ES module package.
-FROM rustlang/rust:nightly-alpine AS eu5-wasm
+FROM rustlang/rust:${RUST_ALPINE_DOCKER_TAG} AS eu5-wasm
 ARG WASM_PACK_VERSION=0.15.0
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
 RUN apk add --no-cache clang lld musl-dev git ca-certificates make perl \
@@ -12,23 +16,29 @@ RUN apk add --no-cache clang lld musl-dev git ca-certificates make perl \
     && cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked
 WORKDIR /workspace/vendor/eu5-location-filter
 COPY vendor/eu5-location-filter/ ./
-RUN wasm-pack build --release --target web --no-pack --no-typescript -- \
+RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-location-filter/target,sharing=locked \
+    --mount=type=cache,id=cyhdev-eu5-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,id=cyhdev-eu5-cargo-git,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,id=cyhdev-wasm-pack-cache,target=/root/.cache/.wasm-pack,sharing=locked \
+    wasm-pack build --release --target web --no-pack --no-typescript -- \
         --locked --no-default-features --features web \
     && test -s pkg/eu5_location_filter.js \
     && test "$(od -An -tx1 -N4 pkg/eu5_location_filter_bg.wasm | tr -d ' \n')" = "0061736d"
 
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
-FROM node:24-alpine AS frontend
-ARG SOURCE_DATE_EPOCH
+FROM node:${NODE_DOCKER_TAG} AS frontend
 WORKDIR /workspace/solid-csr-spa-template
 RUN apk add --no-cache gzip zstd
 COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
-RUN npm ci --legacy-peer-deps --no-audit --no-fund
+RUN --mount=type=cache,id=cyhdev-npm-cache,target=/root/.npm,sharing=locked \
+    npm ci --legacy-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/web/index.html ./public/eu5-locations-db/app/index.html
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter.js ./public/eu5-locations-db/app/pkg/eu5_location_filter.js
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter_bg.wasm ./public/eu5-locations-db/app/pkg/eu5_location_filter_bg.wasm
+ARG APP_BUILD_EPOCH
+ARG SOURCE_DATE_EPOCH
 RUN npm run build \
     && find ./dist -type f ! -iname '*.png' ! -iname '*.jpg' ! -iname '*.gz' ! -iname '*.zst' \
         -exec sh -c 'gzip -9 -c "$1" > "$1.gz"; zstd --ultra -22 -q -c "$1" > "$1.zst"' _ {} \; \
@@ -42,7 +52,6 @@ FROM rustlang/rust:${RUST_DOCKER_TAG} AS host-release
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-gnu
 ARG RUST_TARGET_CPU=znver3
-ARG SOURCE_DATE_EPOCH
 # Bind Cargo and rustup to the dated nightly contained by the freshly pulled
 # image. Otherwise rust-toolchain.toml selects a second, mutable nightly alias.
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
@@ -54,13 +63,15 @@ RUN apt-get update \
     && rustup component add rust-src --toolchain "$RUSTUP_TOOLCHAIN"
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
-RUN --mount=type=cache,target=/workspace/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
-    build_epoch="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
+ARG APP_BUILD_EPOCH
+ARG SOURCE_DATE_EPOCH
+RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
+    build_epoch="${APP_BUILD_EPOCH:-${SOURCE_DATE_EPOCH:-$(date +%s)}}" \
     && RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
-    SOURCE_DATE_EPOCH="$build_epoch" \
+    APP_BUILD_EPOCH="$build_epoch" \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind \
@@ -73,9 +84,9 @@ RUN --mount=type=cache,target=/workspace/target/ \
 FROM scratch AS artifact
 COPY --from=host-release /out/ /
 
-# The rolling tag intentionally tracks the latest nightly toolchain. Root image
-# commands use --pull so a cached base cannot pin an older nightly.
-FROM rustlang/rust:nightly-alpine AS rust-base
+# The reviewed digest above keeps compiler fingerprints stable across local
+# builds. Updating the tag or digest is an explicit toolchain upgrade.
+FROM rustlang/rust:${RUST_ALPINE_DOCKER_TAG} AS rust-base
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
@@ -95,9 +106,9 @@ COPY . ./
 # coupling this smoke target to production frontend bundling.
 RUN mkdir -p solid-csr-spa-template/dist \
     && printf '%s\n' '<!doctype html><title>backend smoke</title>' > solid-csr-spa-template/dist/index.html
-RUN --mount=type=cache,target=/workspace/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
+RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
     cargo build --locked --package "$APP_NAME" && \
     cp "./target/debug/$APP_NAME" /bin/server
 
@@ -122,17 +133,18 @@ CMD ["/app/server"]
 FROM rust-base AS build
 ARG APP_NAME
 ARG RUST_TARGET=x86_64-unknown-linux-musl
-ARG SOURCE_DATE_EPOCH
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+ARG APP_BUILD_EPOCH
+ARG SOURCE_DATE_EPOCH
 
 # Rebuild the standard library with the release profile from Cargo.toml so the
 # application and sysroot share the same optimization, LTO, and panic settings.
-RUN --mount=type=cache,target=/workspace/target/ \
-    --mount=type=cache,target=/usr/local/cargo/git/db \
-    --mount=type=cache,target=/usr/local/cargo/registry/ \
-    build_epoch="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
-    && SOURCE_DATE_EPOCH="$build_epoch" \
+RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
+    build_epoch="${APP_BUILD_EPOCH:-${SOURCE_DATE_EPOCH:-$(date +%s)}}" \
+    && APP_BUILD_EPOCH="$build_epoch" \
     cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind && \
