@@ -172,7 +172,6 @@ fn run_native_build(root: &Path) -> TaskResult<()> {
 fn run_image(root: &Path) -> TaskResult<()> {
     eu5_web::require_checkout(root)?;
     let source_date_epoch = release::source_date_epoch(root)?;
-    let docker_network = release::docker_network()?;
     let mut command = Command::new("docker");
     command
         .args([
@@ -185,7 +184,6 @@ fn run_image(root: &Path) -> TaskResult<()> {
             "--build-arg",
         ])
         .arg(format!("APP_BUILD_EPOCH={source_date_epoch}"))
-        .args(["--network", &docker_network])
         .arg(".")
         .current_dir(root);
     run_command(&mut command)
