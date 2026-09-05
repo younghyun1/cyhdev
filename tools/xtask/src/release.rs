@@ -17,12 +17,14 @@ const DEFAULT_TARGET_CPU: &str = "znver3";
 const DEFAULT_DOCKER_PLATFORM: &str = "linux/amd64";
 const DEFAULT_RUST_DOCKER_TAG: &str =
     "nightly@sha256:dfd905886275b22be070dad4e8f2c2264bae8341ba7a4b2ceea370249190b044";
+const DEFAULT_DOCKER_NETWORK: &str = "default";
 
 struct ReleaseOptions {
     app_name: String,
     target_triple: String,
     target_cpu: String,
     docker_platform: String,
+    docker_network: String,
     rust_docker_tag: String,
     app_build_epoch: String,
 }
@@ -50,6 +52,7 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
             "--platform",
         ])
         .arg(&options.docker_platform)
+        .args(["--network", &options.docker_network])
         .args(["--build-arg", &format!("APP_NAME={}", options.app_name)])
         .args([
             "--build-arg",
@@ -86,6 +89,7 @@ impl ReleaseOptions {
         let target_triple = target_triple()?;
         let target_cpu = environment_value("TARGET_CPU", DEFAULT_TARGET_CPU)?;
         let docker_platform = environment_value("DOCKER_PLATFORM", DEFAULT_DOCKER_PLATFORM)?;
+        let docker_network = docker_network()?;
         let rust_docker_tag = environment_value("RUST_DOCKER_TAG", DEFAULT_RUST_DOCKER_TAG)?;
         let app_build_epoch = source_date_epoch(root)?;
 
@@ -98,12 +102,14 @@ impl ReleaseOptions {
         }
         validate_token("TARGET_CPU", &target_cpu, 64, true)?;
         validate_token("DOCKER_PLATFORM", &docker_platform, 64, true)?;
+        validate_docker_network(&docker_network)?;
         validate_rust_docker_tag(&rust_docker_tag)?;
         Ok(Self {
             app_name,
             target_triple,
             target_cpu,
             docker_platform,
+            docker_network,
             rust_docker_tag,
             app_build_epoch,
         })
@@ -224,6 +230,30 @@ fn validate_rust_docker_tag(value: &str) -> TaskResult<()> {
     }
 }
 
+pub(crate) fn docker_network() -> TaskResult<String> {
+    let value = environment_value("DOCKER_NETWORK", default_docker_network())?;
+    validate_docker_network(&value)?;
+    Ok(value)
+}
+
+fn default_docker_network() -> &'static str {
+    #[cfg(target_os = "linux")]
+    if !Path::new("/sys/module/veth").exists() {
+        return "host";
+    }
+    DEFAULT_DOCKER_NETWORK
+}
+
+fn validate_docker_network(value: &str) -> TaskResult<()> {
+    if matches!(value, "default" | "host" | "none") {
+        Ok(())
+    } else {
+        Err(TaskError(
+            "DOCKER_NETWORK must be one of default, host, or none".to_owned(),
+        ))
+    }
+}
+
 fn artifact_directory(root: &Path, target_triple: &str) -> PathBuf {
     root.join("target").join(target_triple).join("release")
 }
@@ -256,8 +286,9 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        DEFAULT_RUST_DOCKER_TAG, artifact_directory, normalize_source_date_epoch,
-        validate_rust_docker_tag, validate_token,
+        DEFAULT_RUST_DOCKER_TAG, artifact_directory, default_docker_network,
+        normalize_source_date_epoch, validate_docker_network, validate_rust_docker_tag,
+        validate_token,
     };
 
     #[test]
@@ -279,6 +310,24 @@ mod tests {
         );
         assert!(validate_rust_docker_tag("nightly@sha256:short").is_err());
         assert!(validate_rust_docker_tag("nightly;touch").is_err());
+    }
+
+    #[test]
+    fn docker_network_rejects_shell_input() {
+        assert!(validate_docker_network("default").is_ok());
+        assert!(validate_docker_network("host").is_ok());
+        assert!(validate_docker_network("host;touch").is_err());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn docker_network_avoids_missing_veth_modules() {
+        let expected = if Path::new("/sys/module/veth").exists() {
+            "default"
+        } else {
+            "host"
+        };
+        assert_eq!(default_docker_network(), expected);
     }
 
     #[test]
