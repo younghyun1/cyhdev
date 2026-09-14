@@ -70,7 +70,7 @@ export default function About() {
         <div class="border-l-4 border-line-strong pl-3 mb-8">
           <h1 class="text-2xl font-bold mb-1 tracking-tight">About</h1>
           <p class="text-xs text-ink-muted">
-            Last updated: 2025-12-08
+            Last updated: September 2026
           </p>
         </div>
 
@@ -86,8 +86,7 @@ export default function About() {
               </h3>
 
               <p class="text-ink-muted">
-                Backend Software Engineer · Rust / Infrastructure / Data
-                Pipelines / SolidJS
+                Backend & Infrastructure Engineer · Rust / Platform Reliability / Security
               </p>
             </div>
 
@@ -134,10 +133,10 @@ export default function About() {
                   LinkedIn:
                 </span>
                 <a
-                  href="https://linkedin.com/in/younghyun-chi-a60b59a9"
+                  href="https://www.linkedin.com/in/young-hyun-chi-553431376/"
                   class={pageStyles.link}
                 >
-                  linkedin.com/in/younghyun-chi-a60b59a9
+                  linkedin.com/in/young-hyun-chi-553431376
                 </a>
               </li>
             </ul>
@@ -158,36 +157,33 @@ export default function About() {
             </For>
           </div>
           <p class="mb-4 leading-relaxed">
-            I am a backend-focused software engineer with experience shipping
-            and operating services across industrial, consumer, and data-heavy
-            analytics contexts. My most recent projects have involved building
-            backends, pipelines, and infrastructure for a dashboard integrating
-            input from thousands of environmental sensors for Samsung
-            Construction and Trading and deploying it on AWS; deploying an LLM
-            and scraper-based YouTube channel analyzer for a firm serving
-            content creators on GCP; and building backends and data pipelines
-            for a K-Pop group's fan app as well as Hyundai Motor Company's
-            Hyundai, Kia, and Genesis car app for Android and iOS.
+            I am a backend engineer based in Colorado, specializing in Rust services,
+            PostgreSQL databases, and cloud infrastructure. At Soundpatrol, my work has
+            covers cybersecurity, DevOps, webservices, and tooling: operating
+            Kubernetes infrastructure, building deployment and monitoring systems,
+            managing cloud costs, and implementing security controls.
           </p>
           <p class="mb-4 leading-relaxed">
-            I helped pioneer the use of Rust webservers in the Korean startup
-            ecosystem; several colleagues whom I've helped picked up the
-            language have since moved on to write Rust at other companies. I
-            believe in building web services that leverage the actual
-            performance of modern compute resources as well as innovations in
-            programming languages and compilation infrastructures to create
-            fast, secure, reliable systems.
+            Earlier projects include a digital twin integrating thousands of environmental
+            sensors for Samsung C&amp;T, deployed on AWS; a YouTube channel analytics platform
+            using transcripts, comments, and language models; and backends and data
+            pipelines for Hyundai, Kia, and Genesis applications and a K-pop group's fan app.
           </p>
           <p class="mb-4 leading-relaxed">
-            I am proud to have worked across diverse fields and with coworkers
-            from many cultures and backgrounds. From 2016 to 2017, I served for
-            21 months near the North Korean border with the 2nd Infantry
-            Division of the US Army, working with both US and Korean military
-            personnel. During my university studies, I also did work in in
-            journalism, photography, and translation. I have also performed
-            manual labor in warehouses and logistics centers as well as the
-            military. Since 2023, my career has been focused on backend
-            engineering and data analytics and pipelines.
+            I believe in building services that make effective use of modern hardware and
+            programming languages. I enjoy working through the details of concurrency,
+            database queries, memory use, and deployment rather than treating cloud
+            resources as an unlimited substitute for engineering. I also enjoy self-hosting,
+            building Rust tools, and helping colleagues pick up Rust.
+          </p>
+          <p class="mb-4 leading-relaxed">
+            I am proud to have worked across different fields and with coworkers from many
+            cultures and backgrounds. From 2016 to 2017, I served for 21 months near the
+            North Korean border with the U.S. Army's 2nd Infantry Division, working with
+            American and Korean military personnel. During university, I worked in
+            journalism, photography, and translation, as well as night-shift warehouse
+            and logistics work. Since 2023, my career has focused on backend engineering,
+            data pipelines, and the infrastructure that keeps them running.
           </p>
         </section>
 
@@ -198,6 +194,23 @@ export default function About() {
           </h2>
 
           <div class="space-y-8">
+            <div>
+              <div class="flex flex-wrap justify-between items-baseline mb-1">
+                <h3 class="text-lg font-bold">Soundpatrol</h3>
+                <span class="text-sm font-mono text-ink-muted">United States · Remote | May 2026 - Present</span>
+              </div>
+              <p class="text-sm font-medium mb-2 text-ink-muted">Rust Engineer</p>
+              <ul class="list-disc list-inside text-sm space-y-1 text-ink">
+                <li>Own backend and infrastructure work alongside platform operations, security controls, compliance readiness, and monthly cloud cost reporting.</li>
+                <li>Built reviewed OpenTofu deployments through GitHub Actions and GCP Workload Identity Federation, with environment-scoped identities, state locking, and drift detection.</li>
+                <li>Migrated the production queue to multi-zone Valkey with verified TLS across 33 consumers, including data-parity checks and rehearsed recovery.</li>
+                <li>Centralized telemetry on OpenTelemetry and Cloud Monitoring/Logging; built a Rust infrastructure health monitor behind Google Identity-Aware Proxy.</li>
+                <li>Replaced personal CI tokens with GitHub App authentication, integrated Secret Manager, and implemented cloud access and credential lifecycle controls.</li>
+                <li>Work on SOC 2 readiness and vendor security due diligence, including a 283-question CAIQ evidence package, policy maintenance, and incident response.</li>
+                <li>Built a support intake service connecting Gmail, Linear, and Slack. Current retrieval work uses FAISS and original-vector reranking; production activation remains pending validation.</li>
+              </ul>
+            </div>
+
             {/* GenesisNest */}
             <div>
               <div class="flex flex-wrap justify-between items-baseline mb-1">
@@ -336,6 +349,17 @@ export default function About() {
               </ul>
             </div>
           </div>
+        </section>
+
+
+        <section class="mb-12">
+          <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">Selected Projects</h2>
+          <ul class="list-disc list-inside text-sm space-y-3 text-ink">
+            <li><a href="https://github.com/younghyun1/sillok" class={pageStyles.link}>Sillok</a>: a Rust CLI for structured work records, with append-only history, indexed Turso/SQLite projections, corrections, and Git-backed synchronization across machines.</li>
+            <li><a href="https://github.com/younghyun1/eu5-location-filter" class={pageStyles.link}>EU5 Location DB</a>: a Rust and Slint desktop and WebAssembly application with embedded compressed map data, precomputed indexes, searchable filters, and resizable tables.</li>
+            <li><a href="https://github.com/younghyun1/cyhdev" class={pageStyles.link}>cyhdev.com</a>: this Rust/Axum, PostgreSQL, and SolidJS site, including publishing, photography, discussion, chat, and browser demonstrations.</li>
+            <li><a href="https://github.com/younghyun1/oohid" class={pageStyles.link}>oohid</a>: a Rust UUID generator with configurable formatting, file output, and optional duplicate checking.</li>
+          </ul>
         </section>
 
         {/* 3) Non-IT Career */}
