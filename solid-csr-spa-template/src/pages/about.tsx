@@ -158,10 +158,9 @@ export default function About() {
           </div>
           <p class="mb-4 leading-relaxed">
             I am a backend engineer based in Colorado, specializing in Rust services,
-            PostgreSQL databases, and cloud infrastructure. At Soundpatrol, my work has
-            covers cybersecurity, DevOps, webservices, and tooling: operating
-            Kubernetes infrastructure, building deployment and monitoring systems,
-            managing cloud costs, and implementing security controls.
+            PostgreSQL databases, and cloud infrastructure. At Soundpatrol, I work on
+            cybersecurity, DevOps, webservices, and developer tooling, using Rust,
+            Python, PostgreSQL, Kubernetes, and GCP.
           </p>
           <p class="mb-4 leading-relaxed">
             Earlier projects include a digital twin integrating thousands of environmental
@@ -201,13 +200,9 @@ export default function About() {
               </div>
               <p class="text-sm font-medium mb-2 text-ink-muted">Rust Engineer</p>
               <ul class="list-disc list-inside text-sm space-y-1 text-ink">
-                <li>Own backend and infrastructure work alongside platform operations, security controls, compliance readiness, and monthly cloud cost reporting.</li>
-                <li>Built reviewed OpenTofu deployments through GitHub Actions and GCP Workload Identity Federation, with environment-scoped identities, state locking, and drift detection.</li>
-                <li>Migrated the production queue to multi-zone Valkey with verified TLS across 33 consumers, including data-parity checks and rehearsed recovery.</li>
-                <li>Centralized telemetry on OpenTelemetry and Cloud Monitoring/Logging; built a Rust infrastructure health monitor behind Google Identity-Aware Proxy.</li>
-                <li>Replaced personal CI tokens with GitHub App authentication, integrated Secret Manager, and implemented cloud access and credential lifecycle controls.</li>
-                <li>Work on SOC 2 readiness and vendor security due diligence, including a 283-question CAIQ evidence package, policy maintenance, and incident response.</li>
-                <li>Built a support intake service connecting Gmail, Linear, and Slack. Current retrieval work uses FAISS and original-vector reranking; production activation remains pending validation.</li>
+                <li>Develop webservices and internal tools in Rust and Python.</li>
+                <li>Maintain cloud infrastructure, Kubernetes deployments, and CI/CD pipelines.</li>
+                <li>Work on monitoring, access controls, credential management, and other cybersecurity measures.</li>
               </ul>
             </div>
 
