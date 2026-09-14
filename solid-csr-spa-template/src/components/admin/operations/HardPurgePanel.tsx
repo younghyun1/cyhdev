@@ -83,7 +83,7 @@ export default function HardPurgePanel(props: Props) {
           value={userId()}
           inputmode="text"
           autocomplete="off"
-          spellcheck={false}
+          spellcheck="false"
           maxlength={36}
           required
           aria-invalid={userId().trim() !== "" && !isUuid(normalizedUserId())
@@ -110,7 +110,7 @@ export default function HardPurgePanel(props: Props) {
           id="hard-purge-confirmation"
           value={confirmation()}
           autocomplete="off"
-          spellcheck={false}
+          spellcheck="false"
           maxlength={42}
           required
           onInput={(event) => setConfirmation(event.currentTarget.value)}
