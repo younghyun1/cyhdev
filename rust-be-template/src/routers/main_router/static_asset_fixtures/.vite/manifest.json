@@ -1,0 +1,7 @@
+{
+  "index.html": {
+    "file": "assets/app-AbCd1234.js",
+    "css": ["assets/app-Xy_z-123.css"],
+    "assets": ["assets/icon-AbCd1234.svg", "assets/settings.js", "index.html"]
+  }
+}

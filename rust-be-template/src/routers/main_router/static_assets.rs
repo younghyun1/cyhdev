@@ -4,8 +4,11 @@ use axum::{
 };
 use mime_guess::from_path;
 use rust_embed::{Embed, EmbeddedFile};
+use std::{collections::HashSet, sync::OnceLock};
 
-const CACHE_POLICY: &str = "public, max-age=0, must-revalidate";
+#[path = "static_asset_cache.rs"]
+mod cache_policy;
+use cache_policy::{IMMUTABLE, REVALIDATE, immutable_paths};
 const EU5_APPLICATION_PREFIX: &str = "eu5-locations-db/app/";
 
 #[derive(Embed)]
@@ -145,6 +148,7 @@ fn serve_path<A: Embed>(
     path: &str,
     preferences: &[Preference],
     request_headers: &HeaderMap,
+    immutable: &HashSet<String>,
 ) -> AssetOutcome {
     for preference in preferences {
         let representation_path = format!("{path}{}", preference.coding.extension());
@@ -154,6 +158,7 @@ fn serve_path<A: Embed>(
                 preference.coding,
                 content,
                 request_headers,
+                immutable.contains(path),
             ));
         }
     }
@@ -200,6 +205,7 @@ fn asset_response(
     coding: ContentCoding,
     content: EmbeddedFile,
     request_headers: &HeaderMap,
+    immutable: bool,
 ) -> Response {
     let etag = strong_etag(&content);
     let Ok(etag_header) = HeaderValue::from_str(&etag) else {
@@ -218,7 +224,7 @@ fn asset_response(
     response_headers.insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
     response_headers.insert(
         header::CACHE_CONTROL,
-        HeaderValue::from_static(CACHE_POLICY),
+        HeaderValue::from_static(if immutable { IMMUTABLE } else { REVALIDATE }),
     );
     response_headers.insert(header::ETAG, etag_header);
     if let Some(encoding) = coding.header_value() {
@@ -240,44 +246,53 @@ fn error_response(status: StatusCode, message: &'static str) -> Response {
     response
         .headers_mut()
         .insert(header::VARY, HeaderValue::from_static("Accept-Encoding"));
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static(CACHE_POLICY),
-    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     response
 }
 
-fn serve_static<A: Embed>(uri: &Uri, headers: &HeaderMap) -> Response {
+fn serve_static<A: Embed>(uri: &Uri, headers: &HeaderMap, immutable: &HashSet<String>) -> Response {
     let path = match uri.path().trim_start_matches('/') {
         "" => "index.html",
         path => path,
     };
     let preferences = accepted_codings(headers);
-    match serve_path::<A>(path, &preferences, headers) {
+    match serve_path::<A>(path, &preferences, headers, immutable) {
         AssetOutcome::Found(response) => response,
         AssetOutcome::NotAcceptable => error_response(
             StatusCode::NOT_ACCEPTABLE,
             "No acceptable asset representation",
         ),
         AssetOutcome::NotFound
-            if path == "eu5-locations-db/app" || path.starts_with(EU5_APPLICATION_PREFIX) =>
+            if path == "assets"
+                || path.starts_with("assets/")
+                || path == "eu5-locations-db/app"
+                || path.starts_with(EU5_APPLICATION_PREFIX) =>
         {
-            error_response(StatusCode::NOT_FOUND, "EU5 application asset not found")
+            error_response(StatusCode::NOT_FOUND, "Application asset not found")
         }
-        AssetOutcome::NotFound => match serve_path::<A>("index.html", &preferences, headers) {
-            AssetOutcome::Found(response) => response,
-            AssetOutcome::NotAcceptable => error_response(
-                StatusCode::NOT_ACCEPTABLE,
-                "No acceptable asset representation",
-            ),
-            AssetOutcome::NotFound => error_response(StatusCode::NOT_FOUND, "Not Found"),
-        },
+        AssetOutcome::NotFound => {
+            match serve_path::<A>("index.html", &preferences, headers, immutable) {
+                AssetOutcome::Found(response) => response,
+                AssetOutcome::NotAcceptable => error_response(
+                    StatusCode::NOT_ACCEPTABLE,
+                    "No acceptable asset representation",
+                ),
+                AssetOutcome::NotFound => error_response(StatusCode::NOT_FOUND, "Not Found"),
+            }
+        }
     }
 }
 
 /// Serves embedded static files using the best available accepted representation.
 pub(super) async fn static_asset_handler(uri: Uri, headers: HeaderMap) -> impl IntoResponse {
-    serve_static::<EmbeddedAssets>(&uri, &headers)
+    static IMMUTABLE_PATHS: OnceLock<HashSet<String>> = OnceLock::new();
+    serve_static::<EmbeddedAssets>(
+        &uri,
+        &headers,
+        IMMUTABLE_PATHS.get_or_init(immutable_paths::<EmbeddedAssets>),
+    )
 }
 
 #[cfg(test)]
