@@ -295,6 +295,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .merge(batch_upload_router)
         .merge(authorization_admin_router)
         .merge(media_cleanup_admin_router)
+        .merge(crate::features::minecraft::api::controls::router(&state)?)
         .layer(require_superuser_middleware)
         .layer(auth_middleware);
 

@@ -8,6 +8,7 @@ import { createBlogSocialClient } from "./clients/blog-social";
 import { createForumClient } from "./clients/forum";
 import { createI18nClient } from "./clients/i18n";
 import { createLiveChatClient } from "./clients/live-chat";
+import { createMinecraftClient } from "./clients/minecraft";
 import { createOidcClient } from "./clients/oidc";
 import { createPhotographyMediaClient } from "./clients/photography-media";
 import { createPhotographySocialClient } from "./clients/photography-social";
@@ -26,6 +27,7 @@ export function createApiClient(transport: ApiTransport) {
     ...createForumClient(transport),
     ...createI18nClient(transport),
     ...createLiveChatClient(transport),
+    ...createMinecraftClient(transport),
     ...createOidcClient(transport),
     ...createPhotographyMediaClient(transport),
     ...createPhotographySocialClient(transport),

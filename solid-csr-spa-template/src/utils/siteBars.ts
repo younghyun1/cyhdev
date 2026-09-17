@@ -12,9 +12,11 @@ export function useSiteBarMeasurements(): void {
 
     const update = () => {
       const top = Math.max(0, Math.ceil(topBar.getBoundingClientRect().bottom));
-      const bottom = Math.max(
+      const bottomBounds = bottomBar.getBoundingClientRect();
+      // The mobile footer uses display:none while typing; its zero rect reserves no space.
+      const bottom = bottomBounds.height === 0 ? 0 : Math.max(
         0,
-        Math.ceil(window.innerHeight - bottomBar.getBoundingClientRect().top),
+        Math.ceil(window.innerHeight - bottomBounds.top),
       );
       document.documentElement.style.setProperty(
         "--site-header-height",

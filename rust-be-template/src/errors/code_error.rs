@@ -11,6 +11,7 @@ mod account_and_authorization;
 mod authentication;
 mod content_and_media;
 mod forum;
+mod minecraft;
 mod reference_data;
 mod runtime_and_request;
 mod wasm;

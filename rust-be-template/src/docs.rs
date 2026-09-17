@@ -7,6 +7,8 @@ use utoipa::OpenApi;
 #[openapi(
     modifiers(&FrontendResponseEnvelope),
     paths(
+        crate::features::minecraft::api::controls::minecraft_status,
+        crate::features::minecraft::api::controls::minecraft_action,
         server_http::healthcheck,
         server_http::root_handler,
         server_http::get_host_fastfetch,
@@ -108,6 +110,10 @@ use utoipa::OpenApi;
     ),
     components(
         schemas(
+            crate::features::minecraft::api::dto::MinecraftAction,
+            crate::features::minecraft::api::dto::MinecraftActionResult,
+            crate::features::minecraft::api::dto::MinecraftStatus,
+            crate::features::minecraft::api::dto::MinecraftPlayer,
             CodeErrorResp,
             SignupRequest,
             SignupResponse,
