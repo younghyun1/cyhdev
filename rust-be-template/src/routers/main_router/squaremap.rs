@@ -1,16 +1,21 @@
 //! Filesystem-backed squaremap assets, isolated from session and API middleware.
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     Router,
     extract::Request,
     http::{HeaderValue, StatusCode, header},
-    middleware::{Next, from_fn},
+    middleware::{Next, from_fn, from_fn_with_state},
     response::{IntoResponse, Redirect, Response},
     routing::get,
 };
 use tower_http::services::ServeDir;
+
+#[path = "squaremap_cache.rs"]
+mod tile_cache;
+#[path = "squaremap_cache_http.rs"]
+mod tile_cache_http;
 
 /// Read the public web root once at startup; an absent setting leaves a useful placeholder.
 pub(super) fn from_environment() -> anyhow::Result<Router> {
@@ -29,7 +34,12 @@ pub(super) fn from_environment() -> anyhow::Result<Router> {
 /// Mount only the plugin's public web directory, never the Minecraft server directory.
 fn router(root: Option<PathBuf>) -> Router {
     let files = match root {
-        Some(root) => Router::new().fallback_service(ServeDir::new(root)),
+        Some(root) => {
+            let cache = Arc::new(tile_cache::TileCache::new(root.clone()));
+            Router::new()
+                .fallback_service(ServeDir::new(root))
+                .layer(from_fn_with_state(cache, tile_cache_http::serve))
+        }
         None => Router::new().fallback(unavailable),
     };
     Router::new()
