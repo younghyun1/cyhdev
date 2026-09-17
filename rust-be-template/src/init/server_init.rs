@@ -171,12 +171,18 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     );
 
     axum_server::bind_rustls(host_socket_addr, config)
+        // HTTP/2 headers and DATA can be separate writes; avoid waiting for delayed TCP ACKs.
+        .map(|acceptor| acceptor.acceptor(axum_server::accept::NoDelayAcceptor::new()))
         .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "tls_latency_tests.rs"]
+mod tls_latency_tests;
 
 #[derive(Clone, Copy)]
 struct Ports {
