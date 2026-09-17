@@ -47,6 +47,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "top_bar.nav.photographs": "사진",
   "top_bar.nav.live_chat": "라이브 채팅",
   "top_bar.nav.projects_group": "프로젝트",
+  "top_bar.nav.minecraft": "마인크래프트 지도",
   "top_bar.nav.projects": "데모",
   "top_bar.nav.visitor_board": "방문자 보드",
   "top_bar.nav.geo_ip": "Geo-IP 데이터베이스",

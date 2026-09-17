@@ -47,6 +47,7 @@ export const UI_TEXT_KEYS = [
   "top_bar.nav.live_chat",
   "top_bar.nav.projects_group",
   "top_bar.nav.projects",
+  "top_bar.nav.minecraft",
   "top_bar.nav.visitor_board",
   "top_bar.nav.geo_ip",
   "top_bar.nav.eu5_locations_db",

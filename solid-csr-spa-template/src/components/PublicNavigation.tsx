@@ -55,6 +55,7 @@ export const NAV_ITEMS: ReadonlyArray<NavItem> = [
     labelKey: "top_bar.nav.projects_group",
     links: [
       { href: "/projects", labelKey: "top_bar.nav.projects" },
+      { href: "/minecraft", labelKey: "top_bar.nav.minecraft" },
       { href: "/geo-ip-db", labelKey: "top_bar.nav.geo_ip" },
       {
         href: "/eu5-locations-db",
