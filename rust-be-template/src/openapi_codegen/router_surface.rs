@@ -19,7 +19,10 @@ struct Operation {
 
 /// Rejects any method/path present on only one side of router registration and OpenAPI.
 pub fn validate(spec: &Value) -> Result<(), CodegenError> {
-    let router = parse_router_operations(ROUTER_SOURCE)?;
+    let mut router = parse_router_operations(ROUTER_SOURCE)?;
+    router.extend(parse_router_operations(include_str!(
+        "../features/minecraft/api/controls.rs"
+    ))?);
     let openapi = openapi_operations(spec)?;
     let undocumented = router.difference(&openapi).cloned().collect::<Vec<_>>();
     let unregistered = openapi.difference(&router).cloned().collect::<Vec<_>>();

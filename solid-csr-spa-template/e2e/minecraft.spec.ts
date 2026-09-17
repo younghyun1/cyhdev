@@ -7,6 +7,16 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await installApiMocks(page, "superuser");
     await setUiPreferences(page, "en-US", "dark");
     let requests = 0;
+    let privateRequests = 0;
+    const actions: unknown[] = [];
+    await page.route("**/api/admin/minecraft", async (route) => {
+      privateRequests += 1;
+      await route.fulfill({ json: { data: { players: [{ id: "00000000-0000-0000-0000-000000000001", name: "Alex" }], whitelist: [], whitelist_enabled: true } } });
+    });
+    await page.route("**/api/admin/minecraft/actions", async (route) => {
+      actions.push(route.request().postDataJSON());
+      await route.fulfill({ json: { data: { acknowledged: true } } });
+    });
     await page.route("**/minecraft/map/", async (route) => {
       requests += 1;
       await route.fulfill({ contentType: "text/html", body: "<h1>World map</h1>" });
@@ -28,5 +38,17 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(bounds!.height).toBeGreaterThan(viewport.height * 0.7);
     expect(bounds!.y).toBeGreaterThanOrEqual(44);
     expect(bounds!.y + bounds!.height).toBeLessThan(viewport.height);
+    expect(privateRequests).toBe(0);
+    await page.getByRole("button", { name: "Server controls" }).click();
+    await expect(page.getByText("Alex", { exact: true })).toBeVisible();
+    await page.getByLabel("Global message").fill("Hello everyone");
+    await page.getByRole("button", { name: "Send message" }).click();
+    await expect(page.getByRole("status")).toHaveText("Minecraft acknowledged the request.");
+    expect(actions).toEqual([{ action: "message", message: "Hello everyone" }]);
+    const panel = await page.locator(".minecraft-admin").boundingBox();
+    expect(panel!.x).toBeGreaterThanOrEqual(0);
+    expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);
+    expect(panel!.y).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: test.info().outputPath("minecraft-controls.png") });
   });
 }
