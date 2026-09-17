@@ -1,5 +1,6 @@
 use super::main_router_registry::*;
 
+mod squaremap;
 mod static_assets;
 use super::swagger::build_swagger_router;
 use static_assets::static_asset_handler;
@@ -319,6 +320,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
 
     let router = router
         .merge(swagger_router)
+        .merge(squaremap::from_environment()?)
         .fallback_service(get(static_asset_handler));
 
     Ok(router.layer(compression_middleware))

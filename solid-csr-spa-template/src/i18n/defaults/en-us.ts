@@ -47,6 +47,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "top_bar.nav.photographs": "Photographs",
   "top_bar.nav.live_chat": "Live Chat",
   "top_bar.nav.projects_group": "Projects",
+  "top_bar.nav.minecraft": "Minecraft Map",
   "top_bar.nav.projects": "Demos",
   "top_bar.nav.visitor_board": "Visitor Board",
   "top_bar.nav.geo_ip": "Geo-IP Database",

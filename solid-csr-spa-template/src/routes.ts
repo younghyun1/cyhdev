@@ -103,6 +103,10 @@ export const routes = defineRoutes([
     component: lazy(() => import("./pages/projects")),
   },
   {
+    path: "/minecraft",
+    component: lazy(() => import("./pages/minecraft")),
+  },
+  {
     path: "/geo-ip-db",
     component: lazy(() => import("./pages/geo_ip_info")),
   },
