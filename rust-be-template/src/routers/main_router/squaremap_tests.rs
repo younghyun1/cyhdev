@@ -75,3 +75,82 @@ async fn unconfigured_map_is_explicitly_unavailable() -> Result<(), Box<dyn Erro
     server.abort();
     Ok(())
 }
+
+/// Verify that cache hits preserve HTTP behavior and never cache squaremap's live JSON.
+#[tokio::test]
+async fn tile_cache_validators_ranges_and_updates() -> Result<(), Box<dyn Error>> {
+    let directory = tempfile::tempdir()?;
+    tokio::fs::create_dir(directory.path().join("tiles")).await?;
+    let tile_path = directory.path().join("tiles/a.png");
+    let players_path = directory.path().join("tiles/players.json");
+    tokio::fs::write(&tile_path, b"tile").await?;
+    tokio::fs::write(&players_path, b"[]").await?;
+    let app = super::router(Some(directory.path().to_owned()));
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+    let origin = format!("http://{}/minecraft/map", listener.local_addr()?);
+    let server = tokio::spawn(async move { axum::serve(listener, app).await });
+    let client = Client::new();
+    let url = format!("{origin}/tiles/a.png");
+    let initial = client.get(&url).send().await?;
+    assert_eq!(initial.status(), StatusCode::OK);
+    assert_eq!(initial.headers()[header::CONTENT_TYPE], "image/png");
+    assert_eq!(initial.headers()[header::CACHE_CONTROL], "public, no-cache");
+    let etag = initial.headers()[header::ETAG].clone();
+    assert_eq!(initial.bytes().await?.as_ref(), b"tile");
+    let hit = client.get(format!("{url}?cachebust=1")).send().await?;
+    assert_eq!(hit.headers()[header::ETAG], etag);
+    assert_eq!(hit.bytes().await?.as_ref(), b"tile");
+    let conditional = client
+        .get(&url)
+        .header(header::IF_NONE_MATCH, etag.clone())
+        .send()
+        .await?;
+    assert_eq!(conditional.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(conditional.headers()[header::ETAG], etag);
+    assert_eq!(
+        conditional.headers()[header::CACHE_CONTROL],
+        "public, no-cache"
+    );
+    assert!(conditional.bytes().await?.is_empty());
+    let head = client.head(&url).send().await?;
+    assert_eq!(head.headers()[header::CONTENT_LENGTH], "4");
+    assert_eq!(head.headers()[header::ETAG], etag);
+    assert!(head.bytes().await?.is_empty());
+    let range = client
+        .get(&url)
+        .header(header::RANGE, "bytes=1-2")
+        .send()
+        .await?;
+    assert_eq!(range.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(range.bytes().await?.as_ref(), b"il");
+    let post = client.post(&url).send().await?;
+    assert_eq!(post.status(), StatusCode::METHOD_NOT_ALLOWED);
+    let replacement = directory.path().join("replacement");
+    tokio::fs::write(&replacement, b"edit").await?;
+    tokio::fs::rename(&replacement, &tile_path).await?;
+    let updated = client
+        .get(&url)
+        .header(header::IF_NONE_MATCH, etag.clone())
+        .header(header::IF_MODIFIED_SINCE, "Wed, 01 Jan 2031 00:00:00 GMT")
+        .send()
+        .await?;
+    assert_eq!(updated.status(), StatusCode::OK);
+    assert_ne!(updated.headers()[header::ETAG], etag);
+    assert_eq!(updated.bytes().await?.as_ref(), b"edit");
+    let players_url = format!("{origin}/tiles/players.json");
+    let players = client.get(&players_url).send().await?;
+    assert_eq!(players.headers()[header::CACHE_CONTROL], "no-store");
+    assert_eq!(players.text().await?, "[]");
+    tokio::fs::write(&players_path, b"[1]").await?;
+    assert_eq!(client.get(&players_url).send().await?.text().await?, "[1]");
+    tokio::fs::remove_file(tile_path).await?;
+    let deleted = client
+        .get(&url)
+        .header(header::IF_NONE_MATCH, "*")
+        .send()
+        .await?;
+    assert_eq!(deleted.status(), StatusCode::NOT_FOUND);
+    assert_eq!(deleted.headers()[header::CACHE_CONTROL], "no-store");
+    server.abort();
+    Ok(())
+}
