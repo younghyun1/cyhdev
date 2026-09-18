@@ -16,8 +16,8 @@
 
 .admin-workspace-sidebar-inner {
   position: sticky;
-  top: 3.5rem;
-  max-height: calc(100vh - 3.5rem);
+  top: var(--site-header-height);
+  max-height: calc(100dvh - var(--site-header-height) - var(--site-footer-height));
   padding: 2.5rem 1rem 4rem;
   overflow-y: auto;
 }
@@ -99,10 +99,10 @@
 
 .operations-panel[id],
 .authorization-panel[id] {
-  scroll-margin-top: 5.5rem;
+  scroll-margin-top: calc(var(--site-header-height) + 1rem);
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 767px) {
   .admin-workspace {
     display: block;
   }
@@ -152,7 +152,7 @@
 
   .operations-panel[id],
   .authorization-panel[id] {
-    scroll-margin-top: 7.5rem;
+    scroll-margin-top: calc(var(--site-header-height) + 5rem);
   }
 }
 

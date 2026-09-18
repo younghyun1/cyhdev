@@ -131,6 +131,12 @@ export const routes = defineRoutes([
     component: withAuth(lazy(() => import("./pages/edit_profile"))),
   },
   {
+    path: "/admin/minecraft",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/admin_minecraft"))),
+    ),
+  },
+  {
     path: "/admin/authorization",
     component: withAuth(
       withSuperuser(lazy(() => import("./pages/admin_authorization"))),

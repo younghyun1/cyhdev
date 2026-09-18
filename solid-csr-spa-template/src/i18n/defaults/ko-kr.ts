@@ -49,6 +49,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "top_bar.nav.projects_group": "프로젝트",
   "top_bar.nav.minecraft": "마인크래프트 지도",
   "minecraft.controls": "서버 관리",
+  "minecraft.admin_title": "마인크래프트",
   "minecraft.message": "전체 메시지",
   "minecraft.send": "메시지 보내기",
   "minecraft.whitelist": "화이트리스트",

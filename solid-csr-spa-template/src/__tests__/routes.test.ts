@@ -30,6 +30,7 @@ describe("application routes", () => {
     ["/eu5-locations-db", "/eu5-locations-db"],
     ["/admin/authorization", "/admin/authorization"],
     ["/admin/operations", "/admin/operations"],
+    ["/admin/minecraft", "/admin/minecraft"],
   ])("matches %s with the expected route", (url, pattern) => {
     expect(Router.match(url).at(-1)?.pattern).toBe(pattern);
   });

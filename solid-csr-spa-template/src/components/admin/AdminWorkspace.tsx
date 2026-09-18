@@ -1,4 +1,4 @@
-import { type Component, For, type ParentComponent, Show } from "solid-js";
+import { type Component, createEffect, For, type ParentComponent, Show } from "solid-js";
 import { useLocation } from "@solidjs/router";
 
 import { isAuthenticated, isSuperuser } from "../../state/auth";
@@ -46,6 +46,19 @@ const AdminWorkspaceLinks: Component<NavigationLinksProps> = (props) => (
 const AdminWorkspace: ParentComponent = (props) => {
   const location = useLocation();
   const authorized = () => isAuthenticated() === true && isSuperuser() === true;
+  let mobileNavigation: HTMLElement | undefined;
+  createEffect(
+    () => [location.pathname, location.hash, authorized()] as const,
+    () => {
+      const navigation = mobileNavigation;
+      const active = navigation?.querySelector<HTMLElement>('[aria-current="location"]')
+        ?? navigation?.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!navigation || !active) return;
+      // Reveal the current tab without moving the document away from its fragment.
+      navigation.scrollLeft += active.getBoundingClientRect().left
+        - navigation.getBoundingClientRect().left - 12;
+    },
+  );
 
   return (
     <Show when={authorized()}>
@@ -63,6 +76,7 @@ const AdminWorkspace: ParentComponent = (props) => {
         </aside>
         <div class="admin-workspace-main">
           <nav
+            ref={mobileNavigation}
             class="admin-workspace-mobile-navigation"
             aria-label={t("top_bar.admin.title")}
           >
