@@ -40,6 +40,8 @@ async fn inspect_live_management() -> anyhow::Result<()> {
     Ok(())
 }
 
+// Tungstenite fixes the callback error type to an HTTP response; it cannot be boxed here.
+#[allow(clippy::result_large_err)]
 async fn mock_call(response: Value) -> anyhow::Result<anyhow::Result<Value>> {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let port = listener.local_addr()?.port();

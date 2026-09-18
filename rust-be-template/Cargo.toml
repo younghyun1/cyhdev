@@ -58,8 +58,9 @@ dotenvy.workspace = true
 # async runtime
 tokio = { workspace = true, features = ["full"] }
 async-trait = "0.1.92"
-# Match Axum's existing WebSocket transport to avoid a duplicate protocol stack.
-tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
+# The management client is loopback-only, so it needs handshake support but no TLS.
+# Axum 0.8.9 still resolves 0.29 separately until its upstream dependency is updated.
+tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["handshake"] }
 # Stream/Sink combinators (WebSocket split for the live-chat writer task)
 futures-util = { version = "0.3.34", default-features = false, features = [
     "std",
@@ -158,9 +159,16 @@ internment = "0.8.6"
 memmap2 = "0.9.11"
 
 # aws
-aws-sdk-s3 = { version = "1.148.0", features = ["behavior-version-latest"] }
+# Preserve S3 defaults except its legacy rustls feature, which pulls Hyper 0.14/Rustls 0.21.
+aws-sdk-s3 = { version = "1.148.0", default-features = false, features = [
+    "behavior-version-latest",
+    "default-https-client",
+    "http-1x",
+    "rt-tokio",
+    "sigv4a",
+] }
 aws-config = { version = "1.12.0", features = [
-    "rustls",
+    "default-https-client",
     "behavior-version-latest",
 ] }
 aws-types = "1.6.0"

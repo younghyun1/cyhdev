@@ -131,7 +131,11 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let cleanup_ids = rows
             .iter()
             .map(|(cleanup_id, _, _)| *cleanup_id)
-            .chain(rows.first().map(|(cleanup_id, _, _)| *cleanup_id))
+            .chain(
+                rows.as_slice()
+                    .first()
+                    .map(|(cleanup_id, _, _)| *cleanup_id),
+            )
             .collect::<Vec<_>>();
         let completed = context
             .accounts
@@ -182,11 +186,11 @@ fn profile_picture_history_case(database: &TestDatabase) -> DatabaseTestFuture<'
             Some(selected_id) => *selected_id,
             None => return require(false, "profile-picture fixture was incomplete"),
         };
-        let oldest_id = match inserted_ids.first() {
+        let oldest_id = match inserted_ids.as_slice().first() {
             Some(oldest_id) => *oldest_id,
             None => return require(false, "profile-picture fixture inserted no rows"),
         };
-        let newest_is_active = match history.first() {
+        let newest_is_active = match history.as_slice().first() {
             Some(picture) => picture.profile_picture_id == newest_id && picture.is_active,
             None => false,
         };

@@ -84,7 +84,7 @@ fn blog_cache_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .await?;
         let (cached, _) = blog.bounded_cache_page(1, 10, true).await;
         require(
-            matches!(cached.first(), Some(post) if post.post_id == created.post_id),
+            matches!(cached.as_slice().first(), Some(post) if post.post_id == created.post_id),
             "committed post was not published to the metadata cache",
         )?;
         let (search_hits, _) = blog.search_title("Original", 0, 10).await?;

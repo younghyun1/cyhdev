@@ -148,6 +148,30 @@ impl ManagementService {
     }
 }
 
+/// Typed commands prevent arbitrary console execution and message interpretation.
+fn rpc_command(command: Command) -> Result<(&'static str, Value), ManagementError> {
+    let request = match command {
+        Command::Message(message) => (
+            "minecraft:server/system_message",
+            json!([{"message":{"literal":message},"overlay":false}]),
+        ),
+        Command::WhitelistAdd(name) => ("minecraft:allowlist/add", json!([[{"name":name}]])),
+        Command::WhitelistRemove(name) => ("minecraft:allowlist/remove", json!([[{"name":name}]])),
+        Command::WhitelistEnable(enabled) => (
+            "minecraft:serversettings/use_allowlist/set",
+            json!([enabled]),
+        ),
+        Command::Kick(name) => (
+            "minecraft:players/kick",
+            json!([[{"player":{"name":name}}]]),
+        ),
+        Command::Save => ("minecraft:server/save", json!([true])),
+        Command::Restart => ("minecraft:server/stop", json!([])),
+        Command::MapVisibility { .. } => return Err(ManagementError::Invalid),
+    };
+    Ok(request)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,28 +227,4 @@ mod tests {
         );
         Ok(())
     }
-}
-
-/// Typed commands prevent arbitrary console execution and message interpretation.
-fn rpc_command(command: Command) -> Result<(&'static str, Value), ManagementError> {
-    let request = match command {
-        Command::Message(message) => (
-            "minecraft:server/system_message",
-            json!([{"message":{"literal":message},"overlay":false}]),
-        ),
-        Command::WhitelistAdd(name) => ("minecraft:allowlist/add", json!([[{"name":name}]])),
-        Command::WhitelistRemove(name) => ("minecraft:allowlist/remove", json!([[{"name":name}]])),
-        Command::WhitelistEnable(enabled) => (
-            "minecraft:serversettings/use_allowlist/set",
-            json!([enabled]),
-        ),
-        Command::Kick(name) => (
-            "minecraft:players/kick",
-            json!([[{"player":{"name":name}}]]),
-        ),
-        Command::Save => ("minecraft:server/save", json!([true])),
-        Command::Restart => ("minecraft:server/stop", json!([])),
-        Command::MapVisibility { .. } => return Err(ManagementError::Invalid),
-    };
-    Ok(request)
 }
