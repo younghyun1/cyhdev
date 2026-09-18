@@ -1,6 +1,7 @@
 //! Authoritative account checks and bounded Minecraft operations.
 
 use super::super::domain::command::Command;
+use super::map_control::MapControl;
 use super::transport::ManagementTransport;
 use crate::features::accounts::{
     authorization_error::AuthorizationError, service::account_service::AccountService,
@@ -29,6 +30,8 @@ pub enum ManagementError {
 pub struct Player {
     pub id: Uuid,
     pub name: String,
+    #[serde(skip)]
+    pub map_hidden: Option<bool>,
 }
 
 pub struct Status {
@@ -40,6 +43,7 @@ pub struct Status {
 pub struct ManagementService {
     accounts: Arc<AccountService>,
     transport: Option<ManagementTransport>,
+    map_control: Option<MapControl>,
     // One bounded slot, with no queued commands surviving a browser timeout.
     gate: Mutex<Instant>,
 }
@@ -49,6 +53,7 @@ impl ManagementService {
         Ok(Self {
             accounts,
             transport: ManagementTransport::from_environment()?,
+            map_control: MapControl::from_environment()?,
             gate: Mutex::new(Instant::now()),
         })
     }
@@ -61,7 +66,7 @@ impl ManagementService {
         let _gate = self.gate.try_lock().map_err(|_| ManagementError::Busy)?;
         let transport = self.transport.as_ref().ok_or(ManagementError::Disabled)?;
         let result = tokio::time::timeout(Duration::from_secs(10), async {
-            let players =
+            let mut players: Vec<Player> =
                 serde_json::from_value(transport.call("minecraft:players", json!([])).await?)?;
             let whitelist =
                 serde_json::from_value(transport.call("minecraft:allowlist", json!([])).await?)?;
@@ -70,6 +75,17 @@ impl ManagementService {
                     .call("minecraft:serversettings/use_allowlist", json!([]))
                     .await?,
             )?;
+            if let Some(control) = &self.map_control {
+                // Plugin failure must not disable save/restart or misreport visibility as public.
+                match control.status().await {
+                    Ok(visibility) => {
+                        for player in &mut players {
+                            player.map_hidden = visibility.get(&player.id).copied();
+                        }
+                    }
+                    Err(_) => tracing::warn!(%actor, "Minecraft map status unavailable"),
+                }
+            }
             Ok::<_, anyhow::Error>(Status {
                 players,
                 whitelist,
@@ -99,6 +115,14 @@ impl ManagementService {
         if Instant::now() < *gate {
             return Err(ManagementError::Busy);
         }
+        if let Command::MapVisibility { id, hidden } = command {
+            let control = self.map_control.as_ref().ok_or(ManagementError::Disabled)?;
+            *gate = Instant::now() + Duration::from_secs(2);
+            tracing::info!(%actor, %id, hidden, "Minecraft map visibility requested");
+            let result = control.set_hidden(id, hidden).await;
+            tracing::info!(%actor, %id, hidden, acknowledged = result.is_ok(), "Minecraft map visibility result");
+            return result.map_err(|_| ManagementError::Uncertain);
+        }
         let transport = self.transport.as_ref().ok_or(ManagementError::Disabled)?;
         let cooldown = match command {
             Command::Restart => 60,
@@ -110,7 +134,7 @@ impl ManagementService {
             Command::WhitelistEnable(enabled) => enabled,
             _ => true,
         };
-        let (method, params) = rpc_command(command);
+        let (method, params) = rpc_command(command)?;
         tracing::info!(%actor, method, "Minecraft control requested");
         let result =
             tokio::time::timeout(Duration::from_secs(15), transport.call(method, params)).await;
@@ -129,7 +153,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bounds_and_literal_messages() {
+    fn bounds_and_literal_messages() -> anyhow::Result<()> {
         assert!(!Command::Message("\nstop".into()).valid());
         assert!(!Command::Message(" ".into()).valid());
         assert!(Command::Message("한".repeat(512)).valid());
@@ -138,36 +162,52 @@ mod tests {
             assert!(!Command::Kick(name.into()).valid());
         }
         assert!(Command::WhitelistAdd("Player_123".into()).valid());
-        let (method, params) = rpc_command(Command::Message("/stop \"hello\"".into()));
+        assert!(
+            !Command::MapVisibility {
+                id: Uuid::nil(),
+                hidden: true
+            }
+            .valid()
+        );
+        let (method, params) = rpc_command(Command::Message("/stop \"hello\"".into()))?;
         assert_eq!(method, "minecraft:server/system_message");
         assert_eq!(params[0]["message"]["literal"], "/stop \"hello\"");
         assert!(params[0].get("receivingPlayers").is_none());
+        Ok(())
     }
 
     #[test]
-    fn controls_use_fixed_rpc_methods() {
+    fn controls_use_fixed_rpc_methods() -> anyhow::Result<()> {
         assert_eq!(
-            rpc_command(Command::Restart),
+            rpc_command(Command::Restart)?,
             ("minecraft:server/stop", json!([]))
         );
         assert_eq!(
-            rpc_command(Command::Save),
+            rpc_command(Command::Save)?,
             ("minecraft:server/save", json!([true]))
         );
         assert_eq!(
-            rpc_command(Command::WhitelistEnable(false)),
+            rpc_command(Command::WhitelistEnable(false))?,
             ("minecraft:serversettings/use_allowlist/set", json!([false]))
         );
         assert_eq!(
-            rpc_command(Command::Kick("Alex".into())).1,
+            rpc_command(Command::Kick("Alex".into()))?.1,
             json!([[{"player":{"name":"Alex"}}]])
         );
+        assert!(
+            rpc_command(Command::MapVisibility {
+                id: Uuid::new_v4(),
+                hidden: true
+            })
+            .is_err()
+        );
+        Ok(())
     }
 }
 
 /// Typed commands prevent arbitrary console execution and message interpretation.
-fn rpc_command(command: Command) -> (&'static str, Value) {
-    match command {
+fn rpc_command(command: Command) -> Result<(&'static str, Value), ManagementError> {
+    let request = match command {
         Command::Message(message) => (
             "minecraft:server/system_message",
             json!([{"message":{"literal":message},"overlay":false}]),
@@ -184,5 +224,7 @@ fn rpc_command(command: Command) -> (&'static str, Value) {
         ),
         Command::Save => ("minecraft:server/save", json!([true])),
         Command::Restart => ("minecraft:server/stop", json!([])),
-    }
+        Command::MapVisibility { .. } => return Err(ManagementError::Invalid),
+    };
+    Ok(request)
 }

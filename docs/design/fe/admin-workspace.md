@@ -9,3 +9,5 @@ The OpenAPI link uses the canonical `/swagger-ui/` URL and `rel="external"`. Thi
 The app root uses `overflow-x: clip`, not `hidden`: clipping prevents horizontal overflow without creating an unintended vertical scroll container that breaks sticky navigation. Desktop navigation sticks below the measured header and is bounded above the measured footer. Compact navigation switches at 767 px, matching the site shell. Section scroll margins include the header and, on mobile, the navigation strip. Browser tests cover long-page scrolling and same-page/cross-page fragment navigation at 390, 768, and 1440 px.
 
 Minecraft controls load only on the protected `/admin/minecraft` route selected from the sidebar. The controls use normal document scrolling, with no nested scroll area, and link back to the public map. Visiting the map or other Admin pages issues no Minecraft management requests.
+
+The Minecraft player list includes explicit map privacy state and hide/allow buttons. Unknown state disables the action, and allowing a previously hidden player requires confirmation. The UI refreshes after an acknowledged change; there is no polling or automatic mutation retry.

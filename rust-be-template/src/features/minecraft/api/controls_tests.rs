@@ -90,6 +90,8 @@ fn arbitrary_commands_and_extra_fields_are_rejected() {
         r#"{"action":"console","command":"op somebody"}"#,
         r#"{"action":"restart","command":"stop"}"#,
         r#"{"action":"message","message":"hello","extra":true}"#,
+        r#"{"action":"map_visibility","id":"@a","hidden":true}"#,
+        r#"{"action":"map_visibility","id":"00000000-0000-4000-8000-000000000001","hidden":true,"command":"stop"}"#,
     ] {
         assert!(serde_json::from_str::<MinecraftAction>(body).is_err());
     }

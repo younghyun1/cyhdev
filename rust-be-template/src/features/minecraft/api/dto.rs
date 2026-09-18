@@ -10,6 +10,7 @@ pub enum MinecraftAction {
     WhitelistRemove { name: String },
     WhitelistEnable { enabled: bool },
     Kick { name: String },
+    MapVisibility { id: uuid::Uuid, hidden: bool },
     Save {},
     Restart {},
 }
@@ -18,6 +19,8 @@ pub enum MinecraftAction {
 pub struct MinecraftPlayer {
     pub id: uuid::Uuid,
     pub name: String,
+    /// Null when the plugin is unavailable or the player is no longer online.
+    pub map_hidden: Option<bool>,
 }
 
 #[derive(Serialize, ToSchema)]
