@@ -76,8 +76,16 @@ export default function MinecraftControls() {
         <button type="submit" disabled={busy() || !/^[A-Za-z0-9_]{1,16}$/.test(name())}>{t("minecraft.add")}</button>
       </form>
       <h3>{t("minecraft.players")}</h3>
+      <p>{t("minecraft.map_help")}</p>
       <Show when={status()}>{(current) => <ul><For each={current().players} fallback={<li>{t("minecraft.no_players")}</li>}>{(player) => <li>
-        <span>{player.name}</span>
+        <span><span>{player.name}</span><small class="minecraft-visibility">{player.map_hidden == null ? t("minecraft.map_unknown") : player.map_hidden ? t("minecraft.map_hidden") : t("minecraft.map_allowed")}</small></span>
+        <button type="button" disabled={busy() || player.map_hidden == null}
+          aria-label={`${player.map_hidden ? t("minecraft.map_show") : t("minecraft.map_hide")}: ${player.name}`}
+          onClick={() => {
+            if (player.map_hidden == null) return;
+            if (player.map_hidden && !window.confirm(`${t("minecraft.map_show_confirm")} ${player.name}`)) return;
+            void execute({ action: "map_visibility", id: player.id, hidden: !player.map_hidden });
+          }}>{player.map_hidden ? t("minecraft.map_show") : t("minecraft.map_hide")}</button>
         <button type="button" disabled={busy()} onClick={() => {
           if (window.confirm(`${t("minecraft.kick_confirm")} ${player.name}`)) void execute({ action: "kick", name: player.name });
         }}>{t("minecraft.kick")}</button>

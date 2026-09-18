@@ -71,6 +71,7 @@ pub async fn minecraft_action(
         MinecraftAction::WhitelistRemove { name } => Command::WhitelistRemove(name),
         MinecraftAction::WhitelistEnable { enabled } => Command::WhitelistEnable(enabled),
         MinecraftAction::Kick { name } => Command::Kick(name),
+        MinecraftAction::MapVisibility { id, hidden } => Command::MapVisibility { id, hidden },
         MinecraftAction::Save {} => Command::Save,
         MinecraftAction::Restart {} => Command::Restart,
     };
@@ -86,6 +87,7 @@ fn player(value: Player) -> MinecraftPlayer {
     MinecraftPlayer {
         id: value.id,
         name: value.name,
+        map_hidden: value.map_hidden,
     }
 }
 

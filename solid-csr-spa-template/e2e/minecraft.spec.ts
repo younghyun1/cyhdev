@@ -8,13 +8,15 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await setUiPreferences(page, "en-US", "dark");
     let requests = 0;
     let privateRequests = 0;
+    let hidden = false;
     const actions: unknown[] = [];
     await page.route("**/api/admin/minecraft", async (route) => {
       privateRequests += 1;
-      await route.fulfill({ json: { data: { players: [{ id: "00000000-0000-0000-0000-000000000001", name: "Alex" }], whitelist: [], whitelist_enabled: true } } });
+      await route.fulfill({ json: { data: { players: [{ id: "00000000-0000-0000-0000-000000000001", name: "Alex", map_hidden: hidden }], whitelist: [], whitelist_enabled: true } } });
     });
     await page.route("**/api/admin/minecraft/actions", async (route) => {
       actions.push(route.request().postDataJSON());
+      if (route.request().postDataJSON().action === "map_visibility") hidden = route.request().postDataJSON().hidden;
       await route.fulfill({ json: { data: { acknowledged: true } } });
     });
     await page.route("**/minecraft/map/", async (route) => {
@@ -50,6 +52,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.getByRole("button", { name: "Send message" }).click();
     await expect(page.getByRole("status")).toHaveText("Minecraft acknowledged the request.");
     expect(actions).toEqual([{ action: "message", message: "Hello everyone" }]);
+    await page.getByRole("button", { name: "Hide from map: Alex" }).click();
+    await expect(page.getByText("Hidden from map", { exact: true })).toBeVisible();
+    expect(actions.at(-1)).toEqual({ action: "map_visibility", id: "00000000-0000-0000-0000-000000000001", hidden: true });
     const panel = await page.locator(".minecraft-admin").boundingBox();
     expect(panel!.x).toBeGreaterThanOrEqual(0);
     expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);

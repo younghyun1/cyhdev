@@ -6,6 +6,7 @@ pub enum Command {
     WhitelistRemove(String),
     WhitelistEnable(bool),
     Kick(String),
+    MapVisibility { id: uuid::Uuid, hidden: bool },
     Save,
     Restart,
 }
@@ -23,6 +24,7 @@ impl Command {
                 (1..=16).contains(&name.len())
                     && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
             }
+            Self::MapVisibility { id, .. } => !id.is_nil(),
             Self::WhitelistEnable(_) | Self::Save | Self::Restart => true,
         }
     }

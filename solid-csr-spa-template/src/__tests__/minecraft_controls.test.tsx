@@ -16,7 +16,7 @@ describe("Minecraft controls", () => {
     setSuperuser(false);
     setLocaleSignal("en-US");
     setTexts(EN_US_DEFAULT_TEXTS);
-    transport.status.mockReset().mockResolvedValue({ data: { players: [{ id: "a", name: "Alex" }], whitelist: [], whitelist_enabled: true } });
+    transport.status.mockReset().mockResolvedValue({ data: { players: [{ id: "00000000-0000-4000-8000-000000000001", name: "Alex", map_hidden: false }], whitelist: [], whitelist_enabled: true } });
     transport.action.mockReset().mockResolvedValue({ data: { acknowledged: true } });
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -46,6 +46,30 @@ describe("Minecraft controls", () => {
     await waitFor(() => expect(transport.action).toHaveBeenCalledWith({ body: { action: "restart" } }));
     await screen.findByText(/Shutdown acknowledged/);
     expect(transport.action).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides by UUID and requires confirmation before revealing a hidden player", async () => {
+    const id = "00000000-0000-4000-8000-000000000001";
+    render(() => <MinecraftControls />);
+    await screen.findByText("Alex");
+    transport.status.mockResolvedValue({ data: { players: [{ id, name: "Alex", map_hidden: true }], whitelist: [], whitelist_enabled: true } });
+    fireEvent.click(screen.getByRole("button", { name: "Hide from map: Alex" }));
+    await waitFor(() => expect(transport.action).toHaveBeenCalledWith({ body: { action: "map_visibility", id, hidden: true } }));
+    await screen.findByText("Hidden from map");
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(screen.getByRole("button", { name: "Allow on map: Alex" }));
+    expect(transport.action).toHaveBeenCalledTimes(1);
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Allow on map: Alex" }));
+    await waitFor(() => expect(transport.action).toHaveBeenLastCalledWith({ body: { action: "map_visibility", id, hidden: false } }));
+  });
+
+  it("does not treat an unavailable visibility bridge as a visible player", async () => {
+    transport.status.mockResolvedValue({ data: { players: [{ id: "a", name: "Alex", map_hidden: null }], whitelist: [], whitelist_enabled: true } });
+    render(() => <MinecraftControls />);
+    await screen.findByText("Map visibility unavailable");
+    expect((screen.getByRole("button", { name: "Hide from map: Alex" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(transport.action).not.toHaveBeenCalled();
   });
 
   it("keeps a failed message for review and does not retry it", async () => {

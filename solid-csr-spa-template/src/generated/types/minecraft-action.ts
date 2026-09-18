@@ -17,6 +17,10 @@ export type MinecraftAction = {
   readonly action: "kick";
   readonly name: string;
 } | {
+  readonly action: "map_visibility";
+  readonly hidden: boolean;
+  readonly id: string;
+} | {
   readonly action: "save";
 } | {
   readonly action: "restart";
