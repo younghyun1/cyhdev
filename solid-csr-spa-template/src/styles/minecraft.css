@@ -13,33 +13,6 @@
   border: 1px solid var(--line);
 }
 
-.minecraft-admin {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  width: min(23rem, calc(100% - 2rem));
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 0.4rem;
-  padding: 0.65rem;
-}
-
-.minecraft-controls {
-  max-height: min(70dvh, 40rem);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-top: 0.5rem;
-}
-
-.minecraft-controls form { display: grid; gap: 0.4rem; margin-block: 0.75rem; }
-.minecraft-controls ul { list-style: none; margin: 0.5rem 0; padding: 0; }
-.minecraft-controls li, .minecraft-server-actions { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-block: 0.4rem; }
-.minecraft-admin button, .minecraft-admin input { border: 1px solid var(--line); border-radius: 0.25rem; padding: 0.4rem 0.65rem; }
-.minecraft-admin button:disabled { opacity: 0.5; cursor: wait; }
-.minecraft-controls h3 { margin-top: 0.8rem; font-weight: 600; }
-.minecraft-controls [role="alert"] { color: var(--danger, #b42318); }
-
 @media (min-width: 768px) {
   .minecraft-page {
     top: 3.5rem;

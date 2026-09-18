@@ -27,11 +27,11 @@ describe("Minecraft controls", () => {
     expect(contractApi.minecraftStatus).not.toHaveBeenCalled();
   });
 
-  it("keeps controls closed until a logged-in superuser opens them", () => {
+  it("keeps the public map free of controls even for superusers", () => {
     setAuthenticated(true);
     setSuperuser(true);
     render(() => <Minecraft />);
-    expect(screen.getByRole("button", { name: "Server controls" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Server controls" })).toBeNull();
     expect(contractApi.minecraftStatus).not.toHaveBeenCalled();
   });
 

@@ -82,7 +82,7 @@ const App: ParentComponent = (props) => {
       <RtcProvider>
         <div
           id="app-root"
-          class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-ink overflow-x-hidden"
+          class="transition-colors duration-90 min-h-screen flex flex-col bg-transparent text-ink overflow-x-clip"
         >
           <TopBar />
 

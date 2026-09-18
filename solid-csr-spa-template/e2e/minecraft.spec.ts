@@ -39,7 +39,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(bounds!.y).toBeGreaterThanOrEqual(44);
     expect(bounds!.y + bounds!.height).toBeLessThan(viewport.height);
     expect(privateRequests).toBe(0);
-    await page.getByRole("button", { name: "Server controls" }).click();
+    await expect(page.getByLabel("Global message")).toHaveCount(0);
+    await page.goto("/admin/operations");
+    expect(privateRequests).toBe(0);
+    await page.locator('a[href="/admin/minecraft"]:visible').click();
+    await expect(page).toHaveURL(/\/admin\/minecraft$/);
+    await expect(page.locator('a[href="/admin/minecraft"]:visible')).toBeInViewport();
     await expect(page.getByText("Alex", { exact: true })).toBeVisible();
     await page.getByLabel("Global message").fill("Hello everyone");
     await page.getByRole("button", { name: "Send message" }).click();
@@ -48,7 +53,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const panel = await page.locator(".minecraft-admin").boundingBox();
     expect(panel!.x).toBeGreaterThanOrEqual(0);
     expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);
-    expect(panel!.y).toBeGreaterThanOrEqual(44);
+    expect(requests).toBe(1);
+    await page.getByRole("button", { name: "Save world" }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole("button", { name: "Save world" })).toBeInViewport();
     await page.screenshot({ path: test.info().outputPath("minecraft-controls.png") });
   });
 }

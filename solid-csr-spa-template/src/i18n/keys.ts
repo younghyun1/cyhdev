@@ -49,6 +49,7 @@ export const UI_TEXT_KEYS = [
   "top_bar.nav.projects",
   "top_bar.nav.minecraft",
   "minecraft.controls",
+  "minecraft.admin_title",
   "minecraft.message",
   "minecraft.send",
   "minecraft.whitelist",

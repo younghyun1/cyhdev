@@ -49,6 +49,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "top_bar.nav.projects_group": "Projects",
   "top_bar.nav.minecraft": "Minecraft Map",
   "minecraft.controls": "Server controls",
+  "minecraft.admin_title": "Minecraft",
   "minecraft.message": "Global message",
   "minecraft.send": "Send message",
   "minecraft.whitelist": "Whitelist",

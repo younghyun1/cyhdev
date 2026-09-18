@@ -48,6 +48,11 @@ export const ADMIN_WORKSPACE_LINKS = [
     depth: 0,
   },
   {
+    href: "/admin/minecraft",
+    labelKey: "minecraft.admin_title",
+    depth: 0,
+  },
+  {
     href: "/swagger-ui/",
     labelKey: "top_bar.admin.openapi",
     depth: 0,
@@ -58,6 +63,7 @@ export const ADMIN_WORKSPACE_LINKS = [
 export const ADMIN_TOP_BAR_ACTIVE_HREFS = [
   ADMIN_DEFAULT_HREF,
   "/admin/authorization",
+  "/admin/minecraft",
 ] as const;
 
 export function isAdminWorkspaceLinkActive(
