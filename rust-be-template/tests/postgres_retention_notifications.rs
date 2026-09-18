@@ -162,7 +162,7 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         let attempts = sender.attempts().await;
         require(
-            attempts.len() == 3 && attempts.first() == attempts.get(1),
+            attempts.len() == 3 && attempts.as_slice().first() == attempts.get(1),
             "retry did not reuse the durable notification identity",
         )?;
 
@@ -215,6 +215,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .await?;
         let first_notification = first
             .notifications
+            .as_slice()
             .first()
             .ok_or(AccountError::AccountChanged)?;
         require(
@@ -229,6 +230,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .await?;
         let reclaimed_notification = reclaimed
             .notifications
+            .as_slice()
             .first()
             .ok_or(AccountError::AccountChanged)?;
         require(
