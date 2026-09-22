@@ -10,6 +10,8 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Completed
 
+- [Introduction language consistency](2026-09-22-introduction-language.md)
+
 - [Complete page map](2026-09-21-page-map.md)
 - [Repository instructions and session handoff](2026-09-21-repository-instructions.md)
 

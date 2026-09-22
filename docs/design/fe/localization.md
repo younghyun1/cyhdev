@@ -12,6 +12,8 @@ Backend startup synchronizes all embedded source catalogs and reloads the bounde
 
 ## Coverage and review
 
+About Me and About Blog page content intentionally remains entirely English, with `lang="en"` on their content roots even when navigation uses another locale. Complete page translations can be added later through the existing catalog system; do not restore isolated translated sections. The Home introduction remains localized in all eight languages, including Korean.
+
 The 650-key catalog covers navigation, account forms, administration, publishing controls, forum controls, photographs, projects, chat, call controls, statistics, and the home introduction. User-authored posts, comments, chat messages, project descriptions, the long biography and site architecture essays, and embedded applications retain their original content. Those are not dynamically machine-translated. Proper names, protocol names, FE/BE abbreviations, file extensions, and the exact site title intentionally remain unchanged. Language catalogs are implementation translations; independent native-speaker editorial review has not been performed.
 
 Traditional Mandarin started from the Simplified Mandarin translation using [OpenCC](https://github.com/BYVoid/OpenCC)'s `s2twp` conversion, followed by explicit terminology corrections for permissions, accounts, replies, sessions, tokens, and video. Consulted 2026-09-21. OpenCC was an authoring-time CLI only and is not a project dependency or runtime service.

@@ -9,6 +9,30 @@ const loginLabels = {
   "ja-JP": "ログイン", "de-DE": "Anmelden",
 };
 
+test("Korean Home introduction translates while About pages stay English", async ({ page }) => {
+  await installApiMocks(page, "logged-out");
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("ui_locale")) localStorage.setItem("ui_locale", "en-US");
+  });
+  await page.route("**/api/i18n/ui-text*", (route) => route.abort());
+  await page.goto("/");
+  await page.locator("select").first().selectOption("ko-KR");
+  const introduction = page.locator(".home-hero-inner");
+  await expect(introduction).toContainText("소프트웨어 엔지니어");
+  await expect(introduction).toContainText("Soundpatrol에서 사이버 보안, DevOps, 웹 서비스 및 개발자 도구 관련 업무를 하고 있습니다.");
+  await expect(introduction).toContainText("직접 서버를 운영하고, 사진을 찍고, Rust로 도구를 만드는 것도 좋아합니다.");
+  await expect(introduction).toContainText("장인 정신과 올바른 조직 운영을 무엇보다 소중하게 여깁니다.");
+  await expect(introduction).not.toContainText("I work on cybersecurity");
+  await page.reload();
+  await expect(introduction).toContainText("장인 정신과 올바른 조직 운영");
+  for (const [route, heading] of [["/about", "About"], ["/about-blog", "Blog Tech Stack"]]) {
+    await page.goto(route);
+    await expect(page.locator("html")).toHaveAttribute("lang", "ko-KR");
+    await expect(page.locator('main[lang="en"]')).toBeVisible();
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+  }
+});
+
 for (const { tag } of UI_LOCALES) {
   test(`${tag} loads offline fallback, survives reload, and fits mobile`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
