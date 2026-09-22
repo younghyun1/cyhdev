@@ -217,9 +217,15 @@ impl RtcRoom {
             if let Some(user_id) = deleted_user_id {
                 let _ = participant.actor.anonymize_deleted_user(user_id);
             }
-            self.broadcast_peer_state(&participant, RtcPeerPhase::Left);
             peer.close().await;
+            let publications = peer.publications_snapshot().await;
+            for subscriber in self.other_peers(connection_id).await {
+                if subscriber.unsubscribe_from(&publications).await {
+                    subscriber.renegotiate().await;
+                }
+            }
             self.release_slot();
+            self.broadcast_peer_state(&participant, RtcPeerPhase::Left);
         }
     }
 

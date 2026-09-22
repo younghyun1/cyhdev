@@ -16,6 +16,9 @@ use webrtc::media_stream::track_local::static_rtp::TrackLocalStaticRTP;
 use super::super::publication::{RtcPublication, spawn_rtp_forward};
 use super::RtcPeer;
 
+// The configured room admits at most 64 participants, each publishing audio and video.
+const MAX_SUBSCRIPTIONS: usize = 128;
+
 /// A subscriber-local track waiting for its negotiation answer before forwarding starts.
 pub(super) struct PendingSubscription {
     publication: Arc<RtcPublication>,
@@ -30,12 +33,12 @@ impl RtcPeer {
     /// `add_track` the same track twice onto this peer connection.
     pub async fn subscribe_to(&self, publication: Arc<RtcPublication>) -> bool {
         let track_id = publication.track_id().to_owned();
-        if self
-            .subscribed
-            .insert_async(track_id.clone())
-            .await
-            .is_err()
-        {
+        let mut subscribed = self.subscribed.lock().await;
+        if *self.closed.borrow() || publication.is_closed() || subscribed.contains_key(&track_id) {
+            return false;
+        }
+        if subscribed.len() >= MAX_SUBSCRIPTIONS {
+            warn!("RTC subscription limit reached");
             return false;
         }
         let (local, packets) = publication.subscribe();
@@ -44,7 +47,8 @@ impl RtcPeer {
             .add_track(local.clone() as Arc<dyn TrackLocal>)
             .await
         {
-            Ok(_) => {
+            Ok(sender) => {
+                subscribed.insert(track_id, sender);
                 self.pending_subscriptions
                     .lock()
                     .await
@@ -57,11 +61,29 @@ impl RtcPeer {
             }
             Err(e) => {
                 warn!(error = %e, "add_track (subscribe) failed");
-                // Allow a later retry of the same track since the add failed.
-                let _ = self.subscribed.remove_async(&track_id).await;
                 false
             }
         }
+    }
+
+    /// Remove departed publications so the same actor can publish fresh tracks on rejoin.
+    pub async fn unsubscribe_from(&self, publications: &[Arc<RtcPublication>]) -> bool {
+        let mut subscribed = self.subscribed.lock().await;
+        let mut changed = false;
+        for publication in publications {
+            let track_id = publication.track_id();
+            if let Some(sender) = subscribed.remove(track_id) {
+                if let Err(error) = self.pc.remove_track(&sender).await {
+                    warn!(%error, "Could not remove departed RTC track");
+                }
+                changed = true;
+            }
+        }
+        self.pending_subscriptions
+            .lock()
+            .await
+            .retain(|pending| !pending.publication.is_closed());
+        changed
     }
 
     /// Snapshot of this peer's publications.
@@ -84,6 +106,7 @@ impl RtcPeer {
                 subscription.packets,
                 subscription.local,
                 subscription.publication.clone(),
+                self.closed.subscribe(),
             );
             subscription.publication.request_keyframe().await;
         }

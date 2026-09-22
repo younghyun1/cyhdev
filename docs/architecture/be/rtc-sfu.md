@@ -1,6 +1,6 @@
 # Live Chat RTC: in-process SFU design
 
-The audio/video layer is a Selective Forwarding Unit running inside the Axum binary on top of webrtc-rs (`webrtc` 0.17). Each browser holds one `RTCPeerConnection` to the SFU: it publishes its microphone and camera and subscribes to every other participant's tracks. Media is DTLS-SRTP encrypted end to peer by webrtc-rs; the SFU forwards RTP without decrypting application media beyond what SRTP requires, and never transcodes.
+The audio/video layer is a Selective Forwarding Unit running inside the Axum binary on top of `rtc`/`webrtc` 0.21. Each browser holds one `RTCPeerConnection` to the SFU: it publishes its microphone and camera and subscribes to every other participant's tracks. Media uses DTLS-SRTP between each browser and the SFU; the SFU decrypts and re-encrypts transport packets while forwarding encoded media without transcoding.
 
 Runtime ownership follows the backend feature boundary: persistence-independent signaling values live in `features/live_chat/domain/rtc.rs`; JSON signal serialization and the binary codec live in `features/live_chat/api`; the bounded chat cache and WebRTC engine, peer, publication, room, and coordinator live in `features/live_chat/service`.
 
@@ -8,7 +8,9 @@ Runtime ownership follows the backend feature boundary: persistence-independent 
 One room (`room_key = "main"` today; the registry is keyed by `room_key` to allow more). A room is an `RtcRoom` holding a registry of `RtcPeer` keyed by the WS `connection_id`. The room is created on the first join (which opens a `live_chat_calls` row) and removed when the last peer leaves (which closes the row). State is bounded: no idle rooms persist.
 
 ## Forwarding model
-For each published track the SFU creates exactly one `TrackLocalStaticRTP` (same codec capability as the inbound `TrackRemote`, `stream_id` set to the publisher's actor key) and `add_track`s it to every other peer. A single RTP read loop copies packets from the `TrackRemote` into that local track, which webrtc-rs fans out to all bound senders. Cost is O(publishers x subscribers) packet copies; participants are capped by `RTC_MAX_PARTICIPANTS`. The SFU forwards subscriber PLI/keyframe requests upstream so a newly-subscribed peer gets a keyframe.
+Each publication has a bounded 512-packet RTP broadcast channel and creates a distinct `TrackLocalStaticRTP` for each subscriber; the library binds each local track to one connection. Stream IDs remain actor-based to group audio and video in the browser. Forwarding starts after the subscriber answers negotiation. Cost is O(publishers x subscribers) packet copies; participants are capped by `RTC_MAX_PARTICIPANTS` and each subscription map has a hard 128-track bound.
+
+The final interceptor retains only PLI/FIR keyframe requests and marks them `DeliverToApplication`, as required by RTC 0.21. Default interceptors process reports and transport feedback first. The SFU relays keyframe requests upstream with a per-publication 500 ms throttle. Teardown closes publication tasks explicitly, removes subscriber senders and deduplication entries, then renegotiates; ordinary leave/rejoin and WebSocket reconnect must both restore fresh media.
 
 ## Signaling
 Signaling rides the existing `/ws/live-chat` socket; there is no separate route. Frames extend the binary protocol; the JSON fallback mirrors them via serde.
