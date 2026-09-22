@@ -22,6 +22,7 @@ for (const { tag } of UI_LOCALES) {
     ]);
     await expect(page.getByRole("heading", { name: loginLabels[tag], exact: true })).toBeVisible();
     await expect(page).toHaveTitle("Young Hyun Chi | Software Engineer");
+    await expect(page.locator(".site-header-brand span").last()).toHaveText("Younghyun's Blog");
     await page.reload();
     await expect(page.getByRole("heading", { name: loginLabels[tag], exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

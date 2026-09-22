@@ -12,6 +12,12 @@ The PostgreSQL test found a pre-existing cold-cache defect: a new cache incorrec
 
 Translation coverage and source ownership are documented in [UI localization](../design/fe/localization.md). Fixture login renders for all eight locales and desktop header renders are under `target/localization-renders/`; generated images remain untracked. The Traditional Mandarin source was converted from the Simplified translation with authoring-time OpenCC, then reviewed and adjusted for interface terminology. No conversion dependency is shipped.
 
+## Top-bar branding correction
+
+Status: complete, baseline `498c33e`. Kept the static browser document title `Young Hyun Chi | Software Engineer`; set `top_bar.site_title` to `Younghyun's Blog` in all eight backend source catalogs and both typed browser defaults. Preserved the existing mobile route labels. Browser regressions assert the distinct document title and desktop branding; source tests enforce the same branding across locales.
+
+Verification: `cargo xtask frontend-check` passed typecheck, lint, 115 tests, and the budgeted bundle. Chromium `desktop.spec.ts localization.spec.ts` passed 20 tests. `cargo xtask clippy`, `cargo xtask fmt`, the focused backend locale-source test, and `git diff --check` passed. Full backend/database and Docker builds were not repeated for this catalog-value-only change; no runtime logic, schema, packaging, or document-title code changed.
+
 ## Docker packaging correction
 
 Status: complete, baseline `49b4bd0`. The Docker frontend stage omitted the backend-owned JSON catalogs imported by the six new browser locales. Host builds passed because those sibling files were present; this did not prove isolated Docker input completeness. The shared `frontend-source` stage now copies only `rust-be-template/i18n/ui/` into the matching container path. The deployment frontend inherits it; dynamic language loading remains unchanged. A tooling regression requires the narrow catalog copy and source-stage inheritance without a dependency on the optimized EU5 stage.

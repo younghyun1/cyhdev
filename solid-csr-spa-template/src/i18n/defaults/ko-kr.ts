@@ -52,7 +52,7 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "common.country": "국가",
   "common.language": "언어",
   "common.subdivision": "지역",
-  "top_bar.site_title": "Young Hyun Chi | Software Engineer",
+  "top_bar.site_title": "Younghyun's Blog",
   "top_bar.nav.home": "홈",
   "top_bar.nav.about_group": "소개",
   "top_bar.nav.about": "소개",
