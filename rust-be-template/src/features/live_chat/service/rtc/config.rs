@@ -29,7 +29,7 @@ pub struct TurnConfig {
 pub struct RtcConfig {
     /// When false the SFU is not built and RTC join requests are rejected.
     pub enabled: bool,
-    /// Public IP advertised as an ICE host candidate (`set_nat_1to1_ips`).
+    /// Public IP advertised as an ICE host candidate through the NAT 1:1 mapping.
     pub public_ip: String,
     /// First UDP port in the per-peer ICE/media port range.
     pub udp_port_start: u16,
@@ -137,7 +137,20 @@ fn udp_port_range_fits(start: u16, port_count: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::udp_port_range_fits;
+    use super::{MaxParticipants, udp_port_range_fits};
+
+    #[test]
+    fn participant_limit_preserves_inclusive_bounds() {
+        for limit in [1, 64] {
+            assert_eq!(
+                MaxParticipants::try_new(limit).map(MaxParticipants::into_inner),
+                Ok(limit)
+            );
+        }
+        for limit in [0, 65, usize::MAX] {
+            assert!(MaxParticipants::try_new(limit).is_err());
+        }
+    }
 
     #[test]
     fn udp_port_range_accepts_last_valid_port() {

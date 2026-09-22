@@ -44,7 +44,7 @@ Unicast signals reach one connection through that connection's `out_tx` mpsc (th
 Per-peer renegotiation is serialized by a tokio Mutex on the peer to prevent overlapping offers. Mute/camera toggles never renegotiate; they only flip `track.enabled` client-side and emit MediaState for other clients' UI.
 
 ## ICE / network
-`SettingEngine` uses a single `UDPMuxDefault` bound to `RTC_UDP_MUX_PORT` and `set_nat_1to1_ips([RTC_PUBLIC_IP], Host)`, so the SFU advertises its public IP as a host candidate and all media multiplexes onto one UDP port (one Docker `EXPOSE`). External STUN/TURN is unnecessary for a public-IP server; optional `RTC_TURN_*` can be configured as a relay fallback for symmetric-NAT clients.
+Each peer connection owns a UDP socket allocated from the bounded range starting at `RTC_UDP_PORT_START`, with `RTC_MAX_PARTICIPANTS` ports. `SettingEngineBuilder::with_nat_1to1_ips([RTC_PUBLIC_IP], Host).build()` configures the public host candidate using the rtc/webrtc 0.21 builder API. Deployment must expose the configured UDP range. External STUN/TURN is unnecessary for a public-IP server; optional `RTC_TURN_*` can be configured as a relay fallback for symmetric-NAT clients.
 
 ## Persistence
 `live_chat_calls` (`live_chat_call_id` UUIDv7 PK, `room_key`, `call_started_at`, `call_ended_at`) and `live_chat_call_participants` (`live_chat_call_participant_id` PK, `live_chat_call_id` FK, nullable `user_id`/`guest_ip`, `participant_sender_kind`, `participant_display_name`, join/leave timestamps, `participant_had_audio`/`participant_had_video`) mirror the `live_chat_messages` conventions: table-prefixed columns, identity CHECK, indexed ID/sortable columns. No media is recorded.

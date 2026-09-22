@@ -1,6 +1,6 @@
 //! Peer-connection construction for the in-process SFU.
 //!
-//! `webrtc` 0.20 owns one transport driver and UDP socket per peer connection.
+//! `webrtc` owns one transport driver and UDP socket per peer connection.
 //! The engine allocates those sockets from a bounded range and recreates the
 //! connection-scoped media and interceptor configuration for each peer.
 
@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::info;
 use webrtc::peer_connection::{
     MediaEngine, PeerConnection, PeerConnectionBuilder, PeerConnectionEventHandler,
-    RTCConfigurationBuilder, RTCIceCandidateType, RTCIceServer, Registry, SettingEngine,
+    RTCConfigurationBuilder, RTCIceCandidateType, RTCIceServer, Registry, SettingEngineBuilder,
     register_default_interceptors,
 };
 
@@ -104,11 +104,12 @@ impl RtcEngine {
         let registry = register_default_interceptors(Registry::new(), &mut media_engine)
             .map_err(|error| anyhow::anyhow!("Failed to register RTC interceptors: {error}"))?;
 
-        let mut setting_engine = SettingEngine::default();
-        setting_engine.set_nat_1to1_ips(
-            vec![self.config.public_ip.clone()],
-            RTCIceCandidateType::Host,
-        );
+        let setting_engine = SettingEngineBuilder::new()
+            .with_nat_1to1_ips(
+                vec![self.config.public_ip.clone()],
+                RTCIceCandidateType::Host,
+            )
+            .build();
 
         let mut ice_servers = Vec::new();
         if let Some(turn) = &self.config.turn {
