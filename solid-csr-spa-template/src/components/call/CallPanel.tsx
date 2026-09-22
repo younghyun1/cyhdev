@@ -3,6 +3,7 @@ import { pageStyles } from "../../styles/pageStyles";
 import { useRtc } from "../../state/rtc";
 import { CallControls } from "./CallControls";
 import { VideoTile } from "./VideoTile";
+import { t, tx } from "../../state/i18n";
 
 /// Video grid + controls, shown above the message list in the full chat panel.
 export function CallPanel() {
@@ -13,10 +14,10 @@ export function CallPanel() {
   return (
     <div class={pageStyles.callPanel}>
       <div class={pageStyles.callHeader}>
-        <span class="text-sm font-semibold">Call</span>
+        <span class="text-sm font-semibold">{t("call.title")}</span>
         <Show when={rtc.participantCount() > 0}>
           <span class={pageStyles.callPill}>
-            {rtc.participantCount()} in call
+            {tx("call.participants", { count: rtc.participantCount() })}
           </span>
         </Show>
       </div>
@@ -25,7 +26,7 @@ export function CallPanel() {
         <div class={pageStyles.callGrid}>
           <VideoTile
             stream={rtc.localStream()}
-            label="You"
+            label={t("call.you")}
             profilePictureUrl={rtc.selfActor()?.user_profile_picture_url ?? null}
             countryFlag={rtc.selfActor()?.country_flag ?? null}
             micOn={rtc.micOn()}

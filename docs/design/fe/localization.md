@@ -1,0 +1,23 @@
+# UI localization
+
+The interface supports `en-US`, `ko-KR`, `fr-FR`, `es-ES`, `zh-Hans`, `zh-Hant`, `ja-JP`, and `de-DE`. The selector uses native language names, without flags. Chinese tags describe scripts rather than political geography. Browser language preferences are checked in order; explicit script subtags override regional defaults, and Taiwan, Hong Kong, and Macao default to Traditional Chinese. A saved supported selection takes precedence. The HTML language attribute follows the selected tag. The site title remains `Young Hyun Chi | Software Engineer` in every locale.
+
+## Sources and delivery
+
+`src/i18n/keys.ts` defines the browser key union. `src/i18n/defaults/` supplies typed English and Korean defaults, including forum keys. `rust-be-template/i18n/ui/` contains the complete eight-locale source catalogs. English and Korean copies are checked for exact equality by `src/i18n/locales.test.ts`; the six additional browser catalogs are imported directly from those backend JSON sources, avoiding a second translation copy. The backend fixed registry in `features/i18n/domain/keys.rs` must contain the same keys. Add a key to every catalog in the same change and preserve named `{placeholders}`.
+
+Only English is in the initial application chunk. The remaining languages use separate dynamic imports selected by `src/i18n/locales.ts`. `src/state/i18n.ts` installs the local catalog before attempting a server override, so a failed API request does not disable translated navigation or account forms. Responses for a different locale or an older request generation are discarded. Server responses identify their locale; an older server falling back to English must not overwrite the selected local translation. All caches have a finite set of eight locale modules; no user-controlled cache key is introduced.
+
+Backend startup synchronizes all embedded source catalogs and reloads the bounded i18n cache. The authenticated maintenance operation repeats that process. Existing country and language reference rows already cover every locale; no schema migration is required. Simplified and Traditional Chinese share language key 30 but use distinct country keys 156 and 158 so their source rows cannot collide. Public API response shapes are unchanged.
+
+## Coverage and review
+
+The 650-key catalog covers navigation, account forms, administration, publishing controls, forum controls, photographs, projects, chat, call controls, statistics, and the home introduction. User-authored posts, comments, chat messages, project descriptions, the long biography and site architecture essays, and embedded applications retain their original content. Those are not dynamically machine-translated. Proper names, protocol names, FE/BE abbreviations, file extensions, and the exact site title intentionally remain unchanged. Language catalogs are implementation translations; independent native-speaker editorial review has not been performed.
+
+Traditional Mandarin started from the Simplified Mandarin translation using [OpenCC](https://github.com/BYVoid/OpenCC)'s `s2twp` conversion, followed by explicit terminology corrections for permissions, accounts, replies, sessions, tokens, and video. Consulted 2026-09-21. OpenCC was an authoring-time CLI only and is not a project dependency or runtime service.
+
+## Verification
+
+The exact site title and translated navigation cannot share a single row with account controls at every desktop width. `src/styles/header.css` gives navigation its own row from 768 through 1599 pixels, retains the desktop controls, bounds long identity labels, and lets navigation wrap at wider widths. Main content and fixed iframe wrappers use the measured header height rather than fixed offsets. Locale browser tests check authenticated German layouts at five widths, including the previously overlapping 1280-pixel layout. Legacy date/time formatting still follows browser preferences in several components; selecting a UI language does not yet override every such formatter.
+
+Run `npm --prefix solid-csr-spa-template run test -- src/i18n/locales.test.ts` for full key coverage, placeholder preservation, source equality, language negotiation, and rejection of untranslated placeholder catalogs. Run `npm --prefix solid-csr-spa-template run test:e2e:chromium -- localization.spec.ts` for all eight languages at mobile width, API-offline local fallback, persistence across reloads, exact document title, overflow checks, and stale-response switching. The browser test produces fixture login renders under `target/localization-renders/`.

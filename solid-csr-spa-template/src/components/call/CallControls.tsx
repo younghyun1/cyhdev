@@ -1,6 +1,7 @@
 import { Show } from "solid-js";
 import { pageStyles } from "../../styles/pageStyles";
 import { useRtc } from "../../state/rtc";
+import { t } from "../../state/i18n";
 
 /// Join/leave plus mic and camera toggles for the active call.
 export function CallControls() {
@@ -19,7 +20,7 @@ export function CallControls() {
             disabled={rtc.callState() === "joining"}
             onClick={() => void rtc.joinCall()}
           >
-            Join call
+            {t("call.join")}
           </button>
         }
       >
@@ -28,24 +29,24 @@ export function CallControls() {
           type="button"
           onClick={rtc.toggleMic}
         >
-          {rtc.micOn() ? "Mute" : "Unmute"}
+          {t(rtc.micOn() ? "call.mute" : "call.unmute")}
         </button>
         <button
           class={pageStyles.buttonSecondary}
           type="button"
           onClick={rtc.toggleCamera}
         >
-          {rtc.camOn() ? "Stop video" : "Start video"}
+          {t(rtc.camOn() ? "call.stop_video" : "call.start_video")}
         </button>
         <button
           class={pageStyles.buttonDanger}
           type="button"
           onClick={rtc.leaveCall}
         >
-          Leave
+          {t("call.leave")}
         </button>
         <Show when={rtc.callState() === "joining"}>
-          <span class={pageStyles.subtitle}>Joining…</span>
+          <span class={pageStyles.subtitle}>{t("call.joining")}</span>
         </Show>
       </Show>
     </div>

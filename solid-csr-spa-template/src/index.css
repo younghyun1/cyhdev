@@ -7,6 +7,7 @@
 
 @import "./styles/prose.css";
 @import "./styles/code.css";
+@import "./styles/header.css";
 @import "./styles/mobile.css";
 
 @plugin "@tailwindcss/typography";

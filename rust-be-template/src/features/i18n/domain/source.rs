@@ -24,6 +24,30 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
     Ok(vec![
         parse_bundle(UiLocale::EnUs, EN_US_JSON)?,
         parse_bundle(UiLocale::KoKr, KO_KR_JSON)?,
+        parse_bundle(
+            UiLocale::FrFr,
+            include_str!("../../../../i18n/ui/fr-FR.json"),
+        )?,
+        parse_bundle(
+            UiLocale::EsEs,
+            include_str!("../../../../i18n/ui/es-ES.json"),
+        )?,
+        parse_bundle(
+            UiLocale::ZhHans,
+            include_str!("../../../../i18n/ui/zh-Hans.json"),
+        )?,
+        parse_bundle(
+            UiLocale::ZhHant,
+            include_str!("../../../../i18n/ui/zh-Hant.json"),
+        )?,
+        parse_bundle(
+            UiLocale::JaJp,
+            include_str!("../../../../i18n/ui/ja-JP.json"),
+        )?,
+        parse_bundle(
+            UiLocale::DeDe,
+            include_str!("../../../../i18n/ui/de-DE.json"),
+        )?,
     ])
 }
 
@@ -68,7 +92,7 @@ mod tests {
     #[test]
     fn locale_sources_cover_the_registry_and_translate_eu5_navigation() -> anyhow::Result<()> {
         let bundles = source_bundles()?;
-        assert_eq!(bundles.len(), 2);
+        assert_eq!(bundles.len(), 8);
         for bundle in &bundles {
             assert_eq!(bundle.entries.len(), REQUIRED_UI_TEXT_KEYS.len());
             assert_eq!(
@@ -82,6 +106,7 @@ mod tests {
         }
         let translations = bundles
             .iter()
+            .filter(|bundle| matches!(bundle.locale, UiLocale::EnUs | UiLocale::KoKr))
             .filter_map(|bundle| {
                 bundle
                     .entries
