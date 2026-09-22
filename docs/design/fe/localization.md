@@ -1,6 +1,6 @@
 # UI localization
 
-The interface supports `en-US`, `ko-KR`, `fr-FR`, `es-ES`, `zh-Hans`, `zh-Hant`, `ja-JP`, and `de-DE`. The selector uses native language names, without flags. Chinese tags describe scripts rather than political geography. Browser language preferences are checked in order; explicit script subtags override regional defaults, and Taiwan, Hong Kong, and Macao default to Traditional Chinese. A saved supported selection takes precedence. The HTML language attribute follows the selected tag. The site title remains `Young Hyun Chi | Software Engineer` in every locale.
+The interface supports `en-US`, `ko-KR`, `fr-FR`, `es-ES`, `zh-Hans`, `zh-Hant`, `ja-JP`, and `de-DE`. The selector uses native language names, without flags. Chinese tags describe scripts rather than political geography. Browser language preferences are checked in order; explicit script subtags override regional defaults, and Taiwan, Hong Kong, and Macao default to Traditional Chinese. A saved supported selection takes precedence. The HTML language attribute follows the selected tag. The browser document title remains `Young Hyun Chi | Software Engineer`; the desktop top-bar brand (`top_bar.site_title`) is `Younghyun's Blog` in every locale. The mobile top bar retains its existing route label.
 
 ## Sources and delivery
 

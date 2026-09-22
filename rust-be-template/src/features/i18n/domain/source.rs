@@ -101,7 +101,7 @@ mod tests {
                     .iter()
                     .find(|entry| entry.key == "top_bar.site_title")
                     .map(|entry| entry.content.as_str()),
-                Some("Young Hyun Chi | Software Engineer"),
+                Some("Younghyun's Blog"),
             );
         }
         let translations = bundles

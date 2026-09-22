@@ -16,14 +16,14 @@ describe("UI locales", () => {
   });
 
   for (const { tag } of UI_LOCALES) {
-    it(`${tag} covers every key, placeholder, and the exact site title`, async () => {
+    it(`${tag} covers every key, placeholder, and the exact top-bar brand`, async () => {
       const texts = await LOCAL_TEXT_LOADERS[tag]();
       expect(Object.keys(texts).sort()).toEqual([...UI_TEXT_KEYS].sort());
       for (const key of UI_TEXT_KEYS) {
         expect(texts[key].trim(), key).not.toBe("");
         expect(placeholders(texts[key]), key).toEqual(placeholders(EN_US_DEFAULT_TEXTS[key]));
       }
-      expect(texts["top_bar.site_title"]).toBe("Young Hyun Chi | Software Engineer");
+      expect(texts["top_bar.site_title"]).toBe("Younghyun's Blog");
       if (tag !== "en-US") {
         // Cognates and product names may match; an English placeholder catalog may not.
         const translated = UI_TEXT_KEYS.filter((key) => texts[key] !== EN_US_DEFAULT_TEXTS[key]);

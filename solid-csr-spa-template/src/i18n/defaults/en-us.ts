@@ -52,7 +52,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "common.country": "Country",
   "common.language": "Language",
   "common.subdivision": "Subdivision",
-  "top_bar.site_title": "Young Hyun Chi | Software Engineer",
+  "top_bar.site_title": "Younghyun's Blog",
   "top_bar.nav.home": "Home",
   "top_bar.nav.about_group": "About",
   "top_bar.nav.about": "About Me",
