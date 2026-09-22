@@ -48,12 +48,14 @@ test("visitor counts render as plain text", async ({ page }) => {
   await expect(popup).toContainText(/Visitations from here: \d+/);
 });
 
-test("About interests have Korean copy without advocacy references", async ({ page }) => {
+test("About interests remain English with Korean navigation", async ({ page }) => {
   await installApiMocks(page, "logged-out");
   await setUiPreferences(page, "ko-KR", "light");
   await page.goto("/about");
-  await expect(page.getByRole("heading", { name: "5. 봉사 활동과 관심 분야" })).toBeVisible();
-  await expect(page.getByText("지역 커뮤니티 센터에서 영어를 가르쳤습니다.")).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "ko-KR");
+  await expect(page.locator(".about-page")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("heading", { name: "5. Volunteer work & Interests" })).toBeVisible();
+  await expect(page.getByText("Taught English at a community center.")).toBeVisible();
   await expect(page.locator(".about-page")).not.toContainText(/West Papua|human rights|Sakartvelo/);
 });
 

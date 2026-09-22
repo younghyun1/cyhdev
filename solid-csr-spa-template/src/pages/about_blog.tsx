@@ -3,7 +3,7 @@ import { pageStyles } from "../styles/pageStyles";
 
 export default function AboutBlog() {
   return (
-    <main class={pageStyles.page}>
+    <main lang="en" class={pageStyles.page}>
       <section
         class={`${pageStyles.pageInnerNarrow} text-ink`}
       >

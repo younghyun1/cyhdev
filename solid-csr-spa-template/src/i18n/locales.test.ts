@@ -25,6 +25,9 @@ describe("UI locales", () => {
       }
       expect(texts["top_bar.site_title"]).toBe("Younghyun's Blog");
       if (tag !== "en-US") {
+        for (const key of ["home.hero.role", "home.hero.summary", "home.hero.principle"] as const) {
+          expect(texts[key], key).not.toBe(EN_US_DEFAULT_TEXTS[key]);
+        }
         // Cognates and product names may match; an English placeholder catalog may not.
         const translated = UI_TEXT_KEYS.filter((key) => texts[key] !== EN_US_DEFAULT_TEXTS[key]);
         expect(translated.length).toBeGreaterThan(UI_TEXT_KEYS.length * 0.9);
