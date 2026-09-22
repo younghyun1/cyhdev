@@ -86,10 +86,17 @@
 }
 .forum-search {
   display: grid;
+  align-items: end;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.6rem;
   margin-bottom: 1.25rem;
   padding: 0.8rem;
+}
+
+.forum-search .forum-input,
+.forum-search .forum-button {
+  box-sizing: border-box;
+  height: 2.875rem;
 }
 
 .forum-input,

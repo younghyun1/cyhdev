@@ -26,6 +26,7 @@ import badgeWindows0078D6 from "../assets/badges/Windows-0078D6.svg";
 import badgemacOS000000 from "../assets/badges/macOS-000000.svg";
 import { For } from "solid-js";
 import { createMediaQuery } from "../utils/mediaQuery";
+import { locale } from "../state/i18n";
 
 const BADGES = [
   [badgeRust000000, "Rust"],
@@ -56,6 +57,7 @@ const BADGES = [
 ] as const;
 
 export default function About() {
+  const copy = (english: string, korean: string) => locale() === "ko-KR" ? korean : english;
   const isMobile = createMediaQuery("(max-width: 767px)");
   const deferredLoading = (): "lazy" | "eager" =>
     isMobile() ? "lazy" : "eager";
@@ -549,34 +551,27 @@ export default function About() {
         {/* 5) Volunteer work and interests */}
         <section class="mb-12">
           <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
-            5. Volunteer work & Interests
+            {copy("5. Volunteer work & Interests", "5. 봉사 활동과 관심 분야")}
           </h2>
 
           <div class="grid md:grid-cols-2 gap-8">
             <div>
-              <h3 class="font-bold mb-3 text-lg">Personal Projects</h3>
+              <h3 class="font-bold mb-3 text-lg">{copy("Personal Projects", "개인 프로젝트")}</h3>
               <ul class="list-disc list-inside text-sm space-y-2 text-ink">
                 <li>
-                  <b>oohid:</b> A CLI UUIDv4 generator in Rust. ~3x faster than
-                  libuuid. Features duplicate checking and Python/JSON
-                  formatting.
+                  <b>oohid:</b> {copy("A CLI UUIDv4 generator in Rust. ~3x faster than libuuid. Features duplicate checking and Python/JSON formatting.", "Rust로 만든 명령줄 UUIDv4 생성기입니다. libuuid보다 약 3배 빠르며, 중복 검사와 Python·JSON 형식 출력을 지원합니다.")}
                 </li>
                 <li>
-                  <b>impulsr:</b> LLM-based YouTube transcription and comment
-                  collection tool for marketing summaries.
+                  <b>impulsr:</b> {copy("A YouTube transcription and comment collection tool for marketing summaries.", "유튜브 영상의 음성을 텍스트로 변환하고 댓글을 수집하여 마케팅용 요약을 만드는 도구입니다.")}
                 </li>
               </ul>
             </div>
 
             <div>
-              <h3 class="font-bold mb-3 text-lg">Volunteer Work</h3>
+              <h3 class="font-bold mb-3 text-lg">{copy("Volunteer Work", "봉사 활동")}</h3>
               <ul class="list-disc list-inside text-sm space-y-2 text-ink">
-                <li>Taught English at a community center.</li>
-                <li>Volunteered at a disabled people run thrift store.</li>
-                <li>
-                  Translated materials for a human rights law center concerning
-                  West Papua and Sakartvelo.
-                </li>
+                <li>{copy("Taught English at a community center.", "지역 커뮤니티 센터에서 영어를 가르쳤습니다.")}</li>
+                <li>{copy("Volunteered at a thrift store run by people with disabilities.", "장애인들이 운영하는 중고 물품 매장에서 봉사했습니다.")}</li>
               </ul>
             </div>
           </div>
@@ -585,32 +580,29 @@ export default function About() {
         {/* 6) Hobbies */}
         <section class="mb-12">
           <h2 class="text-xl font-bold mb-6 border-b border-line pb-2">
-            6. Hobbies
+            {copy("6. Hobbies", "6. 취미")}
           </h2>
 
           <div class="space-y-4">
             <div>
-              <h3 class="font-bold inline mr-2">Photography</h3>
+              <h3 class="font-bold inline mr-2">{copy("Photography", "사진")}</h3>
               <span class="text-sm text-ink-muted">
-                Amateur landscape and portrait photographer since 2010. ~30,000
-                photographs archived.
+                {copy("Amateur landscape and portrait photographer since 2010. ~30,000 photographs archived.", "2010년부터 취미로 풍경과 인물 사진을 찍고 있습니다. 약 3만 장의 사진을 보관하고 있습니다.")}
               </span>
               <div class="mt-2">
                 <a
                   href="/photographs"
                   class={`inline-flex items-center ${pageStyles.link} font-medium`}
                 >
-                  View Photography Portfolio &rarr;
+                  {copy("View Photography Portfolio →", "사진 포트폴리오 보기 →")}
                 </a>
               </div>
             </div>
 
             <div>
-              <h3 class="font-bold inline mr-2">Journalism</h3>
+              <h3 class="font-bold inline mr-2">{copy("Journalism", "학생 기자 활동")}</h3>
               <p class="text-sm text-ink mt-1">
-                Interested in security and human rights issues (West Papua,
-                Ethiopia, Korean Peninsula). Former student journalist for the
-                Sungkyun Times.
+                {copy("Former student journalist for the Sungkyun Times.", "성균관대학교 영자신문 The Sungkyun Times에서 학생 기자로 활동했습니다.")}
               </p>
             </div>
           </div>

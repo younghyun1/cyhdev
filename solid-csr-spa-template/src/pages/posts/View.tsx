@@ -867,7 +867,7 @@ export default function PostViewPage() {
                         {t("blog.comments.title")}
                       </h2>
                       <label class="text-sm text-ink-muted flex items-center gap-2">
-                        <span>{t("blog.comments.sort_by")}</span>
+                        <span class="whitespace-nowrap">{t("blog.comments.sort_by")}</span>
                         <select
                           class={pageStyles.select}
                           value={commentSort()}
