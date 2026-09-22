@@ -10,42 +10,30 @@ use std::{
 };
 
 use super::credential_policy::{RUNTIME_CREDENTIAL_PATHS, is_runtime_credential_path};
+use super::git_inventory;
 use crate::{TaskError, TaskResult};
 
 const MAX_SNAPSHOT_FILES: usize = 1_000_000;
 const MAX_SNAPSHOT_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_PUBLIC_FILE_BYTES: u64 = 128 * 1024 * 1024;
 
-pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()> {
-    verify_runtime_credentials_are_private(root)?;
-    let paths = git_paths(
-        root,
-        &[
-            "ls-files",
-            "-z",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-        ],
-        "list public source files",
-    )?;
+pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<Vec<PathBuf>> {
+    let inventory = git_inventory::discover(root)?;
     let mut copied_files = 0usize;
     let mut copied_bytes = 0u64;
-    for encoded_path in &paths {
+    for relative in &inventory.files {
         copied_files = copied_files.saturating_add(1);
         if copied_files > MAX_SNAPSHOT_FILES {
             return Err(TaskError(format!(
                 "public source exceeds the {MAX_SNAPSHOT_FILES}-file scan bound"
             )));
         }
-        let relative = PathBuf::from(OsStr::from_bytes(encoded_path));
-        validate_relative_path(&relative)?;
-        if is_runtime_credential_path(&relative) {
+        if is_runtime_credential_path(relative) {
             return Err(TaskError(
                 "a runtime credential-shaped file is eligible for public Git inclusion".to_owned(),
             ));
         }
-        let source = root.join(&relative);
+        let source = root.join(relative);
         let metadata = fs::symlink_metadata(&source).map_err(|error| {
             TaskError(format!(
                 "failed to inspect public source candidate {}: {error}",
@@ -64,7 +52,7 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
                 relative.display()
             )));
         }
-        let destination = snapshot.join(&relative);
+        let destination = snapshot.join(relative);
         let parent = destination.parent().ok_or_else(|| {
             TaskError(format!(
                 "snapshot path has no parent: {}",
@@ -82,27 +70,15 @@ pub(super) fn copy_public_source(root: &Path, snapshot: &Path) -> TaskResult<()>
         };
         copied_bytes = add_snapshot_bytes(copied_bytes, copied)?;
     }
-    let after = git_paths(
-        root,
-        &[
-            "ls-files",
-            "-z",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-        ],
-        "relist public source files",
-    )?;
-    if paths != after {
+    if inventory != git_inventory::discover(root)? {
         return Err(TaskError(
             "public source inventory changed while the secret snapshot was created".to_owned(),
         ));
     }
-    verify_runtime_credentials_are_private(root)?;
-    Ok(())
+    Ok(inventory.repositories)
 }
 
-fn verify_runtime_credentials_are_private(root: &Path) -> TaskResult<()> {
+pub(super) fn verify_runtime_credentials_are_private(root: &Path) -> TaskResult<()> {
     let tracked = credential_paths(root, false)?;
     let tracked_credentials = tracked
         .iter()
@@ -147,7 +123,11 @@ fn credential_paths(root: &Path, ignored: bool) -> TaskResult<Vec<Vec<u8>>> {
     git_paths(root, &arguments, "list runtime credential paths")
 }
 
-fn git_paths(root: &Path, arguments: &[&str], operation: &str) -> TaskResult<Vec<Vec<u8>>> {
+pub(super) fn git_paths(
+    root: &Path,
+    arguments: &[&str],
+    operation: &str,
+) -> TaskResult<Vec<Vec<u8>>> {
     let output = Command::new("git")
         .args(arguments)
         .current_dir(root)
@@ -239,7 +219,7 @@ fn snapshot_size_error() -> TaskError {
     ))
 }
 
-fn validate_relative_path(path: &Path) -> TaskResult<()> {
+pub(super) fn validate_relative_path(path: &Path) -> TaskResult<()> {
     let valid = !path.as_os_str().is_empty()
         && path
             .components()

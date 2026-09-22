@@ -1,0 +1,22 @@
+# Confidential-source scanning and dependency follow-up
+
+Status: complete, September 21, 2026. Confidential-source scanning covers submodules without silently skipping their files or history. Corrective dependency pruning is complete; three upstream findings remain explicitly open.
+
+Checkout: `main`, implementation baseline `2865879`. Scope: `tools/xtask/src/secret_scan/`, its command wrapper and tests, dependency manifests/lockfile only when a supported corrective update exists, and this document.
+
+Completed: `git_inventory.rs` discovers indexed Git links recursively, requires real initialized checkout roots, bounds traversal, and rejects symlinked ancestors and unresolved indexes. Source snapshots share aggregate limits across repositories. The command scans all refs for every discovered repository using the root redaction policy. Eight regression tests cover initialized/nested/uninitialized/missing submodules, tracked credentials, symlinked parents/submodules, and unexpected directories. Removed unused Comrak CLI/syntax-highlighter defaults, eliminating `bincode` and `yaml-rust` from the lockfile while retaining shortcode support.
+
+Verification: `cargo test --locked --package xtask` passed 21 tests; `cargo clippy --locked --package xtask --all-targets` passed; `cargo test --locked --package rust-be-template --test markdown_rendering` passed three tests covering headings/links/fenced code, unsafe HTML/URLs, and shortcodes. `cargo xtask secret-scan` passed twice, including root and EU5 history; `target/secret-scan/{current,history,submodule-history-1}.json` each contains zero findings. `cargo fmt --package xtask --package rust-be-template` and `git diff --check` passed. Full workspace gates are deferred to the combined integration pass. No release builds or live-service mutations occurred.
+
+Remaining: `cargo audit --json` still exits nonzero with one vulnerability (`rsa 0.9.10`) and two warnings (`lru 0.16.4`, `paste 1.0.15`). No suppressions or unsupported transitive-major overrides were added. Repeat the secret scan after the combined commit and before pushing. Existing external credential rotation remains separate.
+
+## Dependency decisions
+
+Primary advisory sources were consulted September 21, 2026. `cargo upgrade --incompatible --dry-run` reported all 71 direct packages at their latest releases and made no changes. Local Cargo registry manifests and `cargo tree` identified feature ownership; narrowing unused features, rather than changing rendering or media behavior, removed two findings.
+
+- [RSA timing leakage](https://rustsec.org/advisories/RUSTSEC-2023-0071.html): no patched version, including the latest prerelease. Local `accounts/service/oidc/provider.rs` constructs a client from provider metadata and an optional client secret; token validation uses provider verification keys. No application RSA private-key operation was found. Retain this as a dependency finding; recheck `openidconnect` releases and the advisory before any OIDC signing/decryption expansion.
+- [LRU panic-safety unsoundness](https://rustsec.org/advisories/RUSTSEC-2026-0253.html): fixed in `>=0.18.2`, but current `tantivy 0.26.2` requires `0.16`. Its inspected `store/reader.rs` uses `LruCache<usize, Block>`; `usize` has no potentially panicking destructor, so the advisory's key-drop precondition was not found in this usage. Recheck the owning search library's supported dependency update; do not substitute an incompatible transitive version solely to silence the audit.
+- [Unmaintained paste](https://rustsec.org/advisories/RUSTSEC-2024-0436.html): retained through required AVIF encoding (`image -> ravif -> rav1e`) and existing EXR decoding (`image -> exr -> pulp`). A maintained fork exists, but replacing upstream dependency ownership requires compatibility review; disabling AVIF would break the application's configured output format.
+- [Unmaintained bincode](https://rustsec.org/advisories/RUSTSEC-2025-0141.html) and [yaml-rust](https://rustsec.org/advisories/RUSTSEC-2024-0320.html): removed by disabling Comrak's unused `cli`/`syntect-onig` defaults. The application uses `markdown_to_html` without a syntax-highlighter adapter. New tests prove the retained library rendering and safety defaults.
+
+Next review: run `cargo audit --json`, inspect supported `tantivy`/`openidconnect`/image-codec updates, and run `cargo xtask secret-scan` from an initialized recursive checkout. See [performance/security findings](2026-09-21-performance-security-findings.md) for the consolidated assessment.

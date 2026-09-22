@@ -140,7 +140,8 @@ kamadak-exif = "0.6.1"
 tempfile = "3.27.0"
 
 # markdown
-comrak = { version = "0.55.0", features = ["emojis", "shortcodes"] }
+# Only the library renderer is used; CLI and syntax-highlighter defaults add unused parsers.
+comrak = { version = "0.55.0", default-features = false, features = ["emojis", "shortcodes"] }
 ansi-to-html = "0.2.4"
 
 # full-text search
