@@ -1,0 +1,17 @@
+# Workspace tooling
+
+Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns command dispatch and native/WASM separation; `review.rs` owns deferred checks; `release.rs` owns optimized builds; `eu5_web.rs` owns EU5 staging. Read these files when changing root Cargo configuration, Docker builds, CI, or `build.sh` as well.
+
+## Contracts
+
+- Commands resolve paths from the workspace root and use locked dependency inputs. Preserve argument forwarding, exit status, contextual errors, and root-relative invocation.
+- Register changed commands consistently in dispatch, help, tests, and `final-review/evidence.manifest` where applicable. `xtask/src/evidence_manifest.rs` validates that manifest; evidence receipts belong under ignored `target/`.
+- `xtask/src/test_database.rs` guards disposable database selection. Preserve these guards and redaction in `xtask/src/secret_scan/`. Secret scans cover the working tree and all Git refs; do not broaden fixture allowlists to conceal findings.
+- Root `.github/workflows/clippy.yml` runs the implementation gate only. Do not describe that CI result as full integration, browser, or release proof.
+- `throughput/README.md` owns benchmark topology, calibration, environment digest, and threshold policy. Never replace failed thresholds with a debug-profile benchmark or invent hardware-independent limits.
+
+## Verification
+
+Use `cargo test --locked --package xtask` for tooling changes and root `cargo xtask clippy` for the implementation gate. Formatting coverage in `cargo xtask fmt` includes the backend and xtask only; format/check other changed packages explicitly.
+
+No release builds: `cargo xtask throughput` always passes `--release`, even for calibration. `final-review` calls it; `wasm-build` uses `wasm-release`; `image` and `build.sh` optimize the backend. Run relevant safe gates individually and report deferred evidence. `cargo xtask image-smoke` selects the non-release Docker `smoke` target but still requires Docker and network access. Do not edit benchmark or release behavior just to make documentation verification pass.
