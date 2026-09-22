@@ -5,15 +5,17 @@
 //! SFU is always the offerer for renegotiations (peer join/leave); the
 //! coalescing `NegotiationState` prevents overlapping offers (glare).
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Weak;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex, mpsc, watch};
 use tokio::time::Instant;
 use tracing::debug;
 use uuid::Uuid;
 use webrtc::peer_connection::{PeerConnection, RTCIceCandidateInit};
+use webrtc::rtp_transceiver::RtpSender;
 
 use super::publication::RtcPublication;
 use super::room::RtcRoom;
@@ -66,9 +68,11 @@ pub struct RtcPeer {
     publications: scc::HashMap<MediaKind, Arc<RtcPublication>>,
     /// Track ids this peer is already subscribed to, so a fan-out racing the
     /// join-time subscribe cannot `add_track` the same source track twice.
-    subscribed: scc::HashSet<String>,
+    subscribed: Mutex<HashMap<String, Arc<dyn RtpSender>>>,
     /// Connection-local tracks waiting for the renegotiation answer that binds them.
     pending_subscriptions: Mutex<Vec<subscription::PendingSubscription>>,
+    /// Cancels outgoing subscription tasks when this subscriber leaves.
+    closed: watch::Sender<bool>,
     mic_on: AtomicBool,
     cam_on: AtomicBool,
     negotiation: Mutex<NegotiationState>,
@@ -96,8 +100,9 @@ impl RtcPeer {
             pc,
             signal_tx,
             publications: scc::HashMap::new(),
-            subscribed: scc::HashSet::new(),
+            subscribed: Mutex::new(HashMap::new()),
             pending_subscriptions: Mutex::new(Vec::new()),
+            closed: watch::channel(false).0,
             mic_on: AtomicBool::new(want_audio),
             cam_on: AtomicBool::new(want_video),
             negotiation: Mutex::new(NegotiationState::default()),
@@ -169,6 +174,18 @@ impl RtcPeer {
 
     /// Close the underlying peer connection.
     pub async fn close(&self) {
+        self.closed.send_replace(true);
+        for publication in self.publications_snapshot().await {
+            publication.close();
+        }
+        let mut subscribed = self.subscribed.lock().await;
+        for (_, sender) in subscribed.drain() {
+            if let Err(error) = self.pc.remove_track(&sender).await {
+                debug!(%error, "Could not remove outgoing RTC sender during teardown");
+            }
+        }
+        self.pending_subscriptions.lock().await.clear();
+        drop(subscribed);
         if let Err(e) = self.pc.close().await {
             debug!(error = %e, "peer connection close failed");
         }

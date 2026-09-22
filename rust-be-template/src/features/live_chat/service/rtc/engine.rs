@@ -8,6 +8,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use rtc::interceptor::Slot;
 use tracing::info;
 use webrtc::peer_connection::{
     MediaEngine, PeerConnection, PeerConnectionBuilder, PeerConnectionEventHandler,
@@ -16,6 +17,7 @@ use webrtc::peer_connection::{
 };
 
 use super::config::RtcConfig;
+use super::feedback::KeyframeFeedback;
 
 /// Builds peer connections and allocates their UDP ports.
 pub struct RtcEngine {
@@ -103,6 +105,8 @@ impl RtcEngine {
             .map_err(|error| anyhow::anyhow!("Failed to register RTC codecs: {error}"))?;
         let registry = register_default_interceptors(Registry::new(), &mut media_engine)
             .map_err(|error| anyhow::anyhow!("Failed to register RTC interceptors: {error}"))?;
+        // Run after the default RTCP consumers; only PLI/FIR belong to the SFU.
+        let registry = registry.with(Slot::from(14_000), KeyframeFeedback::default());
 
         let setting_engine = SettingEngineBuilder::new()
             .with_nat_1to1_ips(

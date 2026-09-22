@@ -1,5 +1,6 @@
 //! `webrtc` driver events for one peer connection.
 
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Weak};
 
 use rtc::media_stream::MediaStreamTrack;
@@ -104,7 +105,8 @@ impl PeerConnectionEventHandler for RtcPeerEventHandler {
 
         let stream_id = actor_stream_id(&peer.actor);
         let track_id = format!(
-            "{stream_id}:{}",
+            "{stream_id}:{}:{}",
+            peer.participant_id,
             match kind {
                 MediaKind::Audio => "audio",
                 MediaKind::Video => "video",
@@ -124,6 +126,12 @@ impl PeerConnectionEventHandler for RtcPeerEventHandler {
             return;
         }
 
+        // A queued driver event may finish after teardown took its publication snapshot.
+        if peer.torn_down.load(Ordering::SeqCst) {
+            publication.close();
+            return;
+        }
+
         spawn_rtp_publish(remote, publication.clone());
         room.fan_out_track(peer.connection_id, publication).await;
     }
@@ -139,7 +147,11 @@ impl PeerConnectionEventHandler for RtcPeerEventHandler {
             return;
         };
         if let Some(room) = context.room.upgrade() {
-            room.handle_peer_dropped(peer.connection_id).await;
+            // Closing the connection aborts its driver, which is executing this callback.
+            // Independent teardown must survive that abort to release tracks and occupancy.
+            tokio::spawn(async move {
+                room.handle_peer_dropped(peer.connection_id).await;
+            });
         }
     }
 }

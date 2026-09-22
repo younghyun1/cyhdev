@@ -11,7 +11,7 @@ use rtc::media_stream::MediaStreamTrack;
 use rtc::rtcp::payload_feedbacks::full_intra_request::FullIntraRequest;
 use rtc::rtcp::payload_feedbacks::picture_loss_indication::PictureLossIndication;
 use rtc::rtp::Packet;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use tracing::debug;
 use webrtc::media_stream::track_local::static_rtp::TrackLocalStaticRTP;
 use webrtc::media_stream::track_local::{TrackLocal, TrackLocalEvent};
@@ -33,6 +33,7 @@ pub struct RtcPublication {
     media_ssrc: u32,
     created_at: tokio::time::Instant,
     last_keyframe_request_ms: AtomicU64,
+    closed: watch::Sender<bool>,
 }
 
 impl RtcPublication {
@@ -52,12 +53,22 @@ impl RtcPublication {
             media_ssrc,
             created_at: tokio::time::Instant::now(),
             last_keyframe_request_ms: AtomicU64::new(0),
+            closed: watch::channel(false).0,
         })
     }
 
     /// Stable source track id used to deduplicate subscriptions.
     pub fn track_id(&self) -> &str {
         self.track.track_id()
+    }
+
+    /// Stop forwarding and feedback tasks even while subscribers retain the publication.
+    pub fn close(&self) {
+        self.closed.send_replace(true);
+    }
+
+    pub fn is_closed(&self) -> bool {
+        *self.closed.borrow()
     }
 
     /// Build the connection-local track and bounded packet receiver for a subscriber.
@@ -106,7 +117,13 @@ fn keyframe_request_due(now_ms: u64, last_ms: u64) -> bool {
 /// Poll one publisher track and distribute its RTP packets to subscribers.
 pub fn spawn_rtp_publish(remote: Arc<dyn TrackRemote>, publication: Arc<RtcPublication>) {
     tokio::spawn(async move {
-        while let Some(event) = remote.poll().await {
+        let mut closed = publication.closed.subscribe();
+        while !*closed.borrow() {
+            let event = tokio::select! {
+                _ = closed.changed() => break,
+                event = remote.poll() => event,
+            };
+            let Some(event) = event else { break };
             match event {
                 TrackRemoteEvent::OnRtpPacket(packet) => {
                     let _ = publication.rtp_tx.send(packet);
@@ -123,11 +140,18 @@ pub fn spawn_rtp_forward(
     mut packets: broadcast::Receiver<Packet>,
     local: Arc<TrackLocalStaticRTP>,
     publication: Arc<RtcPublication>,
+    mut subscriber_closed: watch::Receiver<bool>,
 ) {
     tokio::spawn(async move {
         let mut forwarding_started = false;
-        loop {
-            match packets.recv().await {
+        let mut closed = publication.closed.subscribe();
+        while !*closed.borrow() && !*subscriber_closed.borrow() {
+            let packet = tokio::select! {
+                _ = closed.changed() => break,
+                _ = subscriber_closed.changed() => break,
+                packet = packets.recv() => packet,
+            };
+            match packet {
                 Ok(packet) => {
                     if let Err(error) = local.write_rtp(packet).await {
                         if forwarding_started {
@@ -139,7 +163,11 @@ pub fn spawn_rtp_forward(
                     }
                     if !forwarding_started {
                         forwarding_started = true;
-                        spawn_rtcp_listen(local.clone(), publication.clone());
+                        spawn_rtcp_listen(
+                            local.clone(),
+                            publication.clone(),
+                            subscriber_closed.clone(),
+                        );
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(skipped)) => {
@@ -152,9 +180,22 @@ pub fn spawn_rtp_forward(
 }
 
 /// Relay subscriber PLI/FIR feedback to the publisher.
-fn spawn_rtcp_listen(local: Arc<TrackLocalStaticRTP>, publication: Arc<RtcPublication>) {
+fn spawn_rtcp_listen(
+    local: Arc<TrackLocalStaticRTP>,
+    publication: Arc<RtcPublication>,
+    mut subscriber_closed: watch::Receiver<bool>,
+) {
     tokio::spawn(async move {
-        while let Some(TrackLocalEvent::OnRtcpPacket(packets)) = local.poll().await {
+        let mut closed = publication.closed.subscribe();
+        while !*closed.borrow() && !*subscriber_closed.borrow() {
+            let event = tokio::select! {
+                _ = closed.changed() => break,
+                _ = subscriber_closed.changed() => break,
+                event = local.poll() => event,
+            };
+            let Some(TrackLocalEvent::OnRtcpPacket(packets)) = event else {
+                break;
+            };
             let wants_keyframe = packets.iter().any(|packet| {
                 packet
                     .as_any()
