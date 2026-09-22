@@ -195,7 +195,8 @@ const BottomBar: Component = () => {
           </div>
         </div>
         <div class="site-copyright">
-          © 2025-{copyrightYear} Young Hyun Chi · MIT
+          <span>© 2025-{copyrightYear} Young Hyun Chi.</span>
+          <span>Code licensed under the MIT License.</span>
         </div>
       </footer>
     </>
