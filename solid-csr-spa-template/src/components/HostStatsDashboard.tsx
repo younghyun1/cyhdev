@@ -1,5 +1,5 @@
 import { onSettled, onCleanup, createMemo, createSignal, Show } from "solid-js";
-import { theme } from "../state/theme";
+import "../styles/statistics.css";
 import {
   healthState,
   clientNow,
@@ -31,15 +31,6 @@ export default function HostStatsDashboard(props: {
   const [history, setHistory] = createSignal<HostStatPoint[]>([]);
   const [error, setError] = createSignal<string | null>(null);
   const isMobile = createMediaQuery("(max-width: 767px)");
-  const isDark = () => theme() === "dark";
-
-  // simple palette helper
-  const C = () => ({
-    bg: isDark() ? "#1f2937" : "#fff",
-    border: isDark() ? "#374151" : "#d1d5db",
-    font: isDark() ? "#e2e8f0" : "#334155",
-    cardBg: isDark() ? "#111827" : "#f3f4f6",
-  });
 
   const liveUptime = createMemo(() => {
     const hs = healthState();
@@ -173,46 +164,21 @@ export default function HostStatsDashboard(props: {
   return (
     <div class="text-ink">
       <Show when={error()}>
-        <div
-          class="p-2 mb-2 rounded-sm text-xs font-mono max-w-xs"
-          style={{
-            background: isDark() ? "#7f1d1d" : "#fee2e2",
-            color: isDark() ? "#fee2e2" : "#b91c1c",
-          }}
-        >
+        <div class="stats-error" role="status">
           {error()}
         </div>
       </Show>
 
       <div class="stats-dashboard w-full max-w-7xl mx-auto space-y-6">
         {/* Backend Health Stats Panel */}
-        <div
-          class="stats-panel p-6 rounded-sm shadow-lg border-2"
-          style={{
-            background: isDark()
-              ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
-              : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-            "border-color": isDark() ? "#f59e0b" : "#b45309",
-          }}
-        >
-          <div
-            class="flex items-center gap-3 mb-4 pb-2 border-b border-opacity-20"
-            style={{ "border-color": C().border }}
-          >
+        <div class="stats-panel">
+          <div class="stats-panel-header">
             <div class="flex items-center justify-between w-full">
-              <h2
-                class="text-lg font-bold tracking-wide"
-                style={{ color: C().font }}
-              >
+              <h2 class="stats-panel-title">
                 {t("stats.server_stats")}
               </h2>
               <button
-                class="px-3 py-1 text-xs font-semibold rounded-sm hover:opacity-80 transition-opacity"
-                style={{
-                  background: C().cardBg,
-                  color: C().font,
-                  border: `1px solid ${C().border}`,
-                }}
+                class="stats-refresh"
                 onClick={() => void refreshHealthState()}
               >
                 {t("common.refresh")}
@@ -229,44 +195,32 @@ export default function HostStatsDashboard(props: {
             >
               {(hs) => (
                 <>
-                  <div
-                    class="p-4 rounded-sm bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">
+                  <div class="stats-summary">
+                    <div class="stats-summary-label">
                       {t("stats.uptime")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {liveUptime()}
                     </div>
                   </div>
-                  <div
-                    class="p-4 rounded-sm bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">
+                  <div class="stats-summary">
+                    <div class="stats-summary-label">
                       {t("stats.responses_handled")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.responses_handled.toLocaleString()}
                     </div>
                   </div>
-                  <div
-                    class="p-4 rounded-sm bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">
+                  <div class="stats-summary">
+                    <div class="stats-summary-label">
                       {t("stats.active_sessions")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
                       {hs.users_logged_in}
                     </div>
                   </div>
-                  <div
-                    class="p-4 rounded-sm bg-opacity-50"
-                    style={{ background: C().cardBg }}
-                  >
-                    <div class="text-xs opacity-70 mb-1">
+                  <div class="stats-summary">
+                    <div class="stats-summary-label">
                       {t("bottom_bar.db_latency")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
@@ -280,31 +234,17 @@ export default function HostStatsDashboard(props: {
         </div>
 
         {/* Live Host Stats Panel */}
-        <div
-          class="stats-panel p-6 rounded-sm shadow-lg border-2"
-          style={{
-            background: isDark()
-              ? "linear-gradient(135deg, #1f2937 0%, #111827 100%)"
-              : "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
-            "border-color": isDark() ? "#f59e0b" : "#b45309",
-          }}
-        >
-          <div
-            class="stats-panel-heading flex items-center gap-3 mb-6 pb-2 border-b"
-            style={{ "border-color": C().border }}
-          >
+        <div class="stats-panel">
+          <div class="stats-panel-heading stats-panel-header">
             <div
-              class="w-3 h-3 rounded-full animate-pulse"
-              style={{ background: isDark() ? "#10b981" : "#059669" }}
+              class={["stats-connection-dot", { "is-live": history().length > 0 && !error() }]}
+              aria-hidden="true"
             />
-            <h2
-              class="text-lg font-bold tracking-wide"
-              style={{ color: C().font }}
-            >
+            <h2 class="stats-panel-title">
               {t("stats.live_host_metrics")}
             </h2>
             <div class="flex-1" />
-            <div class="text-xs opacity-60" style={{ color: C().font }}>
+            <div class="stats-note">
               {t("stats.realtime_note")}
             </div>
           </div>

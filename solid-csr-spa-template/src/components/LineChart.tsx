@@ -1,6 +1,6 @@
 // Minimal chart.js line-chart wrapper. Replaces solid-chartjs, which pins
 // solid-js 1.x. Registers everything the CPU/RAM stat cards need, including
-// the Filler plugin for area gradients (fill: true).
+// the Filler plugin for shaded areas (fill: true).
 
 import { createEffect, onSettled } from "solid-js";
 import {
@@ -31,6 +31,7 @@ Chart.register(
 interface LineChartProps {
   data: ChartData<"line">;
   options: ChartOptions<"line">;
+  label: string;
 }
 
 export default function LineChart(props: LineChartProps) {
@@ -60,5 +61,5 @@ export default function LineChart(props: LineChartProps) {
     },
   );
 
-  return <canvas ref={canvasRef} />;
+  return <canvas ref={canvasRef} role="img" aria-label={props.label} />;
 }

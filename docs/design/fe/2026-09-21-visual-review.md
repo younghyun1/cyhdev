@@ -18,7 +18,7 @@ The review inspected the four contact sheets and the affected map, missing-page,
 
 ## Suggested polish
 
-1. Bring host-stat panels and charts onto the shared cream/black/amber tokens. Their blue-gray gradients and heavy shadows are visibly inconsistent with the rest of the site. Preserve distinct chart series labels and contrast.
+1. Implemented: host-stat panels and charts now use shared cream/black/amber tokens, one-pixel borders, and flat fills. CPU and memory retain separate labeled plots and visible current values. Chart palettes follow theme changes, and dark mobile links/metrics no longer inherit the low-contrast light-theme accent. See [verification and captures](../../plans/2026-09-21-statistics-polish.md).
 2. Add a featured-project case-study panel to the home page with an architecture thumbnail, concise outcome, and link to a working demo. Use repository-native SVG or HTML, not a new image dependency.
 3. Give the photography preview a curated cover and compact location/date captions. Verify with real media before choosing crops; white fixture images are not an application defect.
 4. Add a compact section index to long About and technical-article pages. Prefer normal anchor navigation, visible keyboard focus, and reduced-motion support over scroll animations.
