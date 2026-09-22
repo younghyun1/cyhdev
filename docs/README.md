@@ -7,6 +7,8 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Repository entry points and commands](../AGENTS.md)
 - [Documentation and handoff conventions](AGENTS.md)
 - [Complete page flowcharts and route inventory](design/fe/site-map.md)
+- [Page render review and visual suggestions](design/fe/2026-09-21-visual-review.md)
+- [Performance and security findings](plans/2026-09-21-performance-security-findings.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.
