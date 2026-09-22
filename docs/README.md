@@ -25,6 +25,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [OpenID Connect account controls](design/fe/oidc-account-controls.md)
 - [Forum architecture](architecture/be/forum.md)
 - [WebAssembly service](architecture/be/wasm-service.md)
+- [Live-chat moderation](architecture/be/live-chat-moderation.md)
 
 ## Active Plans
 

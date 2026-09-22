@@ -260,6 +260,10 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
 
     let superuser_router = Router::new()
+        .route(
+            "/api/admin/live-chat/messages/{message_id}",
+            delete(crate::features::live_chat::api::delete_message::delete_live_chat_message),
+        )
         .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
         .route(
             "/api/admin/users/{user_id}/hard-purge",

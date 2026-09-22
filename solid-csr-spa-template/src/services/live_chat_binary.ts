@@ -22,6 +22,7 @@ const SERVER_TYPING_SET = 0x84;
 const SERVER_PRESENCE = 0x85;
 const SERVER_PONG = 0x86;
 const SERVER_ERROR = 0x87;
+const SERVER_MESSAGE_DELETED = 0x88;
 const SERVER_RTC = 0x90;
 
 // RTC client sub-opcodes (second byte after CLIENT_RTC).
@@ -218,6 +219,11 @@ export function decodeServerEventFrame(buffer: ArrayBuffer): LiveChatServerEvent
         const message = reader.readMessage();
         reader.finish();
         return { type: "message", message };
+      }
+      case SERVER_MESSAGE_DELETED: {
+        const live_chat_message_id = reader.readUuid();
+        reader.finish();
+        return { type: "message_deleted", live_chat_message_id };
       }
       case SERVER_MESSAGE_ACK: {
         const clientMessageId = reader.readUuid();

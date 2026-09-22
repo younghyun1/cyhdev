@@ -25,6 +25,8 @@ import { useLiveChatSocket } from "../state/live_chat_socket";
 import { useRtc } from "../state/rtc";
 import { UserBadge } from "./UserBadge";
 import { CallPanel } from "./call/CallPanel";
+import DeleteMessageButton from "./chat/DeleteMessageButton";
+import { rememberDeletedMessage } from "../services/live_chat_moderation";
 
 export type LiveChatPanelMode = "compact" | "full";
 
@@ -179,6 +181,11 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   const [loadingOlder, setLoadingOlder] = createSignal(false);
 
   const connectionState = socket.connectionState;
+  const deletedMessageIds = new Set<string>();
+  const removeMessage = (id: string) => {
+    rememberDeletedMessage(deletedMessageIds, id);
+    setMessages((current) => current.filter((item) => item.kind !== "sent" || item.message.live_chat_message_id !== id));
+  };
 
   let typingStopTimer: number | undefined;
   let typingRefreshTimer: number | undefined;
@@ -271,7 +278,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       case "hello":
         setActor(event.actor);
         setMessages(
-          event.recent_messages.map((message) => ({ kind: "sent", message })),
+          event.recent_messages.filter((message) => !deletedMessageIds.has(message.live_chat_message_id) && !message.message_deleted_at).slice(-300).map((message) => ({ kind: "sent", message })),
         );
         scheduleBottomScroll();
         setNextBeforeMessageId(
@@ -281,14 +288,22 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         setConnectedCount(event.connected_count);
         break;
       case "message":
+        if (deletedMessageIds.has(event.message.live_chat_message_id) || event.message.message_deleted_at) break;
         shouldScrollAfterRender = isNearBottom();
         setMessages((prev) => upsertMessage(prev, event.message));
         break;
       case "message_ack":
+        if (deletedMessageIds.has(event.message.live_chat_message_id) || event.message.message_deleted_at) {
+          setMessages((current) => current.filter((item) => item.kind !== "pending" || item.client_message_id !== event.client_message_id));
+          break;
+        }
         scheduleBottomScroll();
         setMessages((prev) =>
           replacePendingMessage(prev, event.client_message_id, event.message),
         );
+        break;
+      case "message_deleted":
+        removeMessage(event.live_chat_message_id);
         break;
       case "typing":
         setTypingActors((prev) => {
@@ -467,12 +482,12 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         before_message_id: before,
       });
       setMessages((prev) => [
-        ...response.data.items.map((message) => ({
+        ...response.data.items.filter((message) => !deletedMessageIds.has(message.live_chat_message_id) && !message.message_deleted_at).map((message) => ({
           kind: "sent" as const,
           message,
         })),
         ...prev,
-      ]);
+      ].slice(0, 300));
       setNextBeforeMessageId(response.data.next_before_message_id);
       setHasMore(response.data.has_more);
     } catch (err) {
@@ -593,6 +608,9 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                       minute: "2-digit",
                     })}
                   </time>
+                  <Show when={message.kind === "sent" ? message.message.live_chat_message_id : null}>
+                    {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
+                  </Show>
                 </div>
                 <p
                   class={[

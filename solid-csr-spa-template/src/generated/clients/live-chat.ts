@@ -2,11 +2,13 @@
 
 import type {
   ApiResponse,
+  DeleteLiveChatMessageResponse,
   GetLiveChatMessagesResponse,
   LiveChatCacheStatsResponse,
 } from "../api-types";
 import {
   appendQuery,
+  interpolatePath,
   requestHeaders,
   requestJson,
   type ApiRequestOptions,
@@ -15,6 +17,19 @@ import {
 
 export function createLiveChatClient(transport: ApiTransport) {
   return {
+    deleteLiveChatMessage: async (input: {
+      readonly path: {
+        readonly message_id: string;
+      };
+    }, options: ApiRequestOptions = {}) => {
+      const path = interpolatePath("/api/admin/live-chat/messages/{message_id}", input.path);
+      const url = path;
+      return requestJson<ApiResponse<DeleteLiveChatMessageResponse>>(transport, url, {
+        method: "DELETE",
+        headers: requestHeaders(options.headers, false),
+        signal: options.signal,
+      });
+    },
     getLiveChatCacheStats: async (options: ApiRequestOptions = {}) => {
       const path = "/api/live-chat/cache-stats";
       const url = path;

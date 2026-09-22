@@ -1,8 +1,8 @@
 use crate::features::live_chat::service::cache::LiveChatServerEvent;
 
 use super::{
-    SERVER_ERROR, SERVER_HELLO, SERVER_MESSAGE, SERVER_MESSAGE_ACK, SERVER_PONG, SERVER_PRESENCE,
-    SERVER_RTC, SERVER_TYPING_SET, rtc,
+    SERVER_ERROR, SERVER_HELLO, SERVER_MESSAGE, SERVER_MESSAGE_ACK, SERVER_MESSAGE_DELETED,
+    SERVER_PONG, SERVER_PRESENCE, SERVER_RTC, SERVER_TYPING_SET, rtc,
     saturating::{saturating_u8, saturating_u16, saturating_u32},
     writer::BinaryWriter,
 };
@@ -26,6 +26,12 @@ pub fn encode_server_event(event: &LiveChatServerEvent) -> anyhow::Result<Vec<u8
         LiveChatServerEvent::Message { message } => {
             writer.write_u8(SERVER_MESSAGE);
             writer.write_message(message)?;
+        }
+        LiveChatServerEvent::MessageDeleted {
+            live_chat_message_id,
+        } => {
+            writer.write_u8(SERVER_MESSAGE_DELETED);
+            writer.write_uuid_string(&live_chat_message_id.to_string())?;
         }
         LiveChatServerEvent::MessageAck {
             client_message_id,

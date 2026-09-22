@@ -13,7 +13,7 @@ for (const viewport of [
     await installApiMocks(page, "superuser");
     await setUiPreferences(page, "en-US", "dark");
     await page.goto("/");
-    await expect(page.getByText("Younghyun's Blog", { exact: true })).toBeVisible();
+    await expect(page.getByText("Young Hyun Chi | Software Engineer", { exact: true })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Open sidebar menu" }),
     ).toBeHidden();

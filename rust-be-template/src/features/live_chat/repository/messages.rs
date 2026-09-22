@@ -36,6 +36,7 @@ impl LiveChatRepository {
     pub async fn recent_messages(&self, limit: i64) -> Result<Vec<LiveChatMessage>, LiveChatError> {
         let mut connection = self.connection().await?;
         let mut rows = live_chat_messages::table
+            .filter(live_chat_messages::message_deleted_at.is_null())
             .select(MessageRecord::as_select())
             .order((
                 live_chat_messages::message_created_at.desc(),

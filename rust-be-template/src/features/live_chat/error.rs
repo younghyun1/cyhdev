@@ -9,6 +9,8 @@ pub enum LiveChatError {
     Database(#[from] DieselError),
     #[error("active account authorization failed")]
     Unauthorized,
+    #[error("live-chat moderation requires current superuser authority")]
+    Forbidden,
     #[error("live-chat cursor was not found")]
     InvalidCursor,
 }
@@ -22,7 +24,7 @@ impl LiveChatError {
                 DatabaseErrorKind::SerializationFailure | DatabaseErrorKind::ClosedConnection
             ),
             Self::Database(_) => false,
-            Self::Unauthorized | Self::InvalidCursor => false,
+            Self::Unauthorized | Self::Forbidden | Self::InvalidCursor => false,
         }
     }
 }

@@ -64,6 +64,8 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_content_write_linearization",
                 "--test",
+                "postgres_live_chat_moderation",
+                "--test",
                 "postgres_cache_consistency",
                 "--test",
                 "postgres_profile_picture_history",

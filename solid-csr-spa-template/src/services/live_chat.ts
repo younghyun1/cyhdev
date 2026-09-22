@@ -61,6 +61,8 @@ function normalizeCacheStats(
 }
 
 export const liveChatApi = {
+  deleteMessage: (messageId: string) =>
+    contractApi.deleteLiveChatMessage({ path: { message_id: messageId } }),
   getMessages: async (params: MessagesQuery = {}) =>
     normalizeMessages(await contractApi.getLiveChatMessages({ query: params })),
   getCacheStats: async () =>

@@ -147,6 +147,7 @@ impl LiveChatCache {
             }
             LiveChatServerEvent::Rtc(signal) => self.anonymize_rtc_signal(signal),
             LiveChatServerEvent::Presence { .. }
+            | LiveChatServerEvent::MessageDeleted { .. }
             | LiveChatServerEvent::HeartbeatAck { .. }
             | LiveChatServerEvent::Error { .. } => {}
         }

@@ -16,6 +16,7 @@ mod ban_store;
 mod event;
 mod identity;
 mod message;
+mod moderation;
 mod rate;
 mod runtime_state;
 
