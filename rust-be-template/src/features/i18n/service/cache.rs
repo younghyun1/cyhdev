@@ -60,7 +60,8 @@ impl I18nCache {
         Self {
             entries: HashMap::new(),
             retained_bytes: 0,
-            complete: true,
+            // Partial read-through must not make a cached fallback hide an unloaded locale.
+            complete: false,
             hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
             rejected_admissions: AtomicU64::new(0),
@@ -220,6 +221,15 @@ mod tests {
             i18n_string_country_subdivision_code: None,
             i18n_string_reference_key: "common.save".to_owned(),
         }
+    }
+
+    #[test]
+    fn cold_read_through_does_not_claim_the_database_is_fully_cached() {
+        let mut cache = I18nCache::new();
+        assert!(!cache.is_complete());
+        cache.admit_rows(&[row(840, 41, "Save")]);
+        assert!(!cache.is_complete());
+        assert!(I18nCache::from_rows(vec![row(840, 41, "Save")], true).is_complete());
     }
 
     #[test]

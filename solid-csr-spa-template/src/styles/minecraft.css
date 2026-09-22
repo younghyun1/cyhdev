@@ -12,9 +12,3 @@
   height: 100%;
   border: 1px solid var(--line);
 }
-
-@media (min-width: 768px) {
-  .minecraft-page {
-    top: 3.5rem;
-  }
-}

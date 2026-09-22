@@ -1,11 +1,11 @@
-import type { Component } from "solid-js";
-import type { UiLocale } from "../i18n/keys";
+import { For, type Component } from "solid-js";
+import { isUiLocale, UI_LOCALES } from "../i18n/locales";
 import { locale, setLocale, t } from "../state/i18n";
 
 const LanguageSelect: Component = () => {
   const handleChange = (event: Event) => {
     const value = (event.currentTarget as HTMLSelectElement).value;
-    if (value === "en-US" || value === "ko-KR") {
+    if (isUiLocale(value)) {
       void setLocale(value);
     }
   };
@@ -17,12 +17,7 @@ const LanguageSelect: Component = () => {
       aria-label={t("top_bar.language.label")}
       onChange={handleChange}
     >
-      <option value={"en-US" satisfies UiLocale}>
-        {t("top_bar.language.english")}
-      </option>
-      <option value={"ko-KR" satisfies UiLocale}>
-        {t("top_bar.language.korean")}
-      </option>
+      <For each={UI_LOCALES}>{(language) => <option value={language.tag} lang={language.tag}>{language.label}</option>}</For>
     </select>
   );
 };

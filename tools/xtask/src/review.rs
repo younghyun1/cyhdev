@@ -68,6 +68,8 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_cache_consistency",
                 "--test",
+                "postgres_i18n_sources",
+                "--test",
                 "postgres_profile_picture_history",
                 "--test",
                 "postgres_forum",

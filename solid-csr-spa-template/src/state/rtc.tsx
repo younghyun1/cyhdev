@@ -25,6 +25,7 @@ import {
   signalToIceInit,
 } from "../services/rtc";
 import { useLiveChatSocket } from "./live_chat_socket";
+import { t } from "./i18n";
 
 export type CallState = "idle" | "joining" | "in_call" | "error";
 
@@ -210,7 +211,7 @@ export const RtcProvider: ParentComponent = (props) => {
       stream = await requestUserMedia();
     } catch (err) {
       console.error("getUserMedia failed:", err);
-      setCallError("Microphone/camera permission denied.");
+      setCallError(t("call.permission_denied"));
       setCallState("error");
       return;
     }
@@ -232,7 +233,7 @@ export const RtcProvider: ParentComponent = (props) => {
     };
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "failed") {
-        setCallError("Call connection failed.");
+        setCallError(t("call.connection_failed"));
       }
     };
 
@@ -251,12 +252,12 @@ export const RtcProvider: ParentComponent = (props) => {
         want_video: true,
       });
       if (!sent) {
-        setCallError("Not connected.");
+        setCallError(t("call.not_connected"));
         resetCall();
       }
     } catch (err) {
       console.error("Failed to create call offer:", err);
-      setCallError("Could not start the call.");
+      setCallError(t("call.start_failed"));
       resetCall();
     }
   };

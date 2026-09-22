@@ -107,7 +107,7 @@ const TopBar = () => {
       >
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="site-header-row flex items-center justify-between gap-2 py-2 sm:py-3">
-            <div class="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
+            <div class="site-header-leading flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
               <button
                 id="mobile-navigation-trigger"
                 type="button"
@@ -135,7 +135,7 @@ const TopBar = () => {
 
               <a
                 href="/"
-                class="min-w-0 shrink-0 font-mono text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
+                class="site-header-brand min-w-0 shrink-0 font-mono text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
               >
                 <span class="site-header-mobile-title block md:hidden">
                   {titleFromPath()}
@@ -143,7 +143,7 @@ const TopBar = () => {
                 <span class="hidden md:block">{t("top_bar.site_title")}</span>
               </a>
 
-              <nav class="hidden md:block flex-1 overflow-x-auto md:overflow-visible ml-2">
+              <nav class="site-header-navigation hidden md:block flex-1 overflow-x-auto md:overflow-visible ml-2">
                 <ul class="flex items-center font-mono text-sm min-w-max md:min-w-0">
                   <PublicNavigation variant="desktop" isActive={isActive} />
                   <AdminNavigation variant="desktop" isActive={isActive} />
@@ -176,7 +176,7 @@ const TopBar = () => {
                   <span class="relative flex items-center">
                     <span class="inline-block w-3 h-3 rounded-full bg-ok shadow-[0_0_8px_2px_var(--glow-ok)] mr-1 sm:mr-2" />
                   </span>
-                  <div class="hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
+                  <div class="site-header-identity hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
                     <span class="font-medium text-xs sm:text-sm">
                       {user()?.user_info?.user_name}
                     </span>

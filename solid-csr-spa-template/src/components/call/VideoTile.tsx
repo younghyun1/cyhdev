@@ -1,5 +1,6 @@
 import { Show, createEffect } from "solid-js";
 import { pageStyles } from "../../styles/pageStyles";
+import { t } from "../../state/i18n";
 
 interface VideoTileProps {
   stream: MediaStream | null;
@@ -63,7 +64,7 @@ export function VideoTile(props: VideoTileProps) {
           <Show when={props.countryFlag}> {props.countryFlag}</Show>
         </span>
         <Show when={!props.micOn}>
-          <span aria-label="muted" title="muted">
+          <span aria-label={t("call.muted")} title={t("call.muted")}>
             🔇
           </span>
         </Show>

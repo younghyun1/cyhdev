@@ -1,6 +1,21 @@
 import { FORUM_UI_TEXT_KEYS } from "./forum_keys";
 
 export const UI_TEXT_KEYS = [
+  "call.permission_denied",
+  "call.connection_failed",
+  "call.not_connected",
+  "call.start_failed",
+  "call.join",
+  "call.mute",
+  "call.unmute",
+  "call.stop_video",
+  "call.start_video",
+  "call.leave",
+  "call.joining",
+  "call.title",
+  "call.participants",
+  "call.you",
+  "call.muted",
   "common.close",
   "common.close_esc",
   "common.loading",
@@ -552,4 +567,4 @@ export const UI_TEXT_KEYS = [
 ] as const;
 
 export type UiTextKey = (typeof UI_TEXT_KEYS)[number];
-export type UiLocale = "en-US" | "ko-KR";
+export type UiLocale = "en-US" | "ko-KR" | "fr-FR" | "es-ES" | "zh-Hans" | "zh-Hant" | "ja-JP" | "de-DE";
