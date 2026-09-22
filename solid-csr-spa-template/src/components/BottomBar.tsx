@@ -135,28 +135,14 @@ const BottomBar: Component = () => {
           "site-status-bar--keyboard-hidden": keyboardControlFocused(),
         }}
         style={{ "z-index": 50 }}
-        onClick={() => {
-          if (isMobile()) setDetailsOpen(true);
-        }}
-        role={isMobile() ? "button" : undefined}
-        aria-label={isMobile() ? t("bottom_bar.open_details") : undefined}
         aria-hidden={keyboardControlFocused() ? "true" : undefined}
-        tabindex={isMobile() && !keyboardControlFocused() ? 0 : undefined}
-        onKeyDown={(event) => {
-          if (!isMobile()) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            setDetailsOpen(true);
-          }
-          if (event.key === "Escape") setDetailsOpen(false);
-        }}
       >
-        <div class="w-full px-2 sm:px-3 py-0.5 sm:py-1.5 flex flex-row justify-between items-start gap-2 sm:gap-3 font-mono tabular-nums">
-          <div class="hidden sm:block text-ink-muted leading-tight space-y-0.5 max-w-[55%]">
+        <div class="site-status-layout font-mono tabular-nums">
+          <div class="site-status-builds text-ink-muted leading-tight space-y-0.5">
             <BuildDetails />
           </div>
 
-          <div class="hidden sm:block text-ink-muted leading-tight text-right space-y-0.5 max-w-[45%]">
+          <div class="site-status-metrics text-ink-muted leading-tight text-right space-y-0.5">
             {healthState() ? (
               (() => {
                 const health = healthState()!;
@@ -168,16 +154,9 @@ const BottomBar: Component = () => {
                       {t("bottom_bar.responses")} · {t("bottom_bar.sessions")}{" "}
                       {health.users_logged_in}
                     </div>
-                    <div class="hidden xs:block sm:block">
+                    <div>
                       {postgresVersion(health.db_version)} ·{" "}
                       {t("bottom_bar.db_latency")} {health.db_latency}
-                    </div>
-                    <div class="hidden sm:block">
-                      {t("bottom_bar.time_to_report")}: {health.time_to_process ?? "?"}{" "}
-                      · {t("bottom_bar.net")}{" "}
-                      {health.client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
-                      {t("bottom_bar.state_age")}{" "}
-                      {formatIsoAge(health.timestamp, clientNow())}
                     </div>
                   </>
                 );
@@ -187,16 +166,30 @@ const BottomBar: Component = () => {
             )}
           </div>
 
-          <div class="site-status-mobile sm:hidden w-full flex items-center justify-between gap-2 text-ink-muted leading-tight">
-            <div class="truncate">{mobileSummary()}</div>
-            <div class="shrink-0 text-[10px] opacity-70">
-              {t("bottom_bar.tap")}
-            </div>
+          <div class="site-status-timing text-ink-muted leading-tight text-right">
+            <Show when={healthState()}>
+              {(health) => <>
+                {t("bottom_bar.time_to_report")}: {health().time_to_process ?? "?"}{" "}
+                · {t("bottom_bar.net")} {health().client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
+                {t("bottom_bar.state_age")} {formatIsoAge(health().timestamp, clientNow())}
+              </>}
+            </Show>
           </div>
-        </div>
-        <div class="site-copyright">
-          <span>© 2025-{copyrightYear} Young Hyun Chi.</span>
-          <span>Code licensed under the MIT License.</span>
+          <button
+            type="button"
+            class="site-status-mobile w-full flex items-center justify-between gap-2 text-ink-muted leading-tight"
+            aria-label={t("bottom_bar.open_details")}
+            onClick={() => setDetailsOpen(true)}
+          >
+            <span class="truncate">{mobileSummary()}</span>
+            <span class="shrink-0 text-[10px] opacity-70">
+              {t("bottom_bar.tap")}
+            </span>
+          </button>
+          <div class="site-copyright">
+            <span>© 2025-{copyrightYear} Young Hyun Chi.</span>
+            <span><a href="https://github.com/younghyun1/cyhdev" target="_blank" rel="noopener noreferrer">Code</a> licensed under the MIT License.</span>
+          </div>
         </div>
       </footer>
     </>

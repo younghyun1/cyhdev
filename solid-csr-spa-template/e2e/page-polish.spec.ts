@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { installApiMocks, setUiPreferences } from "./fixtures";
 
-for (const width of [320, 390, 1440]) {
+for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
   test(`search alignment and status metadata at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await installApiMocks(page, "superuser");
@@ -25,8 +25,17 @@ for (const width of [320, 390, 1440]) {
     const copyrightBox = await copyright.boundingBox();
     expect(copyrightBox!.x).toBeGreaterThanOrEqual(0);
     expect(copyrightBox!.x + copyrightBox!.width).toBeLessThanOrEqual(width);
+    if (width >= 768) {
+      const timing = await page.locator(".site-status-timing").boundingBox();
+      expect(Math.abs(copyrightBox!.y - timing!.y)).toBeLessThan(2);
+      expect(copyrightBox!.x + copyrightBox!.width).toBeLessThanOrEqual(timing!.x);
+      if (width >= 1280) {
+        expect(Math.abs(copyrightBox!.x + copyrightBox!.width / 2 - width / 2)).toBeLessThan(2);
+      }
+    }
     await page.screenshot({ path: `../target/page-polish/copyright-${width}.png`, fullPage: true });
-    if (width < 768) await page.locator("[data-site-bar=bottom]").click();
+    await expect(copyright.getByRole("link", { name: "Code", exact: true })).toHaveAttribute("href", "https://github.com/younghyun1/cyhdev");
+    if (width < 768) await page.locator(".site-status-mobile").click();
     const status = width < 768 ? page.getByRole("dialog") : page.locator("[data-site-bar=bottom]");
     await expect(status).toContainText(/FE · built .* UTC · SolidJS .* · TypeScript .* · Vite/);
     await expect(status).toContainText(/BE · built .* UTC · Axum test · Rust 1.test/);
@@ -36,6 +45,25 @@ for (const width of [320, 390, 1440]) {
     await page.screenshot({ path: `../target/page-polish/forum-${width}.png`, fullPage: true });
   });
 }
+
+test("mobile repository link does not open status details", async ({ page, context }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installApiMocks(page, "logged-out");
+  await setUiPreferences(page, "en-US", "light");
+  await context.route("https://github.com/younghyun1/cyhdev", (route) => route.fulfill({ body: "Repository" }));
+  await page.goto("/");
+  const link = page.locator(".site-copyright").getByRole("link", { name: "Code", exact: true });
+  await link.focus();
+  const popupPromise = page.waitForEvent("popup");
+  await link.press("Enter");
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL("https://github.com/younghyun1/cyhdev");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await popup.close();
+  await page.locator(".site-status-mobile").focus();
+  await page.locator(".site-status-mobile").press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
 
 test("visitor counts render as plain text", async ({ page }) => {
   await installApiMocks(page, "logged-out");
