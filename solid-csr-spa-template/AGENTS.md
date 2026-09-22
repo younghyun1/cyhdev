@@ -4,6 +4,7 @@ The application uses Solid 2 prereleases, not Solid 1 or React semantics. `packa
 
 ## Entry points and conventions
 
+- Start page and navigation work with the [complete page flowcharts and route inventory](../docs/design/fe/site-map.md). Keep its diagrams and inventory synchronized with route, guard, menu, and embedded-surface changes.
 - `src/index.tsx` mounts the router; `src/routes.ts` owns routes; `src/app.tsx` owns the shell. Extend `src/pages/`, `src/components/`, and existing `src/state/` owners. Read nearby Solid 2 examples before changing effects, async reads, or synchronous read-after-write behavior.
 - Use strict TypeScript, the Solid router, and context for new shared state where appropriate. Preserve existing state ownership instead of introducing competing stores. JSX types come from `@solidjs/web` in this stack.
 - Centralize styles in `src/index.css` and `src/styles/`; follow [design system](../docs/design/fe/design-system.md) and [mobile design](../docs/design/fe/mobile.md). Preserve route-level lazy loading and initial-asset budgets in `build/initialAssetBudget.ts`.
