@@ -21,10 +21,10 @@ test("Korean Home introduction translates while About pages stay English", async
   await expect(introduction).toContainText("소프트웨어 엔지니어");
   await expect(introduction).toContainText("Soundpatrol에서 사이버 보안, DevOps, 웹 서비스 및 개발자 도구 관련 업무를 하고 있습니다.");
   await expect(introduction).toContainText("직접 서버를 운영하고, 사진을 찍고, Rust로 도구를 만드는 것도 좋아합니다.");
-  await expect(introduction).toContainText("장인 정신과 올바른 조직 운영을 무엇보다 소중하게 여깁니다.");
+  await expect(introduction).toContainText("장인 정신을 가지고 작업하는 것을 지향합니다.");
   await expect(introduction).not.toContainText("I work on cybersecurity");
   await page.reload();
-  await expect(introduction).toContainText("장인 정신과 올바른 조직 운영");
+  await expect(introduction).toContainText("장인 정신을 가지고 작업하는 것을 지향합니다.");
   for (const [route, heading] of [["/about", "About"], ["/about-blog", "Blog Tech Stack"]]) {
     await page.goto(route);
     await expect(page.locator("html")).toHaveAttribute("lang", "ko-KR");
