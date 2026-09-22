@@ -18,7 +18,10 @@ for (const width of [320, 390, 1440]) {
     if (width >= 768) expect(inputBox!.y).toBe(buttonBox!.y);
     const copyright = page.locator("[data-site-bar=bottom] .site-copyright");
     await expect(copyright).toBeVisible();
-    await expect(copyright).toHaveText(`© 2025-${new Date().getUTCFullYear()} Young Hyun Chi · MIT`);
+    await expect(copyright.locator("span")).toHaveText([
+      `© 2025-${new Date().getUTCFullYear()} Young Hyun Chi.`,
+      "Code licensed under the MIT License.",
+    ]);
     const copyrightBox = await copyright.boundingBox();
     expect(copyrightBox!.x).toBeGreaterThanOrEqual(0);
     expect(copyrightBox!.x + copyrightBox!.width).toBeLessThanOrEqual(width);
