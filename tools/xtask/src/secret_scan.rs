@@ -1,7 +1,10 @@
 //! Redacted secret scans over current public source and complete Git history.
 
 mod credential_policy;
+mod git_inventory;
 mod source_inventory;
+#[cfg(test)]
+mod tests;
 
 use std::{fs, path::Path, process::Command};
 
@@ -29,10 +32,13 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
         ))
     })?;
 
-    if let Err(error) = source_inventory::copy_public_source(root, &snapshot) {
-        let _cleanup_result = fs::remove_dir_all(&snapshot);
-        return Err(error);
-    }
+    let repositories = match source_inventory::copy_public_source(root, &snapshot) {
+        Ok(repositories) => repositories,
+        Err(error) => {
+            let _cleanup_result = fs::remove_dir_all(&snapshot);
+            return Err(error);
+        }
+    };
 
     let current = run_gitleaks(
         root,
@@ -47,13 +53,17 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
             snapshot.display()
         ))
     });
-    let history = run_gitleaks(
-        root,
-        "git",
-        Path::new("."),
-        &report_dir.join("history.json"),
-        Some("--all"),
-    );
+    let history = finish(repositories.iter().enumerate().map(|(index, repository)| {
+        let report = if index == 0 {
+            report_dir.join("history.json")
+        } else {
+            report_dir.join(format!("submodule-history-{index}.json"))
+        };
+        (
+            "repository history",
+            run_gitleaks(root, "git", repository, &report, Some("--all")),
+        )
+    }));
 
     finish([
         ("current tree", current),
@@ -89,7 +99,7 @@ fn run_gitleaks(
     run_command(&mut command)
 }
 
-fn finish<const N: usize>(results: [(&'static str, TaskResult<()>); N]) -> TaskResult<()> {
+fn finish(results: impl IntoIterator<Item = (&'static str, TaskResult<()>)>) -> TaskResult<()> {
     let failures = results
         .into_iter()
         .filter_map(|(name, result)| match result {
