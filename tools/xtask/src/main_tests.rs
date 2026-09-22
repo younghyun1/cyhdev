@@ -145,3 +145,22 @@ fn container_build_persists_expensive_package_caches() {
             .any(|line| line == "**/logs")
     );
 }
+
+#[test]
+fn container_frontend_inherits_shared_locale_sources() {
+    let dockerfile = include_str!("../../../rust-be-template/Dockerfile");
+    let source_start = required_index(dockerfile, " AS frontend-source\n");
+    let frontend_start = required_index(dockerfile, "FROM frontend-source AS frontend\n");
+    let source = &dockerfile[source_start..frontend_start];
+    let catalogs = required_index(
+        source,
+        "COPY rust-be-template/i18n/ui/ /workspace/rust-be-template/i18n/ui/",
+    );
+    assert!(required_index(source, "npm ci") < catalogs);
+    assert!(source.contains("WORKDIR /workspace/solid-csr-spa-template"));
+    assert!(source.contains("COPY solid-csr-spa-template/ ./"));
+    assert!(!source.contains("--from=eu5-wasm"));
+    assert!(!source.contains("COPY . ./"));
+    assert!(!source.contains("COPY rust-be-template/ /workspace/rust-be-template/"));
+    assert!(frontend_start < required_index(dockerfile, "RUN npm run build"));
+}

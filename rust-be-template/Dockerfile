@@ -27,13 +27,18 @@ RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-locatio
 
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
-FROM node:${NODE_DOCKER_TAG} AS frontend
+FROM node:${NODE_DOCKER_TAG} AS frontend-source
 WORKDIR /workspace/solid-csr-spa-template
 RUN apk add --no-cache gzip zstd
 COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
 RUN --mount=type=cache,id=cyhdev-npm-cache,target=/root/.npm,sharing=locked \
     npm ci --legacy-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
+# Browser locale chunks import these public catalogs from the backend-owned source.
+COPY rust-be-template/i18n/ui/ /workspace/rust-be-template/i18n/ui/
+
+# Keep source-only frontend checks independent of the optimized EU5 build.
+FROM frontend-source AS frontend
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/web/index.html ./public/eu5-locations-db/app/index.html
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter.js ./public/eu5-locations-db/app/pkg/eu5_location_filter.js
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter_bg.wasm ./public/eu5-locations-db/app/pkg/eu5_location_filter_bg.wasm
