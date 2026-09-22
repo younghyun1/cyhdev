@@ -3,10 +3,9 @@ import { createMemo } from "solid-js";
 import type {
   ChartOptions,
   ChartData,
-  ScriptableContext,
   TooltipItem,
 } from "chart.js";
-import { theme } from "../state/theme";
+import { createChartPalette } from "./chartPalette";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
 import { t } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
@@ -23,26 +22,9 @@ export default function RamStatsCard(props: {
   data: HostStatPoint[];
   limit: number;
 }) {
-  const isDark = () => theme() === "dark";
   const isMobile = createMediaQuery("(max-width: 767px)");
 
-  const C = () => ({
-    bg: isDark() ? "#1f2937" : "#fff",
-    border: isDark() ? "#374151" : "#d1d5db",
-    font: isDark() ? "#e2e8f0" : "#334155",
-    memU: isDark() ? "#4ade80" : "#22c55e",
-  });
-
-  function makeGradient(
-    ctx: CanvasRenderingContext2D,
-    area: { top: number; bottom: number },
-    color: string,
-  ) {
-    const grad = ctx.createLinearGradient(0, area.top, 0, area.bottom);
-    grad.addColorStop(0, color);
-    grad.addColorStop(1, color + "00");
-    return grad;
-  }
+  const C = createChartPalette();
 
   function padToLimit<T>(arr: T[], filler: T | null = null): (T | null)[] {
     const padLen = Math.max(0, props.limit - arr.length);
@@ -71,17 +53,13 @@ export default function RamStatsCard(props: {
     labels: labels(),
     datasets: [
       {
-        label: "Used MiB",
+        label: `${t("stats.memory_usage")} (MiB)`,
         data: padToLimit(
           props.data.map((s) => (s.memT - s.memF) / (1024 * 1024)),
         ),
         fill: true,
-        backgroundColor: (ctx: ScriptableContext<"line">) => {
-          const c = ctx.chart;
-          if (!c.chartArea) return C().memU;
-          return makeGradient(c.ctx, c.chartArea, C().memU);
-        },
-        borderColor: C().memU,
+        backgroundColor: C().fill,
+        borderColor: C().series,
         borderWidth: 2,
         tension: 0.4,
         pointRadius: 0,
@@ -130,21 +108,14 @@ export default function RamStatsCard(props: {
     <div class="stats-chart-card flex flex-col gap-2">
       <div class="stats-metric-heading flex items-center justify-between px-1">
         <div class="flex items-center gap-2">
-          <div
-            class="w-2 h-2 rounded-full"
-            style={{ background: C().memU }}
-           />
+          <div class="stats-chart-dot" />
           <h3
-            class="text-sm font-bold uppercase tracking-wider opacity-80"
-            style={{ color: C().font }}
+            class="text-sm font-mono font-bold uppercase tracking-wider text-ink-muted"
           >
             {t("stats.memory_usage")}
           </h3>
         </div>
-        <div
-          class="text-xl font-bold font-mono text-right tabular-nums"
-          style={{ color: C().memU }}
-        >
+        <div class="stats-chart-value text-xl font-bold font-mono text-right tabular-nums">
           {latest()
             ? `${formatMem(latest()!.memT - latest()!.memF)} / ${formatMem(
                 latest()!.memT,
@@ -153,15 +124,9 @@ export default function RamStatsCard(props: {
         </div>
       </div>
 
-      <div
-        class="stats-chart relative flex-1 border rounded-sm shadow-sm overflow-hidden min-h-62.5"
-        style={{
-          border: `1px solid ${C().border}`,
-          background: C().bg,
-        }}
-      >
+      <div class="stats-chart">
         <div class="absolute inset-0 p-4">
-          <LineChart data={chartData()} options={chartOptions()} />
+          <LineChart data={chartData()} options={chartOptions()} label={t("stats.memory_usage")} />
         </div>
       </div>
     </div>

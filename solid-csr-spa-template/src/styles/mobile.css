@@ -1,5 +1,5 @@
 @media (max-width: 767px) {
-  html:root {
+  html:root:not(.dark) {
     --ink-faint: #655d53;
     --accent: #92400e;
   }

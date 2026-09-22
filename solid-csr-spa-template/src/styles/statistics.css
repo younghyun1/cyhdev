@@ -1,0 +1,115 @@
+.stats-panel {
+  padding: 1.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.stats-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.stats-panel-title {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.stats-refresh {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.stats-refresh:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.stats-summary {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.stats-summary-label,
+.stats-note {
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.stats-summary-label { margin-bottom: 0.5rem; }
+
+.stats-connection-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.stats-connection-dot.is-live { background: var(--ok); }
+
+.stats-error {
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.stats-chart {
+  position: relative;
+  flex: 1;
+  min-height: 15.625rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.stats-chart-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.stats-chart-value { color: var(--accent); }
+
+.stats-host-details {
+  align-self: flex-start;
+  min-width: 0;
+  width: 100%;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.stats-host-details pre {
+  width: max-content;
+  margin: 0;
+  white-space: pre;
+}
+
+@media (min-width: 1280px) {
+  .stats-host-details { flex: 1; }
+}
