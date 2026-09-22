@@ -7,7 +7,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  padding-block: 7vh 5vh;
+  padding-block: 4vh 3vh;
   box-sizing: border-box;
 }
 
@@ -25,10 +25,10 @@
 .visitor-board-map {
   /* Keep Leaflet panes and controls below site menus and portal dialogs. */
   isolation: isolate;
-  width: 80vw;
-  height: 60vh;
+  width: 90vw;
+  height: 68vh;
   min-width: 320px;
-  max-width: 1400px;
+  max-width: 1600px;
   max-height: 70vh;
   aspect-ratio: 4 / 2.5;
   border-radius: var(--radius-sm);

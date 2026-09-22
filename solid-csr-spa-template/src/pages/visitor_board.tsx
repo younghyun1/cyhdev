@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "../styles/visitor-board.css";
 import L from "leaflet";
 import { t, tx, locale, texts } from "../state/i18n";
+import { visitorPopupText } from "../utils/statusMetadata";
 
 const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
 const MARKER_EMOJI = "📍";
@@ -56,7 +57,7 @@ export default function VisitorBoard() {
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
           const popup = document.createElement("span");
-          popup.textContent = tx("visitor.popup", { count });
+          popup.textContent = visitorPopupText(tx("visitor.popup", { count }));
           return L.marker([lat ?? 0, lng ?? 0], { icon: emojiIcon })
             .addTo(map!)
             .bindPopup(popup);
@@ -100,7 +101,7 @@ export default function VisitorBoard() {
     () => {
       markers.forEach((marker, i) => {
         const popup = document.createElement("span");
-        popup.textContent = tx("visitor.popup", { count: markerCounts[i] ?? 0 });
+        popup.textContent = visitorPopupText(tx("visitor.popup", { count: markerCounts[i] ?? 0 }));
         marker.setPopupContent(popup);
       });
     },

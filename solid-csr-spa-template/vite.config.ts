@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
+import { defineConfig, version as viteVersion } from "vite";
+import ts from "typescript";
 import solidPlugin from "@solidjs/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 import { resolveConfiguredBuildTimestamp } from "./src/config/buildTimestamp.ts";
@@ -15,6 +16,8 @@ export default defineConfig({
       ),
     ),
     __SOLID_VERSION__: JSON.stringify(pkg.dependencies["solid-js"] || ""),
+    __VITE_VERSION__: JSON.stringify(viteVersion),
+    __TYPESCRIPT_VERSION__: JSON.stringify(ts.version),
     __APP_NAME__: JSON.stringify(pkg.name),
   },
   server: {

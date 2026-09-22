@@ -7,10 +7,8 @@ import {
   parseUptimeToMs,
 } from "../state/health";
 import { t } from "../state/i18n";
-import { serverBuildInfo } from "../state/server_info";
-
-declare const __BUILD_TIMESTAMP__: string;
-declare const __SOLID_VERSION__: string;
+import BuildDetails from "./BuildDetails";
+import { postgresVersion } from "../utils/statusMetadata";
 
 export function createLiveUptime(): Accessor<string> {
   const uptime = createMemo(() => {
@@ -36,18 +34,7 @@ export default function SystemStatusDetails() {
   return (
     <div class="system-status-details font-mono tabular-nums text-[11px] text-ink">
       <div class="space-y-1">
-        <div>
-          {t("bottom_bar.fe")}: {t("bottom_bar.built")} {__BUILD_TIMESTAMP__}{" "}
-          {t("bottom_bar.with_solid")} {__SOLID_VERSION__}
-        </div>
-        <div>
-          {t("bottom_bar.be")}: {t("bottom_bar.built")}{" "}
-          {serverBuildInfo().built_time ?? "…"} (
-          {serverBuildInfo().name ?? "…"})
-          {serverBuildInfo().rust_version && (
-            <> rust/{serverBuildInfo().rust_version}</>
-          )}
-        </div>
+        <BuildDetails />
       </div>
       <div class="mt-3 space-y-1">
         <Show
@@ -63,7 +50,7 @@ export default function SystemStatusDetails() {
                 {health().users_logged_in}
               </div>
               <div>
-                {t("bottom_bar.db")} {health().db_version} ·{" "}
+                {postgresVersion(health().db_version)} ·{" "}
                 {t("bottom_bar.db_latency")} {health().db_latency}
               </div>
               <div>

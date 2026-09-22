@@ -14,7 +14,8 @@ import {
   refreshHealthState,
   formatIsoAge,
 } from "../state/health";
-import { serverBuildInfo } from "../state/server_info";
+import BuildDetails from "./BuildDetails";
+import { postgresVersion } from "../utils/statusMetadata";
 import { t } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
 import { MobileDialog } from "./MobileDialog";
@@ -22,8 +23,6 @@ import SystemStatusDetails, {
   createLiveUptime,
 } from "./SystemStatusDetails";
 
-declare const __BUILD_TIMESTAMP__: string;
-declare const __SOLID_VERSION__: string;
 
 function isKeyboardControl(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -153,19 +152,7 @@ const BottomBar: Component = () => {
       >
         <div class="w-full px-2 sm:px-3 py-0.5 sm:py-1.5 flex flex-row justify-between items-start gap-2 sm:gap-3 font-mono tabular-nums">
           <div class="hidden sm:block text-ink-muted leading-tight space-y-0.5 max-w-[55%]">
-            <div>
-              {t("bottom_bar.fe")}: {t("bottom_bar.built")}{" "}
-              {__BUILD_TIMESTAMP__} {t("bottom_bar.with_solid")}{" "}
-              {__SOLID_VERSION__}
-            </div>
-            <div>
-              {t("bottom_bar.be")}: {t("bottom_bar.built")}{" "}
-              {serverBuildInfo().built_time ?? "…"} (
-              {serverBuildInfo().name ?? "…"})
-              {serverBuildInfo().rust_version && (
-                <> rust/{serverBuildInfo().rust_version}</>
-              )}
-            </div>
+            <BuildDetails />
           </div>
 
           <div class="hidden sm:block text-ink-muted leading-tight text-right space-y-0.5 max-w-[45%]">
@@ -181,7 +168,7 @@ const BottomBar: Component = () => {
                       {health.users_logged_in}
                     </div>
                     <div class="hidden xs:block sm:block">
-                      {t("bottom_bar.db")} {health.db_version} ·{" "}
+                      {postgresVersion(health.db_version)} ·{" "}
                       {t("bottom_bar.db_latency")} {health.db_latency}
                     </div>
                     <div class="hidden sm:block">

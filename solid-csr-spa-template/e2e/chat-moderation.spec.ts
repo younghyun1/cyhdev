@@ -38,6 +38,13 @@ for (const mode of ["superuser", "authenticated", "logged-out"] as const) {
     await expect(page.getByText(message.message_body)).toBeVisible();
     const button = page.getByRole("button", { name: "Delete", exact: true });
     if (mode === "superuser") {
+      const authorGroup = button.locator("..");
+      await expect(authorGroup).toContainText("Guest");
+      expect(await authorGroup.locator("time").count()).toBe(0);
+      const timestamp = page.locator("article time").first();
+      const buttonBox = await button.boundingBox();
+      const timeBox = await timestamp.boundingBox();
+      expect(timeBox!.x).toBeGreaterThan(buttonBox!.x + buttonBox!.width);
       page.once("dialog", (dialog) => dialog.dismiss());
       await button.click();
       expect(deletes).toBe(0);

@@ -520,8 +520,8 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         pageStyles.card,
         "live-chat-panel flex min-h-0 flex-col",
         isFull()
-          ? "h-[calc(100vh-12rem)] max-h-[44rem]"
-          : "h-[28rem] max-h-[calc(100vh-10rem)]",
+          ? "h-[calc(100vh-10rem)] max-h-[50rem]"
+          : "h-[32rem] max-h-[calc(100vh-10rem)]",
       ]}
     >
       <header
@@ -584,7 +584,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                 <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
                   <span
                     class={[
-                      "font-mono font-semibold",
+                      "flex min-w-0 items-center gap-2 font-mono font-semibold",
                       message.kind === "pending" ? "" : "text-ink",
                     ]}
                   >
@@ -601,16 +601,16 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                         size="sm"
                       />
                     </Show>
+                    <Show when={message.kind === "sent" ? message.message.live_chat_message_id : null}>
+                      {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
+                    </Show>
                   </span>
-                  <time>
+                  <time class="ml-auto shrink-0">
                     {new Date(messageCreatedAt(message)).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </time>
-                  <Show when={message.kind === "sent" ? message.message.live_chat_message_id : null}>
-                    {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
-                  </Show>
                 </div>
                 <p
                   class={[

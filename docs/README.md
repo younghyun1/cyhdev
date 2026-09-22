@@ -8,6 +8,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Documentation and handoff conventions](AGENTS.md)
 - [Complete page flowcharts and route inventory](design/fe/site-map.md)
 - [Page render review and visual suggestions](design/fe/2026-09-21-visual-review.md)
+- [Page layout and status metadata fixes](plans/2026-09-21-page-polish.md)
 - [Performance and security findings](plans/2026-09-21-performance-security-findings.md)
 - [RTC, security, statistics, and localization verification](plans/2026-09-21-parallel-followups.md)
 - `architecture/be/` - backend architecture and boundary conventions.
