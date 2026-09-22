@@ -11,6 +11,8 @@ Personal website workspace: Axum/PostgreSQL backend, SolidJS browser application
 
 ## Task map
 
+For page discovery, navigation, and access boundaries, start with the [complete page flowcharts and route inventory](docs/design/fe/site-map.md). Update that map whenever routes, page guards, navigation groups, or embedded browser surfaces change.
+
 | Task | Start with | Scoped instructions |
 | --- | --- | --- |
 | Backend behavior, HTTP, auth, jobs | `rust-be-template/src/features/`, `src/routers/main_router.rs`, `src/init/state/` | [Backend](rust-be-template/AGENTS.md) |
