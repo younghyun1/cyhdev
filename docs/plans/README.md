@@ -12,3 +12,5 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 - [Complete page map](2026-09-21-page-map.md)
 - [Repository instructions and session handoff](2026-09-21-repository-instructions.md)
+
+- [Code license and copyright footer](2026-09-22-license-footer.md)

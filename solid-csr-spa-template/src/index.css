@@ -14,6 +14,15 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+.site-copyright {
+    padding: 0.125rem max(0.75rem, var(--safe-area-right)) 0.25rem max(0.75rem, var(--safe-area-left));
+    color: var(--ink-muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.625rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
 /* Semantic tokens. Warm neutrals in both modes; the light canvas is cream
    paper, the dark canvas is pure black with warm raised surfaces. Amber is
    the only decorative accent; ok/danger are semantic (votes, status, alerts). */

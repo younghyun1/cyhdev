@@ -16,6 +16,13 @@ for (const width of [320, 390, 1440]) {
     expect(buttonBox).not.toBeNull();
     expect(inputBox!.height).toBe(buttonBox!.height);
     if (width >= 768) expect(inputBox!.y).toBe(buttonBox!.y);
+    const copyright = page.locator("[data-site-bar=bottom] .site-copyright");
+    await expect(copyright).toBeVisible();
+    await expect(copyright).toHaveText(`© 2025-${new Date().getUTCFullYear()} Young Hyun Chi · MIT`);
+    const copyrightBox = await copyright.boundingBox();
+    expect(copyrightBox!.x).toBeGreaterThanOrEqual(0);
+    expect(copyrightBox!.x + copyrightBox!.width).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: `../target/page-polish/copyright-${width}.png`, fullPage: true });
     if (width < 768) await page.locator("[data-site-bar=bottom]").click();
     const status = width < 768 ? page.getByRole("dialog") : page.locator("[data-site-bar=bottom]");
     await expect(status).toContainText(/FE · built .* UTC · SolidJS .* · TypeScript .* · Vite/);

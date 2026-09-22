@@ -2,6 +2,14 @@
 
 This repository contains the backend, web application, maintenance utilities, and WebAssembly demos for cyhdev.
 
+## License
+
+Original source code and its technical documentation are licensed under the [MIT License](LICENSE), copyright 2025-2026 Young Hyun Chi. You may use, modify, and redistribute the code, including commercially, provided you retain the copyright and permission notices in copies or substantial portions. Visible website credit is appreciated but not required.
+
+Third-party code, dependencies, and vendored projects retain their own licenses and notices. The code license does not grant rights to photographs, blog posts, personal writing, branding, or user-submitted content; those require separate permission unless explicitly licensed otherwise.
+
+## Checkout
+
 Clone with submodules, or initialize them after an existing checkout:
 
 ```bash
