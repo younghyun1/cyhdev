@@ -9,6 +9,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Complete page flowcharts and route inventory](design/fe/site-map.md)
 - [Page render review and visual suggestions](design/fe/2026-09-21-visual-review.md)
 - [Performance and security findings](plans/2026-09-21-performance-security-findings.md)
+- [RTC, security, statistics, and localization verification](plans/2026-09-21-parallel-followups.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.
@@ -25,6 +26,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Media persistence](architecture/be/media-persistence.md)
 - [OpenID Connect account linking](architecture/be/oidc-account-linking.md)
 - [OpenID Connect account controls](design/fe/oidc-account-controls.md)
+- [UI localization and translation coverage](design/fe/localization.md)
 - [Forum architecture](architecture/be/forum.md)
 - [WebAssembly service](architecture/be/wasm-service.md)
 - [Live-chat moderation](architecture/be/live-chat-moderation.md)
