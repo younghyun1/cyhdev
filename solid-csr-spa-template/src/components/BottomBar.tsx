@@ -49,6 +49,7 @@ function isKeyboardControl(target: EventTarget | null): boolean {
 }
 
 const BottomBar: Component = () => {
+  const copyrightYear = new Date().getUTCFullYear();
   const location = useLocation();
   const isMobile = createMediaQuery("(max-width: 767px)");
   const [detailsOpen, setDetailsOpen] = createSignal(false);
@@ -192,6 +193,9 @@ const BottomBar: Component = () => {
               {t("bottom_bar.tap")}
             </div>
           </div>
+        </div>
+        <div class="site-copyright">
+          © 2025-{copyrightYear} Young Hyun Chi · MIT
         </div>
       </footer>
     </>
