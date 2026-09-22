@@ -178,6 +178,11 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("i18n", "GET", "/api/i18n/ui-text"),
     operation!("i18n", "POST", "/api/admin/sync-i18n-cache"),
     operation!("live-chat", "GET", "/api/live-chat/messages"),
+    operation!(
+        "live-chat",
+        "DELETE",
+        "/api/admin/live-chat/messages/{message_id}"
+    ),
     operation!("live-chat", "GET", "/api/live-chat/cache-stats"),
     operation!("forum", "GET", "/api/forum/capabilities"),
     operation!("forum", "GET", "/api/forum/topics"),

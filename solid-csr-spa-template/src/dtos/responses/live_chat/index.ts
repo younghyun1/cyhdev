@@ -81,6 +81,7 @@ export type RtcServerSignal =
   | { kind: "error"; code: string; message: string };
 
 export type LiveChatServerEvent =
+  | { type: "message_deleted"; live_chat_message_id: string }
   | {
       type: "hello";
       actor: ChatActor;

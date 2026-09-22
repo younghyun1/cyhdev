@@ -34,6 +34,9 @@ pub enum LiveChatServerEvent {
     Message {
         message: CachedChatMessage,
     },
+    MessageDeleted {
+        live_chat_message_id: uuid::Uuid,
+    },
     MessageAck {
         client_message_id: String,
         message: CachedChatMessage,

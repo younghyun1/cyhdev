@@ -42,7 +42,7 @@ export default function UserInfoPage() {
           {(publicUser) => (
             <section class={`${pageStyles.card} mt-6 p-6`}>
               <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-4">
+                <div class="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
                   <Show
                     when={publicUser().user_profile_picture_url}
                     fallback={
@@ -54,10 +54,10 @@ export default function UserInfoPage() {
                     <img
                       src={publicUser().user_profile_picture_url ?? undefined}
                       alt={publicUser().user_name}
-                      class="h-16 w-16 rounded-full border border-line object-cover"
+                      class="h-16 w-16 shrink-0 rounded-full border border-line object-cover"
                     />
                   </Show>
-                  <div>
+                  <div class="min-w-0 max-w-full">
                     <UserBadge
                       userName={publicUser().user_name}
                       profilePictureUrl={

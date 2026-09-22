@@ -2,54 +2,12 @@ import { createEffect, onSettled } from "solid-js";
 import { visitorBoardApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import "leaflet/dist/leaflet.css";
+import "../styles/visitor-board.css";
 import L from "leaflet";
 import { t, tx, locale, texts } from "../state/i18n";
 
 const WORLD_BOUNDS = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
 const MARKER_EMOJI = "📍";
-
-// Local styles for the visitor board to avoid scrollbars and perfectly center the map
-const style = `
-.visitor-board-center-outer {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1 1 0%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  padding-top: 7vh;
-  padding-bottom: 5vh;
-  box-sizing: border-box;
-}
-.visitor-board-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-.visitor-board-map {
-  width: 80vw;
-  height: 60vh;
-  min-width: 320px;
-  max-width: 1400px;
-  max-height: 70vh;
-  aspect-ratio: 4/2.5;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  background: var(--surface);
-  margin: 0 auto;
-  display: block;
-}
-`;
 
 export default function VisitorBoard() {
   let mapDiv: HTMLDivElement | undefined;
@@ -59,9 +17,11 @@ export default function VisitorBoard() {
   let resizeObserver: ResizeObserver | null = null;
 
   onSettled(() => {
+    let disposed = false;
     async function loadVisitorBoard() {
       try {
         const resp = await visitorBoardApi.getVisitorBoard();
+        if (disposed || !mapDiv) return;
         const pairs = resp.data;
         const first = pairs[0];
         const initialLatLng: [number, number] =
@@ -71,7 +31,7 @@ export default function VisitorBoard() {
         if (map && map.remove) {
           map.remove();
         }
-        map = L.map(mapDiv!, {
+        map = L.map(mapDiv, {
           maxBounds: WORLD_BOUNDS,
           maxBoundsViscosity: 1.0,
         }).setView(initialLatLng, 3);
@@ -95,10 +55,11 @@ export default function VisitorBoard() {
         markerCounts = pairs.map((pair) => pair[1]);
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
-          const popupHtml = tx("visitor.popup", { count });
+          const popup = document.createElement("span");
+          popup.textContent = tx("visitor.popup", { count });
           return L.marker([lat ?? 0, lng ?? 0], { icon: emojiIcon })
             .addTo(map!)
-            .bindPopup(popupHtml);
+            .bindPopup(popup);
         });
 
         if (markers.length > 0) {
@@ -112,15 +73,17 @@ export default function VisitorBoard() {
               );
         if (mapDiv) resizeObserver?.observe(mapDiv);
       } catch {
+        if (disposed) return;
         if (map && map.remove) map.remove();
         map = null;
         if (mapDiv)
-          mapDiv.innerHTML = t("visitor.load_failed");
+          mapDiv.textContent = t("visitor.load_failed");
       }
     }
     loadVisitorBoard();
 
     return () => {
+      disposed = true;
       if (map && map.remove) {
         map.remove();
       }
@@ -136,26 +99,15 @@ export default function VisitorBoard() {
     () => [locale(), texts()] as const,
     () => {
       markers.forEach((marker, i) => {
-        marker.setPopupContent(
-          tx("visitor.popup", { count: markerCounts[i] ?? 0 }),
-        );
+        const popup = document.createElement("span");
+        popup.textContent = tx("visitor.popup", { count: markerCounts[i] ?? 0 });
+        marker.setPopupContent(popup);
       });
     },
   );
 
   return (
-    <main class={`${pageStyles.page} flex`}>
-      <style>{style}</style>
-      <style>
-        {`
-        .emoji-marker {
-          font-size: 2rem;
-          line-height: 1.2;
-          text-align: center;
-          transform: translateY(-10%);
-        }
-        `}
-      </style>
+    <main class={`${pageStyles.page} flex flex-col`}>
       <div class="visitor-board-center-outer">
         <div class="visitor-board-wrapper">
           <div ref={(el) => (mapDiv = el)} id="map" class="visitor-board-map" />

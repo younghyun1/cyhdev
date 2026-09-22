@@ -24,6 +24,7 @@ export * from "./delete-account-request";
 export * from "./delete-account-response";
 export * from "./delete-comment-response";
 export * from "./delete-forum-content-request";
+export * from "./delete-live-chat-message-response";
 export * from "./delete-photograph-comment-response";
 export * from "./delete-photographs-request";
 export * from "./delete-photographs-response";

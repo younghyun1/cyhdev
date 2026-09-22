@@ -30,7 +30,7 @@ export function UserBadge(props: UserBadgeProps) {
         <img
           src={props.profilePictureUrl}
           alt={props.userName}
-          class={`${sizeClasses().img} rounded-full object-cover border border-line`}
+          class={`${sizeClasses().img} shrink-0 rounded-full object-cover border border-line`}
         />
       </Show>
       <Show when={!props.profilePictureUrl}>
@@ -42,12 +42,12 @@ export function UserBadge(props: UserBadgeProps) {
         </span>
       </Show>
       <span
-        class={`font-medium text-ink ${sizeClasses().text}`}
+        class={`min-w-0 [overflow-wrap:anywhere] font-medium text-ink ${sizeClasses().text}`}
       >
         {props.userName}
       </span>
       <Show when={props.countryFlag}>
-        <span class={sizeClasses().text}>{props.countryFlag}</span>
+        <span class={`shrink-0 ${sizeClasses().text}`}>{props.countryFlag}</span>
       </Show>
     </>
   );
@@ -55,11 +55,11 @@ export function UserBadge(props: UserBadgeProps) {
   return (
     <Show
       when={props.link !== false}
-      fallback={<span class="inline-flex items-center gap-1">{content()}</span>}
+      fallback={<span class="inline-flex min-w-0 max-w-full items-center gap-1">{content()}</span>}
     >
       <a
         href={href()}
-        class="relative z-10 inline-flex items-center gap-1 rounded-sm no-underline hover:underline"
+        class="relative z-10 inline-flex min-w-0 max-w-full items-center gap-1 rounded-sm no-underline hover:underline"
       >
         {content()}
       </a>

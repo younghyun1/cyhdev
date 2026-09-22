@@ -1,0 +1,11 @@
+# Live-chat moderation
+
+Superusers can delete persisted messages through `DELETE /api/admin/live-chat/messages/{message_id}`. The existing authenticated superuser router and trusted-origin middleware guard the route. The repository additionally locks the active account and role rows and rechecks current superuser authority in the deletion transaction; stale session authority cannot authorize a write after demotion or account deletion.
+
+Deletion clears `message_body` and sets the existing `message_deleted_at` column. It retains the row and sender metadata as a pagination tombstone, not as a backup of the message text. Recent/history queries exclude tombstones, but an older-history cursor may still reference one. Repeated deletion and an unknown message ID succeed without changing other records. This is content moderation, not account erasure or backup deletion.
+
+After commit, the service removes the message from all cache indexes and byte accounting, then broadcasts `message_deleted` with `live_chat_message_id`. The binary equivalent is opcode `0x88` followed by the UUID's 16 bytes. The HTTP operation continues after client disconnection so cancellation cannot skip post-commit invalidation. Process restart reloads only undeleted messages. This follows the existing single-backend-process deployment constraint; it is not cross-replica delivery.
+
+Deletion is shown only to superusers, requires confirmation, and keeps the message visible if the request fails. Connected updated clients remove broadcast deletions and retain a bounded 300-ID suppression set for delayed pre-deletion responses. Displayed history is also bounded to 300 messages; paging backward retains the older window. Older deployed clients that do not recognize the new event require a refresh to observe moderation. Deploy the updated browser bundle with the backend.
+
+Coverage lives in `tests/postgres_live_chat_moderation.rs`, cache moderation unit tests, frontend protocol unit tests, and `e2e/chat-moderation.spec.ts`. The database suite checks denied ordinary-user writes, content erasure, repeated and unknown-ID requests, tombstone cursors, demotion, and deleted accounts. The browser suite covers superuser confirmation/cancellation, request failure, hidden controls for other users, broadcast invalidation, and delayed-message suppression. No schema migration is required.

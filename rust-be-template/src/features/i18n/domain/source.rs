@@ -71,6 +71,14 @@ mod tests {
         assert_eq!(bundles.len(), 2);
         for bundle in &bundles {
             assert_eq!(bundle.entries.len(), REQUIRED_UI_TEXT_KEYS.len());
+            assert_eq!(
+                bundle
+                    .entries
+                    .iter()
+                    .find(|entry| entry.key == "top_bar.site_title")
+                    .map(|entry| entry.content.as_str()),
+                Some("Young Hyun Chi | Software Engineer"),
+            );
         }
         let translations = bundles
             .iter()

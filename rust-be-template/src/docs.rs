@@ -95,6 +95,7 @@ use utoipa::OpenApi;
         update_photograph_comment::update_photograph_comment,
         delete_photograph_comment::delete_photograph_comment,
         get_messages::get_live_chat_messages,
+        crate::features::live_chat::api::delete_message::delete_live_chat_message,
         cache_stats::get_live_chat_cache_stats,
         public_user::get_user_info,
         upload_profile_picture::upload_profile_picture,

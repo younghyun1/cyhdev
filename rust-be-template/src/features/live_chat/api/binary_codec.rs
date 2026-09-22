@@ -23,6 +23,7 @@ const SERVER_TYPING_SET: u8 = 0x84;
 const SERVER_PRESENCE: u8 = 0x85;
 const SERVER_PONG: u8 = 0x86;
 const SERVER_ERROR: u8 = 0x87;
+const SERVER_MESSAGE_DELETED: u8 = 0x88;
 const SERVER_RTC: u8 = 0x90;
 
 const ACTOR_USER: u8 = 0x01;
