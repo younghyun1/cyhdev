@@ -24,8 +24,8 @@ solid-csr-spa-template/public/eu5-locations-db/app/
 # Generated source
 **/src/build_info.rs
 
+# Repository instructions are shared and tracked.
 # Local tooling
-**/AGENTS.md
 **/CLAUDE.md
 **/.claude/settings.local.json
 **/.idea/
