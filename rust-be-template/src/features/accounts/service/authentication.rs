@@ -2,7 +2,10 @@
 
 use crate::{
     features::accounts::{
-        domain::{account::LoginReceipt, role::RoleType},
+        domain::{
+            account::{LoginCandidate, LoginReceipt},
+            role::RoleType,
+        },
         error::AccountError,
         service::{account_service::AccountService, password_work::PasswordBudget},
     },
@@ -37,16 +40,16 @@ impl AccountService {
         // refresh/revocation. Holding the read side through session creation prevents
         // an in-flight login from recreating a session with stale account state.
         let _session_consistency = self.session_consistency.read().await;
-        let account = self.repository.login_account_by_email(email).await?;
-        let expected_hash = match &account {
-            Some(account) => account.password_hash.as_str(),
+        let candidate = self.repository.login_account_by_email(email).await?;
+        let expected_hash = match &candidate {
+            Some(candidate) => candidate.account.password_hash.as_str(),
             None => self.dummy_password_hash.as_ref(),
         };
         let password_matches = self
             .verify_password(PasswordBudget::Authentication, password, expected_hash)
             .await?;
-        let account = match account {
-            Some(account) if password_matches => account,
+        let LoginCandidate { account, role } = match candidate {
+            Some(candidate) if password_matches => candidate,
             Some(_) | None => return Err(AccountError::InvalidCredentials),
         };
         // Only a correct password learns that verification is pending. Until the email owner
@@ -56,10 +59,14 @@ impl AccountService {
             return Err(AccountError::EmailNotVerified);
         }
 
-        let role_type = self
-            .repository
-            .role_for_user_or_insert_default(account.user_id, RoleType::User)
-            .await?;
+        let role_type = match role {
+            Some(role_type) => role_type,
+            None => {
+                self.repository
+                    .role_for_user_or_insert_default(account.user_id, RoleType::User)
+                    .await?
+            }
+        };
         let session_token = self
             .sessions
             .create(&account, role_type, previous_session_token, None)
