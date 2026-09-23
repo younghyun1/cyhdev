@@ -24,7 +24,7 @@ use support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
-    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
+    fixtures::{VALID_PASSWORD, account_test_context, seed_account, seed_verified_account},
     lifecycle::{PROFILE_OBJECT_URL, require_authored_content_retained, seed_authored_content},
     lifecycle_assertions::{
         require_account_authority_cleared, require_login_rejected, require_permanent_tombstone,
@@ -59,7 +59,7 @@ fn account_lifecycle_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .assign_role(admin.user_id, RoleType::Younghyun)
             .await?;
         let unauthorized = seed_account(&context, "LifecycleNoRole").await?;
-        let account = seed_account(&context, "LifecycleBoundary").await?;
+        let account = seed_verified_account(&context, "LifecycleBoundary").await?;
         let content = seed_authored_content(&context, account.user_id, &account.user_name).await?;
         let login = context
             .accounts

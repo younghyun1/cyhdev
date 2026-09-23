@@ -1,16 +1,19 @@
 //! Email-verification use case.
 
+use std::sync::Arc;
+
 use chrono::Utc;
 use uuid::Uuid;
 
 use crate::features::accounts::{
-    domain::account::EmailVerificationReceipt, error::AccountError,
-    service::account_service::AccountService,
+    domain::account::EmailVerificationReceipt,
+    error::AccountError,
+    service::{account_service::AccountService, session_coordination::run_to_completion},
 };
 
 impl AccountService {
     pub async fn verify_email(
-        &self,
+        self: &Arc<Self>,
         token_value: Uuid,
     ) -> Result<EmailVerificationReceipt, AccountError> {
         let now = Utc::now();
@@ -32,19 +35,25 @@ impl AccountService {
             return Err(AccountError::EmailVerificationTokenExpired);
         }
 
-        let _session_consistency = self.session_consistency.write().await;
-        let receipt = match self
-            .repository
-            .consume_email_verification_token(&token, now)
-            .await
-        {
-            Err(AccountError::TokenAlreadyConsumed) => {
-                return Err(AccountError::EmailVerificationTokenAlreadyUsed);
-            }
-            result => result?,
-        };
-        self.refresh_sessions_after_commit(receipt.user_id, "verify_email")
-            .await;
-        Ok(receipt)
+        let service = Arc::clone(self);
+        run_to_completion(async move {
+            let _session_consistency = service.session_consistency.write().await;
+            let receipt = match service
+                .repository
+                .consume_email_verification_token(&token, now)
+                .await
+            {
+                Err(AccountError::TokenAlreadyConsumed) => {
+                    return Err(AccountError::EmailVerificationTokenAlreadyUsed);
+                }
+                result => result?,
+            };
+            // A session opened before verification could belong to whoever registered the
+            // address first, so verification ends every session instead of upgrading it.
+            let revoked = service.sessions.remove_for_user(receipt.user_id).await;
+            tracing::trace!(user_id = %receipt.user_id, revoked, "Revoked sessions after email verification");
+            Ok(receipt)
+        })
+        .await
     }
 }

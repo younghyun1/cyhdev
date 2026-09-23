@@ -1,5 +1,7 @@
 //! Audited authorization administration use cases.
 
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::features::accounts::{
@@ -13,7 +15,7 @@ use crate::features::accounts::{
         },
         role::RoleType,
     },
-    service::account_service::AccountService,
+    service::{account_service::AccountService, session_coordination::run_to_completion},
 };
 
 /// Read lease proving database-current Younghyun authority for an external side effect.
@@ -98,7 +100,7 @@ impl AccountService {
     }
 
     pub async fn assign_role_as_administrator(
-        &self,
+        self: &Arc<Self>,
         actor_user_id: Uuid,
         target_user_id: Uuid,
         role_id: Uuid,
@@ -109,21 +111,26 @@ impl AccountService {
             RoleType::from_uuid(role_id).ok_or(AuthorizationError::InvalidRoleId(role_id))?;
         let reason =
             AuthorizationReason::try_new(reason).map_err(|_| AuthorizationError::InvalidReason)?;
-        let _authority_consistency = self.authority_consistency.write().await;
-        let _session_consistency = self.session_consistency.write().await;
-        let receipt = self
-            .repository
-            .assign_role_with_audit(
-                actor_user_id,
-                target_user_id,
-                role_type,
-                &reason,
-                request_id,
-            )
-            .await?;
-        self.refresh_sessions_after_commit(target_user_id, "admin_assign_role")
-            .await;
-        Ok(receipt)
+        let service = Arc::clone(self);
+        run_to_completion(async move {
+            let _authority_consistency = service.authority_consistency.write().await;
+            let _session_consistency = service.session_consistency.write().await;
+            let receipt = service
+                .repository
+                .assign_role_with_audit(
+                    actor_user_id,
+                    target_user_id,
+                    role_type,
+                    &reason,
+                    request_id,
+                )
+                .await?;
+            service
+                .refresh_sessions_after_commit(target_user_id, "admin_assign_role")
+                .await;
+            Ok(receipt)
+        })
+        .await
     }
 
     pub async fn set_role_permission_as_administrator(

@@ -9,12 +9,13 @@ use crate::{
     features::accounts::{
         domain::account::{AccountProfile, ProfileUpdateCommand},
         error::AccountError,
-        repository::{account_repository::AccountRepository, records::AccountProfileRecord},
+        repository::{
+            account_repository::AccountRepository, records::AccountProfileRecord,
+            registration::USER_NAME_UNIQUE_CONSTRAINT,
+        },
     },
     schema::{iso_country, iso_country_subdivision, iso_language, users},
 };
-
-const USER_NAME_UNIQUE_CONSTRAINT: &str = "users_user_name_unique";
 
 impl AccountRepository {
     pub async fn update_profile(

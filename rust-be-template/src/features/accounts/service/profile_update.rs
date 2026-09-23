@@ -1,5 +1,7 @@
 //! Full-profile update use case with password confirmation and session refresh.
 
+use std::sync::Arc;
+
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -11,6 +13,7 @@ use crate::{
             account_service::AccountService,
             authentication::{MAX_USER_NAME_BYTES, password_within_auth_bound},
             password_work::PasswordBudget,
+            session_coordination::run_to_completion,
         },
     },
     util::string::validations::validate_username,
@@ -18,7 +21,7 @@ use crate::{
 
 impl AccountService {
     pub async fn update_profile(
-        &self,
+        self: &Arc<Self>,
         user_id: Uuid,
         current_password: &str,
         mut command: ProfileUpdateCommand,
@@ -45,14 +48,18 @@ impl AccountService {
         }
         drop(session_consistency_read);
 
-        let session_consistency = self.session_consistency.write().await;
-        let profile = self
-            .repository
-            .update_profile(user_id, &candidate.password_hash, &command, Utc::now())
-            .await?;
-        self.refresh_sessions_after_commit(user_id, "update_profile")
-            .await;
-        drop(session_consistency);
-        Ok(profile)
+        let service = Arc::clone(self);
+        run_to_completion(async move {
+            let _session_consistency = service.session_consistency.write().await;
+            let profile = service
+                .repository
+                .update_profile(user_id, &candidate.password_hash, &command, Utc::now())
+                .await?;
+            service
+                .refresh_sessions_after_commit(user_id, "update_profile")
+                .await;
+            Ok(profile)
+        })
+        .await
     }
 }
