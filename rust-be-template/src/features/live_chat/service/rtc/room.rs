@@ -160,13 +160,18 @@ impl RtcRoom {
     }
 
     /// Fan a publisher's newly arrived publication out to all other peers, then
-    /// renegotiate each subscriber that accepted it.
+    /// renegotiate each subscriber that accepted it. Each subscriber runs in
+    /// its own task so one slow or wedged peer cannot delay the rest; the
+    /// per-peer `subscribed` lock and negotiation state keep each peer's work
+    /// ordered and coalesced.
     pub async fn fan_out_track(&self, publisher_id: Uuid, publication: Arc<RtcPublication>) {
-        let subscribers = self.other_peers(publisher_id).await;
-        for subscriber in subscribers {
-            if subscriber.subscribe_to(publication.clone()).await {
-                subscriber.renegotiate().await;
-            }
+        for subscriber in self.other_peers(publisher_id).await {
+            let publication = Arc::clone(&publication);
+            tokio::spawn(async move {
+                if subscriber.subscribe_to(publication).await {
+                    subscriber.renegotiate().await;
+                }
+            });
         }
     }
 
@@ -217,11 +222,16 @@ impl RtcRoom {
                 let _ = participant.actor.anonymize_deleted_user(user_id);
             }
             peer.close().await;
-            let publications = peer.publications_snapshot().await;
+            let publications = Arc::new(peer.publications_snapshot().await);
+            // Per-subscriber tasks, as in fan-out: the departing peer's slot and
+            // Left event must not wait on other participants' renegotiation.
             for subscriber in self.other_peers(connection_id).await {
-                if subscriber.unsubscribe_from(&publications).await {
-                    subscriber.renegotiate().await;
-                }
+                let publications = Arc::clone(&publications);
+                tokio::spawn(async move {
+                    if subscriber.unsubscribe_from(&publications).await {
+                        subscriber.renegotiate().await;
+                    }
+                });
             }
             self.release_slot();
             self.broadcast_peer_state(&participant, RtcPeerPhase::Left);

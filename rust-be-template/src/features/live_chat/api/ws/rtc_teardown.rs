@@ -63,13 +63,21 @@ impl RtcSession {
         });
     }
 
+    /// The joined peer, unless the SFU already tore it down; signals for a
+    /// torn-down peer are dropped rather than applied to a closed connection.
     pub(super) async fn current_peer(&self) -> Option<Arc<RtcPeer>> {
-        self.inner.lock().await.peer.clone()
+        self.inner
+            .lock()
+            .await
+            .peer
+            .clone()
+            .filter(|peer| !peer.is_torn_down())
     }
 
     pub(super) async fn current_room_peer(&self) -> (Option<Arc<RtcRoom>>, Option<Arc<RtcPeer>>) {
         let inner = self.inner.lock().await;
-        (inner.room.clone(), inner.peer.clone())
+        let peer = inner.peer.clone().filter(|peer| !peer.is_torn_down());
+        (inner.room.clone(), peer)
     }
 
     pub(super) async fn send_error(&self, code: &str, message: &str) {

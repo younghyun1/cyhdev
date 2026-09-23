@@ -43,7 +43,9 @@ Unicast signals reach one connection through that connection's `out_tx` mpsc (th
 2. When the new peer's tracks arrive (`on_track`), the SFU builds their `TrackLocalStaticRTP`, adds it to every other peer, and renegotiates each by sending an SFU Offer; those peers reply Answer.
 3. Leave (or disconnect) removes the peer's tracks from others, renegotiates them, closes the `RTCPeerConnection`, records the participant leave, and broadcasts PeerState(left). The SFU is the only offerer for steps 2 and 3, so there is no glare.
 
-Per-peer renegotiation is serialized by a tokio Mutex on the peer to prevent overlapping offers. Mute/camera toggles never renegotiate; they only flip `track.enabled` client-side and emit MediaState for other clients' UI.
+Per-peer renegotiation is coalesced by the peer's negotiation state to prevent overlapping offers, and an answer that arrives with no outstanding SFU offer is ignored. Mute/camera toggles never renegotiate; they only flip `track.enabled` client-side and emit MediaState for other clients' UI.
+
+No participant can stall another. Unicast signals are queued with `try_send`; a full 64-signal queue means the client stopped reading, so that peer is torn down in memory (as on connection failure) and its participant row closes when the socket ends or the client rejoins. Fan-out and teardown renegotiate each subscriber in its own task, so the departing peer's slot release and Left broadcast never wait on other peers, and every socket write is bounded by the connection writer's 10-second send timeout.
 
 ## ICE / network
 Each peer connection owns a UDP socket allocated from the bounded range starting at `RTC_UDP_PORT_START`, with `RTC_MAX_PARTICIPANTS` ports. `SettingEngineBuilder::with_nat_1to1_ips([RTC_PUBLIC_IP], Host).build()` configures the public host candidate using the rtc/webrtc 0.21 builder API. Deployment must expose the configured UDP range. External STUN/TURN is unnecessary for a public-IP server; optional `RTC_TURN_*` can be configured as a relay fallback for symmetric-NAT clients.
