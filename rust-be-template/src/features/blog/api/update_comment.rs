@@ -19,8 +19,9 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::bounded_json::BlogJson;
+use super::bounded_json::BlogSocialJson;
 use super::error::{BlogOperation, map_blog_error};
+use crate::util::extract::bounded_json::BoundedJson;
 
 #[utoipa::path(
     patch,
@@ -45,7 +46,7 @@ pub async fn update_comment(
     Extension(_role): Extension<RoleType>,
     State(state): State<Arc<ServerState>>,
     Path((_post_id, comment_id)): Path<(Uuid, Uuid)>,
-    BlogJson(request): BlogJson<UpdateCommentRequest>,
+    BoundedJson(request): BlogSocialJson<UpdateCommentRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let comment = state

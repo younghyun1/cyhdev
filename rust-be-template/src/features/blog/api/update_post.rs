@@ -20,6 +20,7 @@ use crate::{
 
 use super::bounded_json::BlogJson;
 use super::error::{BlogOperation, map_blog_error};
+use crate::util::extract::bounded_json::BoundedJson;
 
 #[utoipa::path(
     patch,
@@ -40,7 +41,7 @@ pub async fn update_post(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Path(post_id): Path<Uuid>,
-    BlogJson(request): BlogJson<UpdatePostRequest>,
+    BoundedJson(request): BlogJson<UpdatePostRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let post = state

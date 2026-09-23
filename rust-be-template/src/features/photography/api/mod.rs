@@ -9,6 +9,7 @@ pub mod presentation;
 pub mod read_photograph;
 pub mod rescind_photograph_comment_vote;
 pub mod rescind_photograph_vote;
+mod social_json;
 pub mod submit_photograph_comment;
 pub mod update_photograph_comment;
 pub mod upload_photograph;
