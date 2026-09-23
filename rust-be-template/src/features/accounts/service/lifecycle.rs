@@ -15,10 +15,12 @@ use crate::{
         },
         domain::retention_notifications::RetentionNotificationSchedule,
         error::AccountError,
-        service::{account_service::AccountService, authentication::password_within_auth_bound},
+        service::{
+            account_service::AccountService, authentication::password_within_auth_bound,
+            password_work::PasswordBudget,
+        },
     },
     util::{
-        crypto::verify_pw::verify_pw,
         media::object_store::{MediaObjectStore, ObjectLocation},
         s3::AWS_S3_BUCKET_NAME,
     },
@@ -41,11 +43,13 @@ impl AccountService {
         if candidate.is_system_actor {
             return Err(AccountError::SystemActorProtected);
         }
-        let password_job = self.try_password_job()?;
-        let password_matches = verify_pw(current_password, &candidate.password_hash)
-            .await
-            .map_err(AccountError::PasswordVerification)?;
-        drop(password_job);
+        let password_matches = self
+            .verify_password(
+                PasswordBudget::Confirmation,
+                current_password,
+                &candidate.password_hash,
+            )
+            .await?;
         if !password_matches {
             return Err(AccountError::WrongPassword);
         }

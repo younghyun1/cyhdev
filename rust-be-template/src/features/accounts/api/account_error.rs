@@ -87,10 +87,10 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
 
     let response = code_err(code, &error);
     match error {
-        AccountError::PasswordWorkSaturated { .. } => {
+        AccountError::PasswordWorkSaturated { max_jobs } => {
             tracing::warn!(
                 event = "auth_password_work_rejected",
-                max_jobs = crate::features::accounts::service::account_service::MAX_PASSWORD_JOBS,
+                max_jobs,
                 "Authentication password work rejected"
             );
             response.with_retry_after(std::time::Duration::from_secs(1))

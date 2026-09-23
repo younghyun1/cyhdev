@@ -14,12 +14,10 @@ use crate::{
         service::{
             account_service::AccountService,
             authentication::{validate_auth_password, validate_email},
+            password_work::PasswordBudget,
         },
     },
-    util::{
-        crypto::{hash_pw::hash_pw, verify_pw::verify_pw},
-        email::emails::PasswordResetEmail,
-    },
+    util::email::emails::PasswordResetEmail,
 };
 
 const PASSWORD_RESET_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Duration::minutes(30);
@@ -28,11 +26,13 @@ const DUMMY_RESET_PASSWORD: &str = "ResetTimingOnly5728";
 impl AccountService {
     pub async fn request_password_reset(&self, user_email: &str) -> Result<(), AccountError> {
         validate_email(user_email)?;
-        let password_job = self.try_password_job()?;
-        let _password_matches = verify_pw(DUMMY_RESET_PASSWORD, &self.dummy_password_hash)
-            .await
-            .map_err(AccountError::PasswordVerification)?;
-        drop(password_job);
+        let _password_matches = self
+            .verify_password(
+                PasswordBudget::Authentication,
+                DUMMY_RESET_PASSWORD,
+                &self.dummy_password_hash,
+            )
+            .await?;
 
         let now = Utc::now();
         let token = Uuid::new_v4();
@@ -74,11 +74,9 @@ impl AccountService {
             return Err(AccountError::PasswordResetTokenExpired);
         }
 
-        let password_job = self.try_password_job()?;
-        let password_hash = hash_pw(new_password)
-            .await
-            .map_err(AccountError::PasswordHash)?;
-        drop(password_job);
+        let password_hash = self
+            .hash_password(PasswordBudget::Authentication, new_password)
+            .await?;
         let _session_consistency = self.session_consistency.write().await;
         let receipt = match self
             .repository

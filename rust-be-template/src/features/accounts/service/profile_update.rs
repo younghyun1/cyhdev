@@ -10,9 +10,10 @@ use crate::{
         service::{
             account_service::AccountService,
             authentication::{MAX_USER_NAME_BYTES, password_within_auth_bound},
+            password_work::PasswordBudget,
         },
     },
-    util::{crypto::verify_pw::verify_pw, string::validations::validate_username},
+    util::string::validations::validate_username,
 };
 
 impl AccountService {
@@ -32,11 +33,13 @@ impl AccountService {
 
         let session_consistency_read = self.session_consistency.read().await;
         let candidate = self.repository.account_deletion_candidate(user_id).await?;
-        let password_job = self.try_password_job()?;
-        let password_matches = verify_pw(current_password, &candidate.password_hash)
-            .await
-            .map_err(AccountError::PasswordVerification)?;
-        drop(password_job);
+        let password_matches = self
+            .verify_password(
+                PasswordBudget::Confirmation,
+                current_password,
+                &candidate.password_hash,
+            )
+            .await?;
         if !password_matches {
             return Err(AccountError::WrongPassword);
         }

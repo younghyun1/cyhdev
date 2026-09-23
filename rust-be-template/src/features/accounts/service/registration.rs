@@ -13,12 +13,10 @@ use crate::{
         service::{
             account_service::AccountService,
             authentication::{MAX_USER_NAME_BYTES, validate_auth_password, validate_email},
+            password_work::PasswordBudget,
         },
     },
-    util::{
-        crypto::hash_pw::hash_pw, email::emails::ValidateEmailEmail,
-        string::validations::validate_username,
-    },
+    util::{email::emails::ValidateEmailEmail, string::validations::validate_username},
 };
 
 const EMAIL_VERIFICATION_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Duration::days(1);
@@ -35,11 +33,9 @@ impl AccountService {
         let now = Utc::now();
         let verification_token = Uuid::new_v4();
         let verify_by = now + EMAIL_VERIFICATION_TOKEN_VALID_DURATION;
-        let password_job = self.try_password_job()?;
-        let password_hash = hash_pw(command.password)
-            .await
-            .map_err(AccountError::PasswordHash)?;
-        drop(password_job);
+        let password_hash = self
+            .hash_password(PasswordBudget::Authentication, command.password)
+            .await?;
         let registration = NewAccountRegistration {
             account: NewAccount {
                 user_name: command.user_name.clone(),
