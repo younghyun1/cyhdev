@@ -9,7 +9,7 @@ const loginLabels = {
   "ja-JP": "ログイン", "de-DE": "Anmelden",
 };
 
-test("Korean Home introduction translates while About pages stay English", async ({ page }) => {
+test("Korean Home introduction and About pages translate", async ({ page }) => {
   await installApiMocks(page, "logged-out");
   await page.addInitScript(() => {
     if (!localStorage.getItem("ui_locale")) localStorage.setItem("ui_locale", "en-US");
@@ -25,10 +25,10 @@ test("Korean Home introduction translates while About pages stay English", async
   await expect(introduction).not.toContainText("I work on cybersecurity");
   await page.reload();
   await expect(introduction).toContainText("장인 정신을 가지고 작업하는 것을 지향합니다.");
-  for (const [route, heading] of [["/about", "About"], ["/about-blog", "Blog Tech Stack"]]) {
+  for (const [route, heading] of [["/about", "소개"], ["/about-blog", "블로그 기술 구성"]]) {
     await page.goto(route);
     await expect(page.locator("html")).toHaveAttribute("lang", "ko-KR");
-    await expect(page.locator('main[lang="en"]')).toBeVisible();
+    await expect(page.locator('main[lang="ko-KR"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
   }
 });
