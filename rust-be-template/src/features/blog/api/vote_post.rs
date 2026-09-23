@@ -17,8 +17,9 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::bounded_json::BlogJson;
+use super::bounded_json::BlogSocialJson;
 use super::error::{BlogOperation, map_blog_error};
+use crate::util::extract::bounded_json::BoundedJson;
 
 #[utoipa::path(
     post,
@@ -38,7 +39,7 @@ pub async fn vote_post(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Path(post_id): Path<Uuid>,
-    BlogJson(request): BlogJson<UpvotePostRequest>,
+    BoundedJson(request): BlogSocialJson<UpvotePostRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let service = state.blog_service();

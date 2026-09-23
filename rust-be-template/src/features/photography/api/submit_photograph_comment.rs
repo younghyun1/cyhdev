@@ -10,20 +10,23 @@ use crate::{
     util::time::now::tokio_now,
 };
 use axum::{
-    Extension, Json,
+    Extension,
     extract::{Path, State},
     response::IntoResponse,
 };
 use std::sync::Arc;
+
+use super::social_json::SocialJson;
+use crate::util::extract::bounded_json::BoundedJson;
 use uuid::Uuid;
 
 #[utoipa::path(post, path = "/api/photographs/{photograph_id}/comment", tag = "photography", params(("photograph_id" = Uuid, Path)), request_body = SubmitPhotographCommentRequest,
-responses((status = 200, body = PhotographCommentResponse), (status = 401, body = CodeErrorResp), (status = 500, body = CodeErrorResp)))]
+responses((status = 200, body = PhotographCommentResponse), (status = 401, body = CodeErrorResp), (status = 413, description = "Request body too large", body = CodeErrorResp), (status = 500, body = CodeErrorResp)))]
 pub async fn submit_photograph_comment(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Path(photograph_id): Path<Uuid>,
-    Json(request): Json<SubmitPhotographCommentRequest>,
+    BoundedJson(request): SocialJson<SubmitPhotographCommentRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let service = state.photography_service();
