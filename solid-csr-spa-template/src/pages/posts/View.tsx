@@ -9,6 +9,7 @@ import {
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import { createKeyedStore } from "../../state/keyed_store";
+import { mergeCommentPages } from "../../utils/commentPages";
 import { useParams, useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
 import type {
@@ -159,19 +160,13 @@ export default function PostViewPage() {
   const [commentOverrides, setCommentOverrides] =
     createKeyedStore<CommentResponse>();
 
-  const loadedComments = createMemo<ReadonlyArray<CommentResponse>>(() => {
-    const seen = new Set<string>();
-    const merged: CommentResponse[] = [];
-    for (const comment of [
-      ...(postResource()?.comments ?? []),
-      ...laterComments(),
-    ]) {
-      if (seen.has(comment.comment_id)) continue;
-      seen.add(comment.comment_id);
-      merged.push(commentOverrides[comment.comment_id] ?? comment);
-    }
-    return merged;
-  });
+  const loadedComments = createMemo<ReadonlyArray<CommentResponse>>(() =>
+    mergeCommentPages(
+      [postResource()?.comments ?? [], laterComments()],
+      (comment) => comment.comment_id,
+      (id) => commentOverrides[id],
+    ),
+  );
 
   const loadMoreComments = async () => {
     const cursor = commentsCursor();

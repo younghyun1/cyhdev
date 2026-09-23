@@ -22,6 +22,7 @@ import { Key } from "@solid-primitives/keyed";
 import { useNavigate } from "@solidjs/router";
 import { photographyApi } from "../../services/all_api";
 import { createKeyedStore } from "../../state/keyed_store";
+import { mergeCommentPages } from "../../utils/commentPages";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { t } from "../../state/i18n";
@@ -81,15 +82,13 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         props.photographId,
         after,
       );
-      setComments((prev) => {
-        const known = new Set(prev.map((c) => c.photograph_comment_id));
-        return [
-          ...prev,
-          ...page.data.comments.filter(
-            (c) => !known.has(c.photograph_comment_id),
-          ),
-        ];
-      });
+      setComments((prev) =>
+        mergeCommentPages(
+          [prev, page.data.comments],
+          (c) => c.photograph_comment_id,
+          () => undefined,
+        ),
+      );
       setCursor(page.data.next_cursor ?? null);
     } catch (err) {
       console.error("Loading more comments failed:", err);
