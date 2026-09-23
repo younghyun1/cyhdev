@@ -8,17 +8,13 @@ use web_sys::{
     CanvasRenderingContext2d, HtmlCanvasElement, KeyboardEvent, MouseEvent, TouchEvent, Window,
 };
 
-type AnimationFrameLoop = Rc<RefCell<Option<Closure<dyn FnMut()>>>>;
+mod brick_layer;
+mod bricks;
 
-#[derive(Clone)]
-struct Brick {
-    x: f64,
-    y: f64,
-    w: f64,
-    h: f64,
-    alive: bool,
-    hue: f64,
-}
+use brick_layer::BrickLayer;
+use bricks::{Brick, brick_grid};
+
+type AnimationFrameLoop = Rc<RefCell<Option<Closure<dyn FnMut()>>>>;
 
 struct Particle {
     x: f64,
@@ -62,6 +58,7 @@ struct Game {
     rows: usize,
     cols: usize,
     bricks: Vec<Brick>,
+    brick_layer: BrickLayer,
 
     particles: Vec<Particle>,
     stars: Vec<Star>,
@@ -75,7 +72,12 @@ struct Game {
 }
 
 impl Game {
-    fn new(window: Window, canvas: HtmlCanvasElement, ctx: CanvasRenderingContext2d) -> Self {
+    fn new(
+        window: Window,
+        canvas: HtmlCanvasElement,
+        ctx: CanvasRenderingContext2d,
+        brick_layer: BrickLayer,
+    ) -> Self {
         Self {
             window,
             canvas,
@@ -99,6 +101,7 @@ impl Game {
             rows: 6,
             cols: 10,
             bricks: Vec::new(),
+            brick_layer,
             particles: Vec::new(),
             stars: Vec::new(),
             input_left: false,
@@ -127,30 +130,8 @@ impl Game {
     }
 
     fn layout_bricks(&mut self) {
-        let margin_x = 40.0;
-        let top = 80.0;
-        let spacing = 12.0;
-        let cols = self.cols as f64;
-        let usable_w = (self.width - margin_x * 2.0 - spacing * (cols - 1.0)).max(200.0);
-        let brick_w = usable_w / cols;
-        let brick_h = 28.0;
-
-        self.bricks.clear();
-        for row in 0..self.rows {
-            for col in 0..self.cols {
-                let x = margin_x + col as f64 * (brick_w + spacing);
-                let y = top + row as f64 * (brick_h + spacing);
-                let hue = 200.0 + (row as f64 * 12.0) + (col as f64 * 4.0);
-                self.bricks.push(Brick {
-                    x,
-                    y,
-                    w: brick_w,
-                    h: brick_h,
-                    alive: true,
-                    hue,
-                });
-            }
-        }
+        self.bricks = brick_grid(self.width, self.rows, self.cols);
+        self.brick_layer.invalidate();
     }
 
     fn generate_stars(&mut self) {
@@ -185,8 +166,11 @@ impl Game {
         self.height = height;
         self.scale = dpr;
 
-        self.canvas.set_width((width * dpr) as u32);
-        self.canvas.set_height((height * dpr) as u32);
+        let backing_width = (width * dpr) as u32;
+        let backing_height = (height * dpr) as u32;
+        self.canvas.set_width(backing_width);
+        self.canvas.set_height(backing_height);
+        self.brick_layer.resize(backing_width, backing_height, dpr);
         let _ = self
             .canvas
             .style()
@@ -230,6 +214,8 @@ impl Game {
         self.time += dt;
 
         self.update(dt);
+        self.brick_layer
+            .redraw_if_stale(&self.bricks, self.width, self.height);
         self.draw();
     }
 
@@ -354,6 +340,7 @@ impl Game {
 
                 (center_x, center_y, brick.hue, hit_horizontal)
             };
+            self.brick_layer.invalidate();
 
             if hit_horizontal {
                 self.ball_vx = -self.ball_vx;
@@ -440,27 +427,7 @@ impl Game {
         }
         ctx.set_global_alpha(1.0);
 
-        ctx.save();
-        ctx.set_shadow_blur(22.0);
-        for brick in &self.bricks {
-            if !brick.alive {
-                continue;
-            }
-            let grad = ctx.create_linear_gradient(brick.x, brick.y, brick.x, brick.y + brick.h);
-            let top = format!("hsla({}, 88%, 68%, 0.95)", brick.hue);
-            let bottom = format!("hsla({}, 80%, 46%, 0.95)", brick.hue);
-            grad.add_color_stop(0.0, &top).ok();
-            grad.add_color_stop(1.0, &bottom).ok();
-            ctx.set_fill_style_canvas_gradient(&grad);
-            ctx.set_shadow_color(&format!("hsla({}, 90%, 60%, 0.7)", brick.hue));
-            ctx.fill_rect(brick.x, brick.y, brick.w, brick.h);
-
-            ctx.set_shadow_blur(0.0);
-            ctx.set_fill_style_str("rgba(255,255,255,0.25)");
-            ctx.fill_rect(brick.x + 2.0, brick.y + 2.0, brick.w - 4.0, 4.0);
-            ctx.set_shadow_blur(22.0);
-        }
-        ctx.restore();
+        self.brick_layer.blit(ctx, self.width, self.height);
 
         ctx.save();
         ctx.set_shadow_blur(30.0);
@@ -575,7 +542,13 @@ pub fn start() -> Result<(), JsValue> {
         .ok_or_else(|| JsValue::from_str("no context"))?
         .dyn_into::<CanvasRenderingContext2d>()?;
 
-    let game = Rc::new(RefCell::new(Game::new(window.clone(), canvas.clone(), ctx)));
+    let brick_layer = BrickLayer::new(&document)?;
+    let game = Rc::new(RefCell::new(Game::new(
+        window.clone(),
+        canvas.clone(),
+        ctx,
+        brick_layer,
+    )));
 
     game.borrow_mut().resize();
 
