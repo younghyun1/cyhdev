@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Weak;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use tokio::sync::{Mutex, mpsc, watch};
 use tokio::time::Instant;
@@ -17,6 +17,7 @@ use uuid::Uuid;
 use webrtc::peer_connection::{PeerConnection, RTCIceCandidateInit};
 use webrtc::rtp_transceiver::RtpSender;
 
+use super::ice_policy::{MAX_REMOTE_CANDIDATES_PER_PEER, RemoteCandidatePolicy};
 use super::publication::RtcPublication;
 use super::room::RtcRoom;
 use crate::features::live_chat::domain::{
@@ -58,6 +59,13 @@ struct NegotiationState {
     offer_at: Option<Instant>,
 }
 
+/// Who a peer is: its WebSocket connection, public actor, and call row.
+pub struct RtcPeerIdentity {
+    pub connection_id: Uuid,
+    pub actor: ChatActor,
+    pub participant_id: Uuid,
+}
+
 /// One participant's peer connection and forwarding state.
 pub struct RtcPeer {
     pub connection_id: Uuid,
@@ -76,6 +84,10 @@ pub struct RtcPeer {
     closed: watch::Sender<bool>,
     mic_on: AtomicBool,
     cam_on: AtomicBool,
+    /// Which browser-supplied ICE candidates may reach the agent.
+    candidate_policy: RemoteCandidatePolicy,
+    /// Trickled candidates admitted so far, capped per peer.
+    remote_candidates: AtomicUsize,
     negotiation: Mutex<NegotiationState>,
     /// Set once when teardown begins, so the Left broadcast and `pc.close()`
     /// happen exactly once across the WS-disconnect and connection-failed paths.
@@ -86,18 +98,17 @@ impl RtcPeer {
     /// Construct a peer wrapper. Handlers are attached separately so the
     /// callbacks can hold a `Weak` to the constructed `Arc<Self>`.
     pub fn new(
-        connection_id: Uuid,
-        actor: ChatActor,
-        participant_id: Uuid,
+        identity: RtcPeerIdentity,
         pc: Arc<dyn PeerConnection>,
         signal_tx: mpsc::Sender<RtcServerSignal>,
+        candidate_policy: RemoteCandidatePolicy,
         want_audio: bool,
         want_video: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
-            connection_id,
-            actor,
-            participant_id,
+            connection_id: identity.connection_id,
+            actor: identity.actor,
+            participant_id: identity.participant_id,
             pc,
             signal_tx,
             publications: scc::HashMap::new(),
@@ -106,6 +117,8 @@ impl RtcPeer {
             closed: watch::channel(false).0,
             mic_on: AtomicBool::new(want_audio),
             cam_on: AtomicBool::new(want_video),
+            candidate_policy,
+            remote_candidates: AtomicUsize::new(0),
             negotiation: Mutex::new(NegotiationState::default()),
             torn_down: AtomicBool::new(false),
         })
@@ -120,8 +133,23 @@ impl RtcPeer {
         handler.attach(Arc::downgrade(self), room).await;
     }
 
-    /// Add a remote ICE candidate received from the client.
+    /// Add a remote ICE candidate received from the client, subject to the
+    /// address policy and the per-peer cap; see [`super::ice_policy`].
     pub async fn add_ice(&self, candidate: RtcIceCandidate) {
+        if !self.candidate_policy.admits_candidate(&candidate.candidate) {
+            debug!(connection_id = %self.connection_id, "Dropped inadmissible remote ICE candidate");
+            return;
+        }
+        if self
+            .remote_candidates
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |admitted| {
+                (admitted < MAX_REMOTE_CANDIDATES_PER_PEER).then_some(admitted + 1)
+            })
+            .is_err()
+        {
+            debug!(connection_id = %self.connection_id, "Dropped remote ICE candidate above the per-peer cap");
+            return;
+        }
         let init = RTCIceCandidateInit {
             candidate: candidate.candidate,
             sdp_mid: candidate.sdp_mid,
