@@ -2,7 +2,7 @@
 //
 // Controlled by the parent (photographs page) via `show`/`onClose`. Reads the
 // module-scoped batch store directly. Reuses the page's `.modal-overlay` /
-// `.modal-content` shell plus a `.processing-modal` rule in the inline <style>.
+// `.modal-content` shell plus a `.processing-modal` rule in styles/photographs.css.
 
 import { Show, createMemo } from "solid-js";
 import { Key } from "@solid-primitives/keyed";

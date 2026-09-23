@@ -19,16 +19,40 @@ export type HealthStateResponse = ApiResponse<RootHandlerResponse>;
 
 const POST_LOGIN_REDIRECT_KEY = "post_login_redirect";
 
+/**
+ * Returns a same-origin application path for a post-login redirect, or null.
+ *
+ * A prefix check alone is not enough: URL parsing treats backslashes as slashes
+ * and drops tabs and newlines, so "/\evil.com" resolves to another host. The
+ * target is parsed against the current origin, and the re-serialized path must
+ * still start with exactly one slash. Login itself is rejected so a redirect
+ * cannot loop back to the form.
+ */
+export function safeRedirectTarget(
+  target: string | null | undefined,
+  origin: string = window.location.origin,
+): string | null {
+  if (!target?.startsWith("/")) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(target, origin);
+  } catch {
+    return null;
+  }
+  const path = parsed.pathname;
+  if (parsed.origin !== origin || !path.startsWith("/") || path.startsWith("//")) {
+    return null;
+  }
+  if (path === "/login" || path.startsWith("/login/")) return null;
+  return `${path}${parsed.search}${parsed.hash}`;
+}
+
 /** Read and clear the saved post-login redirect target. */
 export function consumePostLoginRedirect(): string | null {
   try {
     const target = sessionStorage.getItem(POST_LOGIN_REDIRECT_KEY);
     sessionStorage.removeItem(POST_LOGIN_REDIRECT_KEY);
-    return target?.startsWith("/")
-      && !target.startsWith("//")
-      && !target.startsWith("/login")
-      ? target
-      : null;
+    return safeRedirectTarget(target);
   } catch {
     return null;
   }
@@ -36,11 +60,10 @@ export function consumePostLoginRedirect(): string | null {
 
 /** Saves a validated same-site route across an external authentication redirect. */
 export function rememberPostLoginRedirect(target: string): void {
-  if (!target.startsWith("/") || target.startsWith("//") || target.startsWith("/login")) {
-    return;
-  }
+  const safeTarget = safeRedirectTarget(target);
+  if (!safeTarget) return;
   try {
-    sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, target);
+    sessionStorage.setItem(POST_LOGIN_REDIRECT_KEY, safeTarget);
   } catch {
     // Navigation can continue; the post-login fallback remains the home page.
   }

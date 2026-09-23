@@ -12,6 +12,8 @@ import RamStatsCard from "./RamStatsCard";
 import type { HostStatsRaw, HostStatPoint } from "../dtos/shared/host_stats";
 import { t, tx } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
+import { webSocketUrl } from "../utils/webSocketUrl";
+import { API_URL } from "../services/api";
 
 // parse exactly 20 bytes: [f32][u64][u64] (all big-endian)
 function parseHostStats(buf: ArrayBuffer): HostStatsRaw | null {
@@ -56,9 +58,7 @@ export default function HostStatsDashboard(props: {
 
   const wsUrl = () =>
     props.wsUrl ||
-    (import.meta.env.VITE_API_URL || "")
-      .replace(/^http/, "ws")
-      .replace(/\/$/, "") + "/ws/host-stats";
+    webSocketUrl("/ws/host-stats", API_URL, window.location.origin);
 
   const scheduleReconnect = () => {
     if (

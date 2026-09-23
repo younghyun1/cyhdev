@@ -6,6 +6,7 @@ import { setAuthenticated, setSuperuser, setUser } from "../state/auth";
 import {
   consumePostLoginRedirect,
   rememberPostLoginRedirect,
+  safeRedirectTarget,
 } from "../services/api";
 import { consumeOidcFragment } from "../services/oidc_fragment";
 import { pageStyles } from "../styles/pageStyles";
@@ -26,7 +27,7 @@ function LoginPage() {
     const next = Array.isArray(searchParams.next)
       ? searchParams.next[0]
       : searchParams.next;
-    return next?.startsWith("/") && !next.startsWith("//") ? next : null;
+    return safeRedirectTarget(next);
   };
 
   const hydrateSession = async (): Promise<boolean> => {

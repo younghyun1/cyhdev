@@ -6,6 +6,7 @@ import type {
   TooltipItem,
 } from "chart.js";
 import { createChartPalette } from "./chartPalette";
+import { createTimeLabels } from "./chartTimeLabels";
 import type { HostStatPoint } from "../dtos/shared/host_stats";
 import { t } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
@@ -40,14 +41,10 @@ export default function RamStatsCard(props: {
     return l ? Math.ceil(l.memT / (1024 * 1024) / 100) * 100 : undefined;
   });
 
-  const labels = () => {
-    const s = props.data;
-    const blanks = Array(Math.max(0, props.limit - s.length)).fill("");
-    const times = s.map((s) =>
-      new Date(s.ts).toLocaleTimeString(undefined, { hour12: false }),
-    );
-    return [...times, ...blanks];
-  };
+  const labels = createTimeLabels(
+    () => props.data,
+    () => props.limit,
+  );
 
   const chartData = (): ChartData<"line"> => ({
     labels: labels(),
@@ -67,7 +64,9 @@ export default function RamStatsCard(props: {
     ],
   });
 
-  const chartOptions = (): ChartOptions<"line"> => ({
+  // Depends only on theme tokens and viewport, so the chart keeps one options
+  // object across streamed samples instead of rebuilding it every second.
+  const chartOptions = createMemo((): ChartOptions<"line"> => ({
     animation: false,
     responsive: true,
     maintainAspectRatio: false,
@@ -102,7 +101,7 @@ export default function RamStatsCard(props: {
         borderWidth: 1,
       },
     },
-  });
+  }));
 
   return (
     <div class="stats-chart-card flex flex-col gap-2">
