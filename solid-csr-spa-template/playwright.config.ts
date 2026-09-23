@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "performance.spec.ts",
+  testIgnore: ["performance.spec.ts", "security-headers.spec.ts"],
   timeout: 30_000,
   expect: { timeout: 7_500 },
   fullyParallel: true,

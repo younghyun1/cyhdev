@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod browser_policy;
 pub mod is_logged_in;
 pub mod logging;
 pub mod request_deadline;

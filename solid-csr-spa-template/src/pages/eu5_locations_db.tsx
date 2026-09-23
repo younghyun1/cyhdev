@@ -10,6 +10,20 @@ export const EU5_THEME_READY_MESSAGE = "cyhdev:eu5-theme-ready";
 export const serializeEu5Theme = (mode: "light" | "dark"): string =>
   `${EU5_THEME_MESSAGE_PREFIX}${mode}`;
 
+/**
+ * Accepts the ready signal only from this page's own EU5 frame. The frame is
+ * sandboxed without `allow-same-origin`, so its messages carry the opaque origin
+ * `"null"`; identity comes from the source window, not the origin string.
+ */
+export const isEu5ThemeReady = (
+  event: Pick<MessageEvent<unknown>, "source" | "origin" | "data">,
+  frameWindow: MessageEventSource | null,
+): boolean =>
+  frameWindow !== null &&
+  event.source === frameWindow &&
+  event.origin === "null" &&
+  event.data === EU5_THEME_READY_MESSAGE;
+
 export const calculateViewportOffsets = (
   topBarBottom: number,
   bottomBarTop: number,
@@ -23,21 +37,14 @@ const Eu5LocationsDb: Component = () => {
   let page: HTMLElement | undefined;
   let frame: HTMLIFrameElement | undefined;
 
+  // The app runs in an opaque-origin sandbox, so no target origin can be named;
+  // the payload is only the public theme name.
   const sendTheme = (mode: "light" | "dark"): void => {
-    frame?.contentWindow?.postMessage(
-      serializeEu5Theme(mode),
-      window.location.origin,
-    );
+    frame?.contentWindow?.postMessage(serializeEu5Theme(mode), "*");
   };
 
   const handleThemeReady = (event: MessageEvent<unknown>): void => {
-    const target = frame?.contentWindow;
-    if (
-      !target ||
-      event.source !== target ||
-      event.origin !== window.location.origin ||
-      event.data !== EU5_THEME_READY_MESSAGE
-    ) {
+    if (!isEu5ThemeReady(event, frame?.contentWindow ?? null)) {
       return;
     }
     sendTheme(theme());
@@ -102,7 +109,7 @@ const Eu5LocationsDb: Component = () => {
         src="/eu5-locations-db/app/index.html"
         title={t("top_bar.nav.eu5_locations_db")}
         loading="eager"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
         onLoad={() => sendTheme(theme())}
       />
     </section>

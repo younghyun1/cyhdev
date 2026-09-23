@@ -1,0 +1,11 @@
+{
+  "origin": "http://127.0.0.1:4173",
+  "mediaOrigins": [
+    "https://cyhdev-img.s3.us-west-1.amazonaws.com",
+    "https://cyhdev-img.s3.amazonaws.com"
+  ],
+  "contentSecurityPolicy": "default-src 'self'; script-src 'self' 'sha256-UhG6wONqPr0ElA7o5630PEKCcZwf3WHJpZ99/f/RCMQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cyhdev-img.s3.us-west-1.amazonaws.com https://cyhdev-img.s3.amazonaws.com https://tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:4173 https://nominatim.openstreetmap.org; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+  "permissionsPolicy": "camera=(self), microphone=(self), display-capture=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), midi=()",
+  "mapPolicy": "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; frame-ancestors 'self'",
+  "eu5Policy": "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation; frame-ancestors 'self'"
+}

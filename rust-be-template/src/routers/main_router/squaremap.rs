@@ -12,6 +12,8 @@ use axum::{
 };
 use tower_http::services::ServeDir;
 
+#[path = "squaremap_storage_shim.rs"]
+mod storage_shim;
 #[path = "squaremap_cache.rs"]
 mod tile_cache;
 #[path = "squaremap_cache_http.rs"]
@@ -49,6 +51,7 @@ fn router(root: Option<PathBuf>) -> Router {
         )
         .nest("/minecraft/map/", files)
         .layer(from_fn(cache_headers))
+        .layer(from_fn(storage_shim::inject))
 }
 
 /// Keep setup failures readable inside the map frame without serving the SPA recursively.
