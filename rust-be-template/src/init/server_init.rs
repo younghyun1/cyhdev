@@ -2,27 +2,31 @@ use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::Arc,
+    time::Duration,
 };
 
-use axum::{
-    handler::HandlerWithoutStateExt,
-    http::{StatusCode, Uri, uri::Authority},
-    response::Redirect,
-};
-use axum_server::tls_rustls::RustlsConfig;
+use axum_server::{Handle, accept::NoDelayAcceptor, tls_rustls::RustlsConfig};
 use lettre::{AsyncSmtpTransport, Tokio1Executor, transport::smtp::authentication::Credentials};
-use tracing::info;
+use tokio::task::JoinHandle;
+use tracing::{error, info, warn};
 
 use crate::{
     init::config::EmailConfig, jobs::job_funcs::init_scheduler::task_init,
-    routers::main_router::build_router, util::extract::Host,
+    routers::main_router::build_router, util::connection_limit::ConnectionLimiter,
 };
 
 use super::{
+    connection_acceptor::LimitedAcceptor,
     db_config::DbConfig,
     db_pool::{self, DbPoolSettings, build_pool, with_session_options},
+    http_redirect::{Ports, redirect_http_to_https},
+    http_server::{HttpConnectionLimits, ProtocolTimeouts, configure_protocols},
+    shutdown::{DRAIN_DEADLINE, server_shutdown_hooks, wait_for_signal},
     state::ServerState,
 };
+
+/// Extra wait beyond the drain deadline for a listener task to report completion.
+const LISTENER_EXIT_GRACE: Duration = Duration::from_secs(5);
 
 pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()> {
     let host_ip: IpAddr = std::env::var("HOST_IP")
@@ -143,106 +147,86 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     // initialize scheduled jobs manager
     task_init(state.clone()).await?;
 
-    tokio::spawn(async move {
-        if let Err(e) = redirect_http_to_https(
-            host_ip,
-            Ports {
-                http: 80,
-                https: host_port,
-            },
-        )
-        .await
-        {
-            tracing::error!(error = %e, "HTTP->HTTPS redirect listener exited with error");
-        }
-    });
+    // Both listeners share one admission budget because both consume descriptors.
+    let limits = HttpConnectionLimits::from_env()?;
+    let limiter =
+        ConnectionLimiter::new("http_connections", limits.max_total, limits.max_per_client);
+    let https_handle = Handle::new();
+    let redirect_handle = Handle::new();
 
-    info!(host_port = host_port, "Listening for HTTPS traffic");
+    let redirect_task = {
+        let (handle, limiter) = (redirect_handle.clone(), limiter.clone());
+        let ports = Ports {
+            http: 80,
+            https: host_port,
+        };
+        tokio::spawn(async move {
+            if let Err(e) = redirect_http_to_https(host_ip, ports, handle, limiter).await {
+                error!(error = %e, "HTTP->HTTPS redirect listener exited with error");
+            }
+        })
+    };
+
+    let mut https_server = axum_server::bind_rustls(host_socket_addr, config)
+        // HTTP/2 headers and DATA can be separate writes; avoid waiting for delayed TCP ACKs.
+        // Admission runs before TCP_NODELAY and TLS so refused sockets cost nothing more.
+        .map(|acceptor| acceptor.acceptor(LimitedAcceptor::new(NoDelayAcceptor::new(), limiter)))
+        .handle(https_handle.clone());
+    configure_protocols(https_server.http_builder(), ProtocolTimeouts::PRODUCTION);
+
+    info!(
+        host_port = host_port,
+        max_connections = limits.max_total,
+        max_connections_per_client = limits.max_per_client,
+        "Listening for HTTPS traffic"
+    );
 
     info!(
         elapsed = ?start.elapsed(),
         "Initialization complete; starting server"
     );
 
-    axum_server::bind_rustls(host_socket_addr, config)
-        // HTTP/2 headers and DATA can be separate writes; avoid waiting for delayed TCP ACKs.
-        .map(|acceptor| acceptor.acceptor(axum_server::accept::NoDelayAcceptor::new()))
-        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
+    let mut https_task = tokio::spawn(
+        https_server.serve(router.into_make_service_with_connect_info::<SocketAddr>()),
+    );
 
+    tokio::select! {
+        signal = wait_for_signal() => {
+            info!(signal, drain_deadline_ms = DRAIN_DEADLINE.as_millis(), "Shutdown requested; draining connections");
+        }
+        joined = &mut https_task => {
+            redirect_handle.shutdown();
+            return match joined {
+                Ok(Ok(())) => Err(anyhow::anyhow!("HTTPS listener stopped unexpectedly")),
+                Ok(Err(e)) => Err(anyhow::anyhow!("Server error: {}", e)),
+                Err(e) => Err(anyhow::anyhow!("HTTPS listener task failed: {}", e)),
+            };
+        }
+    }
+
+    https_handle.graceful_shutdown(Some(DRAIN_DEADLINE));
+    redirect_handle.graceful_shutdown(Some(DRAIN_DEADLINE));
+    await_listener("https", https_task).await;
+    await_listener("http_redirect", redirect_task).await;
+
+    let outcomes = server_shutdown_hooks(&state).run().await;
+    info!(hooks = outcomes.len(), "Shutdown complete");
     Ok(())
+}
+
+/// Waits for a listener to finish draining; axum-server force-closes connections at the
+/// drain deadline, so the extra grace only covers task teardown.
+async fn await_listener<T>(name: &'static str, task: JoinHandle<T>) {
+    match tokio::time::timeout(DRAIN_DEADLINE + LISTENER_EXIT_GRACE, task).await {
+        Ok(Ok(_)) => info!(listener = name, "Listener drained"),
+        Ok(Err(e)) => error!(listener = name, error = %e, "Listener task failed during shutdown"),
+        Err(_) => warn!(
+            listener = name,
+            "Listener did not stop before the drain deadline"
+        ),
+    }
 }
 
 #[cfg(test)]
 #[path = "tls_latency_tests.rs"]
 mod tls_latency_tests;
-
-#[derive(Clone, Copy)]
-struct Ports {
-    http: u16,
-    https: u16,
-}
-
-async fn redirect_http_to_https(host_ip: IpAddr, ports: Ports) -> anyhow::Result<()> {
-    fn make_https(host: &str, uri: Uri, https_port: u16) -> anyhow::Result<Uri> {
-        let mut parts = uri.into_parts();
-
-        parts.scheme = Some(axum::http::uri::Scheme::HTTPS);
-
-        if parts.path_and_query.is_none() {
-            parts.path_and_query = Some(
-                "/".parse()
-                    .map_err(|e| anyhow::anyhow!("Failed to parse '/' as path: {}", e))?,
-            );
-        }
-
-        let authority: Authority = host
-            .parse()
-            .map_err(|e| anyhow::anyhow!("Failed to parse host into Authority: {}", e))?;
-        let bare_host = match authority.port() {
-            Some(port_struct) => authority
-                .as_str()
-                .strip_suffix(port_struct.as_str())
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Failed to remove port ({}) from authority string",
-                        port_struct
-                    )
-                })?
-                .strip_suffix(':')
-                .ok_or_else(|| anyhow::anyhow!("Failed to remove colon from authority string"))?,
-            None => authority.as_str(),
-        };
-
-        parts.authority = Some(
-            format!("{bare_host}:{https_port}")
-                .parse()
-                .map_err(|e| anyhow::anyhow!("Failed to parse new authority: {}", e))?,
-        );
-
-        Uri::from_parts(parts).map_err(|e| anyhow::anyhow!("Failed to construct HTTPS URI: {}", e))
-    }
-
-    let redirect = move |Host(host): Host, uri: Uri| async move {
-        match make_https(&host, uri, ports.https) {
-            Ok(uri) => Ok(Redirect::permanent(&uri.to_string())),
-            Err(error) => {
-                tracing::warn!(error = %error, "Failed to convert URI to HTTPS");
-                Err(StatusCode::BAD_REQUEST)
-            }
-        }
-    };
-
-    let addr = SocketAddr::new(host_ip, ports.http);
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to bind TCP listener: {}", e))?;
-    let local_addr = listener
-        .local_addr()
-        .map_err(|e| anyhow::anyhow!("Failed to get local address: {}", e))?;
-    tracing::debug!(local_addr = %local_addr, "Listening for HTTP redirect traffic");
-    axum::serve(listener, redirect.into_make_service())
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to serve redirection: {}", e))
-}
