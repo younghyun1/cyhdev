@@ -17,11 +17,32 @@ services:
     # Runtime configuration stays outside the image and build context.
     env_file:
       - .env
+    # Loopback only: this file is for local runs, so other hosts on the network
+    # cannot reach the container. Deployments publish ports explicitly.
     ports:
-      - 30737:443
+      - 127.0.0.1:30737:443
       # WebRTC SFU media. The default 64-port range covers the maximum room
       # capacity; keep its start in sync with RTC_UDP_PORT_START.
-      - 3478-3541:3478-3541/udp
+      - 127.0.0.1:3478-3541:3478-3541/udp
+    # The image runs as UID 65532 and only the paths below are writable.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      # Upload and photo batch staging. tmpfs holds only what is staged, and
+      # the size bounds one full batch (50 files of up to 150 MiB) plus headroom.
+      - /tmp:mode=1777,size=8g
+    volumes:
+      # Relative CERT_CHAIN_DIR and PRIV_KEY_DIR values such as ./certs/... resolve
+      # against the image working directory, /bin. UID 65532 must be able to
+      # traverse this directory and read both files.
+      - ./certs:/bin/certs:ro
+      # New named volumes inherit the image directories' UID 65532 ownership.
+      # A non-default SEARCH_INDEX_PATH must point inside a writable mount.
+      - search-index:/bin/data/search_index
+      - logs:/bin/logs
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
@@ -50,8 +71,12 @@ services:
 #       interval: 10s
 #       timeout: 5s
 #       retries: 5
-# volumes:
-#   db-data:
+
+volumes:
+  search-index:
+  logs:
+  # db-data:
+
 # secrets:
 #   db-password:
 #     file: db/password.txt
