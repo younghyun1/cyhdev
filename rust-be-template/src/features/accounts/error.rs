@@ -18,10 +18,16 @@ pub enum AccountError {
     DuplicateEmail(#[source] DieselError),
     #[error("user name already exists")]
     DuplicateUserName(#[source] DieselError),
+    #[error("user name is held by another account")]
+    UserNameUnavailable,
     #[error("account was not found")]
     AccountNotFound,
     #[error("credentials were not accepted")]
     InvalidCredentials,
+    #[error("the account's email address is not verified")]
+    EmailNotVerified,
+    #[error("a detached account mutation task failed before reporting its outcome")]
+    BackgroundTask(#[source] tokio::task::JoinError),
     #[error("the protected system actor cannot be deleted or purged")]
     SystemActorProtected,
     #[error("current database role does not authorize account hard purge")]

@@ -13,6 +13,7 @@ use crate::{
             records::{
                 AccountProfileRecord, AccountRecord, ProfilePictureRecord, PublicAccountRecord,
             },
+            sql_functions::lower,
         },
     },
     schema::{user_profile_pictures, users},
@@ -23,7 +24,7 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         diesel::select(exists(
             users::table
-                .filter(users::user_email.eq(email))
+                .filter(lower(users::user_email).eq(lower(email)))
                 .filter(users::user_deleted_at.is_null()),
         ))
         .get_result(&mut connection)
@@ -37,7 +38,7 @@ impl AccountRepository {
     ) -> Result<Option<LoginAccount>, AccountError> {
         let mut connection = self.connection().await?;
         let record = users::table
-            .filter(users::user_email.eq(email))
+            .filter(lower(users::user_email).eq(lower(email)))
             .filter(users::user_deleted_at.is_null())
             .select(AccountRecord::as_select())
             .first::<AccountRecord>(&mut connection)
@@ -106,7 +107,7 @@ impl AccountRepository {
     ) -> Result<Option<PublicAccount>, AccountError> {
         let mut connection = self.connection().await?;
         let account = users::table
-            .filter(users::user_name.eq(user_name))
+            .filter(lower(users::user_name).eq(lower(user_name)))
             .filter(users::user_deleted_at.is_null())
             .select(PublicAccountRecord::as_select())
             .first::<PublicAccountRecord>(&mut connection)

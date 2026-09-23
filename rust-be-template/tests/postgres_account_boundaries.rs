@@ -15,7 +15,7 @@ use support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
-    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
+    fixtures::{VALID_PASSWORD, account_test_context, seed_account, seed_verified_account},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -51,7 +51,21 @@ async fn embedded_migration_chain_reverts_and_reapplies() -> TestResult {
 fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let fixture = seed_account(&context, "AuthBoundary").await?;
+        let unverified = seed_account(&context, "AuthUnverified").await?;
+        match context
+            .accounts
+            .login(&unverified.email, VALID_PASSWORD, None)
+            .await
+        {
+            Err(AccountError::EmailNotVerified) => {}
+            Err(error) => return Err(Box::new(error) as BoxError),
+            Ok(_) => return require(false, "unverified account received a session"),
+        }
+        require(
+            context.sessions.is_empty(),
+            "rejected unverified login left a session",
+        )?;
+        let fixture = seed_verified_account(&context, "AuthBoundary").await?;
 
         require(
             context.accounts.email_exists(&fixture.email).await?,
@@ -131,16 +145,12 @@ fn role_gate_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let fixture = seed_account(&context, "SessionBoundary").await?;
+        let fixture = seed_verified_account(&context, "SessionBoundary").await?;
         let receipt = context
             .accounts
             .login(&fixture.email, VALID_PASSWORD, None)
             .await?;
 
-        context
-            .accounts
-            .verify_email(fixture.verification_token)
-            .await?;
         context
             .accounts
             .assign_role(fixture.user_id, RoleType::Moderator)

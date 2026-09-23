@@ -155,11 +155,25 @@ pub struct SignupReceipt {
     pub verify_by: DateTime<Utc>,
 }
 
-/// Fresh verification capability for an existing active unverified account.
-pub struct EmailVerificationIssue {
-    pub user_email: String,
-    pub token: Uuid,
-    pub verify_by: DateTime<Utc>,
+/// How a signup that collided with an existing email was settled.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum DuplicateRegistration {
+    /// The unverified account now holds the new submission's credentials and name.
+    ReplacedUnverified { user_id: Uuid },
+    /// The address belongs to a verified account, which is left untouched.
+    Unchanged,
+}
+
+/// Public result of a signup; every variant returns the same accepted response.
+#[derive(Debug, Clone)]
+pub enum SignupOutcome {
+    Registered(SignupReceipt),
+    /// A second signup for an unverified address replaced its password hash and user name and
+    /// invalidated the earlier verification link, so whoever registered the address first
+    /// cannot keep a password on the account its owner later verifies.
+    ReplacedUnverified(SignupReceipt),
+    /// The address is already verified; nothing changed and no email was sent.
+    AlreadyVerified,
 }
 
 /// Password-reset token state used for service-level validation.

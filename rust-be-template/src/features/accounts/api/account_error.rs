@@ -22,9 +22,13 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
             AccountMutation::Update => CodeError::DB_UPDATE_ERROR,
         },
         AccountError::DuplicateEmail(_) => CodeError::EMAIL_MUST_BE_UNIQUE,
-        AccountError::DuplicateUserName(_) => CodeError::USER_NAME_INVALID,
+        AccountError::DuplicateUserName(_) | AccountError::UserNameUnavailable => {
+            CodeError::USER_NAME_INVALID
+        }
         AccountError::AccountNotFound => CodeError::USER_NOT_FOUND,
         AccountError::InvalidCredentials => CodeError::INVALID_CREDENTIALS,
+        AccountError::EmailNotVerified => CodeError::LOGIN_EMAIL_NOT_VERIFIED,
+        AccountError::BackgroundTask(_) => CodeError::JOIN_ERROR,
         AccountError::SystemActorProtected => CodeError::SYSTEM_ACTOR_PROTECTED,
         AccountError::HardPurgeRequesterUnauthorized => CodeError::IS_NOT_SUPERUSER,
         AccountError::MediaCleanupNotFound => CodeError::MEDIA_CLEANUP_NOT_FOUND,
@@ -105,13 +109,19 @@ pub(super) fn map_login_error(error: AccountError) -> CodeErrorResp {
             CodeError::INVALID_CREDENTIALS,
             "credentials were not accepted",
         ),
+        AccountError::EmailNotVerified => code_err(
+            CodeError::LOGIN_EMAIL_NOT_VERIFIED,
+            "email verification required before sign-in",
+        ),
         error => map_account_error(error, AccountMutation::Update),
     }
 }
 
 pub(super) fn map_signup_error(error: AccountError) -> CodeErrorResp {
     match error {
-        AccountError::DuplicateEmail(_) | AccountError::DuplicateUserName(_) => code_err(
+        AccountError::DuplicateEmail(_)
+        | AccountError::DuplicateUserName(_)
+        | AccountError::UserNameUnavailable => code_err(
             CodeError::ACCOUNT_IDENTITY_UNAVAILABLE,
             "requested account identity unavailable",
         ),
