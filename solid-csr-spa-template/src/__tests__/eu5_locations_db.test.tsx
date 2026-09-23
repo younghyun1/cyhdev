@@ -26,6 +26,7 @@ import { KO_KR_DEFAULT_TEXTS } from "../i18n/defaults/ko-kr";
 import Eu5LocationsDb, {
   EU5_THEME_READY_MESSAGE,
   calculateViewportOffsets,
+  isEu5ThemeReady,
   serializeEu5Theme,
 } from "../pages/eu5_locations_db";
 import { setAuthenticated } from "../state/auth";
@@ -49,7 +50,7 @@ describe("EU5 Locations DB page", () => {
     });
   });
 
-  it("loads the first-party Slint host eagerly with browser permissions", () => {
+  it("loads the Slint host eagerly in an opaque-origin sandbox", () => {
     const result = render(() => <Eu5LocationsDb />);
     const frame = result.container.querySelector("iframe");
 
@@ -59,7 +60,7 @@ describe("EU5 Locations DB page", () => {
     expect(frame?.getAttribute("title")).toBe("EU5 Locations DB");
     expect(frame?.getAttribute("loading")).toBe("eager");
     expect(frame?.getAttribute("sandbox")).toContain("allow-scripts");
-    expect(frame?.getAttribute("sandbox")).toContain("allow-same-origin");
+    expect(frame?.getAttribute("sandbox")).not.toContain("allow-same-origin");
     expect(frame?.getAttribute("sandbox")).toContain("allow-popups");
   });
 
@@ -78,21 +79,15 @@ describe("EU5 Locations DB page", () => {
     const postMessage = vi.spyOn(target, "postMessage");
 
     fireEvent.load(frame);
-    expect(postMessage).toHaveBeenCalledWith(
-      "cyhdev:eu5-theme:light",
-      window.location.origin,
-    );
+    expect(postMessage).toHaveBeenCalledWith("cyhdev:eu5-theme:light", "*");
 
     setTheme("dark");
     await waitFor(() => {
-      expect(postMessage).toHaveBeenCalledWith(
-        "cyhdev:eu5-theme:dark",
-        window.location.origin,
-      );
+      expect(postMessage).toHaveBeenCalledWith("cyhdev:eu5-theme:dark", "*");
     });
   });
 
-  it("answers only a same-origin ready message from its own iframe", () => {
+  it("answers only an opaque-origin ready message from its own iframe", () => {
     const result = render(() => <Eu5LocationsDb />);
     const frame = result.container.querySelector("iframe");
     const target = frame?.contentWindow;
@@ -100,34 +95,35 @@ describe("EU5 Locations DB page", () => {
     if (!target) return;
     const postMessage = vi.spyOn(target, "postMessage");
 
-    window.dispatchEvent(
-      new MessageEvent("message", {
-        data: EU5_THEME_READY_MESSAGE,
-        origin: "https://invalid.example",
-        source: target,
-      }),
-    );
-    window.dispatchEvent(
-      new MessageEvent("message", {
-        data: "unrelated-message",
-        origin: window.location.origin,
-        source: target,
-      }),
-    );
+    for (const rejected of [
+      { data: EU5_THEME_READY_MESSAGE, origin: "https://invalid.example", source: target },
+      // A same-origin sender is not the sandboxed app.
+      { data: EU5_THEME_READY_MESSAGE, origin: window.location.origin, source: target },
+      { data: "unrelated-message", origin: "null", source: target },
+      { data: EU5_THEME_READY_MESSAGE, origin: "null", source: window },
+    ]) {
+      window.dispatchEvent(new MessageEvent("message", rejected));
+    }
     expect(postMessage).not.toHaveBeenCalled();
 
     window.dispatchEvent(
       new MessageEvent("message", {
         data: EU5_THEME_READY_MESSAGE,
-        origin: window.location.origin,
+        origin: "null",
         source: target,
       }),
     );
     expect(postMessage).toHaveBeenCalledOnce();
-    expect(postMessage).toHaveBeenCalledWith(
-      "cyhdev:eu5-theme:light",
-      window.location.origin,
-    );
+    expect(postMessage).toHaveBeenCalledWith("cyhdev:eu5-theme:light", "*");
+  });
+
+  it("identifies the ready signal by source window and opaque origin", () => {
+    const frameWindow = {} as MessageEventSource;
+    const ready = { data: EU5_THEME_READY_MESSAGE, origin: "null", source: frameWindow };
+    expect(isEu5ThemeReady(ready, frameWindow)).toBe(true);
+    expect(isEu5ThemeReady(ready, null)).toBe(false);
+    expect(isEu5ThemeReady({ ...ready, source: null }, frameWindow)).toBe(false);
+    expect(isEu5ThemeReady({ ...ready, origin: "https://cyhdev.com" }, frameWindow)).toBe(false);
   });
 
   it("keeps the exact English label and a Korean translation", () => {
