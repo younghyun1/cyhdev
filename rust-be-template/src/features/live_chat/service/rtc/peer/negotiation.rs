@@ -22,6 +22,10 @@ const STALE_OFFER_TIMEOUT: Duration = Duration::from_secs(10);
 impl RtcPeer {
     /// Apply the client's join offer and produce the SFU answer SDP.
     pub async fn answer_join_offer(&self, offer_sdp: String) -> Option<String> {
+        let offer_sdp = self
+            .candidate_policy
+            .sanitize_remote_sdp(&offer_sdp)
+            .into_owned();
         let offer = match RTCSessionDescription::offer(offer_sdp) {
             Ok(offer) => offer,
             Err(e) => {
@@ -94,6 +98,7 @@ impl RtcPeer {
     /// Apply a client answer to an SFU renegotiation offer, then replay a
     /// pending renegotiation if one was requested while the offer was in flight.
     pub async fn accept_answer(self: &Arc<Self>, sdp: String) {
+        let sdp = self.candidate_policy.sanitize_remote_sdp(&sdp).into_owned();
         match RTCSessionDescription::answer(sdp) {
             Ok(answer) => {
                 if let Err(e) = self.pc.set_remote_description(answer).await {

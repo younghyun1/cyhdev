@@ -20,7 +20,7 @@ use crate::features::live_chat::{
     service::{
         live_chat_service::LiveChatService,
         rtc::{
-            peer::{RtcPeer, RtcPeerEventHandler},
+            peer::{RtcPeer, RtcPeerEventHandler, RtcPeerIdentity},
             room::{RtcRoom, RtcRoomAcquire},
         },
     },
@@ -197,11 +197,14 @@ impl RtcSession {
         self.spawn_signal_relay(rtc_signal_rx);
 
         let peer = RtcPeer::new(
-            self.connection_id,
-            self.actor.clone(),
-            participant_id,
+            RtcPeerIdentity {
+                connection_id: self.connection_id,
+                actor: self.actor.clone(),
+                participant_id,
+            },
             pc,
             rtc_signal_tx,
+            engine.candidate_policy(),
             want_audio,
             want_video,
         );
