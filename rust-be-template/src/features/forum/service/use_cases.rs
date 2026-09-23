@@ -10,8 +10,7 @@ use crate::features::{
             enums::ForumModerationAction,
             models::{
                 ForumCapabilities, ForumModerationAuditPage, ForumModerationReceipt,
-                ForumMutationReceipt, ForumNotificationPage, ForumNotificationPruneReport,
-                ForumTopicDetail, ForumTopicPage,
+                ForumMutationReceipt, ForumNotificationPage, ForumTopicDetail, ForumTopicPage,
             },
             validation::{
                 DEFAULT_AUDIT_PAGE_SIZE, DEFAULT_NOTIFICATION_PAGE_SIZE, DEFAULT_REPLY_PAGE_SIZE,
@@ -365,11 +364,5 @@ impl ForumService {
             .await;
         drop(lease);
         result
-    }
-
-    pub async fn prune_notifications(&self) -> Result<ForumNotificationPruneReport, ForumError> {
-        self.repository
-            .prune_expired_notifications(Utc::now())
-            .await
     }
 }

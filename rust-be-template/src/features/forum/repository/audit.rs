@@ -1,6 +1,9 @@
 //! Bounded moderation-audit reads.
 
-use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl};
+use diesel::{
+    ExpressionMethods, IntoSql, QueryDsl,
+    sql_types::{Record, Timestamptz, Uuid as SqlUuid},
+};
 use diesel_async::RunQueryDsl;
 
 use crate::{
@@ -48,17 +51,14 @@ impl ForumRepository {
             ))
             .into_boxed();
         if let Some(cursor) = before {
+            // Bounds forum_moderation_audit_page_idx (created_at DESC, id DESC).
             query = query.filter(
-                forum_moderation_audit_events::forum_moderation_audit_event_created_at
-                    .lt(cursor.created_at)
-                    .or(
-                        forum_moderation_audit_events::forum_moderation_audit_event_created_at
-                            .eq(cursor.created_at)
-                            .and(
-                                forum_moderation_audit_events::forum_moderation_audit_event_id
-                                    .lt(cursor.item_id),
-                            ),
-                    ),
+                (
+                    forum_moderation_audit_events::forum_moderation_audit_event_created_at,
+                    forum_moderation_audit_events::forum_moderation_audit_event_id,
+                )
+                    .into_sql::<Record<(Timestamptz, SqlUuid)>>()
+                    .lt((cursor.created_at, cursor.item_id)),
             );
         }
         let mut rows = query
