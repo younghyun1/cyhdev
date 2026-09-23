@@ -122,7 +122,7 @@ pub async fn seed_account(context: &AccountTestContext, label: &str) -> TestResu
         .await?;
 
     let account = match context.repository.login_account_by_email(&email).await? {
-        Some(account) => account,
+        Some(candidate) => candidate.account,
         None => {
             return Err(Box::new(HarnessError::Assertion {
                 message: "registered account was not readable",

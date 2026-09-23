@@ -1,12 +1,18 @@
 //! Read-only account queries.
 
-use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper, dsl::exists};
+use diesel::{
+    ExpressionMethods, NullableExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+    dsl::exists,
+};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
     features::accounts::{
-        domain::account::{CurrentAccount, LoginAccount, PublicAccount, SessionAccount},
+        domain::{
+            account::{CurrentAccount, LoginCandidate, PublicAccount, SessionAccount},
+            role::RoleType,
+        },
         error::AccountError,
         repository::{
             account_repository::AccountRepository,
@@ -16,7 +22,7 @@ use crate::{
             sql_functions::lower,
         },
     },
-    schema::{user_profile_pictures, users},
+    schema::{user_profile_pictures, user_roles, users},
 };
 
 impl AccountRepository {
@@ -32,21 +38,36 @@ impl AccountRepository {
         .map_err(AccountError::Query)
     }
 
+    /// Reads the credentials and the role in one round trip, so a successful login needs no
+    /// second query before creating its session.
     pub async fn login_account_by_email(
         &self,
         email: &str,
-    ) -> Result<Option<LoginAccount>, AccountError> {
+    ) -> Result<Option<LoginCandidate>, AccountError> {
         let mut connection = self.connection().await?;
         let record = users::table
+            .left_join(user_roles::table)
             .filter(lower(users::user_email).eq(lower(email)))
             .filter(users::user_deleted_at.is_null())
-            .select(AccountRecord::as_select())
-            .first::<AccountRecord>(&mut connection)
+            .select((AccountRecord::as_select(), user_roles::role_id.nullable()))
+            .first::<(AccountRecord, Option<Uuid>)>(&mut connection)
             .await
             .optional()
             .map_err(AccountError::Query)?;
-
-        Ok(record.map(AccountRecord::into_login_account))
+        let (record, role_id) = match record {
+            Some(record) => record,
+            None => return Ok(None),
+        };
+        let role = match role_id {
+            Some(role_id) => {
+                Some(RoleType::from_uuid(role_id).ok_or(AccountError::InvalidRoleId(role_id))?)
+            }
+            None => None,
+        };
+        Ok(Some(LoginCandidate {
+            account: record.into_login_account(),
+            role,
+        }))
     }
 
     pub async fn session_account(

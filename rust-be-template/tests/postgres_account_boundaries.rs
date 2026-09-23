@@ -69,6 +69,10 @@ fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "rejected unverified login left a session",
         )?;
         let fixture = seed_verified_account(&context, "AuthBoundary").await?;
+        context
+            .accounts
+            .assign_role(fixture.user_id, RoleType::Moderator)
+            .await?;
 
         require(
             context.accounts.email_exists(&fixture.email).await?,
@@ -105,6 +109,10 @@ fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             session.user_id == fixture.user_id,
             "session belongs to the wrong account",
+        )?;
+        require(
+            session.role_type == RoleType::Moderator,
+            "login did not seed the session with the persisted role",
         )?;
         require(
             context.sessions.len() == 1,

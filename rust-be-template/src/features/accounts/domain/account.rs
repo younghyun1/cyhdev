@@ -19,6 +19,13 @@ pub struct LoginAccount {
     pub language: i32,
 }
 
+/// Credentials and role read by login in one query.
+pub struct LoginCandidate {
+    pub account: LoginAccount,
+    /// Absent only for legacy rows without a role assignment.
+    pub role: Option<super::role::RoleType>,
+}
+
 impl LoginAccount {
     pub fn session_principal(&self) -> SessionPrincipal {
         SessionPrincipal {
