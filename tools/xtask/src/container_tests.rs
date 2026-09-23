@@ -174,6 +174,26 @@ fn container_build_persists_expensive_package_caches() {
 }
 
 #[test]
+fn container_context_excludes_local_outputs_and_tool_state() {
+    let ignored = include_str!("../../../.dockerignore")
+        .lines()
+        .collect::<Vec<_>>();
+    for pattern in [
+        "solid-csr-spa-template/public/eu5-locations-db/",
+        "**/test-results",
+        "**/playwright-report",
+        "rust-be-template/data",
+        ".claude/",
+        "**/CLAUDE.md",
+    ] {
+        assert!(
+            ignored.contains(&pattern),
+            "Docker context must exclude {pattern}"
+        );
+    }
+}
+
+#[test]
 fn container_frontend_inherits_shared_locale_sources() {
     let dockerfile = include_str!("../../../rust-be-template/Dockerfile");
     let source_start = required_index(dockerfile, " AS frontend-source\n");
