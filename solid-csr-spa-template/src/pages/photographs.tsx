@@ -116,7 +116,7 @@ export default function Photographs(props: RouteSectionProps) {
         setSelectedPhoto(null);
         return;
       }
-      const inList = photos().find((p) => p.photograph_id === id);
+      const inList = untrack(photos).find((p) => p.photograph_id === id);
       if (inList) {
         setSelectedPhoto(inList);
         return;
