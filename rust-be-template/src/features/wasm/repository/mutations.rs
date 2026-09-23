@@ -160,6 +160,11 @@ impl WasmRepository {
     }
 }
 
+/// Asserts the actor is an active superuser before a module mutation.
+///
+/// `FOR SHARE` on the user and role rows is enough: soft deletion locks the
+/// user row `FOR UPDATE` and role assignment updates the role row, and both
+/// conflict with a share lock, so neither can commit mid-mutation.
 async fn lock_active_superuser(
     connection: &mut AsyncPgConnection,
     user_id: Uuid,
@@ -171,7 +176,7 @@ async fn lock_active_superuser(
         .filter(users::user_is_email_verified.eq(true))
         .filter(users::user_is_system_actor.eq(false))
         .select(users::user_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(&mut *connection)
         .await
         .optional()?;
@@ -181,7 +186,7 @@ async fn lock_active_superuser(
     let role_id = user_roles::table
         .filter(user_roles::user_id.eq(user_id))
         .select(user_roles::role_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(&mut *connection)
         .await
         .optional()?;

@@ -23,9 +23,14 @@ pub enum ActiveUserWriteError {
 
 /// Lock the authoritative account row before an authenticated content mutation.
 ///
-/// Lifecycle deletion takes the same row lock first. Keeping this guard and the
-/// write in one transaction means the write either commits before deletion or
-/// observes `user_deleted_at` and fails without mutating retained content.
+/// Callers take this lock before any content row, so every content write uses
+/// the same user-then-content order. `FOR SHARE` suffices because the check
+/// only asserts the actor is active: lifecycle deletion takes `FOR UPDATE` on
+/// the same row, which conflicts with a share lock. Keeping this guard and the
+/// write in one transaction means the write either commits before deletion, or
+/// waits for it, re-evaluates `user_deleted_at` against the committed row, and
+/// fails without mutating retained content. Share locks do not conflict with
+/// each other, so one account's concurrent writes no longer queue on its row.
 pub async fn lock_active_user(
     conn: &mut AsyncPgConnection,
     user_id: Uuid,
@@ -34,7 +39,7 @@ pub async fn lock_active_user(
         .filter(users::user_id.eq(user_id))
         .filter(users::user_deleted_at.is_null())
         .select(users::user_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(conn)
         .await
         .optional()?;
@@ -45,6 +50,9 @@ pub async fn lock_active_user(
 }
 
 /// Lock and recheck both active account state and current superuser authority.
+///
+/// Role assignment updates the `user_roles` row, which conflicts with this
+/// share lock, so the role cannot change before the caller's write commits.
 pub async fn lock_active_superuser(
     conn: &mut AsyncPgConnection,
     user_id: Uuid,
@@ -53,7 +61,7 @@ pub async fn lock_active_superuser(
     let role_id = user_roles::table
         .filter(user_roles::user_id.eq(user_id))
         .select(user_roles::role_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(conn)
         .await
         .optional()?;
