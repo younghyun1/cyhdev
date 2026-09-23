@@ -446,7 +446,7 @@ diesel::table! {
 diesel::table! {
     post_tags (post_id, tag_id) {
         post_id -> Uuid,
-        tag_id -> Int2,
+        tag_id -> Int4,
     }
 }
 
@@ -498,7 +498,7 @@ diesel::table! {
 
 diesel::table! {
     tags (tag_id) {
-        tag_id -> Int2,
+        tag_id -> Int4,
         tag_name -> Varchar,
     }
 }

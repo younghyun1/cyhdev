@@ -6,8 +6,11 @@ use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 
 use rust_be_template::{
-    features::blog::{domain::post::PostLookup, error::BlogError},
-    schema::posts,
+    features::blog::{
+        domain::post::{PostLookup, SavePostInput},
+        error::BlogError,
+    },
+    schema::{posts, tags},
 };
 
 use support::{
@@ -26,6 +29,12 @@ async fn drafts_reject_comments_and_votes_from_non_managers() -> TestResult {
 #[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
 async fn detail_views_are_buffered_until_flushed() -> TestResult {
     run_database_test(view_buffer_case).await
+}
+
+#[tokio::test]
+#[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
+async fn resaving_existing_tags_consumes_no_identity_values() -> TestResult {
+    run_database_test(tag_identity_case).await
 }
 
 fn draft_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
@@ -103,6 +112,39 @@ fn view_buffer_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             third.post.post_view_count == 3 && blog.flush_views().await? == 1,
             "a flushed view was counted twice or lost",
+        )
+    })
+}
+
+fn tag_identity_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
+    Box::pin(async move {
+        let context = account_test_context(database)?;
+        let author = verified_account(&context, "TagAuthor", true).await?;
+        let blog = blog_service(context.pool.clone())?;
+        let post_id = save_post(&blog, author.user_id, "Tagged post", true).await?;
+        let resave = |tags: Vec<String>| SavePostInput {
+            actor_user_id: author.user_id,
+            post_id: Some(post_id),
+            title: "Tagged post".to_owned(),
+            markdown: "Fixture body.".to_owned(),
+            tags,
+            published: true,
+            owner_required: true,
+        };
+        for _ in 0..3 {
+            blog.save_post(resave(vec!["fixture".to_owned()])).await?;
+        }
+        blog.save_post(resave(vec!["fixture".to_owned(), "fresh".to_owned()]))
+            .await?;
+        let mut connection = context.pool.get().await?;
+        let tag_ids = tags::table
+            .order(tags::tag_id.asc())
+            .select(tags::tag_id)
+            .load::<i32>(&mut connection)
+            .await?;
+        require(
+            tag_ids.len() == 2 && tag_ids[1] == tag_ids[0] + 1,
+            "re-saving existing tags consumed identity values",
         )
     })
 }
