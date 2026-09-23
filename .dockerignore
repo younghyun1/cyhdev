@@ -17,3 +17,22 @@
 **/service-account.json
 **/secrets.*
 **/values.*
+
+# Browser test output and the locally staged EU5 build; the image rebuilds EU5.
+solid-csr-spa-template/public/eu5-locations-db/
+**/test-results
+**/playwright-report
+
+# Backend runtime data and deployment output from local runs.
+rust-be-template/data
+rust-be-template/fe
+rust-be-template/images
+rust-be-template/wasm
+
+# Local editor and assistant state.
+.claude/
+**/.codex
+**/CLAUDE.md
+**/.idea
+**/.vscode
+**/.DS_Store
