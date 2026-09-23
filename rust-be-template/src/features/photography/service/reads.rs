@@ -1,15 +1,18 @@
+use std::collections::HashMap;
+
+use uuid::Uuid;
+
 use super::{
     super::{
         domain::{
             photograph::{PhotographPage, PresentedPhotographDetail},
-            social::PhotographCommentResponse,
+            social::{PhotographCommentPage, PhotographCommentPageData, PhotographCommentResponse},
         },
         error::PhotographyError,
     },
     photography_service::PhotographyService,
 };
-use std::cmp::Reverse;
-use uuid::Uuid;
+use crate::features::blog::domain::{comment_page::CommentPageRequest, post::UserBadgeInfo};
 
 impl PhotographyService {
     pub async fn photographs(
@@ -23,6 +26,8 @@ impl PhotographyService {
         self.repository.photograph_page(page, page_size).await
     }
 
+    /// Reads one photograph with its first oldest-first comment page. Clients
+    /// order and thread the accumulated pages themselves.
     pub async fn photograph_detail(
         &self,
         photograph_id: Uuid,
@@ -32,67 +37,68 @@ impl PhotographyService {
             .photograph_detail_with_view(photograph_id, viewer)
             .await?;
         if detail
+            .comments
             .authors
             .get(&detail.owner_user_id)
             .is_none_or(|author| author.is_deleted())
         {
             detail.photograph.anonymize_deleted_owner();
         }
-        detail.comments.sort_by_key(|(comment, _)| {
-            Reverse(
-                comment
-                    .photograph_comment_total_upvotes
-                    .saturating_sub(comment.photograph_comment_total_downvotes),
-            )
-        });
-        let mut country_codes = detail
+        let flags = self.author_flags(&detail.comments).await;
+        let (_, author_badge) =
+            UserBadgeInfo::resolve(&detail.comments.authors, &flags, detail.owner_user_id);
+        let comments_next_cursor = detail.comments.next_cursor;
+        Ok(PresentedPhotographDetail {
+            photograph: detail.photograph,
+            comments: present_comments(detail.comments, &flags),
+            comments_next_cursor,
+            vote_state: detail.vote_state,
+            author_badge,
+        })
+    }
+
+    /// Reads a later comment page; comment reads never count a view.
+    pub async fn comment_page(
+        &self,
+        photograph_id: Uuid,
+        viewer: Option<Uuid>,
+        request: CommentPageRequest,
+    ) -> Result<PhotographCommentPage, PhotographyError> {
+        let page = self
+            .repository
+            .comment_page(photograph_id, viewer, request)
+            .await?;
+        let flags = self.author_flags(&page).await;
+        let next_cursor = page.next_cursor;
+        Ok(PhotographCommentPage {
+            comments: present_comments(page, &flags),
+            next_cursor,
+        })
+    }
+
+    async fn author_flags(&self, page: &PhotographCommentPageData) -> HashMap<i32, String> {
+        let mut country_codes = page
             .authors
             .values()
             .filter_map(|author| author.country_code())
             .collect::<Vec<_>>();
         country_codes.sort_unstable();
         country_codes.dedup();
-        let flags = self.flags.country_flags(&country_codes).await;
-        let comments = detail
-            .comments
-            .into_iter()
-            .map(|(comment, vote_state)| {
-                let (public_id, badge) = match detail.authors.get(&comment.user_id) {
-                    Some(author) => {
-                        let flag = author
-                            .country_code()
-                            .and_then(|code| flags.get(&code).cloned());
-                        (
-                            author.public_user_id(),
-                            crate::features::blog::domain::post::UserBadgeInfo::from_public_author(
-                                author, flag,
-                            ),
-                        )
-                    }
-                    None => (
-                        Uuid::nil(),
-                        crate::features::blog::domain::post::UserBadgeInfo::deleted(),
-                    ),
-                };
-                PhotographCommentResponse::from_comment_votestate_and_badge_info(
-                    comment, vote_state, public_id, badge,
-                )
-            })
-            .collect();
-        let author_badge = match detail.authors.get(&detail.owner_user_id) {
-            Some(author) => {
-                let flag = author
-                    .country_code()
-                    .and_then(|code| flags.get(&code).cloned());
-                crate::features::blog::domain::post::UserBadgeInfo::from_public_author(author, flag)
-            }
-            None => crate::features::blog::domain::post::UserBadgeInfo::deleted(),
-        };
-        Ok(PresentedPhotographDetail {
-            photograph: detail.photograph,
-            comments,
-            vote_state: detail.vote_state,
-            author_badge,
-        })
+        self.flags.country_flags(&country_codes).await
     }
+}
+
+fn present_comments(
+    page: PhotographCommentPageData,
+    flags: &HashMap<i32, String>,
+) -> Vec<PhotographCommentResponse> {
+    page.comments
+        .into_iter()
+        .map(|(comment, vote_state)| {
+            let (public_id, badge) = UserBadgeInfo::resolve(&page.authors, flags, comment.user_id);
+            PhotographCommentResponse::from_comment_votestate_and_badge_info(
+                comment, vote_state, public_id, badge,
+            )
+        })
+        .collect()
 }

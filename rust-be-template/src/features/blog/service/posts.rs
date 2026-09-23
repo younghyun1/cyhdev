@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use tracing::warn;
 use uuid::Uuid;
 
 use crate::util::string::generate_slug::generate_slug;
@@ -8,13 +7,10 @@ use crate::util::string::generate_slug::generate_slug;
 use super::super::{
     domain::{
         cache::CachedPostInfo,
-        comment::CommentResponse,
         post::{
             MAX_BLOG_POST_MARKDOWN_CHARS, MAX_BLOG_POST_TAG_CHARS, MAX_BLOG_POST_TAGS,
-            MAX_BLOG_POST_TITLE_CHARS, PostInfo, PostLookup, ReadPostResult, SavePostCommand,
-            SavePostInput, UserBadgeInfo,
+            MAX_BLOG_POST_TITLE_CHARS, PostInfo, SavePostCommand, SavePostInput,
         },
-        vote::VoteState,
     },
     error::BlogError,
 };
@@ -75,133 +71,6 @@ impl BlogService {
         self.delete_cache(post_id).await;
         drop(post_use_case);
         Ok(())
-    }
-
-    pub async fn read_post(
-        &self,
-        lookup: PostLookup,
-        viewer_id: Option<Uuid>,
-    ) -> Result<ReadPostResult, BlogError> {
-        let post_id = match &lookup {
-            PostLookup::Id(post_id) => *post_id,
-            PostLookup::Slug(slug) => match self.cached_post_id_by_slug(slug).await {
-                Some(post_id) => post_id,
-                None => {
-                    let post_id = self
-                        .repository
-                        .resolve_post_id(&lookup)
-                        .await?
-                        .ok_or(BlogError::PostNotFound)?;
-                    self.cache_slug(slug, post_id).await;
-                    post_id
-                }
-            },
-        };
-        let post_use_case = self.lock_post_use_case(post_id).await;
-        let cached = self.cached_post(&post_id).await;
-        let was_cached = cached.is_some();
-        let mut post = self.repository.read_post(post_id, viewer_id).await?;
-        // `post_content` is rendered at write time and remains authoritative.
-        let post_tags = match cached {
-            Some(post) => post.post_tags,
-            None => self.repository.tags_for_post(post_id).await?,
-        };
-        let cached = CachedPostInfo::from_post_info_with_tags(
-            PostInfo::from(post.clone()),
-            post_tags.clone(),
-        );
-        if was_cached {
-            self.insert_cache_without_search(&cached).await;
-        } else {
-            // A DB read-through also heals a missing search document while the
-            // post stripe prevents an older read from overwriting a newer write.
-            self.insert_cache(&cached).await;
-        }
-        drop(post_use_case);
-        let comment_list = self.repository.comments_for_post(post_id).await?;
-        if comment_list.truncated {
-            tracing::warn!(
-                post_id = %post_id,
-                limit = super::super::repository::comments::MAX_COMPATIBILITY_POST_COMMENTS,
-                "Blog read reached its fixed compatibility comment limit"
-            );
-        }
-        let comments = comment_list.comments;
-        let owner_user_id = post.user_id;
-        let mut user_ids = comments
-            .iter()
-            .map(|comment| comment.user_id)
-            .collect::<Vec<_>>();
-        user_ids.push(owner_user_id);
-        user_ids.sort_unstable();
-        user_ids.dedup();
-        let authors = self.repository.authors_by_ids(&user_ids).await?;
-        let comment_ids = comments
-            .iter()
-            .map(|comment| comment.comment_id)
-            .collect::<Vec<_>>();
-        let comment_votes = self
-            .repository
-            .comment_vote_states(&comment_ids, viewer_id)
-            .await?;
-        let country_flags = self.country_flags_for_authors(&authors).await;
-        let comment_responses = comments
-            .into_iter()
-            .map(|comment| {
-                let vote = comment_votes
-                    .get(&comment.comment_id)
-                    .copied()
-                    .unwrap_or(VoteState::DidNotVote);
-                let (public_id, badge) = match authors.get(&comment.user_id) {
-                    Some(author) => {
-                        let flag = author
-                            .country_code()
-                            .and_then(|code| country_flags.get(&code).cloned());
-                        (
-                            author.public_user_id(),
-                            UserBadgeInfo::from_public_author(author, flag),
-                        )
-                    }
-                    None => (Uuid::nil(), UserBadgeInfo::deleted()),
-                };
-                CommentResponse::from_comment_votestate_and_badge_info(
-                    comment, vote, public_id, badge,
-                )
-            })
-            .collect();
-        let post_badge = match authors.get(&owner_user_id) {
-            Some(author) => {
-                let flag = author
-                    .country_code()
-                    .and_then(|code| country_flags.get(&code).cloned());
-                UserBadgeInfo::from_public_author(author, flag)
-            }
-            None => UserBadgeInfo::deleted(),
-        };
-        if authors
-            .get(&owner_user_id)
-            .is_none_or(|author| author.is_deleted())
-        {
-            post.user_id = Uuid::nil();
-        }
-        let vote_state = self.repository.post_vote_state(post_id, viewer_id).await?;
-        let post_use_case = self.lock_post_use_case(post_id).await;
-        match self.repository.increment_post_view(post_id).await {
-            Ok(view_count) => {
-                post.post_view_count = view_count;
-                self.update_cached_views(post_id, view_count).await;
-            }
-            Err(error) => warn!(%post_id, %error,
-                "Blog detail presentation succeeded but best-effort view persistence failed"),
-        }
-        drop(post_use_case);
-        Ok(ReadPostResult {
-            post,
-            post_tags,
-            comments: comment_responses,
-            vote_state,
-            user_badge_info: post_badge,
-        })
     }
 }
 

@@ -38,6 +38,7 @@ pub async fn read_photograph(
             photograph: detail.photograph,
             vote_state: detail.vote_state,
             comments: detail.comments,
+            comments_next_cursor: detail.comments_next_cursor.map(Into::into),
             user_badge_info: detail.author_badge,
         },
         (),

@@ -1,6 +1,7 @@
 import type {
   ApiResponse,
   BatchUploadResponse,
+  CommentCursorResponse,
   Photograph,
   SubmitPhotographCommentRequest,
   UpdatePhotographCommentRequest,
@@ -44,6 +45,17 @@ export const photographyApi = {
   getBatches: () => contractApi.batchList(),
   getPhotographDetail: (photographId: string) =>
     contractApi.readPhotograph({ path: { photograph_id: photographId } }),
+  listPhotographComments: (
+    photographId: string,
+    after: CommentCursorResponse,
+  ) =>
+    contractApi.listPhotographComments({
+      path: { photograph_id: photographId },
+      query: {
+        after_created_at: after.after_created_at,
+        after_comment_id: after.after_comment_id,
+      },
+    }),
   votePhotograph: (body: VotePhotographRequest, photographId: string) =>
     contractApi.votePhotograph({
       body,

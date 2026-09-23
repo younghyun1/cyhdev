@@ -115,6 +115,7 @@ pub fn server_shutdown_hooks(state: &Arc<ServerState>) -> ShutdownHooks {
     let live_chat = state.live_chat_service();
     let visitors = state.visitor_service();
     let photographs = state.photography_service();
+    let blog = state.blog_service();
     ShutdownHooks::new(HOOK_BUDGET, PER_HOOK_LIMIT)
         .with_hook("close_open_calls", move || async move {
             live_chat
@@ -129,6 +130,12 @@ pub fn server_shutdown_hooks(state: &Arc<ServerState>) -> ShutdownHooks {
         .with_hook("flush_photograph_views", move || async move {
             photographs
                 .flush_views()
+                .await
+                .map(|_| ())
+                .map_err(|error| anyhow::anyhow!("{error}"))
+        })
+        .with_hook("flush_blog_views", move || async move {
+            blog.flush_views()
                 .await
                 .map(|_| ())
                 .map_err(|error| anyhow::anyhow!("{error}"))

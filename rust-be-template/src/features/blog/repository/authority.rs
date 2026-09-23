@@ -34,6 +34,16 @@ pub(super) async fn has_current_blog_authority(
         .map_err(BlogError::Database)
 }
 
+/// Asserts the acting account is active and returns its current role.
+///
+/// Callers lock the actor before any content row so every blog write takes
+/// the same user-then-content order. `FOR SHARE` is enough: soft deletion
+/// takes `FOR UPDATE` on the user row and role assignment updates the
+/// `user_roles` row, and both conflict with a share lock. Such a transaction
+/// therefore waits for this write to commit, or this write waits for it and
+/// then re-evaluates the filters against the committed row and fails. Share
+/// locks do not conflict with each other, so one account's concurrent writes
+/// no longer serialize on its user row.
 pub(super) async fn lock_active_user(
     connection: &mut AsyncPgConnection,
     user_id: Uuid,
@@ -45,7 +55,7 @@ pub(super) async fn lock_active_user(
         .filter(users::user_is_email_verified.eq(true))
         .filter(users::user_is_system_actor.eq(false))
         .select(users::user_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(&mut *connection)
         .await
         .optional()?;
@@ -55,7 +65,7 @@ pub(super) async fn lock_active_user(
     let role_id = user_roles::table
         .filter(user_roles::user_id.eq(user_id))
         .select(user_roles::role_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(&mut *connection)
         .await
         .optional()?;
@@ -76,15 +86,30 @@ pub(super) async fn lock_active_superuser(
     }
 }
 
-pub(super) async fn require_owner_or_superuser(
-    connection: &mut AsyncPgConnection,
+/// Checks ownership after the requester is already locked by the caller.
+pub(super) fn require_owner_or_superuser(
     requester_id: Uuid,
+    requester_role: RoleType,
     owner_id: Uuid,
 ) -> Result<(), BlogError> {
-    let role = lock_active_user(connection, requester_id).await?;
-    if requester_id == owner_id || role.is_superuser() {
+    if requester_id == owner_id || requester_role.is_superuser() {
         Ok(())
     } else {
         Err(BlogError::Forbidden)
+    }
+}
+
+/// Rejects interaction with an unpublished post unless the actor manages the blog.
+///
+/// A draft is reported as absent so its existence is not disclosed.
+pub(super) async fn require_visible_post(
+    connection: &mut AsyncPgConnection,
+    actor_id: Uuid,
+    post_is_published: bool,
+) -> Result<(), BlogError> {
+    if post_is_published || has_current_blog_authority(connection, Some(actor_id)).await? {
+        Ok(())
+    } else {
+        Err(BlogError::PostNotFound)
     }
 }

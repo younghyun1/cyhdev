@@ -46,9 +46,8 @@ pub async fn read_assets(multipart: &mut Multipart) -> HandlerResponse<StagedWas
                 if result.thumbnail.is_some() {
                     return Err(duplicate_field("thumbnail"));
                 }
-                if let Some(content_type) = field.content_type()
-                    && !is_allowed_image_mime(content_type)
-                {
+                // The declared type selects the decoder, so it is required.
+                if !field.content_type().is_some_and(is_allowed_image_mime) {
                     return Err(code_err(
                         CodeError::INVALID_REQUEST,
                         "Unsupported thumbnail image type",

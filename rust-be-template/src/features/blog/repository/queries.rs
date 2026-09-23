@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper, dsl::count_star};
+use diesel::{ExpressionMethods, QueryDsl, SelectableHelper, dsl::count_star};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
 
 use crate::{
     features::accounts::domain::public_author::PublicAuthor,
     persistence::public_authors::load_public_authors,
-    schema::{comment_votes, post_tags, post_votes, posts, tags},
+    schema::{post_tags, post_votes, posts, tags},
 };
 
 use super::super::{
@@ -29,24 +29,13 @@ pub struct PostPresentationData {
 }
 
 impl BlogRepository {
-    pub async fn post_vote_state(
-        &self,
-        post_id: Uuid,
-        viewer_id: Option<Uuid>,
-    ) -> Result<VoteState, BlogError> {
-        let Some(viewer_id) = viewer_id else {
-            return Ok(VoteState::DidNotVote);
-        };
+    /// Whether the viewer currently holds the blog management permission.
+    pub async fn can_manage_blog(&self, viewer_id: Option<Uuid>) -> Result<bool, BlogError> {
+        if viewer_id.is_none() {
+            return Ok(false);
+        }
         let mut connection = self.connection().await?;
-        post_votes::table
-            .filter(post_votes::post_id.eq(post_id))
-            .filter(post_votes::user_id.eq(viewer_id))
-            .select(post_votes::is_upvote)
-            .first::<bool>(&mut connection)
-            .await
-            .optional()
-            .map(|vote| vote.map(vote_state).unwrap_or(VoteState::DidNotVote))
-            .map_err(BlogError::Database)
+        has_current_blog_authority(&mut connection, viewer_id).await
     }
 
     pub async fn list_posts(
@@ -154,32 +143,6 @@ impl BlogRepository {
         };
         Ok(PostPresentationData { authors, votes })
     }
-
-    pub async fn comment_vote_states(
-        &self,
-        comment_ids: &[Uuid],
-        viewer_id: Option<Uuid>,
-    ) -> Result<HashMap<Uuid, VoteState>, BlogError> {
-        let Some(viewer_id) = viewer_id else {
-            return Ok(HashMap::new());
-        };
-        if comment_ids.is_empty() {
-            return Ok(HashMap::new());
-        }
-        let mut connection = self.connection().await?;
-        comment_votes::table
-            .filter(comment_votes::comment_id.eq_any(comment_ids))
-            .filter(comment_votes::user_id.eq(viewer_id))
-            .select((comment_votes::comment_id, comment_votes::is_upvote))
-            .load::<(Uuid, bool)>(&mut connection)
-            .await
-            .map(|rows| {
-                rows.into_iter()
-                    .map(|(id, up)| (id, vote_state(up)))
-                    .collect()
-            })
-            .map_err(BlogError::Database)
-    }
 }
 
 async fn load_tag_rows(
@@ -211,7 +174,7 @@ fn combine_posts(posts: Vec<PostInfo>, tag_rows: Vec<(Uuid, String)>) -> Vec<Cac
         .collect()
 }
 
-fn vote_state(upvote: bool) -> VoteState {
+pub(super) fn vote_state(upvote: bool) -> VoteState {
     if upvote {
         VoteState::Upvoted
     } else {

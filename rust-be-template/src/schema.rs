@@ -202,6 +202,7 @@ diesel::table! {
         parent_comment_id -> Nullable<Uuid>,
         total_upvotes -> Int8,
         total_downvotes -> Int8,
+        comment_deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -428,6 +429,7 @@ diesel::table! {
         parent_photograph_comment_id -> Nullable<Uuid>,
         photograph_comment_total_upvotes -> Int8,
         photograph_comment_total_downvotes -> Int8,
+        photograph_comment_deleted_at -> Nullable<Timestamptz>,
     }
 }
 
@@ -444,7 +446,7 @@ diesel::table! {
 diesel::table! {
     post_tags (post_id, tag_id) {
         post_id -> Uuid,
-        tag_id -> Int2,
+        tag_id -> Int4,
     }
 }
 
@@ -496,7 +498,7 @@ diesel::table! {
 
 diesel::table! {
     tags (tag_id) {
-        tag_id -> Int2,
+        tag_id -> Int4,
         tag_name -> Varchar,
     }
 }

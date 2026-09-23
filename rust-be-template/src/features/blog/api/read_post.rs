@@ -46,7 +46,7 @@ impl<'de> Deserialize<'de> for PostLookupKey {
     tag = "blog",
     params(("post_id" = String, Path, description = "Post UUID or slug")),
     responses(
-        (status = 200, description = "Post details and comments", body = ReadPostResponse),
+        (status = 200, description = "Post details and the first comment page", body = ReadPostResponse),
         (status = 404, description = "Post not found", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
@@ -71,6 +71,7 @@ pub async fn read_post(
             post: result.post,
             post_tags: result.post_tags,
             comments: result.comments,
+            comments_next_cursor: result.comments_next_cursor.map(Into::into),
             vote_state: result.vote_state,
             user_badge_info: result.user_badge_info,
         },

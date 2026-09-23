@@ -15,8 +15,9 @@ use crate::{
             every_second::schedule_task_every_second_at,
         },
         maintenance::{
-            compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
-            flush_visitor_logs::flush_visitor_logs, prune_auth_abuse::prune_auth_abuse,
+            compress_logs::compress_old_logs, flush_blog_views::flush_blog_views,
+            flush_photograph_views::flush_photograph_views, flush_visitor_logs::flush_visitor_logs,
+            prune_auth_abuse::prune_auth_abuse,
             prune_forum_notifications::prune_forum_notifications,
             prune_live_chat::prune_live_chat_rate_windows, prune_live_chat::prune_live_chat_state,
             prune_photograph_batches::prune_photograph_batches,
@@ -69,14 +70,21 @@ where
 pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
     info!("Task scheduler running...");
 
-    // Startup sweep: clear orphaned batch temp dirs from a previous process run.
-    // The in-memory tracker is empty at startup, so the whole staging root is stale.
+    // Startup sweep: batch staging directories from earlier processes are
+    // orphaned because the in-memory tracker starts empty; ones this process
+    // creates carry its token and are kept.
     tokio::spawn(async {
-        let root = crate::util::image::batch_pipeline::batch_root_dir();
-        if let Err(e) = tokio::fs::remove_dir_all(&root).await
-            && e.kind() != std::io::ErrorKind::NotFound
-        {
-            tracing::warn!(error = %e, path = %root.display(), "Failed startup sweep of batch temp dir");
+        match crate::util::image::batch_pipeline::sweep_stale_batch_dirs().await {
+            Ok(removed) if removed > 0 => {
+                info!(
+                    removed,
+                    "Removed stale photograph batch staging directories"
+                )
+            }
+            Ok(_) => {}
+            Err(error) => {
+                tracing::warn!(%error, "Failed startup sweep of batch staging directories")
+            }
         }
     });
 
@@ -204,6 +212,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("FLUSH_PHOTOGRAPH_VIEWS"),
                 15,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("FLUSH_BLOG_VIEWS", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_minute_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    flush_blog_views(coroutine_state).await
+                },
+                String::from("FLUSH_BLOG_VIEWS"),
+                45,
                 0,
             )
         });

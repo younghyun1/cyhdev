@@ -1,15 +1,11 @@
 //! Persistence-independent photograph values.
 
-use super::social::PhotographComment;
-use super::social::PhotographCommentResponse;
-use crate::features::blog::domain::post::UserBadgeInfo;
-use crate::{
-    features::accounts::domain::public_author::PublicAuthor,
-    features::blog::domain::vote::VoteState,
+use super::social::{PhotographCommentPageData, PhotographCommentResponse};
+use crate::features::blog::domain::{
+    comment_page::CommentCursor, post::UserBadgeInfo, vote::VoteState,
 };
 use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -83,15 +79,16 @@ pub struct PhotographPage {
 
 pub struct PhotographDetail {
     pub photograph: Photograph,
-    pub comments: Vec<(PhotographComment, VoteState)>,
+    /// First comment page; its author map also carries the photograph owner.
+    pub comments: PhotographCommentPageData,
     pub vote_state: VoteState,
-    pub authors: HashMap<Uuid, PublicAuthor>,
     pub owner_user_id: Uuid,
 }
 
 pub struct PresentedPhotographDetail {
     pub photograph: Photograph,
     pub comments: Vec<PhotographCommentResponse>,
+    pub comments_next_cursor: Option<CommentCursor>,
     pub vote_state: VoteState,
     pub author_badge: UserBadgeInfo,
 }

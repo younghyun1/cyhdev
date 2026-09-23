@@ -6,6 +6,7 @@ use crate::schema::{comments, post_tags, posts, tags};
 
 use super::super::domain::{
     comment::Comment,
+    comment_page::CommentCursor,
     post::{Post, PostInfo},
 };
 
@@ -110,6 +111,20 @@ pub(super) struct CommentRecord {
     parent_comment_id: Option<Uuid>,
     total_upvotes: i64,
     total_downvotes: i64,
+    comment_deleted_at: Option<DateTime<Utc>>,
+}
+
+impl CommentRecord {
+    pub(super) const fn cursor(&self) -> CommentCursor {
+        CommentCursor {
+            created_at: self.comment_created_at,
+            comment_id: self.comment_id,
+        }
+    }
+
+    pub(super) const fn author_id(&self) -> Uuid {
+        self.user_id
+    }
 }
 
 impl From<CommentRecord> for Comment {
@@ -124,6 +139,7 @@ impl From<CommentRecord> for Comment {
             parent_comment_id: row.parent_comment_id,
             total_upvotes: row.total_upvotes,
             total_downvotes: row.total_downvotes,
+            comment_deleted_at: row.comment_deleted_at,
         }
     }
 }
@@ -159,5 +175,5 @@ pub(super) struct NewTagRecord<'a> {
 #[diesel(table_name = post_tags)]
 pub(super) struct NewPostTagRecord {
     pub post_id: Uuid,
-    pub tag_id: i16,
+    pub tag_id: i32,
 }

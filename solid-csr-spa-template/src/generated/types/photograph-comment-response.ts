@@ -6,6 +6,7 @@ export type PhotographCommentResponse = {
   readonly parent_photograph_comment_id?: string | null;
   readonly photograph_comment_content: string;
   readonly photograph_comment_created_at: string;
+  readonly photograph_comment_deleted_at?: string | null;
   readonly photograph_comment_id: string;
   readonly photograph_comment_total_downvotes: number;
   readonly photograph_comment_total_upvotes: number;

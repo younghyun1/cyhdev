@@ -1,8 +1,9 @@
 //! Keyset-paginated public topic and reply reads.
 
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
+    ExpressionMethods, IntoSql, OptionalExtension, QueryDsl, SelectableHelper,
     dsl::exists,
+    sql_types::{Bool, Integer, Record, Text, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -21,7 +22,7 @@ use crate::{
             error::ForumError,
             repository::{
                 forum_repository::ForumRepository,
-                records::{ForumReplyRecord, ForumTopicRecord},
+                records::{ForumReplyRecord, ForumTopicHeadRecord, ForumTopicRecord},
                 search::{ForumSearchMatches, forum_websearch_to_tsquery},
             },
         },
@@ -30,7 +31,19 @@ use crate::{
     schema::{forum_replies, forum_topic_subscriptions, forum_topics},
 };
 
+/// Characters of each topic body a list card needs: the card shows 300 and
+/// the extra character tells it whether to append an ellipsis.
+const FORUM_TOPIC_SUMMARY_CHARS: i32 = 301;
+
+diesel::define_sql_function! {
+    /// PostgreSQL's built-in `left(text, integer)`, which counts characters.
+    #[sql_name = "left"]
+    fn text_left(text: Text, length: Integer) -> Text;
+}
+
 impl ForumRepository {
+    /// Lists topics with bodies truncated to [`FORUM_TOPIC_SUMMARY_CHARS`]
+    /// characters, so a page never transfers full 20,000-character bodies.
     pub async fn topic_page(
         &self,
         search: Option<&ForumSearch>,
@@ -39,7 +52,10 @@ impl ForumRepository {
     ) -> Result<ForumTopicPage, ForumError> {
         let mut connection = self.connection().await?;
         let mut query = forum_topics::table
-            .select(ForumTopicRecord::as_select())
+            .select((
+                ForumTopicHeadRecord::as_select(),
+                text_left(forum_topics::forum_topic_body, FORUM_TOPIC_SUMMARY_CHARS),
+            ))
             .into_boxed();
         if let Some(search) = search {
             query =
@@ -62,35 +78,42 @@ impl ForumRepository {
                 forum_topics::forum_topic_id.desc(),
             ));
         }
+        // Row comparisons, unlike OR chains, bound the scan of the matching
+        // all-descending keyset index: forum_topics_visible_recent_idx for
+        // search and forum_topics_public_page_idx for the pinned-first list.
         if let Some(cursor) = before {
             query = if search.is_some() {
                 query.filter(
-                    forum_topics::forum_topic_last_activity_at
-                        .lt(cursor.last_activity_at)
-                        .or(forum_topics::forum_topic_last_activity_at
-                            .eq(cursor.last_activity_at)
-                            .and(forum_topics::forum_topic_id.lt(cursor.topic_id))),
+                    (
+                        forum_topics::forum_topic_last_activity_at,
+                        forum_topics::forum_topic_id,
+                    )
+                        .into_sql::<Record<(Timestamptz, SqlUuid)>>()
+                        .lt((cursor.last_activity_at, cursor.topic_id)),
                 )
             } else {
                 query.filter(
-                    forum_topics::forum_topic_is_pinned.lt(cursor.is_pinned).or(
-                        forum_topics::forum_topic_is_pinned
-                            .eq(cursor.is_pinned)
-                            .and(
-                                forum_topics::forum_topic_last_activity_at
-                                    .lt(cursor.last_activity_at)
-                                    .or(forum_topics::forum_topic_last_activity_at
-                                        .eq(cursor.last_activity_at)
-                                        .and(forum_topics::forum_topic_id.lt(cursor.topic_id))),
-                            ),
-                    ),
+                    (
+                        forum_topics::forum_topic_is_pinned,
+                        forum_topics::forum_topic_last_activity_at,
+                        forum_topics::forum_topic_id,
+                    )
+                        .into_sql::<Record<(Bool, Timestamptz, SqlUuid)>>()
+                        .lt((
+                            cursor.is_pinned,
+                            cursor.last_activity_at,
+                            cursor.topic_id,
+                        )),
                 )
             };
         }
         let mut records = query
             .limit(i64::from(page_size.into_inner()) + 1)
-            .load::<ForumTopicRecord>(&mut connection)
-            .await?;
+            .load::<(ForumTopicHeadRecord, String)>(&mut connection)
+            .await?
+            .into_iter()
+            .map(|(head, summary)| head.with_body(summary))
+            .collect::<Vec<_>>();
         let next_cursor = topic_next_cursor(&mut records, page_size);
         let author_ids = records
             .iter()
@@ -139,12 +162,14 @@ impl ForumRepository {
             ))
             .into_boxed();
         if let Some(cursor) = after {
+            // Bounds forum_replies_topic_page_idx (topic, created_at, reply).
             reply_query = reply_query.filter(
-                forum_replies::forum_reply_created_at
-                    .gt(cursor.created_at)
-                    .or(forum_replies::forum_reply_created_at
-                        .eq(cursor.created_at)
-                        .and(forum_replies::forum_reply_id.gt(cursor.reply_id))),
+                (
+                    forum_replies::forum_reply_created_at,
+                    forum_replies::forum_reply_id,
+                )
+                    .into_sql::<Record<(Timestamptz, SqlUuid)>>()
+                    .gt((cursor.created_at, cursor.reply_id)),
             );
         }
         let mut reply_records = reply_query

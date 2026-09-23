@@ -3,7 +3,7 @@ use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use super::{post::UserBadgeInfo, vote::VoteState};
+use super::{comment_page::CommentCursor, post::UserBadgeInfo, vote::VoteState};
 
 pub const MAX_BLOG_COMMENT_CHARS: usize = 4_000;
 
@@ -43,6 +43,9 @@ pub struct Comment {
     pub parent_comment_id: Option<Uuid>,
     pub total_upvotes: i64,
     pub total_downvotes: i64,
+    /// Set when the author or a superuser deleted the comment. The row stays as
+    /// a tombstone with empty content so its replies keep their parent.
+    pub comment_deleted_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Clone, Serialize, ToSchema)]
@@ -56,6 +59,8 @@ pub struct CommentResponse {
     pub parent_comment_id: Option<Uuid>,
     pub total_upvotes: i64,
     pub total_downvotes: i64,
+    /// Present for a deleted comment, whose content is empty.
+    pub comment_deleted_at: Option<DateTime<Utc>>,
     pub vote_state: VoteState,
     pub user_name: String,
     pub user_profile_picture_url: String,
@@ -79,10 +84,17 @@ impl CommentResponse {
             parent_comment_id: comment.parent_comment_id,
             total_upvotes: comment.total_upvotes,
             total_downvotes: comment.total_downvotes,
+            comment_deleted_at: comment.comment_deleted_at,
             vote_state,
             user_name: badge.user_name,
             user_profile_picture_url: badge.user_profile_picture_url,
             user_country_flag: badge.user_country_flag,
         }
     }
+}
+
+/// One presented comment page and the cursor for the next, if any.
+pub struct CommentPage {
+    pub comments: Vec<CommentResponse>,
+    pub next_cursor: Option<CommentCursor>,
 }

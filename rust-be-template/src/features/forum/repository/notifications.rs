@@ -1,7 +1,10 @@
 //! Recipient-scoped notification inbox reads and idempotent read markers.
 
 use chrono::{DateTime, Utc};
-use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, OptionalExtension, QueryDsl};
+use diesel::{
+    ExpressionMethods, IntoSql, JoinOnDsl, OptionalExtension, QueryDsl,
+    sql_types::{Record, Timestamptz, Uuid as SqlUuid},
+};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
 
@@ -56,12 +59,15 @@ impl ForumRepository {
             ))
             .into_boxed();
         if let Some(cursor) = before {
+            // Bounds forum_notifications_recipient_page_idx
+            // (recipient, created_at DESC, id DESC) instead of filtering it.
             query = query.filter(
-                forum_notifications::forum_notification_created_at
-                    .lt(cursor.created_at)
-                    .or(forum_notifications::forum_notification_created_at
-                        .eq(cursor.created_at)
-                        .and(forum_notifications::forum_notification_id.lt(cursor.item_id))),
+                (
+                    forum_notifications::forum_notification_created_at,
+                    forum_notifications::forum_notification_id,
+                )
+                    .into_sql::<Record<(Timestamptz, SqlUuid)>>()
+                    .lt((cursor.created_at, cursor.item_id)),
             );
         }
         let mut rows = query

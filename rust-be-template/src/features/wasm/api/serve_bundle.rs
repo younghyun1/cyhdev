@@ -9,8 +9,13 @@ use axum::{
 use tracing::{error, info};
 use uuid::Uuid;
 
+use super::{super::domain::bundle::ServedWasm, if_none_match::parse_if_none_match};
 use crate::errors::code_error::{CodeError, CodeErrorResp};
 use crate::init::state::ServerState;
+
+/// Stable module URLs serve mutable bytes: caches must revalidate, which the
+/// strong `ETag` turns into a `304` when the bytes are unchanged.
+const BUNDLE_CACHE_CONTROL: &str = "public, max-age=0, must-revalidate";
 
 #[utoipa::path(
     get,
@@ -19,6 +24,7 @@ use crate::init::state::ServerState;
     params(("wasm_module_id" = Uuid, Path, description = "WASM module UUID")),
     responses(
         (status = 200, description = "WASM bundle", content_type = "application/wasm"),
+        (status = 304, description = "The client's copy matches the current ETag"),
         (status = 404, description = "WASM module not found"),
         (status = 503, description = "Identity decompression capacity is unavailable", body = CodeErrorResp)
     )
@@ -29,12 +35,14 @@ pub async fn serve_wasm(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let accepts_gzip = accepts_gzip(&headers);
+    let if_none_match = parse_if_none_match(&headers);
     let bundle = match state
         .wasm_service()
-        .served_bundle(module_id, accepts_gzip)
+        .served_bundle(module_id, accepts_gzip, &if_none_match)
         .await
     {
-        Ok(Some(bundle)) => bundle,
+        Ok(Some(ServedWasm::Body(bundle))) => bundle,
+        Ok(Some(ServedWasm::NotModified { etag })) => return not_modified(&etag),
         Ok(None) => return text_response(StatusCode::NOT_FOUND, "WASM module not found"),
         Err(crate::features::wasm::error::WasmError::ServiceBusy) => {
             return CodeErrorResp::from(CodeError::WASM_SERVICE_BUSY)
@@ -60,8 +68,8 @@ pub async fn serve_wasm(
     let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, bundle.content_type)
-        // Module IDs are stable while asset replacement mutates the bundle bytes.
-        .header(header::CACHE_CONTROL, "public, max-age=0, must-revalidate")
+        .header(header::CACHE_CONTROL, BUNDLE_CACHE_CONTROL)
+        .header(header::ETAG, format!("\"{}\"", bundle.etag))
         .header(header::VARY, header::ACCEPT_ENCODING.as_str())
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
     if bundle.content_encoding_gzip {
@@ -77,6 +85,27 @@ pub async fn serve_wasm(
         Ok(response) => response,
         Err(error_value) => {
             error!(error = %error_value, wasm_module_id = %module_id, "Failed to build WebAssembly response");
+            text_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to build WASM response",
+            )
+        }
+    }
+}
+
+/// `304` with the validators and caching headers a `200` would carry.
+fn not_modified(etag: &str) -> Response<Body> {
+    let response = Response::builder()
+        .status(StatusCode::NOT_MODIFIED)
+        .header(header::ETAG, format!("\"{etag}\""))
+        .header(header::CACHE_CONTROL, BUNDLE_CACHE_CONTROL)
+        .header(header::VARY, header::ACCEPT_ENCODING.as_str())
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(Body::empty());
+    match response {
+        Ok(response) => response,
+        Err(error_value) => {
+            error!(error = %error_value, "Failed to build WebAssembly not-modified response");
             text_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Failed to build WASM response",

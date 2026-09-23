@@ -1,9 +1,11 @@
 pub mod authority;
 pub mod blog_repository;
+pub mod comment_reads;
 pub mod comments;
 pub mod compatibility;
 pub mod posts;
 pub mod queries;
 pub mod records;
 pub mod search;
+pub mod views;
 pub mod votes;

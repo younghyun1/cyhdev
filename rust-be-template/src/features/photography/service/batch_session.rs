@@ -1,6 +1,9 @@
 //! Bounded process-owned state for one photograph batch.
 
-use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
+use std::{
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicI64, AtomicUsize, Ordering},
+};
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -12,6 +15,7 @@ pub struct BatchSession {
     pub owner: Uuid,
     pub created_at: DateTime<Utc>,
     pub total: usize,
+    staging_path: PathBuf,
     items: scc::HashMap<Uuid, BatchItem>,
     completed: AtomicUsize,
     failed: AtomicUsize,
@@ -19,17 +23,28 @@ pub struct BatchSession {
 }
 
 impl BatchSession {
-    pub fn new(batch_id: Uuid, owner: Uuid, total: usize, now: DateTime<Utc>) -> Self {
+    pub fn new(
+        batch_id: Uuid,
+        owner: Uuid,
+        total: usize,
+        now: DateTime<Utc>,
+        staging_path: PathBuf,
+    ) -> Self {
         Self {
             batch_id,
             owner,
             created_at: now,
             total,
+            staging_path,
             items: scc::HashMap::new(),
             completed: AtomicUsize::new(0),
             failed: AtomicUsize::new(0),
             last_activity: AtomicI64::new(now.timestamp()),
         }
+    }
+    /// Private directory holding this batch's staged originals.
+    pub fn staging_path(&self) -> &Path {
+        &self.staging_path
     }
     fn touch(&self, now: DateTime<Utc>) {
         self.last_activity.store(now.timestamp(), Ordering::SeqCst);

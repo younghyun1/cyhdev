@@ -57,6 +57,45 @@ impl From<ForumTopicRecord> for ForumTopic {
     }
 }
 
+/// Every topic column except the body, which list reads select truncated.
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = forum_topics)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub(super) struct ForumTopicHeadRecord {
+    forum_topic_id: Uuid,
+    forum_topic_author_user_id: Uuid,
+    forum_topic_title: String,
+    forum_topic_content_state: DbForumContentState,
+    forum_topic_access_state: DbForumTopicAccessState,
+    forum_topic_is_pinned: bool,
+    forum_topic_revision: i32,
+    forum_topic_reply_count: i64,
+    forum_topic_created_at: DateTime<Utc>,
+    forum_topic_updated_at: DateTime<Utc>,
+    forum_topic_last_activity_at: DateTime<Utc>,
+    forum_topic_edited_at: Option<DateTime<Utc>>,
+}
+
+impl ForumTopicHeadRecord {
+    pub(super) fn with_body(self, forum_topic_body: String) -> ForumTopicRecord {
+        ForumTopicRecord {
+            forum_topic_id: self.forum_topic_id,
+            forum_topic_author_user_id: self.forum_topic_author_user_id,
+            forum_topic_title: self.forum_topic_title,
+            forum_topic_body,
+            forum_topic_content_state: self.forum_topic_content_state,
+            forum_topic_access_state: self.forum_topic_access_state,
+            forum_topic_is_pinned: self.forum_topic_is_pinned,
+            forum_topic_revision: self.forum_topic_revision,
+            forum_topic_reply_count: self.forum_topic_reply_count,
+            forum_topic_created_at: self.forum_topic_created_at,
+            forum_topic_updated_at: self.forum_topic_updated_at,
+            forum_topic_last_activity_at: self.forum_topic_last_activity_at,
+            forum_topic_edited_at: self.forum_topic_edited_at,
+        }
+    }
+}
+
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = forum_replies)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
