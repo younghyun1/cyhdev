@@ -11,7 +11,7 @@ import {
   healthState,
   clientNow,
   setClientNow,
-  refreshHealthState,
+  refreshHealthStateIfStale,
   formatIsoAge,
 } from "../state/health";
 import BuildDetails from "./BuildDetails";
@@ -61,7 +61,7 @@ const BottomBar: Component = () => {
     () => location.pathname,
     () => {
       setDetailsOpen(false);
-      void refreshHealthState();
+      void refreshHealthStateIfStale();
     },
   );
 
@@ -73,12 +73,20 @@ const BottomBar: Component = () => {
           isMobile() && isKeyboardControl(document.activeElement),
         ),
       );
+    // Returning to the tab or window is when stale counters are most visible.
+    const refreshOnReturn = () => {
+      if (!document.hidden) void refreshHealthStateIfStale();
+    };
     document.addEventListener("focusin", updateFocus);
     document.addEventListener("focusout", updateFocus);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
     return () => {
       clearInterval(interval);
       document.removeEventListener("focusin", updateFocus);
       document.removeEventListener("focusout", updateFocus);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
     };
   });
 
