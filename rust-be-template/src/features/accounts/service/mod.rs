@@ -8,6 +8,7 @@ pub mod authorization;
 pub mod forum_authority;
 pub mod lifecycle;
 pub mod media_cleanup;
+mod media_cleanup_location;
 pub mod oidc;
 pub mod passwords;
 pub mod profile_picture_cleanup;
