@@ -1,7 +1,5 @@
 //! JSON representation for persistence-independent RTC signaling values.
 
-use std::net::IpAddr;
-
 use serde::{Deserializer, Serializer};
 use serde_derive::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -27,18 +25,19 @@ impl serde::Serialize for ChatActorKey {
     {
         let wire = match self {
             Self::User(user_id) => ChatActorKeyWire::User(user_id),
-            Self::Guest(ip) => ChatActorKeyWire::Guest(ip),
+            Self::Guest(guest_key) => ChatActorKeyWire::Guest(guest_key),
         };
         serde::Serialize::serialize(&wire, serializer)
     }
 }
 
+/// Browser-facing actor. `ChatActor::guest_ip` is deliberately absent: guest
+/// addresses stay server side and the keyed `actor_key` identifies the guest.
 #[derive(Serialize)]
 struct ChatActorWire<'a> {
     actor_key: &'a ChatActorKey,
     sender_kind: i16,
     user_id: Option<Uuid>,
-    guest_ip: Option<IpAddr>,
     display_name: &'a str,
     country_flag: &'a Option<String>,
     user_profile_picture_url: &'a Option<String>,
@@ -54,7 +53,6 @@ impl serde::Serialize for ChatActor {
                 actor_key: &self.actor_key,
                 sender_kind: self.sender_kind,
                 user_id: self.user_id,
-                guest_ip: self.guest_ip,
                 display_name: &self.display_name,
                 country_flag: &self.country_flag,
                 user_profile_picture_url: &self.user_profile_picture_url,

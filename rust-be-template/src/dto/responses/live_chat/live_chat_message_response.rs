@@ -5,12 +5,12 @@ use uuid::Uuid;
 
 use crate::features::live_chat::service::cache::CachedChatMessage;
 
+/// Public chat message. Guest addresses are server side only and never listed here.
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct LiveChatMessageItem {
     pub live_chat_message_id: Uuid,
     pub room_key: String,
     pub user_id: Option<Uuid>,
-    pub guest_ip: Option<String>,
     pub sender_kind: i16,
     pub sender_display_name: String,
     pub sender_country_flag: Option<String>,
@@ -27,7 +27,6 @@ impl From<CachedChatMessage> for LiveChatMessageItem {
             live_chat_message_id: message.live_chat_message_id,
             room_key: message.room_key,
             user_id: message.user_id,
-            guest_ip: message.guest_ip.map(|ip| ip.to_string()),
             sender_kind: message.sender_kind,
             sender_display_name: message.sender_display_name,
             sender_country_flag: message.sender_country_flag,

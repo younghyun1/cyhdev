@@ -1,5 +1,3 @@
-use std::net::IpAddr;
-
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -10,8 +8,7 @@ use crate::features::live_chat::{
 
 use super::saturating::saturating_u8;
 use super::{
-    ACTOR_GUEST, ACTOR_USER, IP_NONE, IP_V4, IP_V6, MESSAGE_FLAG_DELETED_AT,
-    MESSAGE_FLAG_EDITED_AT, NONE_STRING_LEN,
+    ACTOR_GUEST, ACTOR_USER, MESSAGE_FLAG_DELETED_AT, MESSAGE_FLAG_EDITED_AT, NONE_STRING_LEN,
 };
 
 #[derive(Default)]
@@ -80,30 +77,17 @@ impl BinaryWriter {
         }
     }
 
-    fn write_ip(&mut self, value: Option<IpAddr>) {
-        match value {
-            Some(IpAddr::V4(ip)) => {
-                self.write_u8(IP_V4);
-                self.bytes.extend_from_slice(&ip.octets());
-            }
-            Some(IpAddr::V6(ip)) => {
-                self.write_u8(IP_V6);
-                self.bytes.extend_from_slice(&ip.octets());
-            }
-            None => self.write_u8(IP_NONE),
-        }
-    }
-
+    /// Actor tag and public key. Guests carry only their opaque keyed hash; the
+    /// address held in `ChatActor::guest_ip` never enters a frame.
     pub(super) fn write_actor(&mut self, actor: &ChatActor) -> anyhow::Result<()> {
-        match actor.actor_key {
+        match &actor.actor_key {
             ChatActorKey::User(user_id) => {
                 self.write_u8(ACTOR_USER);
-                self.write_uuid(user_id);
-                self.write_ip(None);
+                self.write_uuid(*user_id);
             }
-            ChatActorKey::Guest(_) => {
+            ChatActorKey::Guest(guest_key) => {
                 self.write_u8(ACTOR_GUEST);
-                self.write_ip(actor.guest_ip);
+                self.write_string(guest_key)?;
             }
         }
         self.write_u8(saturating_u8(actor.sender_kind));
@@ -122,9 +106,6 @@ impl BinaryWriter {
         });
         if let Some(user_id) = message.user_id {
             self.write_uuid(user_id);
-            self.write_ip(None);
-        } else {
-            self.write_ip(message.guest_ip);
         }
         self.write_u8(saturating_u8(message.sender_kind));
         self.write_string(&message.sender_display_name)?;

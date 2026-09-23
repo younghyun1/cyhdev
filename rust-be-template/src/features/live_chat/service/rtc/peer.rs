@@ -37,10 +37,11 @@ pub(crate) use events::RtcPeerEventHandler;
 
 /// Stable per-publisher stream id so a browser groups a publisher's audio and
 /// video into one `MediaStream` and the frontend can map it back to an actor.
+/// Guests use their opaque keyed hash; SDP `msid` values are browser visible.
 pub fn actor_stream_id(actor: &ChatActor) -> String {
     match &actor.actor_key {
         ChatActorKey::User(user_id) => format!("user:{user_id}"),
-        ChatActorKey::Guest(ip) => format!("guest:{ip}"),
+        ChatActorKey::Guest(guest_key) => format!("guest:{guest_key}"),
     }
 }
 

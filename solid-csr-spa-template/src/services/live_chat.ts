@@ -22,7 +22,6 @@ function normalizeMessage(message: GeneratedMessageItem): LiveChatMessageItem {
     live_chat_message_id: message.live_chat_message_id,
     room_key: message.room_key,
     user_id: message.user_id ?? null,
-    guest_ip: message.guest_ip ?? null,
     sender_kind: message.sender_kind,
     sender_display_name: message.sender_display_name,
     sender_country_flag: message.sender_country_flag ?? null,

@@ -77,7 +77,7 @@ impl LiveChatService {
                 .messages_before(before, limit)
                 .await?
                 .into_iter()
-                .map(CachedChatMessage::from)
+                .map(|message| CachedChatMessage::from_persisted(message, &self.guest_identity))
                 .collect(),
             None => self.cache.get_recent_chat_messages(limit).await,
         };
@@ -91,7 +91,7 @@ impl LiveChatService {
         let count = rows.len();
         let mut messages = rows
             .into_iter()
-            .map(CachedChatMessage::from)
+            .map(|message| CachedChatMessage::from_persisted(message, &self.guest_identity))
             .collect::<Vec<_>>();
         self.enrich_messages(&mut messages).await?;
         for message in messages {
@@ -142,7 +142,7 @@ impl LiveChatService {
     ) -> Option<CachedChatMessage> {
         match self.repository.insert_message(actor, body).await {
             Ok(message) => {
-                let mut cached = CachedChatMessage::from(message);
+                let mut cached = CachedChatMessage::from_persisted(message, &self.guest_identity);
                 cached.sender_country_flag = actor.country_flag.clone();
                 cached.user_profile_picture_url = actor.user_profile_picture_url.clone();
                 if let Some(user_id) = cached.user_id

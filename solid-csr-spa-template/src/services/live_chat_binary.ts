@@ -7,7 +7,9 @@ import type {
   RtcPeerPhase,
 } from "../dtos/responses/live_chat";
 
-export const LIVE_CHAT_BINARY_PROTOCOL = "livechat.bin.v1";
+/// Version 2 carries opaque guest keys instead of guest IP addresses. It must
+/// match the Rust `LIVE_CHAT_BINARY_PROTOCOL`; a mismatch falls back to JSON.
+export const LIVE_CHAT_BINARY_PROTOCOL = "livechat.bin.v2";
 
 const CLIENT_SEND_MESSAGE = 0x01;
 const CLIENT_TYPING_START = 0x02;
@@ -42,12 +44,10 @@ const RTC_S_ERROR = 0x06;
 
 const RTC_PHASE_LEFT = 0x00;
 
+// A guest actor carries an opaque server-keyed string; messages carry only the
+// tag. Guest IP addresses never appear in the protocol.
 const ACTOR_USER = 0x01;
 const ACTOR_GUEST = 0x02;
-
-const IP_NONE = 0x00;
-const IP_V4 = 0x04;
-const IP_V6 = 0x06;
 
 const NONE_STRING_LEN = 0xffff;
 const MESSAGE_FLAG_EDITED_AT = 0x01;
@@ -55,55 +55,6 @@ const MESSAGE_FLAG_DELETED_AT = 0x02;
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-
-/// Format an IPv6 address the way Rust's `Ipv6Addr` Display does: IPv4-mapped
-/// addresses as `::ffff:a.b.c.d`, otherwise the longest run (>= 2) of zero
-/// hextets compressed to `::` (leftmost on ties), hextets in lowercase hex
-/// without leading zeros. The SFU stamps MediaStream ids with that exact form
-/// (`actor_stream_id`), so any deviation breaks actor-to-stream mapping and
-/// the participant's tile never binds its stream.
-export function formatIpv6Canonical(hextets: readonly number[]): string {
-  const seg = (i: number): number => hextets[i] ?? 0;
-  const isV4Mapped =
-    seg(0) === 0 &&
-    seg(1) === 0 &&
-    seg(2) === 0 &&
-    seg(3) === 0 &&
-    seg(4) === 0 &&
-    seg(5) === 0xffff;
-  if (isV4Mapped) {
-    const g = seg(6);
-    const h = seg(7);
-    return `::ffff:${(g >> 8) & 0xff}.${g & 0xff}.${(h >> 8) & 0xff}.${h & 0xff}`;
-  }
-  let bestStart = -1;
-  let bestLen = 0;
-  let runStart = -1;
-  let runLen = 0;
-  for (let i = 0; i < 8; i += 1) {
-    if (seg(i) === 0) {
-      if (runStart === -1) runStart = i;
-      runLen += 1;
-      if (runLen > bestLen) {
-        bestLen = runLen;
-        bestStart = runStart;
-      }
-    } else {
-      runStart = -1;
-      runLen = 0;
-    }
-  }
-  const hex = (i: number): string => seg(i).toString(16);
-  if (bestLen < 2) {
-    return Array.from({ length: 8 }, (_, i) => hex(i)).join(":");
-  }
-  const head = Array.from({ length: bestStart }, (_, i) => hex(i)).join(":");
-  const tailStart = bestStart + bestLen;
-  const tail = Array.from({ length: 8 - tailStart }, (_, i) =>
-    hex(tailStart + i),
-  ).join(":");
-  return `${head}::${tail}`;
-}
 
 export function encodeSendMessageFrame(
   clientMessageId: string,
@@ -391,36 +342,16 @@ class BinaryReader {
     return new Date(Number(this.readI64())).toISOString();
   }
 
-  readIp(): string | null {
-    const family = this.readU8();
-    if (family === IP_NONE) return null;
-    if (family === IP_V4) {
-      return Array.from(this.readBytes(4), (byte) => String(byte)).join(".");
-    }
-    if (family === IP_V6) {
-      const bytes = this.readBytes(16);
-      const hextets: number[] = [];
-      for (let i = 0; i < bytes.length; i += 2) {
-        hextets.push(((bytes[i] ?? 0) << 8) | (bytes[i + 1] ?? 0));
-      }
-      return formatIpv6Canonical(hextets);
-    }
-    throw new Error("Unknown IP family in live chat binary frame");
-  }
-
   readActor(): ChatActor {
     const actorKind = this.readU8();
     let actorKey: ChatActorKey;
     let userId: string | null = null;
-    let guestIp: string | null = null;
 
     if (actorKind === ACTOR_USER) {
       userId = this.readUuid();
-      this.readIp();
       actorKey = { type: "user", value: userId };
     } else if (actorKind === ACTOR_GUEST) {
-      guestIp = this.readIp();
-      actorKey = { type: "guest", value: guestIp ?? "" };
+      actorKey = { type: "guest", value: this.readString() };
     } else {
       throw new Error("Unknown actor kind in live chat binary frame");
     }
@@ -429,7 +360,6 @@ class BinaryReader {
       actor_key: actorKey,
       sender_kind: this.readU8(),
       user_id: userId,
-      guest_ip: guestIp,
       display_name: this.readString(),
       country_flag: this.readOptionalString(),
       user_profile_picture_url: this.readOptionalString(),
@@ -441,14 +371,10 @@ class BinaryReader {
     const roomKey = this.readString();
     const actorKind = this.readU8();
     let userId: string | null = null;
-    let guestIp: string | null = null;
 
     if (actorKind === ACTOR_USER) {
       userId = this.readUuid();
-      this.readIp();
-    } else if (actorKind === ACTOR_GUEST) {
-      guestIp = this.readIp();
-    } else {
+    } else if (actorKind !== ACTOR_GUEST) {
       throw new Error("Unknown message actor kind in live chat binary frame");
     }
 
@@ -468,7 +394,6 @@ class BinaryReader {
       live_chat_message_id: liveChatMessageId,
       room_key: roomKey,
       user_id: userId,
-      guest_ip: guestIp,
       sender_kind: senderKind,
       sender_display_name: senderDisplayName,
       sender_country_flag: senderCountryFlag,

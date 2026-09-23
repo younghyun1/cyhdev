@@ -13,6 +13,8 @@ pub enum LiveChatError {
     Forbidden,
     #[error("live-chat cursor was not found")]
     InvalidCursor,
+    #[error("operating-system entropy unavailable for the live-chat guest identity key")]
+    Entropy(#[source] getrandom::Error),
 }
 
 impl LiveChatError {
@@ -24,7 +26,7 @@ impl LiveChatError {
                 DatabaseErrorKind::SerializationFailure | DatabaseErrorKind::ClosedConnection
             ),
             Self::Database(_) => false,
-            Self::Unauthorized | Self::Forbidden | Self::InvalidCursor => false,
+            Self::Unauthorized | Self::Forbidden | Self::InvalidCursor | Self::Entropy(_) => false,
         }
     }
 }

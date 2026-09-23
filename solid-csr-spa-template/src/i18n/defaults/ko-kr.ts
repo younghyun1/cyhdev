@@ -576,7 +576,6 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "live_chat.send": "보내기",
   "live_chat.delete_confirm": "모든 사용자에게서 이 메시지를 삭제할까요? 되돌릴 수 없습니다.",
   "live_chat.delete_failed": "메시지를 삭제하지 못했습니다. 다시 시도해 주세요.",
-  "live_chat.guest_ip": "게스트 IP",
   "live_chat.connection_failed": "라이브 채팅 연결에 실패했습니다.",
   "live_chat.not_connected": "라이브 채팅에 연결되어 있지 않습니다.",
   "live_chat.send_failed": "라이브 채팅 메시지를 보낼 수 없습니다.",
