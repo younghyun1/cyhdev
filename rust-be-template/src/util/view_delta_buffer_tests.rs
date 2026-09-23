@@ -29,11 +29,10 @@ async fn flush_settles_applied_deltas_and_keeps_failed_ones() {
     }
     views.try_record(failed).await;
     let flushed = views
-        .flush(async |pending: &[(Uuid, i64)]| {
+        .flush(|pending: Vec<(Uuid, i64)>| async move {
             Ok::<_, ()>(
                 pending
-                    .iter()
-                    .copied()
+                    .into_iter()
                     .filter(|(id, _)| *id == applied)
                     .collect(),
             )
@@ -55,8 +54,8 @@ async fn full_buffer_flushes_before_falling_back_to_a_direct_write() {
     let outcome = views
         .record(
             Uuid::from_u128(2),
-            async |_: &[(Uuid, i64)]| Ok::<_, ()>(Vec::new()),
-            async |_| {
+            |_| async { Ok::<_, ()>(Vec::new()) },
+            |_| async {
                 increments.fetch_add(1, Ordering::Relaxed);
                 Ok(())
             },
@@ -69,8 +68,8 @@ async fn full_buffer_flushes_before_falling_back_to_a_direct_write() {
     let outcome = views
         .record(
             Uuid::from_u128(3),
-            async |pending: &[(Uuid, i64)]| Ok::<_, ()>(pending.to_vec()),
-            async |_| Ok(()),
+            |pending| async move { Ok::<_, ()>(pending) },
+            |_| async { Ok(()) },
         )
         .await;
     assert!(matches!(outcome, Ok(ViewRecordOutcome::Buffered)));

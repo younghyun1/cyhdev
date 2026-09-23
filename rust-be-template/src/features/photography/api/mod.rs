@@ -5,6 +5,7 @@ pub mod delete_photograph_comment;
 pub mod delete_photographs;
 pub mod error;
 pub mod get_photographs;
+pub mod list_photograph_comments;
 pub mod presentation;
 pub mod read_photograph;
 pub mod rescind_photograph_comment_vote;

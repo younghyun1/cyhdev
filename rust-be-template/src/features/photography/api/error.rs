@@ -35,6 +35,26 @@ fn map_with_database_code(error: PhotographyError, database_code: CodeError) -> 
         PhotographyError::Media(_) => CodeError::FILE_UPLOAD_ERROR,
         PhotographyError::BatchEmpty => CodeError::BATCH_EMPTY,
         PhotographyError::BatchSaturated => CodeError::INVALID_REQUEST,
+        PhotographyError::WriteThrottled { .. } => CodeError::CONTENT_WRITE_THROTTLED,
     };
-    code_err(code, error)
+    let retry_after = match &error {
+        PhotographyError::WriteThrottled {
+            retry_after,
+            saturated,
+        } => {
+            tracing::warn!(
+                event = "photograph_write_rejected",
+                capacity_saturated = *saturated,
+                retry_after_seconds = retry_after.as_secs(),
+                "Photograph comment or vote rejected by the write budget"
+            );
+            Some(*retry_after)
+        }
+        _ => None,
+    };
+    let response = code_err(code, error);
+    match retry_after {
+        Some(retry_after) => response.with_retry_after(retry_after),
+        None => response,
+    }
 }

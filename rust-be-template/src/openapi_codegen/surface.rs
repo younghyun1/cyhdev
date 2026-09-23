@@ -106,6 +106,7 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("reference", "GET", "/api/visitor-board"),
     operation!("blog-posts", "GET", "/api/blog/posts"),
     operation!("blog-posts", "GET", "/api/blog/posts/{post_id}"),
+    operation!("blog-social", "GET", "/api/blog/posts/{post_id}/comments"),
     operation!("blog-posts", "GET", "/api/blog/search"),
     operation!("blog-posts", "POST", "/api/blog/posts"),
     operation!("blog-posts", "PATCH", "/api/blog/{post_id}"),
@@ -139,6 +140,11 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
         "photography-media",
         "GET",
         "/api/photographs/{photograph_id}"
+    ),
+    operation!(
+        "photography-social",
+        "GET",
+        "/api/photographs/{photograph_id}/comments"
     ),
     operation!(
         "photography-social",

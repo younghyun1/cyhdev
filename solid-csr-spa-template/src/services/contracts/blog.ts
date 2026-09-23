@@ -1,4 +1,5 @@
 import type {
+  CommentCursorResponse,
   SubmitCommentRequest,
   SubmitPostRequest,
   UpdateCommentRequest,
@@ -16,6 +17,14 @@ export const blogApi = {
     contractApi.getPosts({ query }),
   readPost: (postId: string) =>
     contractApi.readPost({ path: { post_id: postId } }),
+  listPostComments: (postId: string, after: CommentCursorResponse) =>
+    contractApi.listPostComments({
+      path: { post_id: postId },
+      query: {
+        after_created_at: after.after_created_at,
+        after_comment_id: after.after_comment_id,
+      },
+    }),
   submitPost: (body: SubmitPostRequest) => contractApi.submitPost({ body }),
   updatePost: (body: UpdatePostRequest, postId: string) =>
     contractApi.updatePost({ body, path: { post_id: postId } }),

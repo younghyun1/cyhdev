@@ -71,12 +71,20 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/users/{user_name}", get(get_user_info))
         .route("/api/blog/posts", get(get_posts))
         .route("/api/blog/posts/{post_id}", get(read_post))
+        .route(
+            "/api/blog/posts/{post_id}/comments",
+            get(list_post_comments),
+        )
         .route("/api/blog/search", get(search_posts))
         .route("/api/live-chat/messages", get(get_live_chat_messages))
         .route("/api/live-chat/cache-stats", get(get_live_chat_cache_stats))
         .route("/api/i18n/ui-text", get(get_ui_text_bundle))
         .route("/api/photographs/get", get(get_photographs))
         .route("/api/photographs/{photograph_id}", get(read_photograph))
+        .route(
+            "/api/photographs/{photograph_id}/comments",
+            get(list_photograph_comments),
+        )
         .route("/api/wasm-modules", get(get_wasm_modules))
         .route("/api/wasm-modules/{wasm_module_id}/wasm", get(serve_wasm));
 

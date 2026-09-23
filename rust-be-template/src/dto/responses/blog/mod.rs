@@ -1,3 +1,4 @@
+pub mod comment_page_response;
 pub mod delete_comment_response;
 pub mod delete_post_response;
 pub mod get_posts;

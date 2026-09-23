@@ -5,6 +5,7 @@ import type { VoteState } from "./vote-state";
 export type CommentResponse = {
   readonly comment_content: string;
   readonly comment_created_at: string;
+  readonly comment_deleted_at?: string | null;
   readonly comment_id: string;
   readonly comment_updated_at?: string | null;
   readonly parent_comment_id?: string | null;

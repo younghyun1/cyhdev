@@ -8,7 +8,7 @@ use super::super::{
     },
     error::PhotographyError,
 };
-use super::photography_service::PhotographyService;
+use super::photography_service::{PhotographWriteKind, PhotographyService};
 use crate::features::accounts::domain::public_author::PublicAuthor;
 
 impl PhotographyService {
@@ -37,6 +37,8 @@ impl PhotographyService {
         photograph_id: Uuid,
         is_upvote: bool,
     ) -> Result<VoteCounts, PhotographyError> {
+        self.charge_write(user_id, PhotographWriteKind::Vote)
+            .await?;
         self.repository
             .vote_photograph(user_id, photograph_id, is_upvote)
             .await
@@ -46,6 +48,8 @@ impl PhotographyService {
         user_id: Uuid,
         photograph_id: Uuid,
     ) -> Result<VoteCounts, PhotographyError> {
+        self.charge_write(user_id, PhotographWriteKind::Vote)
+            .await?;
         self.repository
             .rescind_photograph_vote(user_id, photograph_id)
             .await
@@ -56,6 +60,8 @@ impl PhotographyService {
         comment_id: Uuid,
         is_upvote: bool,
     ) -> Result<VoteCounts, PhotographyError> {
+        self.charge_write(user_id, PhotographWriteKind::Vote)
+            .await?;
         self.repository
             .vote_comment(user_id, comment_id, is_upvote)
             .await
@@ -65,6 +71,8 @@ impl PhotographyService {
         user_id: Uuid,
         comment_id: Uuid,
     ) -> Result<VoteCounts, PhotographyError> {
+        self.charge_write(user_id, PhotographWriteKind::Vote)
+            .await?;
         self.repository
             .rescind_comment_vote(user_id, comment_id)
             .await
@@ -78,6 +86,8 @@ impl PhotographyService {
     ) -> Result<CommentPresentation, PhotographyError> {
         let content =
             PhotographCommentBody::parse(content).map_err(|_| PhotographyError::InvalidInput)?;
+        self.charge_write(user_id, PhotographWriteKind::Comment)
+            .await?;
         let mutation = self
             .repository
             .create_comment(NewPhotographComment {
@@ -97,6 +107,8 @@ impl PhotographyService {
     ) -> Result<CommentPresentation, PhotographyError> {
         let content =
             PhotographCommentBody::parse(content).map_err(|_| PhotographyError::InvalidInput)?;
+        self.charge_write(requester_id, PhotographWriteKind::Comment)
+            .await?;
         let mutation = self
             .repository
             .update_comment(requester_id, comment_id, content.into_inner())
@@ -108,6 +120,8 @@ impl PhotographyService {
         requester_id: Uuid,
         comment_id: Uuid,
     ) -> Result<(), PhotographyError> {
+        self.charge_write(requester_id, PhotographWriteKind::Comment)
+            .await?;
         self.repository
             .delete_comment(requester_id, comment_id)
             .await
