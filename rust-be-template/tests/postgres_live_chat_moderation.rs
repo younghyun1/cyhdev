@@ -53,7 +53,7 @@ fn moderation_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "ordinary user could moderate chat",
         )?;
         require(
-            repository.recent_messages(10).await?.len() == 2,
+            repository.recent_messages("main", 10).await?.len() == 2,
             "denied deletion modified messages",
         )?;
         context
@@ -80,7 +80,7 @@ fn moderation_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             body.is_empty() && deleted_at.is_some(),
             "moderated content was retained",
         )?;
-        let recent = repository.recent_messages(10).await?;
+        let recent = repository.recent_messages("main", 10).await?;
         require(
             recent.len() == 1 && recent[0].live_chat_message_id == first.live_chat_message_id,
             "recent history exposed deleted message",

@@ -4,7 +4,10 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use super::{
-    super::domain::{ban::LIVE_CHAT_ABUSE_BAN_DURATION, ip_prefix::LiveChatIpPrefix},
+    super::domain::{
+        ban::LIVE_CHAT_ABUSE_BAN_DURATION, ip_prefix::LiveChatIpPrefix,
+        message::DEFAULT_LIVE_CHAT_ROOM,
+    },
     super::error::LiveChatError,
     cache::{
         BanCacheLookup, CachedChatMessage, CachedLiveChatBan, ChatActor,
@@ -12,6 +15,9 @@ use super::{
     },
     live_chat_service::LiveChatService,
 };
+
+/// Startup cache input bound; the 128 MiB byte budget still applies after load.
+const LIVE_CHAT_STARTUP_MESSAGE_LIMIT: i64 = 50_000;
 
 impl LiveChatService {
     pub async fn prune_runtime(&self, now: chrono::DateTime<chrono::Utc>) {
@@ -92,8 +98,13 @@ impl LiveChatService {
         Ok(messages)
     }
 
+    /// Startup synchronization of the message cache from the one room the
+    /// service serves, newest first through the room keyset index.
     pub async fn synchronize_messages(&self) -> Result<usize, LiveChatError> {
-        let rows = self.repository.recent_messages(50_000).await?;
+        let rows = self
+            .repository
+            .recent_messages(DEFAULT_LIVE_CHAT_ROOM, LIVE_CHAT_STARTUP_MESSAGE_LIMIT)
+            .await?;
         self.cache.clear_messages().await;
         let count = rows.len();
         let mut messages = rows
