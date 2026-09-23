@@ -58,22 +58,41 @@ fn synchronize_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         verify_locale_readback(&service).await?;
 
+        let first_versions = stored_versions(&pool, expected_rows).await?;
+        // Drift one stored row so the repeat must rewrite exactly that row.
+        let mut connection = pool.get().await?;
+        diesel::update(
+            i18n_strings::table
+                .filter(i18n_strings::i18n_string_reference_key.eq("common.save"))
+                .filter(i18n_strings::i18n_string_country_code.eq(UiLocale::EnUs.country_code()))
+                .filter(i18n_strings::i18n_string_language_code.eq(UiLocale::EnUs.language_code())),
+        )
+        .set(i18n_strings::i18n_string_content.eq("Drifted save label"))
+        .execute(&mut connection)
+        .await?;
+        drop(connection);
         require(
             service.synchronize_file_sources().await? == expected_rows,
             "repeated synchronization did not process every source key",
         )?;
-        let mut connection = pool.get().await?;
-        let second_ids = i18n_strings::table
-            .filter(i18n_strings::i18n_string_country_subdivision_code.is_null())
-            .order(i18n_strings::i18n_string_id)
-            .limit(i64::try_from(expected_rows + 1)?)
-            .select(i18n_strings::i18n_string_id)
-            .load::<Uuid>(&mut connection)
-            .await?;
-        drop(connection);
+        let second_versions = stored_versions(&pool, expected_rows).await?;
+        let second_ids = second_versions
+            .iter()
+            .map(|(id, _, _)| *id)
+            .collect::<Vec<_>>();
         require(
             first_ids == second_ids,
             "source upserts duplicated or replaced stored rows",
+        )?;
+        let rewritten = first_versions
+            .iter()
+            .zip(&second_versions)
+            .filter(|(before, after)| before.2 != after.2)
+            .map(|(_, after)| after.1.as_str())
+            .collect::<Vec<_>>();
+        require(
+            rewritten == ["common.save"],
+            "repeated synchronization rewrote unchanged rows or missed the drifted row",
         )?;
 
         for source in sources {
@@ -131,4 +150,23 @@ async fn verify_locale_readback(service: &I18nService) -> TestResult {
         }
     }
     Ok(())
+}
+
+/// `(id, key, updated_at)` for every locale row, ordered by id.
+async fn stored_versions(
+    pool: &diesel_async::pooled_connection::bb8::Pool<diesel_async::AsyncPgConnection>,
+    expected_rows: usize,
+) -> TestResult<Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)>> {
+    let mut connection = pool.get().await?;
+    Ok(i18n_strings::table
+        .filter(i18n_strings::i18n_string_country_subdivision_code.is_null())
+        .order(i18n_strings::i18n_string_id)
+        .limit(i64::try_from(expected_rows + 1)?)
+        .select((
+            i18n_strings::i18n_string_id,
+            i18n_strings::i18n_string_reference_key,
+            i18n_strings::i18n_string_updated_at,
+        ))
+        .load(&mut connection)
+        .await?)
 }
