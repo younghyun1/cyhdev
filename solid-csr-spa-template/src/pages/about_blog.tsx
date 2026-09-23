@@ -1,8 +1,6 @@
-import { Dynamic } from "@solidjs/web";
-import { locale } from "../state/i18n";
-import { lazyLocalePages } from "./about-locales/lazy_locale_pages";
+import { createLocalePage } from "./about-locales/lazy_locale_pages";
 
-const PAGES = lazyLocalePages({
+const AboutBlog = createLocalePage({
   "en-US": () => import("./about-locales/about_blog_en_us"),
   "ko-KR": () => import("./about-locales/about_blog_ko_kr"),
   "fr-FR": () => import("./about-locales/about_blog_fr_fr"),
@@ -13,6 +11,4 @@ const PAGES = lazyLocalePages({
   "de-DE": () => import("./about-locales/about_blog_de_de"),
 });
 
-export default function AboutBlog() {
-  return <Dynamic component={PAGES[locale()]} />;
-}
+export default AboutBlog;
