@@ -1,8 +1,11 @@
 //! Process-owned runtime/build/host status service.
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    net::IpAddr,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use crate::features::server_status::{
@@ -16,6 +19,7 @@ use crate::features::server_status::{
         system_info_state::SystemInfoState,
     },
 };
+use crate::util::connection_limit::{ConnectionLimiter, ConnectionPermit, ConnectionRejection};
 
 pub struct RuntimeStatus {
     pub uptime: tokio::time::Duration,
@@ -54,7 +58,13 @@ pub struct ServerStatusService {
     app_name_version: Arc<str>,
     started_at: tokio::time::Instant,
     responses_handled: AtomicU64,
+    host_stats_sockets: ConnectionLimiter,
 }
+
+/// Concurrent host-stats sockets; each costs one task and a sample per second.
+pub const HOST_STATS_MAX_SOCKETS: usize = 256;
+/// Per IPv4 address or IPv6 /64, enough for a few open tabs behind one NAT.
+pub const HOST_STATS_MAX_SOCKETS_PER_CLIENT: usize = 4;
 
 impl ServerStatusService {
     pub fn new(
@@ -70,7 +80,20 @@ impl ServerStatusService {
             app_name_version: app_name_version.into(),
             started_at,
             responses_handled: AtomicU64::new(0),
+            host_stats_sockets: ConnectionLimiter::new(
+                "host_stats_sockets",
+                HOST_STATS_MAX_SOCKETS,
+                HOST_STATS_MAX_SOCKETS_PER_CLIENT,
+            ),
         }
+    }
+
+    /// Reserves a host-stats socket slot for `client_ip` until the permit is dropped.
+    pub fn admit_host_stats_socket(
+        &self,
+        client_ip: IpAddr,
+    ) -> Result<ConnectionPermit, ConnectionRejection> {
+        self.host_stats_sockets.try_acquire(client_ip)
     }
 
     pub fn app_name_version(&self) -> &str {
