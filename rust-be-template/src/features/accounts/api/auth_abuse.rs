@@ -1,11 +1,14 @@
 //! HTTP admission controls for authentication abuse.
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 
 use axum::{
     body::Body,
     extract::{ConnectInfo, State},
-    http::{Method, Request, Response},
+    http::{HeaderMap, Method, Request, Response},
     middleware::Next,
     response::IntoResponse,
 };
@@ -33,13 +36,18 @@ pub async fn enforce_auth_ip_throttle(
         Some(endpoint) => endpoint,
         None => return next.run(request).await,
     };
-    let client_ip = match extract_client_ip(request.headers(), socket_addr) {
-        Some(client_ip) => client_ip,
-        None => socket_addr.ip(),
-    };
+    let client_ip = request_client_ip(request.headers(), socket_addr);
     match service.check_ip(endpoint, client_ip).await {
         Ok(()) => next.run(request).await,
         Err(rejection) => map_auth_throttle_rejection(rejection).into_response(),
+    }
+}
+
+/// Resolves the throttled source address, falling back to the socket peer.
+pub(super) fn request_client_ip(headers: &HeaderMap, socket_addr: SocketAddr) -> IpAddr {
+    match extract_client_ip(headers, socket_addr) {
+        Some(client_ip) => client_ip,
+        None => socket_addr.ip(),
     }
 }
 
