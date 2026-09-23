@@ -24,6 +24,7 @@ import type {
 } from "../generated";
 import { t, tx, locale } from "../state/i18n";
 import PhotographSocial from "../components/photographs/PhotographSocial";
+import PhotoStageImage from "../components/photographs/PhotoStageImage";
 import {
   trackFromUpload,
   setBatchCompletionHandler,
@@ -362,6 +363,21 @@ export default function Photographs(props: RouteSectionProps) {
   // Neighbours are resolved from the loaded list and navigated to by URL (the
   // route effect then swaps the modal content). On a cold deep-link the photo is
   // not in the list (idx === -1), so prev/next are unavailable.
+  const selectedIndex = createMemo(() => {
+    const current = selectedPhoto();
+    if (!current) return -1;
+    return photos().findIndex((p) => p.photograph_id === current.photograph_id);
+  });
+  // Full-size links of the loaded neighbours, preloaded by the viewer stage.
+  const neighborLinks = createMemo(() => {
+    const idx = selectedIndex();
+    if (idx === -1) return [];
+    const list = photos();
+    return [list[idx - 1], list[idx + 1]]
+      .filter((p): p is PhotographItem => p !== undefined)
+      .map((p) => p.photograph_link);
+  });
+
   const navigatePhoto = async (direction: "prev" | "next") => {
     const current = selectedPhoto();
     if (!current) return;
@@ -692,13 +708,7 @@ export default function Photographs(props: RouteSectionProps) {
               }}
             >
               {/* --- PREV BUTTON --- */}
-              <Show
-                when={
-                  photos().findIndex(
-                    (p) => p.photograph_id === selectedPhoto()?.photograph_id,
-                  ) > 0
-                }
-              >
+              <Show when={selectedIndex() > 0}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -725,20 +735,17 @@ export default function Photographs(props: RouteSectionProps) {
                 </button>
               </Show>
 
-              <img
+              <PhotoStageImage
                 src={selectedPhoto()!.photograph_link}
                 alt={selectedPhoto()!.photograph_comments}
-                decoding="async"
+                neighbors={neighborLinks()}
               />
 
               {/* --- NEXT BUTTON --- */}
               <Show
                 when={
                   // CHANGED CONDITION: Show if not last element OR if server has more
-                  photos().findIndex(
-                    (p) => p.photograph_id === selectedPhoto()?.photograph_id,
-                  ) <
-                    photos().length - 1 || hasMore()
+                  selectedIndex() < photos().length - 1 || hasMore()
                 }
               >
                 <button
@@ -753,12 +760,7 @@ export default function Photographs(props: RouteSectionProps) {
                   {/* Optional: Show spinner if loading next page while hovering next button */}
                   <Show
                     when={
-                      loading() &&
-                      photos().findIndex(
-                        (p) =>
-                          p.photograph_id === selectedPhoto()?.photograph_id,
-                      ) ===
-                        photos().length - 1
+                      loading() && selectedIndex() === photos().length - 1
                     }
                     fallback={
                       <svg

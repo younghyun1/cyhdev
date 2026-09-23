@@ -55,7 +55,7 @@ const svg = (label: string, width: number, height: number) =>
 async function serveImages(
   page: Page,
   gates: Readonly<Record<string, Gate>> = {},
-  failing: readonly string[] = [],
+  failing: ReadonlySet<string> = new Set(),
 ): Promise<string[]> {
   const requested: string[] = [];
   await page.route("**/e2e-photos/**", async (route: Route) => {
@@ -64,7 +64,7 @@ async function serveImages(
     for (const [key, held] of Object.entries(gates)) {
       if (name.startsWith(key)) await held.wait;
     }
-    if (failing.some((key) => name.startsWith(key))) {
+    if ([...failing].some((key) => name.startsWith(key))) {
       await route.fulfill({ status: 404, body: "" });
       return;
     }
@@ -152,4 +152,120 @@ test("thumbnails reserve a 4:3 box before their image arrives", async ({ page })
       return Math.round(((loaded?.height ?? 0) / (loaded?.width ?? 1)) * 100);
     })
     .toBe(67);
+});
+
+async function openViewer(page: Page, items: ReturnType<typeof photo>[]) {
+  await page.route("**/api/photographs/get**", (route) =>
+    route.fulfill({ json: photoPage(items, false) }),
+  );
+  await page.goto("/photographs");
+  await page.locator(".photo-card").first().click();
+  await expect(page.locator(".details-modal")).toBeVisible();
+}
+
+const stageImage = (page: Page, index: number) =>
+  page.locator(`.details-image-container img[src$="/${index}-full.svg"]`);
+
+test("viewer shows a black stage and a delayed indicator until the next photo decodes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "logged-out");
+  const second = gate();
+  await serveImages(page, { "2-full": second });
+  await openViewer(page, [photo(1, "First photo"), photo(2, "Second photo")]);
+  await expect(stageImage(page, 1)).toBeVisible();
+  await expect(page.locator("[data-photo-loading]")).toHaveCount(0);
+
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".details-info")).toContainText("Second photo");
+  // Read description and stage together so no frame can show both.
+  const snapshot = await page.evaluate(() => ({
+    description: document.querySelector(".details-info p")?.textContent ?? "",
+    images: [...document.querySelectorAll(".details-image-container img")].map(
+      (image) => image.getAttribute("src"),
+    ),
+  }));
+  expect(snapshot.description).toContain("Second photo");
+  expect(snapshot.images).toEqual([]);
+  await expect(page.locator("[data-photo-loading]")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Loading photograph" })).toHaveCount(1);
+
+  second.open();
+  await expect(stageImage(page, 2)).toBeVisible();
+  await expect(page.locator("[data-photo-loading]")).toHaveCount(0);
+  await expect(stageImage(page, 1)).toHaveCount(0);
+
+  // Going back to an already decoded photo is immediate: no indicator at all.
+  await page.evaluate(() => {
+    const store = window as unknown as { __sawIndicator: boolean };
+    store.__sawIndicator = false;
+    new MutationObserver(() => {
+      if (document.querySelector("[data-photo-loading]")) store.__sawIndicator = true;
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+  await page.keyboard.press("ArrowLeft");
+  await expect(stageImage(page, 1)).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(
+    await page.evaluate(() => (window as unknown as { __sawIndicator: boolean }).__sawIndicator),
+  ).toBe(false);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".details-modal")).toBeHidden();
+  await expect(page.locator(".photo-card").first()).toBeFocused();
+});
+
+test("viewer preloads the adjacent photographs after the current one", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "logged-out");
+  const requested = await serveImages(page);
+  await page.route("**/api/photographs/get**", (route) =>
+    route.fulfill({ json: photoPage([photo(1), photo(2), photo(3), photo(4)], false) }),
+  );
+  await page.goto("/photographs");
+  await page.locator(".photo-card").nth(1).click();
+  await expect(stageImage(page, 2)).toBeVisible();
+  await expect.poll(() => requested.filter((name) => name.endsWith("-full.svg")).sort())
+    .toEqual(["1-full.svg", "2-full.svg", "3-full.svg"]);
+  await page.keyboard.press("ArrowRight");
+  await expect(stageImage(page, 3)).toBeVisible();
+  await expect(page.locator("[data-photo-loading]")).toHaveCount(0);
+  await expect.poll(() => requested.includes("4-full.svg")).toBe(true);
+});
+
+test("viewer reports a failed photograph and retries it", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installApiMocks(page, "logged-out");
+  const failing = new Set(["1-full"]);
+  await serveImages(page, {}, failing);
+  await openViewer(page, [photo(1, "Broken photo")]);
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("This photograph could not be loaded.");
+  await expect(page.locator(".details-info")).toContainText("Broken photo");
+  const retry = alert.getByRole("button", { name: "Try again" });
+  expect((await retry.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+  failing.clear();
+  await retry.click();
+  await expect(stageImage(page, 1)).toBeVisible();
+  await expect(alert).toHaveCount(0);
+});
+
+test("viewer loading cues are still under reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "logged-out");
+  const held = gate();
+  await serveImages(page, { "1-full": held });
+  await openViewer(page, [photo(1)]);
+  const indicator = page.locator("[data-photo-loading]");
+  await expect(indicator).toBeVisible();
+  expect(
+    await indicator.evaluate((element) => getComputedStyle(element, "::before").animationName),
+  ).toBe("none");
+  held.open();
+  const image = stageImage(page, 1);
+  await expect(image).toBeVisible();
+  expect(await image.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
 });
