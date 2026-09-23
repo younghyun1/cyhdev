@@ -281,6 +281,9 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "auth.login.loading": "Logging in...",
   "auth.login.find_password": "Find Password",
   "auth.login.register": "Register",
+  "auth.login.verification_required": "Verify your email address before logging in. Open the link in the verification email we sent you.",
+  "auth.login.verification_resend_hint": "Need a new link? Sign up again with the same email address. The newest signup replaces the earlier details and invalidates older links.",
+  "auth.login.verification_resend": "Sign up again for a new link",
   "auth.oidc.login": "Continue with",
   "auth.oidc.starting": "Opening identity provider...",
   "auth.oidc.failed": "External login failed or is no longer active.",
@@ -373,6 +376,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "profile.oidc.link_success": "External login linked.",
   "profile.oidc.unlink_success": "External login unlinked.",
   "profile.oidc.failed": "External login update failed or expired.",
+  "profile.oidc.link_confirm_hint": "Confirm your current local password to link an external login.",
   "profile.picture_history.title": "Profile picture history",
   "profile.picture_history.count": "{count} of {maximum}",
   "profile.picture_history.load_failed":
