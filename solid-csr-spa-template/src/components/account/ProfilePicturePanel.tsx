@@ -18,23 +18,14 @@ import ProfilePictureHistory from "./ProfilePictureHistory";
 
 const MAX_PROFILE_PICTURE_BYTES = 10 * 1024 * 1024;
 const MAX_PROFILE_PICTURE_HISTORY = 8;
+// Mirrors the server's image upload allowlist; each type selects one decoder.
 const ALLOWED_MIME_TYPES = new Set([
   "image/png",
   "image/jpeg",
   "image/gif",
   "image/webp",
-  "image/x-portable-anymap",
   "image/tiff",
-  "image/x-tga",
-  "image/vnd-ms.dds",
   "image/bmp",
-  "image/vnd.microsoft.icon",
-  "image/vnd.radiance",
-  "image/x-exr",
-  "image/farbfeld",
-  "image/avif",
-  "image/qoi",
-  "image/vnd.zbrush.pcx",
 ]);
 
 export default function ProfilePicturePanel() {

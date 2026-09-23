@@ -5,8 +5,8 @@ use axum::{
     response::IntoResponse,
 };
 use serde_derive::Deserialize;
-use std::{path::PathBuf, sync::Arc};
-use tracing::{error, warn};
+use std::sync::Arc;
+use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
@@ -23,7 +23,7 @@ use crate::{
     },
     init::state::ServerState,
     util::{
-        image::batch_pipeline::{append_chunk, batch_temp_dir, open_staging_file},
+        image::batch_pipeline::{BatchStagingDir, append_chunk},
         media::{image_upload::is_allowed_image_mime, staged_upload::read_bounded_text_field},
         time::now::tokio_now,
     },
@@ -48,8 +48,10 @@ pub async fn batch_upload(
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let batch_id = Uuid::now_v7();
-    let directory = batch_temp_dir(batch_id);
-    let mut guard = StagingGuard::new(directory);
+    // Dropping the staging directory on any early return removes it.
+    let staging = BatchStagingDir::create()
+        .await
+        .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
     let mut files = Vec::new();
     let mut metadata = None;
     let mut context = PhotographContext::Photography;
@@ -75,7 +77,8 @@ pub async fn batch_upload(
                     ));
                 }
                 let item_id = Uuid::now_v7();
-                let mut file = open_staging_file(batch_id, item_id)
+                let mut file = staging
+                    .open_item(item_id)
                     .await
                     .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
                 let mut size_bytes = 0_u64;
@@ -148,10 +151,9 @@ pub async fn batch_upload(
         metadata.ok_or_else(|| code_err(CodeError::INVALID_REQUEST, "Missing meta field"))?;
     let accepted = state
         .photography_service()
-        .accept_batch(user_id, batch_id, context, files, metadata)
+        .accept_batch(user_id, batch_id, context, staging, files, metadata)
         .await
         .map_err(super::error::map_photography_error)?;
-    guard.disarm();
     Ok((
         StatusCode::ACCEPTED,
         http_resp(
@@ -171,32 +173,4 @@ pub async fn batch_upload(
             start,
         ),
     ))
-}
-
-struct StagingGuard(Option<PathBuf>);
-impl StagingGuard {
-    fn new(path: PathBuf) -> Self {
-        Self(Some(path))
-    }
-    fn disarm(&mut self) {
-        self.0 = None;
-    }
-}
-impl Drop for StagingGuard {
-    fn drop(&mut self) {
-        let Some(path) = self.0.take() else {
-            return;
-        };
-        match tokio::runtime::Handle::try_current() {
-            Ok(handle) => {
-                handle.spawn(async move { if let Err(error) = tokio::fs::remove_dir_all(&path).await
-        && error.kind() != std::io::ErrorKind::NotFound { warn!(%error, path = %path.display(), "Could not clean rejected batch staging directory"); } });
-            }
-            Err(error) => {
-                if let Err(cleanup_error) = std::fs::remove_dir_all(&path) {
-                    error!(%error, %cleanup_error, path = %path.display(), "Could not clean batch staging directory");
-                }
-            }
-        }
-    }
 }

@@ -70,14 +70,21 @@ where
 pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
     info!("Task scheduler running...");
 
-    // Startup sweep: clear orphaned batch temp dirs from a previous process run.
-    // The in-memory tracker is empty at startup, so the whole staging root is stale.
+    // Startup sweep: batch staging directories from earlier processes are
+    // orphaned because the in-memory tracker starts empty; ones this process
+    // creates carry its token and are kept.
     tokio::spawn(async {
-        let root = crate::util::image::batch_pipeline::batch_root_dir();
-        if let Err(e) = tokio::fs::remove_dir_all(&root).await
-            && e.kind() != std::io::ErrorKind::NotFound
-        {
-            tracing::warn!(error = %e, path = %root.display(), "Failed startup sweep of batch temp dir");
+        match crate::util::image::batch_pipeline::sweep_stale_batch_dirs().await {
+            Ok(removed) if removed > 0 => {
+                info!(
+                    removed,
+                    "Removed stale photograph batch staging directories"
+                )
+            }
+            Ok(_) => {}
+            Err(error) => {
+                tracing::warn!(%error, "Failed startup sweep of batch staging directories")
+            }
         }
     });
 
