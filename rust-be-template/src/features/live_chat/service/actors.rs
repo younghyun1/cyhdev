@@ -25,6 +25,6 @@ impl LiveChatService {
             Some(code) => self.alpha2_flags.flag(&code).await,
             None => None,
         };
-        ChatActor::guest(ip, flag)
+        ChatActor::guest(ip, &self.guest_identity, flag)
     }
 }

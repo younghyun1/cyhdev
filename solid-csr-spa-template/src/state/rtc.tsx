@@ -66,6 +66,17 @@ function streamIdOf(actor: ChatActor): string {
   return actorStreamId(actor.actor_key);
 }
 
+function stopTracks(stream: MediaStream): void {
+  for (const track of stream.getTracks()) track.stop();
+}
+
+function closePeer(peer: RTCPeerConnection): void {
+  peer.onicecandidate = null;
+  peer.ontrack = null;
+  peer.onconnectionstatechange = null;
+  peer.close();
+}
+
 /**
  * Owns the WebRTC peer connection and call state. Signaling rides the shared
  * live-chat socket. Perfect-negotiation-lite: the client offers once on join
@@ -86,6 +97,11 @@ export const RtcProvider: ParentComponent = (props) => {
   >({});
 
   let pc: RTCPeerConnection | null = null;
+  // Incremented by every join attempt and every reset. `joinCall` captures the
+  // value it started with and abandons its work after any await where the
+  // value moved: Leave during the camera prompt, a socket drop, or a fatal
+  // RTC error must not let the stale attempt publish media afterwards.
+  let joinGeneration = 0;
 
   const remoteTiles = createMemo<RemoteTile[]>(() => {
     const self = selfActor();
@@ -109,17 +125,13 @@ export const RtcProvider: ParentComponent = (props) => {
   };
 
   const resetCall = () => {
+    joinGeneration += 1;
     if (pc) {
-      pc.onicecandidate = null;
-      pc.ontrack = null;
-      pc.onconnectionstatechange = null;
-      pc.close();
+      closePeer(pc);
       pc = null;
     }
     const stream = localStream();
-    if (stream) {
-      for (const track of stream.getTracks()) track.stop();
-    }
+    if (stream) stopTracks(stream);
     setLocalStream(null);
     setRoster([]);
     setRemoteStreams({});
@@ -203,6 +215,9 @@ export const RtcProvider: ParentComponent = (props) => {
 
   const joinCall = async () => {
     if (callState() !== "idle" && callState() !== "error") return;
+    joinGeneration += 1;
+    const generation = joinGeneration;
+    const superseded = () => generation !== joinGeneration;
     setCallError(null);
     setCallState("joining");
 
@@ -210,9 +225,15 @@ export const RtcProvider: ParentComponent = (props) => {
     try {
       stream = await requestUserMedia();
     } catch (err) {
+      if (superseded()) return;
       console.error("getUserMedia failed:", err);
       setCallError(t("call.permission_denied"));
       setCallState("error");
+      return;
+    }
+    if (superseded()) {
+      // The camera prompt resolved after Leave or a reset; release the devices.
+      stopTracks(stream);
       return;
     }
     setLocalStream(stream);
@@ -242,9 +263,17 @@ export const RtcProvider: ParentComponent = (props) => {
     }
     applyCodecPreferences(peer);
 
+    // A reset during these awaits already closed `pc` and stopped the stream,
+    // but only if this attempt still owned them; release both explicitly.
+    const abandon = () => {
+      closePeer(peer);
+      stopTracks(stream);
+    };
     try {
       const offer = await peer.createOffer();
+      if (superseded()) return abandon();
       await peer.setLocalDescription(offer);
+      if (superseded()) return abandon();
       const sent = sendRtc({
         kind: "join",
         sdp: offer.sdp ?? "",
@@ -256,6 +285,7 @@ export const RtcProvider: ParentComponent = (props) => {
         resetCall();
       }
     } catch (err) {
+      if (superseded()) return abandon();
       console.error("Failed to create call offer:", err);
       setCallError(t("call.start_failed"));
       resetCall();

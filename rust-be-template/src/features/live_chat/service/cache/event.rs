@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde_derive::Serialize;
 
 use super::{CachedChatMessage, ChatActor};
-use crate::features::live_chat::domain::rtc::RtcServerSignal;
+use crate::features::live_chat::domain::{ip_prefix::LiveChatIpPrefix, rtc::RtcServerSignal};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TypingState {
@@ -17,6 +17,8 @@ pub struct ChatConnectionState {
     /// Original authority identity retained only for cache invalidation and
     /// disabled-connection cleanup; it is never serialized.
     pub authority_user_id: Option<uuid::Uuid>,
+    /// Address group counted against the per-address connection cap.
+    pub client_prefix: LiveChatIpPrefix,
     /// Targeted shutdown signal used when account authority is revoked.
     pub disconnect_tx: tokio::sync::watch::Sender<bool>,
     pub room_key: String,

@@ -6,17 +6,16 @@
 //! coalescing `NegotiationState` prevents overlapping offers (glare).
 
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Weak;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock, Weak};
 
 use tokio::sync::{Mutex, mpsc, watch};
-use tokio::time::Instant;
-use tracing::debug;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use webrtc::peer_connection::{PeerConnection, RTCIceCandidateInit};
 use webrtc::rtp_transceiver::RtpSender;
 
+use super::ice_policy::{MAX_REMOTE_CANDIDATES_PER_PEER, RemoteCandidatePolicy};
 use super::publication::RtcPublication;
 use super::room::RtcRoom;
 use crate::features::live_chat::domain::{
@@ -30,31 +29,30 @@ mod events;
 /// SDP/renegotiation methods live in the child module; they need access to this
 /// type's private fields, which descendant modules are permitted.
 mod negotiation;
+/// Non-blocking unicast signal delivery.
+mod signal_queue;
 /// Subscription/keyframe methods live in a child module for the same reason.
 mod subscription;
 
 pub(crate) use events::RtcPeerEventHandler;
+use negotiation::NegotiationState;
+use signal_queue::{SignalPush, SignalQueue};
 
 /// Stable per-publisher stream id so a browser groups a publisher's audio and
 /// video into one `MediaStream` and the frontend can map it back to an actor.
+/// Guests use their opaque keyed hash; SDP `msid` values are browser visible.
 pub fn actor_stream_id(actor: &ChatActor) -> String {
     match &actor.actor_key {
         ChatActorKey::User(user_id) => format!("user:{user_id}"),
-        ChatActorKey::Guest(ip) => format!("guest:{ip}"),
+        ChatActorKey::Guest(guest_key) => format!("guest:{guest_key}"),
     }
 }
 
-/// Coalescing renegotiation state. `making_offer` is set while an SFU offer is
-/// outstanding (awaiting the client's answer); a renegotiation requested in that
-/// window sets `pending` and is replayed once the answer arrives. `offer_at`
-/// timestamps the outstanding offer so a never-answered offer (backgrounded tab,
-/// lost answer) goes stale and is replaced on the next renegotiation rather than
-/// wedging the peer forever.
-#[derive(Default)]
-struct NegotiationState {
-    making_offer: bool,
-    pending: bool,
-    offer_at: Option<Instant>,
+/// Who a peer is: its WebSocket connection, public actor, and call row.
+pub struct RtcPeerIdentity {
+    pub connection_id: Uuid,
+    pub actor: ChatActor,
+    pub participant_id: Uuid,
 }
 
 /// One participant's peer connection and forwarding state.
@@ -63,7 +61,9 @@ pub struct RtcPeer {
     pub actor: ChatActor,
     pub participant_id: Uuid,
     pc: Arc<dyn PeerConnection>,
-    signal_tx: mpsc::Sender<RtcServerSignal>,
+    signals: SignalQueue,
+    /// Room that tears this peer down when its signal queue overflows.
+    room: OnceLock<Weak<RtcRoom>>,
     /// This peer's published media, as fan-out publications others subscribe to.
     publications: scc::HashMap<MediaKind, Arc<RtcPublication>>,
     /// Track ids this peer is already subscribed to, so a fan-out racing the
@@ -75,6 +75,10 @@ pub struct RtcPeer {
     closed: watch::Sender<bool>,
     mic_on: AtomicBool,
     cam_on: AtomicBool,
+    /// Which browser-supplied ICE candidates may reach the agent.
+    candidate_policy: RemoteCandidatePolicy,
+    /// Trickled candidates admitted so far, capped per peer.
+    remote_candidates: AtomicUsize,
     negotiation: Mutex<NegotiationState>,
     /// Set once when teardown begins, so the Left broadcast and `pc.close()`
     /// happen exactly once across the WS-disconnect and connection-failed paths.
@@ -85,26 +89,28 @@ impl RtcPeer {
     /// Construct a peer wrapper. Handlers are attached separately so the
     /// callbacks can hold a `Weak` to the constructed `Arc<Self>`.
     pub fn new(
-        connection_id: Uuid,
-        actor: ChatActor,
-        participant_id: Uuid,
+        identity: RtcPeerIdentity,
         pc: Arc<dyn PeerConnection>,
         signal_tx: mpsc::Sender<RtcServerSignal>,
+        candidate_policy: RemoteCandidatePolicy,
         want_audio: bool,
         want_video: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
-            connection_id,
-            actor,
-            participant_id,
+            connection_id: identity.connection_id,
+            actor: identity.actor,
+            participant_id: identity.participant_id,
             pc,
-            signal_tx,
+            signals: SignalQueue::new(signal_tx),
+            room: OnceLock::new(),
             publications: scc::HashMap::new(),
             subscribed: Mutex::new(HashMap::new()),
             pending_subscriptions: Mutex::new(Vec::new()),
             closed: watch::channel(false).0,
             mic_on: AtomicBool::new(want_audio),
             cam_on: AtomicBool::new(want_video),
+            candidate_policy,
+            remote_candidates: AtomicUsize::new(0),
             negotiation: Mutex::new(NegotiationState::default()),
             torn_down: AtomicBool::new(false),
         })
@@ -116,11 +122,27 @@ impl RtcPeer {
         handler: &RtcPeerEventHandler,
         room: Weak<RtcRoom>,
     ) {
+        let _ = self.room.set(room.clone());
         handler.attach(Arc::downgrade(self), room).await;
     }
 
-    /// Add a remote ICE candidate received from the client.
+    /// Add a remote ICE candidate received from the client, subject to the
+    /// address policy and the per-peer cap; see [`super::ice_policy`].
     pub async fn add_ice(&self, candidate: RtcIceCandidate) {
+        if !self.candidate_policy.admits_candidate(&candidate.candidate) {
+            debug!(connection_id = %self.connection_id, "Dropped inadmissible remote ICE candidate");
+            return;
+        }
+        if self
+            .remote_candidates
+            .try_update(Ordering::SeqCst, Ordering::SeqCst, |admitted| {
+                (admitted < MAX_REMOTE_CANDIDATES_PER_PEER).then_some(admitted + 1)
+            })
+            .is_err()
+        {
+            debug!(connection_id = %self.connection_id, "Dropped remote ICE candidate above the per-peer cap");
+            return;
+        }
         let init = RTCIceCandidateInit {
             candidate: candidate.candidate,
             sdp_mid: candidate.sdp_mid,
@@ -158,6 +180,11 @@ impl RtcPeer {
             .is_ok()
     }
 
+    /// Whether teardown has started; a torn-down peer accepts no more signals.
+    pub fn is_torn_down(&self) -> bool {
+        self.torn_down.load(Ordering::SeqCst)
+    }
+
     /// Roster entry for this peer.
     pub fn participant(&self) -> RtcParticipant {
         RtcParticipant {
@@ -167,9 +194,34 @@ impl RtcPeer {
         }
     }
 
-    /// Send a unicast signal to this peer's client.
-    pub async fn send_signal(&self, signal: RtcServerSignal) {
-        let _ = self.signal_tx.send(signal).await;
+    /// Queue a unicast signal to this peer's client without waiting. A full
+    /// queue means the client stopped reading its socket; the peer is torn
+    /// down instead of stalling room fan-out or teardown for everyone else.
+    /// Returns whether the signal was queued.
+    pub fn send_signal(&self, signal: RtcServerSignal) -> bool {
+        match self.signals.push(signal) {
+            SignalPush::Queued => true,
+            SignalPush::Overloaded { first } => {
+                if first {
+                    self.tear_down_overloaded();
+                }
+                false
+            }
+            SignalPush::Closed => false,
+        }
+    }
+
+    fn tear_down_overloaded(&self) {
+        warn!(connection_id = %self.connection_id, "RTC signal queue full; tearing down slow peer");
+        let Some(room) = self.room.get().and_then(Weak::upgrade) else {
+            return;
+        };
+        let connection_id = self.connection_id;
+        // Same in-memory teardown as a failed connection; the participant row
+        // closes when the WebSocket ends or the client leaves.
+        tokio::spawn(async move {
+            room.handle_peer_dropped(connection_id).await;
+        });
     }
 
     /// Close the underlying peer connection.

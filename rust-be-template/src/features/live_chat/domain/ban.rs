@@ -1,8 +1,13 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use ipnet::IpNet;
 use uuid::Uuid;
 
 pub const LIVE_CHAT_BAN_SOURCE_ABNORMAL_MESSAGING: &str = "abnormal_messaging";
+
+/// Automatic abuse bans expire so a false positive, or a later holder of the
+/// same address or IPv6 prefix, is not locked out forever. Manual bans keep
+/// their own expiry, including none.
+pub const LIVE_CHAT_ABUSE_BAN_DURATION: Duration = Duration::hours(24);
 
 #[derive(Debug, Clone)]
 pub struct LiveChatBan {

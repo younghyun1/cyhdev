@@ -27,6 +27,15 @@ import { UserBadge } from "./UserBadge";
 import { CallPanel } from "./call/CallPanel";
 import DeleteMessageButton from "./chat/DeleteMessageButton";
 import { rememberDeletedMessage } from "../services/live_chat_moderation";
+import {
+  LIVE_CHAT_HISTORY_LIMIT,
+  type WindowUpdate,
+  appendLive,
+  bufferDetached,
+  mergeLatest,
+  prependOlder,
+  trimOldest,
+} from "../services/live_chat_history";
 
 export type LiveChatPanelMode = "compact" | "full";
 
@@ -114,22 +123,28 @@ function limitMessageInput(value: string): string {
   return chars.slice(0, LIVE_CHAT_MAX_MESSAGE_CHARS).join("");
 }
 
-function upsertMessage(
-  list: LiveChatMessageView[],
-  message: LiveChatMessageItem,
-): LiveChatMessageView[] {
-  if (
-    list.some(
-      (item) =>
-        item.kind === "sent" &&
-        item.message.live_chat_message_id === message.live_chat_message_id,
-    )
-  ) {
-    return list;
-  }
-  return [...list, { kind: "sent" as const, message }].slice(-300);
+function containsSentMessage(
+  list: readonly LiveChatMessageView[],
+  messageId: string,
+): boolean {
+  return list.some(
+    (item) =>
+      item.kind === "sent" && item.message.live_chat_message_id === messageId,
+  );
 }
 
+function oldestSentMessageId(list: readonly LiveChatMessageView[]): string | null {
+  for (const item of list) {
+    if (item.kind === "sent") return item.message.live_chat_message_id;
+  }
+  return null;
+}
+
+function messageOrderKey(message: LiveChatMessageItem) {
+  return { id: message.live_chat_message_id, createdAt: message.message_created_at };
+}
+
+/** Unbounded replacement; callers bound the result with `trimOldest`. */
 function replacePendingMessage(
   list: LiveChatMessageView[],
   clientMessageId: string,
@@ -149,8 +164,8 @@ function replacePendingMessage(
     return item;
   });
 
-  if (replaced) return next.slice(-300);
-  return [...next, { kind: "sent" as const, message }].slice(-300);
+  if (replaced) return next;
+  return [...next, { kind: "sent" as const, message }];
 }
 
 function markPendingMessagesFailed(
@@ -195,6 +210,63 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   let messagesEndEl: HTMLDivElement | undefined;
   let shouldScrollAfterRender = true;
   let preserveScrollOffsetAfterRender: number | null = null;
+  // Set when the window stops reaching the newest message (see
+  // services/live_chat_history). Live messages then wait in a bounded buffer
+  // until the reader returns to the bottom or sends, and the latest page is
+  // merged back in.
+  let detached = false;
+  let detachedBuffer: LiveChatMessageItem[] = [];
+  let resyncing = false;
+
+  const isVisibleMessage = (message: LiveChatMessageItem) =>
+    !deletedMessageIds.has(message.live_chat_message_id) && !message.message_deleted_at;
+
+  /** Apply a window update computed inside a setter and follow its side effects. */
+  const updateWindow = (
+    compute: (list: LiveChatMessageView[]) => WindowUpdate<LiveChatMessageView> | null,
+  ): WindowUpdate<LiveChatMessageView> | null => {
+    const outcome: { update: WindowUpdate<LiveChatMessageView> | null } = { update: null };
+    setMessages((prev) => {
+      outcome.update = compute(prev);
+      return outcome.update ? outcome.update.list : prev;
+    });
+    const update = outcome.update;
+    if (update?.trimmedOldest) {
+      // Dropped history can be paged back in from the new oldest message.
+      setNextBeforeMessageId(oldestSentMessageId(update.list));
+      setHasMore(true);
+    }
+    if (update?.detached) detached = true;
+    return update;
+  };
+
+  const resyncLatest = async () => {
+    if (resyncing) return;
+    resyncing = true;
+    try {
+      const response = await liveChatApi.getMessages({ limit: PAGE_SIZE });
+      const latest = mergeLatest(
+        response.data.items.filter(isVisibleMessage),
+        detachedBuffer.filter(isVisibleMessage),
+        messageOrderKey,
+      );
+      detached = false;
+      detachedBuffer = [];
+      scheduleBottomScroll();
+      updateWindow((prev) =>
+        trimOldest<LiveChatMessageView>([
+          ...latest.map((message) => ({ kind: "sent" as const, message })),
+          ...prev.filter((item) => item.kind === "pending"),
+        ]),
+      );
+      setNextBeforeMessageId(latest[0]?.live_chat_message_id ?? null);
+      setHasMore(response.data.has_more);
+    } catch (err) {
+      console.error("Failed to load the latest live chat messages:", err);
+    } finally {
+      resyncing = false;
+    }
+  };
 
   const isFull = () => props.mode === "full";
   const visibleMessages = createMemo(() =>
@@ -277,8 +349,10 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     switch (event.type) {
       case "hello":
         setActor(event.actor);
+        detached = false;
+        detachedBuffer = [];
         setMessages(
-          event.recent_messages.filter((message) => !deletedMessageIds.has(message.live_chat_message_id) && !message.message_deleted_at).slice(-300).map((message) => ({ kind: "sent", message })),
+          event.recent_messages.filter(isVisibleMessage).slice(-LIVE_CHAT_HISTORY_LIMIT).map((message) => ({ kind: "sent", message })),
         );
         scheduleBottomScroll();
         setNextBeforeMessageId(
@@ -287,19 +361,32 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         setHasMore(event.recent_messages.length >= PAGE_SIZE);
         setConnectedCount(event.connected_count);
         break;
-      case "message":
-        if (deletedMessageIds.has(event.message.live_chat_message_id) || event.message.message_deleted_at) break;
-        shouldScrollAfterRender = isNearBottom();
-        setMessages((prev) => upsertMessage(prev, event.message));
+      case "message": {
+        const message = event.message;
+        if (!isVisibleMessage(message)) break;
+        if (detached) {
+          detachedBuffer = bufferDetached(detachedBuffer, message);
+          break;
+        }
+        const atLiveEdge = isNearBottom();
+        shouldScrollAfterRender = atLiveEdge;
+        const update = updateWindow((prev) =>
+          containsSentMessage(prev, message.live_chat_message_id)
+            ? null
+            : appendLive<LiveChatMessageView>(prev, { kind: "sent", message }, atLiveEdge),
+        );
+        if (update?.detached) detachedBuffer = bufferDetached(detachedBuffer, message);
         break;
+      }
       case "message_ack":
         if (deletedMessageIds.has(event.message.live_chat_message_id) || event.message.message_deleted_at) {
           setMessages((current) => current.filter((item) => item.kind !== "pending" || item.client_message_id !== event.client_message_id));
           break;
         }
         scheduleBottomScroll();
-        setMessages((prev) =>
-          replacePendingMessage(prev, event.client_message_id, event.message),
+        // The sender is at the live edge, so any overflow drops the oldest.
+        updateWindow((prev) =>
+          trimOldest(replacePendingMessage(prev, event.client_message_id, event.message)),
         );
         break;
       case "message_deleted":
@@ -445,9 +532,12 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     if (!sent) return;
 
     const currentActor = actor();
+    // Sending returns the reader to the live edge; a detached window first
+    // reloads the latest page, which keeps this pending entry.
+    if (detached) void resyncLatest();
     scheduleBottomScroll();
-    setMessages((prev) =>
-      [
+    updateWindow((prev) =>
+      trimOldest<LiveChatMessageView>([
         ...prev,
         {
           kind: "pending" as const,
@@ -461,7 +551,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           message_created_at: new Date().toISOString(),
           status: "sending" as const,
         },
-      ].slice(-300),
+      ]),
     );
     setInput("");
     stopTyping();
@@ -481,13 +571,16 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         limit: PAGE_SIZE,
         before_message_id: before,
       });
-      setMessages((prev) => [
-        ...response.data.items.filter((message) => !deletedMessageIds.has(message.live_chat_message_id) && !message.message_deleted_at).map((message) => ({
-          kind: "sent" as const,
-          message,
-        })),
-        ...prev,
-      ].slice(0, 300));
+      // The reader is at the top: keep the page just loaded and drop the
+      // newest entries instead, detaching the window from the live tail.
+      updateWindow((prev) =>
+        prependOlder<LiveChatMessageView>(
+          prev,
+          response.data.items
+            .filter(isVisibleMessage)
+            .map((message) => ({ kind: "sent" as const, message })),
+        ),
+      );
       setNextBeforeMessageId(response.data.next_before_message_id);
       setHasMore(response.data.has_more);
     } catch (err) {
@@ -554,6 +647,9 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       <div
         ref={messagesScrollEl}
         class="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        onScroll={() => {
+          if (detached && isNearBottom()) void resyncLatest();
+        }}
       >
         <Show when={isFull() && hasMore()}>
           <div class="mb-3 flex justify-center">

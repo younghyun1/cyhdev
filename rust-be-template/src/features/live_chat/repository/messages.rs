@@ -1,29 +1,26 @@
-use std::{
-    collections::{HashMap, HashSet},
-    net::IpAddr,
-};
+use std::collections::{HashMap, HashSet};
 
 use chrono::Utc;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
+    BoolExpressionMethods, ExpressionMethods, IntoSql, JoinOnDsl, NullableExpressionMethods,
     OptionalExtension, QueryDsl, SelectableHelper,
+    sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
 
-use crate::schema::{live_chat_bans, live_chat_messages, user_profile_pictures, users};
+use crate::schema::{live_chat_messages, user_profile_pictures, users};
 
 use super::{
     super::{
         domain::{
             actor::ChatActor,
-            ban::LiveChatBan,
             message::{DEFAULT_LIVE_CHAT_ROOM, LiveChatMessage},
         },
         error::LiveChatError,
     },
     live_chat_repository::LiveChatRepository,
-    records::{BanRecord, MessageRecord, NewBanRecord, NewMessageRecord},
+    records::{MessageRecord, NewMessageRecord},
 };
 
 pub struct UserPresentation {
@@ -32,10 +29,23 @@ pub struct UserPresentation {
     pub deleted_user_ids: HashSet<Uuid>,
 }
 
+/// `(message_created_at, live_chat_message_id)` as one row value, so keyset
+/// cursors compile to `ROW(a, b) < ROW($1, $2)`. PostgreSQL uses a row
+/// comparison as a range bound on the matching index columns; the equivalent
+/// `a < x OR (a = x AND b < y)` chain only filters after the scan.
+type TimelinePosition = Record<(Timestamptz, SqlUuid)>;
+
 impl LiveChatRepository {
-    pub async fn recent_messages(&self, limit: i64) -> Result<Vec<LiveChatMessage>, LiveChatError> {
+    /// Newest visible messages of one room, oldest first. Served by the partial
+    /// `live_chat_messages_room_visible_keyset_idx` index.
+    pub async fn recent_messages(
+        &self,
+        room_key: &str,
+        limit: i64,
+    ) -> Result<Vec<LiveChatMessage>, LiveChatError> {
         let mut connection = self.connection().await?;
         let mut rows = live_chat_messages::table
+            .filter(live_chat_messages::room_key.eq(room_key))
             .filter(live_chat_messages::message_deleted_at.is_null())
             .select(MessageRecord::as_select())
             .order((
@@ -68,16 +78,16 @@ impl LiveChatRepository {
             .await
             .optional()?
             .ok_or(LiveChatError::InvalidCursor)?;
+        let position = (
+            live_chat_messages::message_created_at,
+            live_chat_messages::live_chat_message_id,
+        )
+            .into_sql::<TimelinePosition>();
+        let cursor = (before.1, before_message_id).into_sql::<TimelinePosition>();
         let mut rows = live_chat_messages::table
             .filter(live_chat_messages::room_key.eq(before.0))
             .filter(live_chat_messages::message_deleted_at.is_null())
-            .filter(
-                live_chat_messages::message_created_at.lt(before.1).or(
-                    live_chat_messages::message_created_at
-                        .eq(before.1)
-                        .and(live_chat_messages::live_chat_message_id.lt(before_message_id)),
-                ),
-            )
+            .filter(position.lt(cursor))
             .select(MessageRecord::as_select())
             .order((
                 live_chat_messages::message_created_at.desc(),
@@ -172,95 +182,9 @@ impl LiveChatRepository {
             })
             .await
     }
-
-    pub async fn insert_abuse_ban(
-        &self,
-        actor: &ChatActor,
-        ip: IpAddr,
-    ) -> Result<LiveChatBan, LiveChatError> {
-        let mut connection = self.connection().await?;
-        connection
-            .transaction::<LiveChatBan, LiveChatError, _>(async move |connection| {
-                if let Some(user_id) = actor.user_id {
-                    lock_active_user(connection, user_id).await?;
-                }
-                diesel::insert_into(live_chat_bans::table)
-                    .values(NewBanRecord {
-                        live_chat_ban_id: Uuid::now_v7(),
-                        user_id: actor.user_id,
-                        banned_ip: Some(ipnet::IpNet::from(ip)),
-                        reason: "More than 10 live chat message events in one second.".to_owned(),
-                        ban_source:
-                            super::super::domain::ban::LIVE_CHAT_BAN_SOURCE_ABNORMAL_MESSAGING
-                                .to_owned(),
-                        banned_at: Utc::now(),
-                        expires_at: None,
-                    })
-                    .returning(BanRecord::as_returning())
-                    .get_result::<BanRecord>(&mut *connection)
-                    .await
-                    .map(LiveChatBan::from)
-                    .map_err(LiveChatError::Database)
-            })
-            .await
-    }
-
-    pub async fn active_bans(&self, limit: i64) -> Result<Vec<LiveChatBan>, LiveChatError> {
-        let mut connection = self.connection().await?;
-        let now = Utc::now();
-        live_chat_bans::table
-            .filter(
-                live_chat_bans::expires_at
-                    .is_null()
-                    .or(live_chat_bans::expires_at.gt(now)),
-            )
-            .order((
-                live_chat_bans::banned_at.desc(),
-                live_chat_bans::live_chat_ban_id.desc(),
-            ))
-            .limit(limit)
-            .select(BanRecord::as_select())
-            .load::<BanRecord>(&mut connection)
-            .await
-            .map(|rows| rows.into_iter().map(LiveChatBan::from).collect())
-            .map_err(LiveChatError::Database)
-    }
-
-    pub async fn active_ban_for(
-        &self,
-        user_id: Option<Uuid>,
-        ip: IpAddr,
-    ) -> Result<Option<LiveChatBan>, LiveChatError> {
-        let mut connection = self.connection().await?;
-        let now = Utc::now();
-        let network = ipnet::IpNet::from(ip);
-        let mut query = live_chat_bans::table
-            .filter(
-                live_chat_bans::expires_at
-                    .is_null()
-                    .or(live_chat_bans::expires_at.gt(now)),
-            )
-            .into_boxed();
-        query = match user_id {
-            Some(id) => query.filter(
-                live_chat_bans::user_id
-                    .eq(Some(id))
-                    .or(live_chat_bans::banned_ip.eq(Some(network))),
-            ),
-            None => query.filter(live_chat_bans::banned_ip.eq(Some(network))),
-        };
-        query
-            .order(live_chat_bans::banned_at.desc())
-            .select(BanRecord::as_select())
-            .first::<BanRecord>(&mut connection)
-            .await
-            .optional()
-            .map(|row| row.map(LiveChatBan::from))
-            .map_err(LiveChatError::Database)
-    }
 }
 
-async fn lock_active_user(
+pub(super) async fn lock_active_user(
     connection: &mut AsyncPgConnection,
     user_id: Uuid,
 ) -> Result<(), LiveChatError> {

@@ -51,6 +51,7 @@ pub async fn delete_live_chat_message(
                 LiveChatError::InvalidCursor => CodeError::INVALID_REQUEST,
                 LiveChatError::Pool(_) => CodeError::POOL_ERROR,
                 LiveChatError::Database(_) => CodeError::DB_QUERY_ERROR,
+                LiveChatError::Entropy(_) => CodeError::JOIN_ERROR,
             };
             code_err(code, error)
         })?;

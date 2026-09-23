@@ -160,7 +160,8 @@ mod tests {
     };
     use super::*;
     use crate::features::live_chat::{
-        domain::actor::ChatActor, service::cache::LiveChatServerEvent,
+        domain::{actor::ChatActor, guest_identity::GuestIdentityKey},
+        service::cache::LiveChatServerEvent,
     };
 
     fn ip(value: &str) -> IpAddr {
@@ -238,7 +239,8 @@ mod tests {
 
     #[test]
     fn encodes_rtc_peer_state_server_frame() {
-        let actor = ChatActor::guest(ip("203.0.113.5"), Some("🇺🇸".to_string()));
+        let key = GuestIdentityKey::from_secret(&[0x24; 32]);
+        let actor = ChatActor::guest(ip("203.0.113.5"), &key, Some("🇺🇸".to_string()));
         let frame =
             match encode_server_event(&LiveChatServerEvent::Rtc(RtcServerSignal::PeerState {
                 actor,
