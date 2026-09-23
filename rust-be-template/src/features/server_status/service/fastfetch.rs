@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 use ansi_to_html::convert;
 use chrono::{DateTime, Utc};
 use tokio::{
@@ -9,6 +11,14 @@ use crate::errors::code_error::CodeError;
 
 pub const FASTFETCH_CACHE_MAX_BYTES: usize = 256 * 1024;
 const UPDATE_INTERVAL: chrono::Duration = chrono::Duration::minutes(1);
+/// The output is public, so the child gets a hard deadline and is killed if it overruns.
+const FASTFETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+/// Modules shown on the public statistics page. An explicit `--structure` replaces both
+/// fastfetch's default list and any module list in a config file, so host identifiers
+/// never run: `Title` (`user@hostname`), `LocalIp`, `PublicIp`, `Users` (login
+/// sources), `DNS`, `Wifi`, and desktop-session modules are deliberately absent.
+pub const FASTFETCH_PUBLIC_MODULES: &str =
+    "OS:Host:Kernel:Uptime:Packages:Shell:CPU:GPU:Memory:Swap:Disk:Locale:Break:Colors";
 
 pub struct FastFetchCache {
     value: RwLock<String>,
@@ -61,18 +71,28 @@ impl FastFetchCache {
         if Utc::now() - *self.last_fetched.read().await <= UPDATE_INTERVAL {
             return Ok(());
         }
-        let output = Command::new("fastfetch")
-            .arg("--pipe")
-            .arg("false")
-            .arg("--logo-position")
-            .arg("top")
+        let child = Command::new("fastfetch")
+            .args(fastfetch_arguments())
             .env("TERM", "xterm-256color")
-            .output()
-            .await
-            .map_err(|error| {
+            .stdin(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
+            .output();
+        // Dropping the timed-out future drops the child, which kill_on_drop terminates.
+        let output = match tokio::time::timeout(FASTFETCH_TIMEOUT, child).await {
+            Ok(Ok(output)) => output,
+            Ok(Err(error)) => {
                 tracing::error!(error = %error, "Failed to run fastfetch");
-                CodeError::COULD_NOT_RUN_FASTFETCH
-            })?;
+                return Err(CodeError::COULD_NOT_RUN_FASTFETCH);
+            }
+            Err(_) => {
+                tracing::error!(
+                    timeout_ms = FASTFETCH_TIMEOUT.as_millis(),
+                    "fastfetch timed out and was killed"
+                );
+                return Err(CodeError::COULD_NOT_RUN_FASTFETCH);
+            }
+        };
         let ansi = String::from_utf8_lossy(&output.stdout);
         let mut html = convert(&ansi).map_err(|error| {
             tracing::error!(error = %error, "Failed to convert fastfetch output");
@@ -94,5 +114,44 @@ impl FastFetchCache {
 impl Default for FastFetchCache {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn fastfetch_arguments() -> [&'static str; 6] {
+    [
+        "--pipe",
+        "false",
+        "--logo-position",
+        "top",
+        "--structure",
+        FASTFETCH_PUBLIC_MODULES,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FASTFETCH_PUBLIC_MODULES, fastfetch_arguments};
+
+    #[test]
+    fn public_structure_excludes_host_identifying_modules() {
+        let modules = FASTFETCH_PUBLIC_MODULES.split(':').collect::<Vec<_>>();
+        for identifying in [
+            "Title",
+            "LocalIp",
+            "PublicIp",
+            "Users",
+            "DNS",
+            "Wifi",
+            "Terminal",
+            "Separator",
+        ] {
+            assert!(!modules.contains(&identifying), "{identifying}");
+        }
+        let arguments = fastfetch_arguments();
+        assert!(
+            arguments
+                .windows(2)
+                .any(|pair| pair == ["--structure", FASTFETCH_PUBLIC_MODULES])
+        );
     }
 }
