@@ -643,7 +643,6 @@
   "live_chat.send": "Enviar",
   "live_chat.delete_confirm": "¿Eliminar este mensaje para todos? Esta acción es irreversible.",
   "live_chat.delete_failed": "No se pudo eliminar el mensaje. Inténtalo de nuevo.",
-  "live_chat.guest_ip": "IP del invitado",
   "live_chat.connection_failed": "Falló la conexión del chat en directo.",
   "live_chat.not_connected": "El chat en directo no está conectado.",
   "live_chat.send_failed": "No se pudo enviar el mensaje del chat en directo.",

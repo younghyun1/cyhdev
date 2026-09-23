@@ -628,7 +628,6 @@
   "live_chat.send": "发送",
   "live_chat.delete_confirm": "为所有人删除此消息吗？此操作不可撤销。",
   "live_chat.delete_failed": "无法删除消息，请重试。",
-  "live_chat.guest_ip": "访客 IP",
   "live_chat.connection_failed": "实时聊天连接失败。",
   "live_chat.not_connected": "实时聊天尚未连接。",
   "live_chat.send_failed": "无法发送聊天消息。",

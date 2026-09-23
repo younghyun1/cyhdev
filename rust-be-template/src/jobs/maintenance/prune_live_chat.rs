@@ -18,3 +18,15 @@ pub async fn prune_live_chat_state(state: Arc<ServerState>) {
     // `rtc_rooms` registry to rooms with live participants.
     state.rtc_service().prune_empty_rooms().await;
 }
+
+/// Every-second sweep of rate windows older than two seconds.
+///
+/// The rate table is capped at 16,384 keys and rejects new senders while full;
+/// sweeping every second keeps that capacity for senders active right now
+/// instead of anyone seen in the last minute.
+pub async fn prune_live_chat_rate_windows(state: Arc<ServerState>) {
+    state
+        .live_chat_service()
+        .prune_stale_rate_windows(Utc::now())
+        .await;
+}

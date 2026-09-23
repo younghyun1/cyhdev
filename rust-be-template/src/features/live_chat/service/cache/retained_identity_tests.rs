@@ -3,6 +3,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use chrono::{Duration, Utc};
 use uuid::Uuid;
 
+use super::ConnectionAdmission;
 use super::{
     CachedChatMessage, ChatActor, ChatActorKey, ChatConnectionState, LiveChatCache,
     LiveChatServerEvent, TypingState,
@@ -10,6 +11,7 @@ use super::{
 use crate::{
     features::accounts::domain::account::DELETED_USER_DISPLAY_NAME,
     features::live_chat::domain::{
+        ip_prefix::LiveChatIpPrefix,
         message::LIVE_CHAT_SENDER_KIND_USER,
         rtc::{RtcPeerPhase, RtcServerSignal},
     },
@@ -29,33 +31,37 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
     );
     let (disconnect_tx, mut disconnect_rx) = tokio::sync::watch::channel(false);
     let (second_disconnect_tx, mut second_disconnect_rx) = tokio::sync::watch::channel(false);
-    assert!(
+    assert_eq!(
         cache
             .register_connection(
                 connection_id,
                 ChatConnectionState {
                     actor: actor.clone(),
                     authority_user_id: Some(user_id),
+                    client_prefix: LiveChatIpPrefix::of(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                     disconnect_tx,
                     room_key: "main".to_owned(),
                     connected_at: Utc::now(),
                 },
             )
-            .await
+            .await,
+        ConnectionAdmission::Admitted
     );
-    assert!(
+    assert_eq!(
         cache
             .register_connection(
                 second_connection_id,
                 ChatConnectionState {
                     actor: actor.clone(),
                     authority_user_id: Some(user_id),
+                    client_prefix: LiveChatIpPrefix::of(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                     disconnect_tx: second_disconnect_tx,
                     room_key: "main".to_owned(),
                     connected_at: Utc::now(),
                 },
             )
-            .await
+            .await,
+        ConnectionAdmission::Admitted
     );
     assert!(
         cache
@@ -108,7 +114,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
     let stats = cache.stats().await;
     assert_eq!(stats.used_bytes, message.estimated_bytes());
 
-    let typing = cache.active_typing_actors(Utc::now()).await;
+    let typing = cache.active_typing_actors(Utc::now(), 16).await;
     assert_eq!(typing.len(), 1);
     let typing_actor = match typing.first() {
         Some(actor) => actor,

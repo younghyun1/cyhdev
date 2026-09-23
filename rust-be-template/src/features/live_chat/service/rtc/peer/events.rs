@@ -64,8 +64,8 @@ impl PeerConnectionEventHandler for RtcPeerEventHandler {
                     sdp_mid: init.sdp_mid,
                     sdp_mline_index: init.sdp_mline_index,
                 });
-                if let Err(error) = peer.signal_tx.try_send(signal) {
-                    debug!(error = %error, "Dropped local ICE candidate");
+                if !peer.send_signal(signal) {
+                    debug!(connection_id = %peer.connection_id, "Dropped local ICE candidate");
                 }
             }
             Err(error) => warn!(error = %error, "Failed to serialize local ICE candidate"),

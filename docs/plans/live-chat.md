@@ -7,7 +7,7 @@ Add text-only live chat to the site with:
 - A compact panel on the main page.
 - A dedicated `/live-chat` page.
 - Support for logged-in users and guests.
-- Public guest IP display and database logging.
+- Guest database logging. Superseded on 2026-09-23: guest IPs are server side only; browsers receive an opaque keyed guest key and nickname instead of any address.
 - Country flag display for guests and logged-in users using existing in-memory geo-IP and country caches.
 - Shared public user info and badge display for blog and chat users.
 - WebSocket delivery with typing indicators.
@@ -260,8 +260,7 @@ For guests:
 
 - Store `guest_ip`.
 - Set `sender_kind = guest`.
-- Use a display name like `guest@203.0.113.10`.
-- Publicly render the IP once in the display name.
+- Superseded: display names and actor keys derive from an HMAC-SHA256 of the IP under `LIVE_CHAT_GUEST_KEY_SECRET` (or a random per-process secret); no browser-facing format carries the IP.
 - Append the country flag when geo-IP resolution has a matching country cache entry.
 
 Centralize client IP extraction so logging, visitor analytics, and chat use one consistent helper.
@@ -302,7 +301,7 @@ Compact mode belongs on the home page. Full mode belongs on `/live-chat`.
 
 Message submission should be optimistic on the client: after a successful WebSocket send, render a local pending message immediately in muted styling, then replace it with the persisted message when `message_ack.client_message_id` returns from the server.
 
-User display should use a common `UserBadge` component in blog and chat. Logged-in chat messages should include the sender profile picture URL and country flag; guests continue to render as public IP labels without a profile link.
+User display should use a common `UserBadge` component in blog and chat. Logged-in chat messages should include the sender profile picture URL and country flag; guests render their keyed nickname without a profile link.
 
 ## Performance And Safety
 

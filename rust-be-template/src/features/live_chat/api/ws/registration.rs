@@ -1,6 +1,6 @@
 //! Pending-connection registration and RAM session revalidation.
 
-use std::sync::Arc;
+use std::{net::IpAddr, sync::Arc};
 
 use axum_extra::extract::CookieJar;
 use chrono::Utc;
@@ -10,8 +10,11 @@ use uuid::Uuid;
 use crate::{
     features::accounts::domain::session::SESSION_COOKIE_NAME,
     features::live_chat::{
-        domain::{actor::ChatActor, message::DEFAULT_LIVE_CHAT_ROOM},
-        service::cache::{ChatConnectionState, LIVE_CHAT_MAX_CONNECTIONS},
+        domain::{actor::ChatActor, ip_prefix::LiveChatIpPrefix, message::DEFAULT_LIVE_CHAT_ROOM},
+        service::cache::{
+            ChatConnectionState, ConnectionAdmission, LIVE_CHAT_MAX_CONNECTIONS,
+            LIVE_CHAT_MAX_CONNECTIONS_PER_ADDRESS,
+        },
     },
     features::{
         accounts::service::session_service::SessionService,
@@ -22,6 +25,7 @@ use crate::{
 pub(super) enum LiveChatRegistrationError {
     Disabled,
     Capacity,
+    AddressLimit,
     ExpiredSession,
 }
 
@@ -35,38 +39,39 @@ pub(super) async fn register_connection(
     sessions: &SessionService,
     cookie_jar: &CookieJar,
     actor: &ChatActor,
+    client_ip: IpAddr,
 ) -> Result<RegisteredLiveChatConnection, LiveChatRegistrationError> {
     let connection_id = Uuid::now_v7();
     let (disconnect_tx, disconnect_rx) = tokio::sync::watch::channel(false);
-    if !service
+    let admission = service
         .cache
         .register_connection(
             connection_id,
             ChatConnectionState {
                 actor: actor.clone(),
                 authority_user_id: actor.user_id,
+                client_prefix: LiveChatIpPrefix::of(client_ip),
                 disconnect_tx,
                 room_key: DEFAULT_LIVE_CHAT_ROOM.to_owned(),
                 connected_at: Utc::now(),
             },
         )
-        .await
-    {
-        let disabled = match actor.user_id {
-            Some(user_id) => service.cache.is_connected_user_disabled(user_id),
-            None => false,
-        };
+        .await;
+    let rejection = match admission {
+        ConnectionAdmission::Admitted => None,
+        ConnectionAdmission::Disabled => Some(LiveChatRegistrationError::Disabled),
+        ConnectionAdmission::Full => Some(LiveChatRegistrationError::Capacity),
+        ConnectionAdmission::AddressLimit => Some(LiveChatRegistrationError::AddressLimit),
+    };
+    if let Some(rejection) = rejection {
         warn!(
             user_id = ?actor.user_id,
+            ?admission,
             max_connections = LIVE_CHAT_MAX_CONNECTIONS,
-            disabled,
+            max_connections_per_address = LIVE_CHAT_MAX_CONNECTIONS_PER_ADDRESS,
             "Rejected live chat connection"
         );
-        return if disabled {
-            Err(LiveChatRegistrationError::Disabled)
-        } else {
-            Err(LiveChatRegistrationError::Capacity)
-        };
+        return Err(rejection);
     }
 
     if !session_is_current(sessions, cookie_jar, actor.user_id).await {

@@ -261,7 +261,7 @@ impl ServerStateBuilder {
             live_chat_alpha2_flags,
             live_chat_geo_ip,
             rtc_service,
-        ));
+        )?);
 
         Ok(ServerState {
             account_service,

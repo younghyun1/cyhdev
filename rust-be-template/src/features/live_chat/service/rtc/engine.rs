@@ -18,10 +18,12 @@ use webrtc::peer_connection::{
 
 use super::config::RtcConfig;
 use super::feedback::KeyframeFeedback;
+use super::ice_policy::RemoteCandidatePolicy;
 
 /// Builds peer connections and allocates their UDP ports.
 pub struct RtcEngine {
     config: RtcConfig,
+    candidate_policy: RemoteCandidatePolicy,
     next_port_slot: AtomicUsize,
 }
 
@@ -52,6 +54,7 @@ impl RtcEngine {
         );
 
         Ok(Self {
+            candidate_policy: RemoteCandidatePolicy::for_advertised_address(&config.public_ip),
             config,
             next_port_slot: AtomicUsize::new(0),
         })
@@ -60,6 +63,11 @@ impl RtcEngine {
     /// Maximum participants allowed per room call.
     pub fn max_participants(&self) -> usize {
         self.config.max_participants
+    }
+
+    /// Remote ICE candidate policy for peers on this engine.
+    pub fn candidate_policy(&self) -> RemoteCandidatePolicy {
+        self.candidate_policy
     }
 
     /// Create a peer connection with its event handler and an available media port.

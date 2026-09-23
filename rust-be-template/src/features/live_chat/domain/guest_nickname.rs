@@ -1,5 +1,3 @@
-use std::net::IpAddr;
-
 mod words;
 pub use words::GUEST_NICKNAME_NOUNS;
 
@@ -145,11 +143,11 @@ pub const GUEST_NICKNAME_ADJECTIVES: &[&str] = &[
     "zonal",
 ];
 
-const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
-const FNV_PRIME: u64 = 0x00000100000001b3;
-
-pub fn guest_nickname_for_ip(ip: IpAddr) -> String {
-    let seed = nickname_seed(ip);
+/// Two-word guest nickname chosen by a keyed seed.
+///
+/// Callers derive `seed` from [`super::guest_identity::GuestIdentityKey`], never
+/// from the raw address, so a nickname reveals nothing about the guest's IP.
+pub fn guest_nickname_from_seed(seed: u64) -> String {
     let adjective = word_from_seed(seed, GUEST_NICKNAME_ADJECTIVES, 0);
     let noun = word_from_seed(seed.rotate_left(32), GUEST_NICKNAME_NOUNS, 1);
     format!("{adjective} {noun}")
@@ -162,51 +160,6 @@ fn word_from_seed(seed: u64, words: &'static [&'static str], salt: usize) -> &'s
     let mixed = seed ^ ((salt as u64).wrapping_mul(0x9e3779b97f4a7c15));
     let index = (mixed as usize) % words.len();
     words[index]
-}
-
-fn nickname_seed(ip: IpAddr) -> u64 {
-    let mut hash = FNV_OFFSET_BASIS;
-    match ip {
-        IpAddr::V4(ipv4) => {
-            hash = write_tagged_octets(hash, 4, &ipv4.octets());
-        }
-        IpAddr::V6(ipv6) => {
-            hash = write_tagged_octets(hash, 6, &ipv6.octets());
-        }
-    }
-    hash
-}
-
-fn write_tagged_octets(mut hash: u64, tag: u8, octets: &[u8]) -> u64 {
-    hash ^= u64::from(tag);
-    hash = hash.wrapping_mul(FNV_PRIME);
-    for octet in octets {
-        hash ^= u64::from(*octet);
-        hash = hash.wrapping_mul(FNV_PRIME);
-    }
-    hash
-}
-
-pub fn is_legacy_guest_ip_display_name(display_name: &str, ip: IpAddr) -> bool {
-    display_name == format!("guest@{ip}")
-}
-
-pub fn normalize_guest_display_name(
-    sender_display_name: String,
-    sender_kind: i16,
-    guest_ip: Option<IpAddr>,
-) -> String {
-    if sender_kind != super::message::LIVE_CHAT_SENDER_KIND_GUEST {
-        return sender_display_name;
-    }
-
-    match guest_ip {
-        Some(ip) if is_legacy_guest_ip_display_name(&sender_display_name, ip) => {
-            guest_nickname_for_ip(ip)
-        }
-        Some(ip) if sender_display_name.trim().is_empty() => guest_nickname_for_ip(ip),
-        _ => sender_display_name,
-    }
 }
 
 #[cfg(test)]

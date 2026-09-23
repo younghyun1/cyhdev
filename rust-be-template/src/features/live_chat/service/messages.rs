@@ -4,6 +4,10 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use super::{
+    super::domain::{
+        ban::LIVE_CHAT_ABUSE_BAN_DURATION, ip_prefix::LiveChatIpPrefix,
+        message::DEFAULT_LIVE_CHAT_ROOM,
+    },
     super::error::LiveChatError,
     cache::{
         BanCacheLookup, CachedChatMessage, CachedLiveChatBan, ChatActor,
@@ -12,10 +16,19 @@ use super::{
     live_chat_service::LiveChatService,
 };
 
+/// Startup cache input bound; the 128 MiB byte budget still applies after load.
+const LIVE_CHAT_STARTUP_MESSAGE_LIMIT: i64 = 50_000;
+
 impl LiveChatService {
     pub async fn prune_runtime(&self, now: chrono::DateTime<chrono::Utc>) {
         self.cache.clear_expired_rate_windows(now).await;
         self.cache.clear_expired_typing(now).await;
+    }
+
+    /// Drop rate windows that can no longer affect the one-second limit, so
+    /// the bounded table only holds senders active in the last two seconds.
+    pub async fn prune_stale_rate_windows(&self, now: chrono::DateTime<chrono::Utc>) {
+        self.cache.clear_stale_rate_windows(now).await;
     }
 
     pub async fn enrich_messages(
@@ -77,7 +90,7 @@ impl LiveChatService {
                 .messages_before(before, limit)
                 .await?
                 .into_iter()
-                .map(CachedChatMessage::from)
+                .map(|message| CachedChatMessage::from_persisted(message, &self.guest_identity))
                 .collect(),
             None => self.cache.get_recent_chat_messages(limit).await,
         };
@@ -85,13 +98,22 @@ impl LiveChatService {
         Ok(messages)
     }
 
+    /// Startup synchronization of live-chat state with PostgreSQL.
+    ///
+    /// No SFU room survives a restart, so call rows the previous process left
+    /// open are closed first. The message cache is then rebuilt from the one
+    /// room the service serves, newest first through the room keyset index.
     pub async fn synchronize_messages(&self) -> Result<usize, LiveChatError> {
-        let rows = self.repository.recent_messages(50_000).await?;
+        self.close_open_calls().await?;
+        let rows = self
+            .repository
+            .recent_messages(DEFAULT_LIVE_CHAT_ROOM, LIVE_CHAT_STARTUP_MESSAGE_LIMIT)
+            .await?;
         self.cache.clear_messages().await;
         let count = rows.len();
         let mut messages = rows
             .into_iter()
-            .map(CachedChatMessage::from)
+            .map(|message| CachedChatMessage::from_persisted(message, &self.guest_identity))
             .collect::<Vec<_>>();
         self.enrich_messages(&mut messages).await?;
         for message in messages {
@@ -142,7 +164,7 @@ impl LiveChatService {
     ) -> Option<CachedChatMessage> {
         match self.repository.insert_message(actor, body).await {
             Ok(message) => {
-                let mut cached = CachedChatMessage::from(message);
+                let mut cached = CachedChatMessage::from_persisted(message, &self.guest_identity);
                 cached.sender_country_flag = actor.country_flag.clone();
                 cached.user_profile_picture_url = actor.user_profile_picture_url.clone();
                 if let Some(user_id) = cached.user_id
@@ -159,12 +181,20 @@ impl LiveChatService {
         }
     }
 
+    /// Persist a 24-hour abuse ban for the sender's address group (IPv4 exact,
+    /// IPv6 /64) and account.
     pub async fn persist_abuse_ban(
         &self,
         actor: &ChatActor,
         ip: IpAddr,
     ) -> Option<CachedLiveChatBan> {
-        match self.repository.insert_abuse_ban(actor, ip).await {
+        let network = LiveChatIpPrefix::of(ip).network();
+        let expires_at = chrono::Utc::now() + LIVE_CHAT_ABUSE_BAN_DURATION;
+        match self
+            .repository
+            .insert_abuse_ban(actor, network, expires_at)
+            .await
+        {
             Ok(ban) => Some(CachedLiveChatBan::from(ban)),
             Err(error_value) => {
                 error!(error = %error_value, user_id = ?actor.user_id, client_ip = %ip, "Failed to persist live chat ban");

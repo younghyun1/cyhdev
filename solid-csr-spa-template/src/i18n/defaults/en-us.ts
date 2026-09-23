@@ -579,7 +579,6 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "live_chat.send": "Send",
   "live_chat.delete_confirm": "Delete this message for everyone? This cannot be undone.",
   "live_chat.delete_failed": "The message could not be deleted. Please try again.",
-  "live_chat.guest_ip": "guest IP",
   "live_chat.connection_failed": "Live chat connection failed.",
   "live_chat.not_connected": "Live chat is not connected.",
   "live_chat.send_failed": "Live chat message could not be sent.",

@@ -643,7 +643,6 @@
   "live_chat.send": "Senden",
   "live_chat.delete_confirm": "Diese Nachricht für alle löschen? Dies kann nicht rückgängig gemacht werden.",
   "live_chat.delete_failed": "Die Nachricht konnte nicht gelöscht werden. Bitte versuche es erneut.",
-  "live_chat.guest_ip": "Gast-IP",
   "live_chat.connection_failed": "Livechat-Verbindung fehlgeschlagen.",
   "live_chat.not_connected": "Der Livechat ist nicht verbunden.",
   "live_chat.send_failed": "Die Livechat-Nachricht konnte nicht gesendet werden.",

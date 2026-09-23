@@ -12,7 +12,7 @@ use super::peer::RtcPeer;
 use super::publication::RtcPublication;
 use crate::features::live_chat::{
     domain::rtc::{RtcParticipant, RtcPeerPhase, RtcServerSignal},
-    service::cache::LiveChatServerEvent,
+    service::cache::{LiveChatBroadcast, LiveChatServerEvent},
 };
 
 /// Result of acquiring a room slot for a join: a reserved room, or a refusal.
@@ -37,7 +37,7 @@ pub struct RtcRoom {
     pub room_key: String,
     pub call_id: Uuid,
     peers: scc::HashMap<Uuid, Arc<RtcPeer>>,
-    broadcast_tx: broadcast::Sender<LiveChatServerEvent>,
+    broadcast_tx: broadcast::Sender<Arc<LiveChatBroadcast>>,
     occupancy: AtomicUsize,
     max_participants: usize,
     removed: AtomicBool,
@@ -48,7 +48,7 @@ impl RtcRoom {
     pub fn new(
         room_key: String,
         call_id: Uuid,
-        broadcast_tx: broadcast::Sender<LiveChatServerEvent>,
+        broadcast_tx: broadcast::Sender<Arc<LiveChatBroadcast>>,
         max_participants: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -160,26 +160,30 @@ impl RtcRoom {
     }
 
     /// Fan a publisher's newly arrived publication out to all other peers, then
-    /// renegotiate each subscriber that accepted it.
+    /// renegotiate each subscriber that accepted it. Each subscriber runs in
+    /// its own task so one slow or wedged peer cannot delay the rest; the
+    /// per-peer `subscribed` lock and negotiation state keep each peer's work
+    /// ordered and coalesced.
     pub async fn fan_out_track(&self, publisher_id: Uuid, publication: Arc<RtcPublication>) {
-        let subscribers = self.other_peers(publisher_id).await;
-        for subscriber in subscribers {
-            if subscriber.subscribe_to(publication.clone()).await {
-                subscriber.renegotiate().await;
-            }
+        for subscriber in self.other_peers(publisher_id).await {
+            let publication = Arc::clone(&publication);
+            tokio::spawn(async move {
+                if subscriber.subscribe_to(publication).await {
+                    subscriber.renegotiate().await;
+                }
+            });
         }
     }
 
     /// Broadcast a peer-state change (join/update/leave) to every connection.
     pub fn broadcast_peer_state(&self, participant: &RtcParticipant, phase: RtcPeerPhase) {
-        let _ = self
-            .broadcast_tx
-            .send(LiveChatServerEvent::Rtc(RtcServerSignal::PeerState {
-                actor: participant.actor.clone(),
-                phase,
-                mic_on: participant.mic_on,
-                cam_on: participant.cam_on,
-            }));
+        let event = LiveChatServerEvent::Rtc(RtcServerSignal::PeerState {
+            actor: participant.actor.clone(),
+            phase,
+            mic_on: participant.mic_on,
+            cam_on: participant.cam_on,
+        });
+        let _ = self.broadcast_tx.send(LiveChatBroadcast::new(event));
     }
 
     /// Remove a peer from the registry, returning it if it was present.
@@ -218,11 +222,16 @@ impl RtcRoom {
                 let _ = participant.actor.anonymize_deleted_user(user_id);
             }
             peer.close().await;
-            let publications = peer.publications_snapshot().await;
+            let publications = Arc::new(peer.publications_snapshot().await);
+            // Per-subscriber tasks, as in fan-out: the departing peer's slot and
+            // Left event must not wait on other participants' renegotiation.
             for subscriber in self.other_peers(connection_id).await {
-                if subscriber.unsubscribe_from(&publications).await {
-                    subscriber.renegotiate().await;
-                }
+                let publications = Arc::clone(&publications);
+                tokio::spawn(async move {
+                    if subscriber.unsubscribe_from(&publications).await {
+                        subscriber.renegotiate().await;
+                    }
+                });
             }
             self.release_slot();
             self.broadcast_peer_state(&participant, RtcPeerPhase::Left);

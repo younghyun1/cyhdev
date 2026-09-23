@@ -86,6 +86,32 @@ impl LiveChatRepository {
             .await
     }
 
+    /// Close every call and participant row that still has no end time, in one
+    /// transaction so a call is never closed while its participants stay open.
+    /// Returns `(calls_closed, participants_closed)`.
+    pub async fn close_open_calls(&self) -> Result<(usize, usize), LiveChatError> {
+        let mut connection = self.connection().await?;
+        connection
+            .transaction::<(usize, usize), LiveChatError, _>(async move |connection| {
+                let now = Utc::now();
+                let participants = diesel::update(
+                    live_chat_call_participants::table
+                        .filter(live_chat_call_participants::participant_left_at.is_null()),
+                )
+                .set(live_chat_call_participants::participant_left_at.eq(now))
+                .execute(&mut *connection)
+                .await?;
+                let calls = diesel::update(
+                    live_chat_calls::table.filter(live_chat_calls::call_ended_at.is_null()),
+                )
+                .set(live_chat_calls::call_ended_at.eq(now))
+                .execute(&mut *connection)
+                .await?;
+                Ok((calls, participants))
+            })
+            .await
+    }
+
     pub async fn leave_call(&self, participant_id: Uuid) -> Result<(), LiveChatError> {
         let mut connection = self.connection().await?;
         diesel::update(

@@ -4,8 +4,8 @@ use tracing::error;
 use uuid::Uuid;
 
 use super::super::super::{
-    domain::actor::ChatActor, repository::live_chat_repository::LiveChatRepository,
-    service::cache::LiveChatCache,
+    domain::actor::ChatActor, error::LiveChatError,
+    repository::live_chat_repository::LiveChatRepository, service::cache::LiveChatCache,
 };
 use super::{
     engine::RtcEngine,
@@ -138,6 +138,12 @@ impl RtcCoordinator {
     ) -> Option<Uuid> {
         self.repository.join_call(call_id, actor, audio, video).await
             .map_err(|error_value| error!(error = %error_value, user_id = ?actor.user_id, "Failed to persist call participant join")).ok()
+    }
+
+    /// Close all open call and participant rows. Used at startup, when no room
+    /// from a previous process can still be live, and by graceful shutdown.
+    pub async fn close_open_calls(&self) -> Result<(usize, usize), LiveChatError> {
+        self.repository.close_open_calls().await
     }
 
     pub async fn participant_leave(&self, participant_id: Uuid) {
