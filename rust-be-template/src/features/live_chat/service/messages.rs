@@ -98,9 +98,13 @@ impl LiveChatService {
         Ok(messages)
     }
 
-    /// Startup synchronization of the message cache from the one room the
-    /// service serves, newest first through the room keyset index.
+    /// Startup synchronization of live-chat state with PostgreSQL.
+    ///
+    /// No SFU room survives a restart, so call rows the previous process left
+    /// open are closed first. The message cache is then rebuilt from the one
+    /// room the service serves, newest first through the room keyset index.
     pub async fn synchronize_messages(&self) -> Result<usize, LiveChatError> {
+        self.close_open_calls().await?;
         let rows = self
             .repository
             .recent_messages(DEFAULT_LIVE_CHAT_ROOM, LIVE_CHAT_STARTUP_MESSAGE_LIMIT)
