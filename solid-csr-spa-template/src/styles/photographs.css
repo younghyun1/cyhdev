@@ -30,10 +30,40 @@
   z-index: 10;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
+/* Photograph records do not store image dimensions, so each thumbnail
+   reserves a typical 4:3 box until the image reports its own ratio; cards
+   below it then move only when a photo is not 4:3. */
 .photo-card img {
   width: 100%;
   height: auto;
+  aspect-ratio: auto 4 / 3;
   display: block;
+}
+/* Static first-page placeholder; the design avoids loading shimmer motion. */
+.photo-skeleton {
+  width: 100%;
+}
+.photo-skeleton-title {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.25rem 1.75rem 0;
+}
+.photo-skeleton-title::before {
+  content: "";
+  display: block;
+  width: 9rem;
+  height: 1.6rem;
+  border-radius: 0.125rem;
+  background-color: var(--surface-2);
+}
+.photo-skeleton-card {
+  aspect-ratio: 4 / 3;
+  cursor: default;
+}
+.photo-skeleton-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 /* Small view/vote summary rendered below the image, outside the picture. */
 .photo-meta {

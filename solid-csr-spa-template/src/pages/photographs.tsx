@@ -3,6 +3,7 @@ import {
   createEffect,
   flush,
   For,
+  Repeat,
   Show,
   onSettled,
   createMemo,
@@ -481,16 +482,38 @@ export default function Photographs(props: RouteSectionProps) {
             </div>
           </Show>
 
-          {/* Month-year segmented masonry */}
-          <For each={segments()}>
+          {/* First-page placeholder. It holds the space the first cards will
+              take, so the scroll sentinel below does not paint at the top and
+              then jump down when they arrive. */}
+          <Show when={photos().length === 0 && loading()}>
+            <div class="photo-skeleton" role="status">
+              <span class="sr-only">{t("common.loading")}</span>
+              <div class="photo-skeleton-title" aria-hidden="true" />
+              <div class="masonry-grid mx-auto" aria-hidden="true">
+                <Repeat count={numColumns()}>
+                  {() => (
+                    <div class="masonry-column">
+                      <div class="photo-card photo-skeleton-card" />
+                      <div class="photo-card photo-skeleton-card" />
+                    </div>
+                  )}
+                </Repeat>
+              </div>
+            </div>
+          </Show>
+
+          {/* Month-year segmented masonry. Segments are keyed by month and
+              columns by position, so appending a page or deleting photos keeps
+              the existing card and image elements instead of rebuilding them. */}
+          <For each={segments()} keyed={(seg) => seg.key}>
             {(seg) => (
               <>
-                <h2 class="photo-section-title">{seg.label}</h2>
+                <h2 class="photo-section-title">{seg().label}</h2>
                 <div class="masonry-grid mx-auto">
-                  <For each={columnsFor(seg.photos)}>
+                  <For each={columnsFor(seg().photos)} keyed={false}>
                     {(colPhotos) => (
                       <div class="masonry-column">
-                        <For each={colPhotos}>
+                        <For each={colPhotos()}>
                           {(photo) => (
                             <div
                               class="photo-card"
@@ -589,7 +612,7 @@ export default function Photographs(props: RouteSectionProps) {
 
           {/* Loading / Sentinel */}
           <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
-            <Show when={loading()}>
+            <Show when={loading() && photos().length > 0}>
               <span class={pageStyles.muted}>{t("photos.loading_more")}</span>
             </Show>
             <Show when={!hasMore() && photos().length > 0}>
