@@ -158,7 +158,6 @@ fn container_build_persists_expensive_package_caches() {
         "id=cyhdev-eu5-target",
         "id=cyhdev-eu5-cargo-registry",
         "id=cyhdev-eu5-cargo-git",
-        "id=cyhdev-wasm-pack-cache",
         "id=cyhdev-npm-cache",
     ] {
         assert!(
@@ -171,6 +170,58 @@ fn container_build_persists_expensive_package_caches() {
             .lines()
             .any(|line| line == "**/logs")
     );
+}
+
+fn locked_wasm_bindgen_version(lockfile: &str) -> Option<&str> {
+    let mut lines = lockfile.lines();
+    lines.find(|line| *line == "name = \"wasm-bindgen\"")?;
+    lines
+        .next()?
+        .strip_prefix("version = \"")?
+        .strip_suffix('"')
+}
+
+/// The EU5 stage must never let wasm-pack fetch unpinned tool binaries.
+#[test]
+fn eu5_build_uses_integrity_checked_tools() -> Result<(), Box<dyn std::error::Error>> {
+    let dockerfile = include_str!("../../../rust-be-template/Dockerfile");
+    let stage_start = required_index(dockerfile, " AS eu5-wasm\n");
+    let stage_end = required_index(dockerfile, " AS frontend-source\n");
+    let stage = &dockerfile[stage_start..stage_end];
+    for instruction in [
+        "apk add --no-cache binaryen ",
+        "cargo install wasm-bindgen-cli --version \"$WASM_BINDGEN_VERSION\" --locked",
+        "wasm-opt --version",
+        "wasm-pack build --release --mode no-install ",
+    ] {
+        assert!(
+            stage.contains(instruction),
+            "EU5 stage is missing: {instruction}"
+        );
+    }
+    assert!(!stage.contains(".wasm-pack"));
+    let pinned = stage
+        .lines()
+        .find_map(|line| line.strip_prefix("ARG WASM_BINDGEN_VERSION="))
+        .ok_or("EU5 stage must pin WASM_BINDGEN_VERSION")?;
+
+    // The Docker step enforces the same equality; this catches drift early
+    // whenever the submodule is checked out locally.
+    let lockfile = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../vendor/eu5-location-filter/Cargo.lock");
+    match std::fs::read_to_string(lockfile) {
+        Ok(contents) => assert_eq!(locked_wasm_bindgen_version(&contents), Some(pinned)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    Ok(())
+}
+
+#[test]
+fn locked_wasm_bindgen_version_reads_the_package_entry() {
+    let lockfile = "[[package]]\nname = \"wasm-bindgen-shared\"\nversion = \"9.9.9\"\n\n[[package]]\nname = \"wasm-bindgen\"\nversion = \"0.2.127\"\n";
+    assert_eq!(locked_wasm_bindgen_version(lockfile), Some("0.2.127"));
+    assert_eq!(locked_wasm_bindgen_version("name = \"serde\"\n"), None);
 }
 
 #[test]
