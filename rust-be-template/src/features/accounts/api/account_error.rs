@@ -50,6 +50,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::EmailVerificationTokenNotFound => CodeError::INVALID_EMAIL_VERIFICATION_TOKEN,
         AccountError::PasswordResetTokenNotFound => CodeError::DB_QUERY_ERROR,
         AccountError::TokenAlreadyConsumed => CodeError::INVALID_REQUEST,
+        AccountError::CapabilityEntropy(_) => CodeError::DB_INSERTION_ERROR,
         AccountError::EmailAlreadyVerified => CodeError::USER_EMAIL_ALREADY_VERIFIED,
         AccountError::InvalidEmail => CodeError::EMAIL_INVALID,
         AccountError::InvalidUserName => CodeError::USER_NAME_INVALID,

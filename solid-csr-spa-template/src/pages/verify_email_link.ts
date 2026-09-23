@@ -1,5 +1,4 @@
-const CANONICAL_UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isCapabilityToken } from "../services/capability_token";
 
 export type EmailVerificationLinkState =
   | { readonly kind: "ready"; readonly token: string }
@@ -25,7 +24,7 @@ export function consumeEmailVerificationFragment(
       ? fragment.length === 0
         ? { kind: "missing" }
         : { kind: "invalid" }
-      : CANONICAL_UUID.test(token)
+      : isCapabilityToken(token)
         ? { kind: "ready", token }
         : { kind: "invalid" };
 

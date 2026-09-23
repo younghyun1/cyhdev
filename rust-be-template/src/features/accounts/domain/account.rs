@@ -142,7 +142,7 @@ pub struct NewAccount {
 /// Account and verification-token data committed atomically at signup.
 pub struct NewAccountRegistration {
     pub account: NewAccount,
-    pub verification_token: Uuid,
+    pub verification_digest: super::capability_token::CapabilityDigest,
     pub verification_created_at: DateTime<Utc>,
     pub verification_expires_at: DateTime<Utc>,
 }
@@ -209,7 +209,6 @@ pub struct PasswordResetReceipt {
 #[derive(Debug, Clone)]
 pub struct PasswordResetRequestReceipt {
     pub user_email: String,
-    pub token: Uuid,
     pub verify_by: DateTime<Utc>,
 }
 

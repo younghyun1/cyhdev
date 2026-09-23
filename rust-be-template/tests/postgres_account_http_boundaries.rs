@@ -106,7 +106,7 @@ async fn exercise_authorization_routes(
 
     context
         .accounts
-        .verify_email(fixture.verification_token)
+        .verify_email(&fixture.verification_token)
         .await?;
     require(
         route_status(&client, base_url, "/protected", unverified_token).await?

@@ -4,13 +4,15 @@ use chrono::Utc;
 use lettre::AsyncTransport;
 use std::sync::Arc;
 use tracing::error;
-use uuid::Uuid;
 
 use crate::{
     features::accounts::{
-        domain::account::{
-            DuplicateRegistration, NewAccount, NewAccountRegistration, SignupCommand,
-            SignupOutcome, SignupReceipt,
+        domain::{
+            account::{
+                DuplicateRegistration, NewAccount, NewAccountRegistration, SignupCommand,
+                SignupOutcome, SignupReceipt,
+            },
+            capability_token::CapabilityToken,
         },
         error::AccountError,
         service::{
@@ -45,7 +47,8 @@ impl AccountService {
         let user_email = normalize_email(&command.user_email);
         validate_email(&user_email)?;
         let now = Utc::now();
-        let verification_token = Uuid::new_v4();
+        let (verification_token, verification_digest) =
+            CapabilityToken::generate().map_err(AccountError::CapabilityEntropy)?;
         let verify_by = now + EMAIL_VERIFICATION_TOKEN_VALID_DURATION;
         let password_hash = self
             .hash_password(PasswordBudget::Authentication, command.password)
@@ -59,17 +62,18 @@ impl AccountService {
                 language: command.language,
                 subdivision: command.subdivision,
             },
-            verification_token,
+            verification_digest,
             verification_created_at: now,
             verification_expires_at: verify_by,
         };
         match self.repository.register_account(&registration).await {
             Ok(()) => {
-                let receipt = self.issue_signup_receipt(registration);
+                let receipt = self.issue_signup_receipt(registration, &verification_token);
                 Ok(SignupOutcome::Registered(receipt))
             }
             Err(AccountError::DuplicateEmail(_)) => {
-                self.replace_unverified_registration(registration).await
+                self.replace_unverified_registration(registration, verification_token)
+                    .await
             }
             Err(error) => Err(error),
         }
@@ -78,6 +82,7 @@ impl AccountService {
     async fn replace_unverified_registration(
         self: &Arc<Self>,
         registration: NewAccountRegistration,
+        verification_token: CapabilityToken,
     ) -> Result<SignupOutcome, AccountError> {
         let service = Arc::clone(self);
         run_to_completion(async move {
@@ -92,7 +97,7 @@ impl AccountService {
                 DuplicateRegistration::ReplacedUnverified { user_id } => {
                     service.sessions.remove_for_user(user_id).await;
                     drop(session_consistency);
-                    let receipt = service.issue_signup_receipt(registration);
+                    let receipt = service.issue_signup_receipt(registration, &verification_token);
                     Ok(SignupOutcome::ReplacedUnverified(receipt))
                 }
                 DuplicateRegistration::Unchanged => Ok(SignupOutcome::AlreadyVerified),
@@ -101,10 +106,13 @@ impl AccountService {
         .await
     }
 
-    fn issue_signup_receipt(&self, registration: NewAccountRegistration) -> SignupReceipt {
+    fn issue_signup_receipt(
+        &self,
+        registration: NewAccountRegistration,
+        verification_token: &CapabilityToken,
+    ) -> SignupReceipt {
         let NewAccountRegistration {
             account,
-            verification_token,
             verification_expires_at,
             ..
         } = registration;
@@ -123,7 +131,7 @@ impl AccountService {
     fn send_verification_email(
         &self,
         user_email: String,
-        token: Uuid,
+        token: &CapabilityToken,
         verify_by: chrono::DateTime<Utc>,
     ) {
         let email_job = match self.email_jobs.clone().try_acquire_owned() {
@@ -140,10 +148,11 @@ impl AccountService {
         };
         let email_client = self.email_client.clone();
         let public_app_origin = Arc::clone(&self.public_app_origin);
+        let token = zeroize::Zeroizing::new(token.expose().to_owned());
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match ValidateEmailEmail::new()
-                .set_fields(verify_by, token, &public_app_origin)
+                .set_fields(verify_by, &token, &public_app_origin)
                 .to_message(&user_email)
             {
                 Ok(message) => message,

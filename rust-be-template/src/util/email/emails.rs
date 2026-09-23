@@ -66,14 +66,14 @@ impl ValidateEmailEmail {
     pub fn set_fields(
         mut self,
         valid_until: chrono::DateTime<chrono::Utc>,
-        token_id: uuid::Uuid,
+        token: &str,
         public_app_origin: &str,
     ) -> Self {
         self.email = self
             .email
             .replace(
                 "$1",
-                &verification_confirmation_link(public_app_origin, token_id),
+                &verification_confirmation_link(public_app_origin, token),
             )
             .replace("$2", &valid_until.to_string());
         self
@@ -100,8 +100,8 @@ impl ValidateEmailEmail {
 }
 
 /// Builds the same-origin SPA link without exposing the token to HTTP servers or referrers.
-fn verification_confirmation_link(public_app_origin: &str, token_id: uuid::Uuid) -> String {
-    format!("{public_app_origin}/verify-email#token={token_id}")
+fn verification_confirmation_link(public_app_origin: &str, token: &str) -> String {
+    format!("{public_app_origin}/verify-email#token={token}")
 }
 
 fn parse_mailbox(raw: &str, field: &'static str) -> anyhow::Result<Mailbox> {
@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     fn verification_link_targets_the_spa_with_a_fragment_token() {
-        let token = uuid::Uuid::new_v4();
-        let link = verification_confirmation_link("https://app.example.test", token);
+        let token = "A".repeat(43);
+        let link = verification_confirmation_link("https://app.example.test", &token);
 
         assert_eq!(
             link,

@@ -134,7 +134,7 @@ async fn insert_verification_token(
     diesel::insert_into(email_verification_tokens::table)
         .values(NewEmailVerificationTokenRecord {
             user_id,
-            email_verification_token: registration.verification_token,
+            email_verification_token_hash: registration.verification_digest.as_bytes(),
             email_verification_token_expires_at: registration.verification_expires_at,
             email_verification_token_created_at: registration.verification_created_at,
         })

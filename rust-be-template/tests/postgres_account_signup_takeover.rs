@@ -69,7 +69,7 @@ fn duplicate_signup_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 .is_none(),
             "replacing the unverified account left its session alive",
         )?;
-        match context.accounts.verify_email(squatter_token).await {
+        match context.accounts.verify_email(&squatter_token).await {
             Err(AccountError::EmailVerificationTokenNotFound) => {}
             Err(error) => return Err(Box::new(error) as BoxError),
             Ok(_) => return require(false, "replaced verification token still verified"),
@@ -94,7 +94,7 @@ fn duplicate_signup_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         }
 
         let owner_token = known_verification_token(&context, squatter.user_id).await?;
-        context.accounts.verify_email(owner_token).await?;
+        context.accounts.verify_email(&owner_token).await?;
         let login = context
             .accounts
             .login(&squatter.email, SQUATTER_PASSWORD, None)
@@ -151,7 +151,7 @@ fn verification_revocation_case(database: &TestDatabase) -> DatabaseTestFuture<'
         let pre_existing = unverified_session(&context, &account).await?;
         context
             .accounts
-            .verify_email(account.verification_token)
+            .verify_email(&account.verification_token)
             .await?;
         require(
             context
