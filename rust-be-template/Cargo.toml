@@ -25,12 +25,16 @@ axum = { version = "0.8.9", features = [
 ] }
 axum-extra = { version = "0.12.6", features = ["cookie", "attachment", "form"] }
 axum-server = { version = "0.8.0", features = ["tls-rustls", "tokio-rustls"] }
+# Already in the tree through axum-server; named directly to configure its HTTP/1 and
+# HTTP/2 builders with a Tokio timer, which hyper's header-read timeout requires.
+hyper-util = { version = "0.1.20", default-features = false, features = ["server-auto", "tokio"] }
 tower-http = { version = "0.7.1", features = [
     "compression-gzip",
     "compression-zstd",
     "trace",
     "cors",
     "fs",
+    "timeout",
 ] }
 
 # OpenAPI
