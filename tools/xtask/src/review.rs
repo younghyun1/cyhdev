@@ -83,6 +83,8 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "postgres_retention_notifications",
                 "--test",
                 "postgres_authorization_admin",
+                "--test",
+                "postgres_runtime_bounds",
                 "--no-fail-fast",
                 "--",
                 "--ignored",

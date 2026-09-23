@@ -2,6 +2,8 @@ use std::sync::atomic::Ordering;
 
 use scc::hash_map::Entry;
 
+use crate::features::visitor::domain::visit::is_board_coordinate;
+
 use super::visitor_service::{VISITOR_BOARD_MAX_ENTRIES, VisitorService, rejection, try_reserve};
 
 impl VisitorService {
@@ -29,6 +31,12 @@ impl VisitorService {
     }
 
     pub(super) async fn increment_board(&self, latitude: f64, longitude: f64) {
+        // Match the persisted board, which only counts valid coordinates.
+        if !is_board_coordinate(latitude, longitude) {
+            return;
+        }
+        // Fold -0.0 into 0.0 as the database key does.
+        let (latitude, longitude) = (latitude + 0.0, longitude + 0.0);
         let key = (latitude.to_be_bytes(), longitude.to_be_bytes());
         match self.board.entry_async(key).await {
             Entry::Occupied(mut occupied) => {

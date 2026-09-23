@@ -155,8 +155,8 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | Surface | Owner and behavior |
 | --- | --- |
 | `/swagger-ui/` | [Backend Swagger router](../../../rust-be-template/src/routers/swagger.rs); links to `/api-docs/openapi.json`, which is schema data, not a page |
-| `/minecraft/map/` | [Squaremap router](../../../rust-be-template/src/routers/main_router/squaremap.rs); `/minecraft/map` redirects here; serves the configured public map directory or an unavailable response |
-| `/eu5-locations-db/app/index.html` | [EU5 host source](../../../vendor/eu5-location-filter/web/index.html), staged by [xtask](../../../tools/xtask/src/eu5_web.rs); availability depends on staged/embedded assets |
+| `/minecraft/map/` | [Squaremap router](../../../rust-be-template/src/routers/main_router/squaremap.rs); `/minecraft/map` redirects here; serves the configured public map directory or an unavailable response; runs in an opaque-origin CSP sandbox with in-memory storage, framed and direct ([browser security headers](../../architecture/be/browser-security-headers.md)) |
+| `/eu5-locations-db/app/index.html` | [EU5 host source](../../../vendor/eu5-location-filter/web/index.html), staged by [xtask](../../../tools/xtask/src/eu5_web.rs); availability depends on staged/embedded assets; runs in an opaque-origin CSP sandbox and exchanges only the theme with its parent |
 | `/api/wasm-modules/{wasm_module_id}/wasm` | [Bundle serving](../../../rust-be-template/src/features/wasm/api/serve_bundle.rs); project records provide the link, so demo instances are data-driven rather than fixed SPA routes |
 
 `/admin/operations#retention-notifications`, `#media-cleanup`, `#i18n-sync`, and `#hard-purge` are sections within the operations page. Forum reply fragments, blog search parameters, photograph overlays, project upload/edit dialogs, and call controls are page states, not additional routes. The OIDC callback at `/api/auth/oidc/callback` is a backend protocol endpoint, not a separate frontend page. Local WASM demo host files belong to development/demo artifacts, not extra registered website routes.

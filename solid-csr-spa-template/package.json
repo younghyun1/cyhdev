@@ -17,7 +17,8 @@
     "test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=chromium",
-    "test:e2e:performance": "playwright test --config=playwright.performance.config.ts"
+    "test:e2e:performance": "playwright test --config=playwright.performance.config.ts",
+    "test:e2e:security": "playwright test --config=playwright.security.config.ts"
   },
   "license": "MIT",
   "devDependencies": {

@@ -19,7 +19,9 @@ pub struct RootHandlerResponse {
     server_uptime: String,
     responses_handled: u64,
     users_logged_in: usize,
+    /// PostgreSQL major version, such as `18`.
     db_version: String,
+    /// Status query round trip, refreshed at most every five seconds.
     db_latency: String,
 }
 
@@ -46,7 +48,7 @@ pub async fn root_handler(
             server_uptime: format_duration(status.runtime.uptime),
             responses_handled: status.runtime.responses_handled,
             users_logged_in: status.runtime.users_logged_in,
-            db_version: status.database_version,
+            db_version: status.database_major_version.to_string(),
             db_latency: format!("{:?}", status.database_latency),
         },
         (),

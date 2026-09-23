@@ -35,4 +35,6 @@ pub struct ServerState {
     pub(crate) session_service: Arc<SessionService>,
     pub(crate) deployment_environment: DeploymentEnvironment,
     pub(crate) public_app_origin: PublicAppOrigin,
+    /// AWS region of the public media bucket, used to derive its browser origin.
+    pub(crate) media_region: Arc<str>,
 }

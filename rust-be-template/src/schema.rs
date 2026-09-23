@@ -561,6 +561,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    visitor_board_locations (visitor_board_location_latitude, visitor_board_location_longitude) {
+        visitor_board_location_latitude -> Float8,
+        visitor_board_location_longitude -> Float8,
+        visitor_board_location_visit_count -> Int8,
+    }
+}
+
+diesel::table! {
     wasm_module (wasm_module_id) {
         wasm_module_id -> Uuid,
         user_id -> Uuid,
@@ -666,5 +674,6 @@ diesel::allow_tables_to_appear_in_same_query!(
     user_roles,
     users,
     visitation_data,
+    visitor_board_locations,
     wasm_module,
 );
