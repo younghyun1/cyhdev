@@ -1,5 +1,7 @@
 //! Root-relative development and verification commands for the workspace.
 
+#[cfg(test)]
+mod container_tests;
 mod eu5_web;
 mod evidence_manifest;
 #[cfg(test)]
