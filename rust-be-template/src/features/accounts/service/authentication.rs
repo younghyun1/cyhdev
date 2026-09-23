@@ -4,9 +4,9 @@ use crate::{
     features::accounts::{
         domain::{account::LoginReceipt, role::RoleType},
         error::AccountError,
-        service::account_service::AccountService,
+        service::{account_service::AccountService, password_work::PasswordBudget},
     },
-    util::{crypto::verify_pw::verify_pw, string::validations::validate_password_form},
+    util::string::validations::validate_password_form,
 };
 
 pub const MAX_EMAIL_BYTES: usize = 254;
@@ -39,11 +39,9 @@ impl AccountService {
             Some(account) => account.password_hash.as_str(),
             None => self.dummy_password_hash.as_ref(),
         };
-        let password_job = self.try_password_job()?;
-        let password_matches = verify_pw(password, expected_hash)
-            .await
-            .map_err(AccountError::PasswordVerification)?;
-        drop(password_job);
+        let password_matches = self
+            .verify_password(PasswordBudget::Authentication, password, expected_hash)
+            .await?;
         let account = match account {
             Some(account) if password_matches => account,
             Some(_) | None => return Err(AccountError::InvalidCredentials),

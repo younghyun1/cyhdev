@@ -2,17 +2,17 @@
 
 use uuid::Uuid;
 
-use crate::{
-    features::accounts::{
-        domain::{
-            account::SessionPrincipal,
-            oidc::{OidcIdentityClaims, OidcSessionReceipt},
-            role::RoleType,
-        },
-        error::AccountError,
-        service::{account_service::AccountService, authentication::password_within_auth_bound},
+use crate::features::accounts::{
+    domain::{
+        account::SessionPrincipal,
+        oidc::{OidcIdentityClaims, OidcSessionReceipt},
+        role::RoleType,
     },
-    util::crypto::verify_pw::verify_pw,
+    error::AccountError,
+    service::{
+        account_service::AccountService, authentication::password_within_auth_bound,
+        password_work::PasswordBudget,
+    },
 };
 
 impl AccountService {
@@ -93,11 +93,13 @@ impl AccountService {
             .repository
             .oidc_unlink_candidate(user_id, issuer)
             .await?;
-        let password_job = self.try_password_job()?;
-        let password_matches = verify_pw(current_password, &candidate.password_hash)
-            .await
-            .map_err(AccountError::PasswordVerification)?;
-        drop(password_job);
+        let password_matches = self
+            .verify_password(
+                PasswordBudget::Confirmation,
+                current_password,
+                &candidate.password_hash,
+            )
+            .await?;
         if !password_matches {
             return Err(AccountError::WrongPassword);
         }

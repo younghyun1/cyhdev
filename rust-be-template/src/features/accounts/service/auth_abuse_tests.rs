@@ -218,3 +218,44 @@ async fn unexpected_identity_kind_is_rejected_without_retention() {
         "unexpected identity kind was admitted"
     );
 }
+
+#[tokio::test]
+async fn fifth_wrong_confirmation_exhausts_the_account_budget() {
+    let service = service(16);
+    let account = AuthIdentity::Account(uuid::Uuid::from_u128(7));
+    for _ in 0..4 {
+        assert_eq!(
+            service
+                .record_failure(AuthEndpoint::PasswordConfirmation, account)
+                .await,
+            Ok(FailureBudget::Remaining)
+        );
+    }
+    assert_eq!(
+        service
+            .record_failure(AuthEndpoint::PasswordConfirmation, account)
+            .await,
+        Ok(FailureBudget::Exhausted)
+    );
+    assert!(
+        service
+            .ensure_failure_budget(AuthEndpoint::PasswordConfirmation, account)
+            .await
+            .is_err()
+    );
+    let ip = IpAddr::from([192, 0, 2, 9]);
+    for _ in 0..10 {
+        assert!(
+            service
+                .check_ip(AuthEndpoint::PasswordConfirmation, ip)
+                .await
+                .is_ok()
+        );
+    }
+    assert!(
+        service
+            .check_ip(AuthEndpoint::PasswordConfirmation, ip)
+            .await
+            .is_err()
+    );
+}

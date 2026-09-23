@@ -11,6 +11,7 @@ pub mod lifecycle;
 pub mod media_cleanup;
 mod media_cleanup_location;
 pub mod oidc;
+mod password_work;
 pub mod passwords;
 pub mod profile_picture_cleanup;
 pub mod profile_picture_upload;
