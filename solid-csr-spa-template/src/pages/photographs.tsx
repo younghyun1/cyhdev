@@ -77,7 +77,7 @@ export default function Photographs(props: RouteSectionProps) {
   // Desktop warms the detail map for every visitor, but the upload form (with
   // leaflet-geosearch) and the processing modal only once the viewer is known
   // to be a superuser, since nobody else can open them. A failed preload is
-  // harmless: the lazy component retries the import when it renders.
+  // ignored; rendering the lazy component requests its chunk on its own.
   onSettled(() => {
     if (isMobile()) return;
     loadPhotographMap().catch(() => {});
@@ -498,9 +498,9 @@ export default function Photographs(props: RouteSectionProps) {
             </div>
           </Show>
 
-          {/* First-page placeholder. It holds the space the first cards will
-              take, so the scroll sentinel below does not paint at the top and
-              then jump down when they arrive. */}
+          {/* First-page placeholder. The sentinel below shows text only for
+              later pages, so nothing painted near the top moves when the first
+              cards replace this block. */}
           <Show when={photos().length === 0 && loading()}>
             <div class="photo-skeleton" role="status">
               <span class="sr-only">{t("common.loading")}</span>
