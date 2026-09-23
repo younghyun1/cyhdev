@@ -153,6 +153,21 @@ fn tracked_submodule_credentials_fail_before_copying_contents() -> TestResult {
 }
 
 #[test]
+fn unignored_keystores_and_password_files_fail_before_copying_contents() -> TestResult {
+    for name in ["release.jks", "vendor/.pgpass", ".netrc"] {
+        let fixture = Fixture::new()?;
+        let path = fixture.root.join(name);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&path, "PRIVATE_FIXTURE_MUST_NOT_ENTER_SNAPSHOT")?;
+        assert!(copy_public_source(&fixture.root, &fixture.snapshot).is_err());
+        assert!(!fixture.snapshot.join(name).exists());
+    }
+    Ok(())
+}
+
+#[test]
 fn symlink_submodules_fail_closed() -> TestResult {
     let fixture = Fixture::new()?;
     fixture.submodule("child", false)?;
