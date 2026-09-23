@@ -16,7 +16,7 @@ The server binds `HOST_PORT=443` without `CAP_NET_BIND_SERVICE` because Docker s
 
 ### Deploying your application to the cloud
 
-Build the development image without credentials from the repository root with `cargo xtask image`. The command verifies the digest-pinned nightly builder and passes `APP_BUILD_EPOCH`, defaulting to the current Git commit timestamp for meaningful, reproducible metadata. An explicitly supplied `SOURCE_DATE_EPOCH` remains the source for that value.
+Build the optimized deployment image, tagged `cyhdev-backend:dev`, without credentials from the repository root with `cargo xtask image`. The command refuses an EU5 submodule that is uninitialized, moved from its recorded gitlink, or locally modified, uses the digest-pinned builders, and passes `APP_BUILD_EPOCH`, defaulting to the current Git commit timestamp for meaningful, reproducible metadata. An explicitly supplied `SOURCE_DATE_EPOCH` remains the source for that value.
 
 If the deployment uses a different CPU architecture than the development machine, invoke Docker from the repository root with the required `--platform` and `--pull` options.
 
