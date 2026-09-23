@@ -45,6 +45,11 @@ impl MediaObjectStore for TestMediaObjectStore {
     }
 }
 
+/// Object store that accepts every upload and deletion without network I/O.
+pub fn test_media_object_store() -> Arc<dyn MediaObjectStore> {
+    Arc::new(TestMediaObjectStore)
+}
+
 pub struct AccountTestContext {
     pub accounts: Arc<AccountService>,
     pub live_chat_cache: Arc<LiveChatCache>,
