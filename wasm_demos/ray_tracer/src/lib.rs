@@ -4,10 +4,17 @@ use std::rc::Rc;
 
 use wasm_bindgen::Clamped;
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen_futures::spawn_local;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, MouseEvent, Window};
 
+mod view;
+// wgpu's canvas surface exists only on wasm32; host builds keep the CPU path
+// so the pure rendering logic can run under `cargo test`.
+#[cfg(target_arch = "wasm32")]
 mod wgpu_renderer;
+
+use view::CameraInvalidation;
 
 type AnimationFrameCallback = Closure<dyn FnMut()>;
 type AnimationLoop = Rc<RefCell<Option<AnimationFrameCallback>>>;
@@ -31,6 +38,13 @@ fn document() -> web_sys::Document {
 }
 fn perf() -> web_sys::Performance {
     window().performance().unwrap()
+}
+/// Viewport size in CSS pixels, or `None` if the browser does not report it.
+fn viewport_css_size() -> Option<(f64, f64)> {
+    let window = web_sys::window()?;
+    let width = window.inner_width().ok()?.as_f64()?;
+    let height = window.inner_height().ok()?.as_f64()?;
+    Some((width, height))
 }
 fn request_animation_frame(f: &AnimationFrameCallback) {
     window()
@@ -751,6 +765,7 @@ struct State {
     last_mouse: (f64, f64),
     cam_yaw: f32,
     cam_pitch: f32,
+    camera_moved: CameraInvalidation,
     last_time: f64,
 }
 
@@ -781,18 +796,17 @@ impl State {
         }
     }
 
+    /// Reallocates buffers and the canvas backing store only when the scaled
+    /// viewport size changes. Writing the canvas size every frame would clear
+    /// it and reset the 2D context even when nothing changed.
     fn resize(&mut self) {
+        let Some((ww, wh)) = viewport_css_size() else {
+            return;
+        };
         let dpr = window().device_pixel_ratio();
-        let ww = window().inner_width().unwrap().as_f64().unwrap();
-        let wh = window().inner_height().unwrap().as_f64().unwrap();
-
-        self.canvas.set_width((ww * dpr) as u32);
-        self.canvas.set_height((wh * dpr) as u32);
-
-        // Full-resolution internal rendering.
-        let rw = (ww * dpr) as u32;
-        let rh = (wh * dpr) as u32;
-        if rw != self.render_w || rh != self.render_h {
+        if let Some((rw, rh)) = view::resized((self.render_w, self.render_h), ww, wh, dpr) {
+            self.canvas.set_width(rw);
+            self.canvas.set_height(rh);
             self.render_w = rw;
             self.render_h = rh;
             let n = (rw * rh) as usize;
@@ -862,9 +876,9 @@ impl State {
             self.last_pass_rays
         );
 
-        let dpr = window().device_pixel_ratio();
-        let pad = (8.0 * dpr).max(8.0);
-        let font_px = (12.0 * dpr).max(12.0);
+        let scale = view::render_scale(window().device_pixel_ratio());
+        let pad = (8.0 * scale).max(8.0);
+        let font_px = (12.0 * scale).max(12.0);
         self.ctx.set_font(&format!(
             "{}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
             font_px as u32
@@ -885,6 +899,11 @@ impl State {
         self.last_time = now;
         self.frame = self.frame.wrapping_add(1);
         self.resize();
+        if self.camera_moved.take() {
+            self.reset_accumulation();
+            let salt = self.frame.wrapping_mul(3907).wrapping_add(11);
+            self.reseed_rng_states(salt);
+        }
 
         let w = self.render_w;
         let h = self.render_h;
@@ -992,11 +1011,11 @@ fn start_cpu() {
         .unwrap();
     document().body().unwrap().append_child(&canvas).unwrap();
 
-    let dpr = window().device_pixel_ratio();
-    let ww = window().inner_width().unwrap().as_f64().unwrap();
-    let wh = window().inner_height().unwrap().as_f64().unwrap();
-    let rw = (ww * dpr) as u32;
-    let rh = (wh * dpr) as u32;
+    let Some((ww, wh)) = viewport_css_size() else {
+        log("CPU ray tracer could not read the viewport size");
+        return;
+    };
+    let (rw, rh) = view::render_size(ww, wh, window().device_pixel_ratio());
     canvas.set_width(rw);
     canvas.set_height(rh);
 
@@ -1036,6 +1055,7 @@ fn start_cpu() {
         last_mouse: (0.0, 0.0),
         cam_yaw: 0.0,
         cam_pitch: 0.15,
+        camera_moved: CameraInvalidation::default(),
         last_time: perf().now(),
     }));
 
@@ -1072,9 +1092,8 @@ fn start_cpu() {
                 st.cam_yaw += dx as f32 * 0.005;
                 st.cam_pitch = (st.cam_pitch + dy as f32 * 0.005).clamp(-1.2, 1.2);
                 st.last_mouse = (e.client_x(), e.client_y());
-                st.reset_accumulation();
-                let salt = st.frame.wrapping_mul(3907).wrapping_add(11);
-                st.reseed_rng_states(salt);
+                // Drags fire many events per frame; reset once in `frame`.
+                st.camera_moved.mark();
             }
         });
         canvas
@@ -1094,7 +1113,7 @@ fn start_cpu() {
     request_animation_frame(g.borrow().as_ref().unwrap());
 
     console_log!(
-        "Ray tracer running at full resolution ({}x{}) — drag to orbit camera",
+        "CPU ray tracer running at {}x{}; drag to orbit the camera",
         rw,
         rh
     );
@@ -1106,6 +1125,7 @@ pub fn start() {
         log(&format!("PANIC: {}", info));
     }));
 
+    #[cfg(target_arch = "wasm32")]
     spawn_local(async move {
         if let Err(e) = wgpu_renderer::start().await {
             log(&format!(
@@ -1115,4 +1135,6 @@ pub fn start() {
             start_cpu();
         }
     });
+    #[cfg(not(target_arch = "wasm32"))]
+    start_cpu();
 }

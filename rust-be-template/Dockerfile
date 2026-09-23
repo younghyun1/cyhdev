@@ -6,21 +6,38 @@ ARG APP_NAME=rust-be-template
 ARG RUST_DOCKER_TAG=nightly@sha256:dfd905886275b22be070dad4e8f2c2264bae8341ba7a4b2ceea370249190b044
 ARG RUST_ALPINE_DOCKER_TAG=nightly-alpine@sha256:ad0a86a1629fcf9e77b8b6d92a7803e16ce011a1c80a9602786abd5cb225d615
 ARG NODE_DOCKER_TAG=24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
+ARG ALPINE_DOCKER_TAG=3.23@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
 
 # Build the pinned EU5 source revision as a browser-native ES module package.
+# wasm-pack would otherwise download wasm-bindgen and binaryen release archives
+# with no integrity check. wasm-bindgen is built from crates.io, whose index
+# checksums cover every locked crate, and wasm-opt comes from Alpine's signed
+# binaryen package. `--mode no-install` makes wasm-pack use those PATH binaries:
+# it fails when the locked wasm-bindgen version is absent, and it would skip
+# wasm-opt silently, so the build step checks both first.
 FROM rustlang/rust:${RUST_ALPINE_DOCKER_TAG} AS eu5-wasm
 ARG WASM_PACK_VERSION=0.15.0
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
-RUN apk add --no-cache clang lld musl-dev git ca-certificates make perl \
+RUN apk add --no-cache binaryen clang lld musl-dev git ca-certificates make perl \
     && rustup target add wasm32-unknown-unknown --toolchain "$RUSTUP_TOOLCHAIN" \
     && cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked
+# Must equal the wasm-bindgen version in vendor/eu5-location-filter/Cargo.lock;
+# the build step rejects a mismatch after the submodule moves.
+ARG WASM_BINDGEN_VERSION=0.2.127
+RUN cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked
 WORKDIR /workspace/vendor/eu5-location-filter
 COPY vendor/eu5-location-filter/ ./
 RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-location-filter/target,sharing=locked \
     --mount=type=cache,id=cyhdev-eu5-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=cyhdev-eu5-cargo-git,target=/usr/local/cargo/git/db,sharing=locked \
-    --mount=type=cache,id=cyhdev-wasm-pack-cache,target=/root/.cache/.wasm-pack,sharing=locked \
-    wasm-pack build --release --target web --no-pack --no-typescript -- \
+    locked_bindgen="$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)" \
+    && if [ "$locked_bindgen" != "$WASM_BINDGEN_VERSION" ]; then \
+        echo "EU5 Cargo.lock requires wasm-bindgen ${locked_bindgen:-<missing>}; set WASM_BINDGEN_VERSION to match" >&2; \
+        exit 1; \
+    fi \
+    && wasm-bindgen --version \
+    && wasm-opt --version \
+    && wasm-pack build --release --mode no-install --target web --no-pack --no-typescript -- \
         --locked --no-default-features --features web \
     && test -s pkg/eu5_location_filter.js \
     && test "$(od -An -tx1 -N4 pkg/eu5_location_filter_bg.wasm | tr -d ' \n')" = "0061736d"
@@ -120,19 +137,26 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
 # A runnable development-profile layout used by the Wave 8 image smoke gate.
 # Runtime secrets remain injected by the caller; the build only verifies that
 # the executable and immutable Geo-IP assets land at their runtime paths.
-FROM alpine:3.23 AS smoke
+FROM alpine:${ALPINE_DOCKER_TAG} AS smoke
 RUN apk add --no-cache ca-certificates libgcc libpq
 WORKDIR /app
 COPY --from=smoke-build /bin/server /app/server
-COPY rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /app/
+COPY --chmod=0444 rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /app/
 RUN test -x /app/server \
     && test -s /app/new_bundle_ipv4.db \
     && test -s /app/new_bundle_ipv6.db \
     && (ldd /app/server >/tmp/server-ldd.txt 2>&1 || true) \
-    && ! grep -q "not found" /tmp/server-ldd.txt
+    && ! grep -q "not found" /tmp/server-ldd.txt \
+    && rm /tmp/server-ldd.txt \
+    && mkdir -p /app/logs /app/data/search_index \
+    && chown 65532:65532 /app/logs /app/data/search_index \
+    && chmod 0700 /app/logs /app/data/search_index
 ENV HOST_IP="0.0.0.0"
 ENV HOST_PORT="443"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+# Match the final image's unprivileged user and write paths so this layout
+# exercises the same permissions.
+USER 65532:65532
 CMD ["/app/server"]
 
 FROM rust-base AS build
@@ -156,23 +180,42 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
     upx --lzma --best "./target/$RUST_TARGET/release/$APP_NAME" && \
     cp "./target/$RUST_TARGET/release/$APP_NAME" /bin/server
 
+# Empty runtime directories for the scratch image, which has no shell to create
+# them. COPY --from preserves these owners and modes, including the sticky bit.
+# The backend resolves ./logs (tracing appender and zstd log compression) and
+# ./data/search_index (default SEARCH_INDEX_PATH) against WORKDIR /bin, and
+# tempfile uploads plus photo batch staging use /tmp.
+FROM alpine:${ALPINE_DOCKER_TAG} AS runtime-layout
+RUN mkdir -p /runtime/tmp /runtime/bin/logs /runtime/bin/data/search_index \
+    && chmod 1777 /runtime/tmp \
+    && chown 65532:65532 /runtime/bin/logs /runtime/bin/data/search_index \
+    && chmod 0700 /runtime/bin/logs /runtime/bin/data/search_index
+
 # --- Final Stage ---
 FROM scratch AS final
 
 WORKDIR /bin
 
-# Copy the server executable from the build stage
-COPY --from=build /bin/server /bin/
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=runtime-layout /runtime/ /
 
-# Copy database bundle files
-COPY rust-be-template/new_bundle_ipv4.db /bin/
-COPY rust-be-template/new_bundle_ipv6.db /bin/
+# Root-owned and read-only for the runtime user: the executable, the CA bundle,
+# and the Geo-IP bundles, whose modes are set explicitly so a restrictive
+# checkout umask cannot make them unreadable.
+COPY --from=build --chmod=0555 /bin/server /bin/server
+COPY --from=build --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --chmod=0444 rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /bin/
 
 # Set non-secret defaults. Inject database and service credentials at runtime.
 ENV HOST_IP="0.0.0.0"
 ENV HOST_PORT="443"
 ENV SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+
+# Run as a numeric unprivileged user; scratch has no /etc/passwd to resolve a
+# name. Binding 443 without CAP_NET_BIND_SERVICE relies on Docker setting
+# net.ipv4.ip_unprivileged_port_start=0 in each container network namespace,
+# which it does for every network mode except host. Under host networking or a
+# runtime without that default, set HOST_PORT above 1023 or set the sysctl.
+USER 65532:65532
 
 # Expose the application port
 EXPOSE 443
