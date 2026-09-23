@@ -107,6 +107,11 @@ pub trait MediaObjectStore: Send + Sync {
     fn delete<'a>(&'a self, location: ObjectLocation) -> MediaObjectStoreFuture<'a>;
 }
 
+/// Browser and CDN caching for every uploaded media object. Keys embed a
+/// fresh UUIDv7 per upload and are never overwritten; a replacement is a new
+/// key, so a cached copy can never go stale.
+pub const IMMUTABLE_MEDIA_CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
+
 /// AWS S3 implementation of [`MediaObjectStore`].
 #[derive(Clone)]
 pub struct S3MediaObjectStore {
@@ -137,6 +142,7 @@ impl MediaObjectStore for S3MediaObjectStore {
                 .bucket(location.bucket())
                 .key(location.key())
                 .content_type(content_type)
+                .cache_control(IMMUTABLE_MEDIA_CACHE_CONTROL)
                 .body(body)
                 .send()
                 .await

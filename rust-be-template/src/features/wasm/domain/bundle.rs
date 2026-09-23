@@ -30,10 +30,23 @@ pub struct CachedWasmBundle {
     pub bytes: Arc<[u8]>,
     pub is_gzipped: bool,
     pub kind: WasmBundleKind,
+    /// Digest of `bytes`, computed once when the bundle enters the cache.
+    pub digest: Arc<str>,
 }
 
 pub struct ServedWasmBundle {
     pub bytes: Arc<[u8]>,
     pub content_type: &'static str,
     pub content_encoding_gzip: bool,
+    /// Opaque strong entity tag of this representation.
+    pub etag: String,
+}
+
+/// Result of a conditional bundle read.
+pub enum ServedWasm {
+    /// The client's copy is current; `etag` is the representation it holds.
+    NotModified {
+        etag: String,
+    },
+    Body(ServedWasmBundle),
 }
