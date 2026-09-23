@@ -7,6 +7,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 ## Current Plans
 
 - [Live chat](live-chat.md)
+- [Performance and security review, September 23](2026-09-23-performance-security-review.md)
 
 ## Completed
 
