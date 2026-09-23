@@ -4,17 +4,20 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
+    sync::LazyLock,
     time::Instant,
 };
 
 use anyhow::anyhow;
 use fast_image_resize::{PixelType, ResizeOptions, Resizer, images::Image as FastImage};
-use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader, Limits};
+use image::{
+    DynamicImage, GenericImageView, ImageFormat, ImageReader, Limits, codecs::avif::AvifEncoder,
+};
 use tempfile::TempPath;
 use tokio::sync::Semaphore;
 use tracing::info;
 
-use super::image_variant::{CyhdevImageType, IMAGE_ENCODING_FORMAT, format_size};
+use super::image_variant::{AVIF_QUALITY, CyhdevImageType, format_size};
 
 const FILE_BUFFER_BYTES: usize = 64 * 1024;
 const MAX_DECODED_PIXELS: u64 = 64 * 1024 * 1024;
@@ -41,14 +44,25 @@ impl ProcessedImageFile {
 
 static IMAGE_PROCESSING_PERMITS: Semaphore = Semaphore::const_new(MAX_CONCURRENT_IMAGE_JOBS);
 
+/// Encoder threads per job: half the cores, so the two concurrent jobs
+/// together use about every core and never oversubscribe the host that also
+/// serves requests. Without a cap each encode would claim the whole pool.
+static AVIF_ENCODER_THREADS: LazyLock<usize> = LazyLock::new(|| {
+    std::thread::available_parallelism()
+        .map(|cores| (cores.get() / 2).max(1))
+        .unwrap_or(1)
+});
+
 /// Decodes one staged source and writes ordered, progressively smaller variants.
 ///
-/// Callers should request variants from largest to smallest. The decoded source
-/// is consumed by each resize, so a photograph and thumbnail never require two
-/// decoded originals at once. Encoded bytes are written through a fixed buffer.
+/// `format` is the decoder chosen from the upload's declared MIME type; the
+/// file's signature must agree with it. Callers should request variants from
+/// largest to smallest. The decoded source is consumed by each resize, so a
+/// photograph and thumbnail never require two decoded originals at once.
+/// Encoded bytes are written through a fixed buffer.
 pub async fn process_uploaded_image_files(
     source: &Path,
-    format: Option<ImageFormat>,
+    format: ImageFormat,
     variants: Vec<CyhdevImageType>,
 ) -> anyhow::Result<Vec<ProcessedImageFile>> {
     validate_variant_order(&variants)?;
@@ -57,20 +71,25 @@ pub async fn process_uploaded_image_files(
         .await
         .map_err(|error| anyhow!("Image processing limiter closed: {error}"))?;
     let source = source.to_path_buf();
-    let result = tokio::task::spawn_blocking(move || process_files(&source, format, variants))
-        .await
-        .map_err(|error| anyhow!("Blocking image processing task panicked: {error}"))?;
-    drop(permit);
-    result
+    // The permit moves into the blocking closure: a cancelled request stops
+    // awaiting, but the encode keeps running and must keep its slot.
+    tokio::task::spawn_blocking(move || {
+        let result = process_files(&source, format, variants);
+        drop(permit);
+        result
+    })
+    .await
+    .map_err(|error| anyhow!("Blocking image processing task panicked: {error}"))?
 }
 
 fn process_files(
     source: &Path,
-    format: Option<ImageFormat>,
+    format: ImageFormat,
     variants: Vec<CyhdevImageType>,
 ) -> anyhow::Result<Vec<ProcessedImageFile>> {
     let start = Instant::now();
     let original_size = source.metadata()?.len();
+    require_matching_signature(source, format)?;
     let dimensions = open_reader(source, format)?.into_dimensions()?;
     validate_dimensions(dimensions)?;
 
@@ -100,19 +119,26 @@ fn process_files(
     Ok(processed)
 }
 
-fn open_reader(
-    source: &Path,
-    format: Option<ImageFormat>,
-) -> anyhow::Result<ImageReader<BufReader<File>>> {
+fn open_reader(source: &Path, format: ImageFormat) -> anyhow::Result<ImageReader<BufReader<File>>> {
     let file = File::open(source)?;
-    let reader = ImageReader::new(BufReader::with_capacity(FILE_BUFFER_BYTES, file));
-    match format {
-        Some(format) => {
-            let mut reader = reader;
-            reader.set_format(format);
-            Ok(reader)
-        }
-        None => reader.with_guessed_format().map_err(anyhow::Error::from),
+    let mut reader = ImageReader::new(BufReader::with_capacity(FILE_BUFFER_BYTES, file));
+    reader.set_format(format);
+    Ok(reader)
+}
+
+/// Rejects a file whose leading signature is not the declared format. Only
+/// the magic bytes are read; no decoder runs for a mismatched upload.
+fn require_matching_signature(source: &Path, declared: ImageFormat) -> anyhow::Result<()> {
+    let file = File::open(source)?;
+    let sniffed = ImageReader::new(BufReader::with_capacity(FILE_BUFFER_BYTES, file))
+        .with_guessed_format()?
+        .format();
+    if sniffed == Some(declared) {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "Image content does not match its declared {declared:?} type"
+        ))
     }
 }
 
@@ -177,7 +203,10 @@ fn encode_to_temp_file(
         .tempfile()?;
     let (file, path) = named.into_parts();
     let mut writer = BufWriter::with_capacity(FILE_BUFFER_BYTES, file);
-    image.write_to(&mut writer, IMAGE_ENCODING_FORMAT)?;
+    let encoder =
+        AvifEncoder::new_with_speed_quality(&mut writer, image_type.avif_speed(), AVIF_QUALITY)
+            .with_num_threads(Some(*AVIF_ENCODER_THREADS));
+    image.write_with_encoder(encoder)?;
     writer.flush()?;
     let size_bytes = writer.get_ref().metadata()?.len();
     drop(writer);
@@ -190,7 +219,60 @@ fn encode_to_temp_file(
 
 #[cfg(test)]
 mod tests {
-    use super::{CyhdevImageType, validate_dimensions, validate_variant_order};
+    use std::io::Write;
+
+    use image::ImageFormat;
+
+    use super::{
+        AVIF_ENCODER_THREADS, CyhdevImageType, require_matching_signature, validate_dimensions,
+        validate_variant_order,
+    };
+
+    #[test]
+    fn signature_must_match_the_declared_format() -> anyhow::Result<()> {
+        let mut png = tempfile::NamedTempFile::new()?;
+        png.write_all(b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR")?;
+        assert!(require_matching_signature(png.path(), ImageFormat::Png).is_ok());
+        assert!(require_matching_signature(png.path(), ImageFormat::Jpeg).is_err());
+        let mut unknown = tempfile::NamedTempFile::new()?;
+        unknown.write_all(b"not an image")?;
+        assert!(require_matching_signature(unknown.path(), ImageFormat::Png).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn declared_png_encodes_to_avif_and_a_mislabelled_one_is_refused() -> anyhow::Result<()> {
+        let source = tempfile::Builder::new().suffix(".png").tempfile()?;
+        image::RgbaImage::from_pixel(32, 24, image::Rgba([200, 40, 90, 255]))
+            .save_with_format(source.path(), ImageFormat::Png)?;
+        let outputs = super::process_files(
+            source.path(),
+            ImageFormat::Png,
+            vec![CyhdevImageType::Thumbnail],
+        )?;
+        let encoded = std::fs::read(
+            outputs
+                .first()
+                .map(|output| output.path())
+                .ok_or_else(|| anyhow::anyhow!("no thumbnail output"))?,
+        )?;
+        assert_eq!(encoded.get(4..12), Some(b"ftypavif".as_slice()));
+        assert!(
+            super::process_files(
+                source.path(),
+                ImageFormat::Jpeg,
+                vec![CyhdevImageType::Thumbnail]
+            )
+            .is_err()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn encoder_threads_stay_within_the_host() {
+        let cores = std::thread::available_parallelism().map_or(1, |cores| cores.get());
+        assert!(*AVIF_ENCODER_THREADS >= 1 && *AVIF_ENCODER_THREADS <= cores);
+    }
 
     #[test]
     fn rejects_pixel_bombs_and_inverted_variant_order() {

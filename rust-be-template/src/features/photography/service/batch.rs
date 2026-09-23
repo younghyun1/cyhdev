@@ -1,8 +1,5 @@
 use super::photography_service::PhotographyService;
-use crate::{
-    features::photography::service::batch_session::BatchSession,
-    util::image::batch_pipeline::batch_temp_dir,
-};
+use crate::features::photography::service::batch_session::BatchSession;
 use chrono::{DateTime, Utc};
 use std::sync::{
     Arc,
@@ -95,7 +92,7 @@ impl PhotographyService {
                 let remove = (batch.is_done() && idle > TERMINAL_BATCH_TTL_SECONDS)
                     || idle > STUCK_BATCH_TTL_SECONDS;
                 if remove {
-                    evicted.push(*batch_id);
+                    evicted.push((*batch_id, batch.staging_path().to_path_buf()));
                 }
                 !remove
             })
@@ -103,9 +100,11 @@ impl PhotographyService {
         self.batches
             .count
             .fetch_sub(evicted.len(), Ordering::SeqCst);
-        for batch_id in &evicted {
+        // A finished worker already removed its directory; this reclaims the
+        // staged originals of a batch whose worker is stuck.
+        for (batch_id, directory) in &evicted {
             let batch_id = *batch_id;
-            let directory = batch_temp_dir(batch_id);
+            let directory = directory.clone();
             tokio::spawn(async move {
                 if let Err(error) = tokio::fs::remove_dir_all(&directory).await
                     && error.kind() != std::io::ErrorKind::NotFound

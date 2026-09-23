@@ -3,6 +3,6 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Serialize, ToSchema)]
 pub struct Tag {
-    pub tag_id: i16,
+    pub tag_id: i32,
     pub tag_name: String,
 }

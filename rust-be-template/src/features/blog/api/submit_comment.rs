@@ -18,8 +18,9 @@ use crate::{
     util::time::now::tokio_now,
 };
 
-use super::bounded_json::BlogJson;
+use super::bounded_json::BlogSocialJson;
 use super::error::{BlogOperation, map_blog_error};
+use crate::util::extract::bounded_json::BoundedJson;
 
 #[utoipa::path(
     post,
@@ -40,7 +41,7 @@ pub async fn submit_comment(
     Extension(auth_session): Extension<Option<AuthSession>>,
     State(state): State<Arc<ServerState>>,
     Path(post_id): Path<Uuid>,
-    BlogJson(request): BlogJson<SubmitCommentRequest>,
+    BoundedJson(request): BlogSocialJson<SubmitCommentRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     if request.is_guest {

@@ -1,8 +1,8 @@
 //! Diesel persistence for UI text synchronization and read-through.
 
 use diesel::{
-    BoolExpressionMethods, DecoratableTarget, ExpressionMethods, QueryDsl, Queryable, Selectable,
-    SelectableHelper,
+    BoolExpressionMethods, DecoratableTarget, ExpressionMethods, PgExpressionMethods, QueryDsl,
+    Queryable, Selectable, SelectableHelper, upsert::excluded,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool};
 use uuid::Uuid;
@@ -11,6 +11,11 @@ use crate::{
     features::i18n::domain::{message::InternationalizationString, source::UiTextSourceBundle},
     schema::i18n_strings,
 };
+
+/// Rows per upsert statement. Five bound values per row keep a chunk far
+/// below PostgreSQL's 65,535-parameter limit while cutting 5,000-plus
+/// single-row round trips to a handful.
+const SOURCE_SYNC_CHUNK_ROWS: usize = 1_000;
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = i18n_strings, check_for_backend(diesel::pg::Pg))]
@@ -85,52 +90,77 @@ impl I18nRepository {
             .collect())
     }
 
+    /// Upserts every embedded source entry and returns how many were processed.
+    ///
+    /// Rows are written in multi-row statements of [`SOURCE_SYNC_CHUNK_ROWS`]
+    /// inside one transaction. The conflict update only fires when the stored
+    /// content differs, so an unchanged catalog rewrites no rows and keeps
+    /// each row's `updated_at`, which orders the cache snapshot.
     pub async fn synchronize_sources(
         &self,
         bundles: Vec<UiTextSourceBundle>,
     ) -> anyhow::Result<usize> {
+        let rows = bundles
+            .iter()
+            .flat_map(|bundle| {
+                bundle.entries.iter().map(|entry| {
+                    (
+                        entry.content.as_str(),
+                        bundle.locale.language_code(),
+                        bundle.locale.country_code(),
+                        entry.key.as_str(),
+                    )
+                })
+            })
+            .collect::<Vec<_>>();
         let mut connection = self.pool.get().await?;
         let system_user_id = Uuid::nil();
-        Ok(connection
-            .transaction::<usize, diesel::result::Error, _>(async move |connection| {
-                let mut synchronized = 0usize;
-                for bundle in bundles {
-                    for entry in bundle.entries {
-                        let now = chrono::Utc::now();
-                        diesel::insert_into(i18n_strings::table)
-                            .values((
-                                i18n_strings::i18n_string_content.eq(&entry.content),
+        let now = chrono::Utc::now();
+        connection
+            .transaction::<(), diesel::result::Error, _>(async |connection| {
+                for chunk in rows.chunks(SOURCE_SYNC_CHUNK_ROWS) {
+                    let values = chunk
+                        .iter()
+                        .map(|(content, language, country, key)| {
+                            (
+                                i18n_strings::i18n_string_content.eq(*content),
                                 i18n_strings::i18n_string_updated_by.eq(system_user_id),
-                                i18n_strings::i18n_string_language_code
-                                    .eq(bundle.locale.language_code()),
-                                i18n_strings::i18n_string_country_code
-                                    .eq(bundle.locale.country_code()),
-                                i18n_strings::i18n_string_country_subdivision_code
-                                    .eq(Option::<String>::None),
-                                i18n_strings::i18n_string_reference_key.eq(&entry.key),
-                            ))
-                            .on_conflict((
-                                i18n_strings::i18n_string_reference_key,
-                                i18n_strings::i18n_string_country_code,
-                                i18n_strings::i18n_string_language_code,
-                            ))
-                            .filter_target(
-                                i18n_strings::i18n_string_country_subdivision_code.is_null(),
+                                i18n_strings::i18n_string_language_code.eq(*language),
+                                i18n_strings::i18n_string_country_code.eq(*country),
+                                i18n_strings::i18n_string_reference_key.eq(*key),
                             )
-                            .do_update()
-                            .set((
-                                i18n_strings::i18n_string_content.eq(&entry.content),
-                                i18n_strings::i18n_string_updated_at.eq(now),
-                                i18n_strings::i18n_string_updated_by.eq(system_user_id),
-                            ))
-                            .execute(&mut *connection)
-                            .await?;
-                        synchronized = synchronized.saturating_add(1);
-                    }
+                        })
+                        .collect::<Vec<_>>();
+                    let upsert = diesel::insert_into(i18n_strings::table)
+                        .values(values)
+                        .on_conflict((
+                            i18n_strings::i18n_string_reference_key,
+                            i18n_strings::i18n_string_country_code,
+                            i18n_strings::i18n_string_language_code,
+                        ))
+                        .filter_target(i18n_strings::i18n_string_country_subdivision_code.is_null())
+                        .do_update()
+                        .set((
+                            i18n_strings::i18n_string_content
+                                .eq(excluded(i18n_strings::i18n_string_content)),
+                            i18n_strings::i18n_string_updated_at.eq(now),
+                            i18n_strings::i18n_string_updated_by.eq(system_user_id),
+                        ));
+                    // `ON CONFLICT ... DO UPDATE ... WHERE`. Insert statements have
+                    // no `QueryDsl`, and importing `FilterDsl` would make every
+                    // table `.filter` in this file ambiguous, so it is called by path.
+                    diesel::query_dsl::methods::FilterDsl::filter(
+                        upsert,
+                        i18n_strings::i18n_string_content
+                            .is_distinct_from(excluded(i18n_strings::i18n_string_content)),
+                    )
+                    .execute(&mut *connection)
+                    .await?;
                 }
-                Ok(synchronized)
+                Ok(())
             })
-            .await?)
+            .await?;
+        Ok(rows.len())
     }
 }
 

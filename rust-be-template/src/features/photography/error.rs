@@ -30,6 +30,11 @@ pub enum PhotographyError {
     BatchEmpty,
     #[error("photograph batch registry is saturated")]
     BatchSaturated,
+    #[error("photograph comment or vote budget exhausted")]
+    WriteThrottled {
+        retry_after: std::time::Duration,
+        saturated: bool,
+    },
 }
 
 impl PhotographyError {

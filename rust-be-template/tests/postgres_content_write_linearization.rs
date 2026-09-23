@@ -31,6 +31,52 @@ async fn content_write_and_soft_delete_share_one_account_lock_order() -> TestRes
     run_database_test(content_write_linearization_case).await
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
+async fn concurrent_writes_by_one_account_do_not_queue_on_its_row() -> TestResult {
+    run_database_test(shared_actor_lock_case).await
+}
+
+/// Two open transactions assert the same active actor at once; with a share
+/// lock the second does not wait for the first to commit.
+fn shared_actor_lock_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
+    Box::pin(async move {
+        let context = account_test_context(database)?;
+        let account = seed_account(&context, "SharedActor").await?;
+        let user_id = account.user_id;
+        let (locked_tx, locked_rx) = oneshot::channel();
+        let (release_tx, release_rx) = oneshot::channel::<()>();
+        let holder_pool = context.pool.clone();
+        let holder = tokio::spawn(async move {
+            let mut connection = holder_pool.get().await?;
+            connection
+                .transaction::<(), ActiveUserWriteError, _>(async |connection| {
+                    lock_active_user(&mut *connection, user_id).await?;
+                    let _ = locked_tx.send(());
+                    release_rx.await.map_err(|_| ActiveUserWriteError::Denied)?;
+                    Ok(())
+                })
+                .await?;
+            Ok(()) as TestResult
+        });
+        locked_rx.await?;
+        let mut connection = context.pool.get().await?;
+        let second = tokio::time::timeout(
+            Duration::from_secs(5),
+            connection.transaction::<(), ActiveUserWriteError, _>(async |connection| {
+                lock_active_user(&mut *connection, user_id).await
+            }),
+        )
+        .await;
+        let _ = release_tx.send(());
+        holder.await??;
+        require(
+            matches!(second, Ok(Ok(()))),
+            "a second write by the same account waited on the first one's row lock",
+        )
+    })
+}
+
 fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;

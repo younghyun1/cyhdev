@@ -2,6 +2,7 @@
 
 import type {
   ApiResponse,
+  CommentPageResponse,
   CommentResponse,
   DeleteCommentResponse,
   SubmitCommentRequest,
@@ -12,6 +13,7 @@ import type {
   VotePostResponse,
 } from "../api-types";
 import {
+  appendQuery,
   interpolatePath,
   requestHeaders,
   requestJson,
@@ -31,6 +33,24 @@ export function createBlogSocialClient(transport: ApiTransport) {
       const url = path;
       return requestJson<ApiResponse<DeleteCommentResponse>>(transport, url, {
         method: "DELETE",
+        headers: requestHeaders(options.headers, false),
+        signal: options.signal,
+      });
+    },
+    listPostComments: async (input: {
+      readonly path: {
+        readonly post_id: string;
+      };
+      readonly query?: {
+        readonly after_comment_id?: string;
+        readonly after_created_at?: string;
+        readonly limit?: number;
+      };
+    }, options: ApiRequestOptions = {}) => {
+      const path = interpolatePath("/api/blog/posts/{post_id}/comments", input.path);
+      const url = appendQuery(path, input.query);
+      return requestJson<ApiResponse<CommentPageResponse>>(transport, url, {
+        method: "GET",
         headers: requestHeaders(options.headers, false),
         signal: options.signal,
       });

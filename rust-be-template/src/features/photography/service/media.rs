@@ -5,10 +5,7 @@ use uuid::Uuid;
 use crate::{
     features::accounts::service::account_service::AccountService,
     features::photography::{
-        domain::{
-            media::PhotographDeleteReport,
-            photograph::{NewPhotograph, Photograph, PhotographContext},
-        },
+        domain::photograph::{NewPhotograph, Photograph, PhotographContext},
         error::PhotographyError,
     },
     util::{
@@ -19,14 +16,12 @@ use crate::{
             process_uploaded_image_files::process_uploaded_image_files,
         },
         media::{
-            cleanup::{
-                REASON_DELETED_PHOTOGRAPH_IMAGE, REASON_DELETED_PHOTOGRAPH_THUMBNAIL,
-                settle_durable_cleanup,
-            },
+            cleanup::{REASON_DELETED_PHOTOGRAPH_IMAGE, REASON_DELETED_PHOTOGRAPH_THUMBNAIL},
+            image_upload::declared_image_format,
             object_store::{MediaObjectStore, ObjectLocation},
             persistence::{
                 CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
-                cleanup_committed_objects, persist_media_objects,
+                persist_media_objects,
             },
             staged_upload::StagedUpload,
         },
@@ -35,9 +30,6 @@ use crate::{
 };
 
 use super::photography_service::PhotographyService;
-
-const MAX_DELETE_PHOTOGRAPHS: usize = 1_000;
-const PHOTOGRAPH_CLEANUP_CONCURRENCY: usize = 8;
 
 pub struct MediaPorts {
     pub(super) object_store: Arc<dyn MediaObjectStore>,
@@ -73,11 +65,13 @@ impl PhotographyService {
         user_id: Uuid,
         upload: PhotographUpload,
     ) -> Result<Photograph, PhotographyError> {
+        let format = declared_image_format(upload.source.content_type.as_deref())
+            .map_err(PhotographyError::Image)?;
         let source_path = upload.source.path().to_path_buf();
         let shot_at = read_exif(source_path.clone(), user_id).await;
         let mut outputs = process_uploaded_image_files(
             &source_path,
-            None,
+            format,
             vec![CyhdevImageType::Photograph, CyhdevImageType::Thumbnail],
         )
         .await
@@ -190,55 +184,6 @@ impl PhotographyService {
         }
         Ok(photograph)
     }
-
-    pub async fn delete_photographs(
-        &self,
-        requester_id: Uuid,
-        mut ids: Vec<Uuid>,
-    ) -> Result<PhotographDeleteReport, PhotographyError> {
-        normalize_ids(&mut ids)?;
-        if ids.is_empty() {
-            return Ok(PhotographDeleteReport {
-                deleted_count: 0,
-                s3_deleted_count: 0,
-                cleanup_failure_count: 0,
-                cleanup_remaining_count: 0,
-                unresolved_cleanup_count: 0,
-            });
-        }
-        let retired = self
-            .repository
-            .retire_photographs(requester_id, &ids)
-            .await?;
-        let cleanup_total = retired.cleanup.resolved.len() + retired.cleanup.unresolved_count;
-        let locations = retired
-            .cleanup
-            .resolved
-            .iter()
-            .map(|cleanup| cleanup.location.clone())
-            .collect();
-        let (cleaned, failures) = cleanup_committed_objects(
-            self.media.object_store.as_ref(),
-            locations,
-            PHOTOGRAPH_CLEANUP_CONCURRENCY,
-        )
-        .await;
-        log_cleanup(&failures);
-        let settlement = settle_durable_cleanup(
-            &self.media.accounts,
-            retired.cleanup.resolved,
-            &cleaned,
-            &failures,
-        )
-        .await;
-        Ok(PhotographDeleteReport {
-            deleted_count: retired.deleted_rows,
-            s3_deleted_count: cleaned.len(),
-            cleanup_failure_count: failures.len() + settlement.ledger_errors,
-            cleanup_remaining_count: cleanup_total.saturating_sub(settlement.finalized),
-            unresolved_cleanup_count: retired.cleanup.unresolved_count,
-        })
-    }
 }
 
 async fn read_exif(
@@ -258,7 +203,7 @@ async fn read_exif(
     }
 }
 
-fn log_cleanup(failures: &[CleanupFailure]) {
+pub(super) fn log_cleanup(failures: &[CleanupFailure]) {
     for failure in failures {
         error!(bucket = %failure.location.bucket(), key = %failure.location.key(), retryable = failure.is_retryable(), error = %failure.error, "Photograph media cleanup remains pending");
     }
@@ -295,37 +240,13 @@ fn photograph_cleanup_reason(location: &ObjectLocation) -> &'static str {
     }
 }
 
-fn normalize_ids(ids: &mut Vec<Uuid>) -> Result<(), PhotographyError> {
-    ids.sort_unstable();
-    ids.dedup();
-    if ids.len() > MAX_DELETE_PHOTOGRAPHS {
-        Err(PhotographyError::InvalidInput)
-    } else {
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{MAX_DELETE_PHOTOGRAPHS, normalize_ids, photograph_cleanup_reason};
+    use super::photograph_cleanup_reason;
     use crate::util::media::{
         cleanup::{REASON_DELETED_PHOTOGRAPH_IMAGE, REASON_DELETED_PHOTOGRAPH_THUMBNAIL},
         object_store::ObjectLocation,
     };
-    use uuid::Uuid;
-    #[test]
-    fn deletion_deduplicates_before_cap() {
-        let mut ids = vec![Uuid::nil(); MAX_DELETE_PHOTOGRAPHS + 1];
-        assert!(normalize_ids(&mut ids).is_ok());
-        assert_eq!(ids.len(), 1);
-    }
-    #[test]
-    fn deletion_rejects_distinct_overflow() {
-        let mut ids = (0..=MAX_DELETE_PHOTOGRAPHS)
-            .map(|value| Uuid::from_u128(value as u128))
-            .collect();
-        assert!(normalize_ids(&mut ids).is_err());
-    }
     #[test]
     fn compensation_cleanup_preserves_photograph_object_role() {
         let image = ObjectLocation::new("bucket", "images/source.avif");

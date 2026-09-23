@@ -27,6 +27,11 @@ pub enum BlogError {
     Search(#[source] anyhow::Error),
     #[error("blocking blog task failed")]
     Task(#[from] tokio::task::JoinError),
+    #[error("blog write budget exhausted")]
+    WriteThrottled {
+        retry_after: std::time::Duration,
+        saturated: bool,
+    },
 }
 
 impl BlogError {

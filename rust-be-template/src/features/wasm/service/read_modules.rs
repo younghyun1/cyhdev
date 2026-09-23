@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use super::super::{
     domain::{
-        bundle::{CachedWasmBundle, ServedWasmBundle},
+        bundle::{CachedWasmBundle, ServedWasm, ServedWasmBundle},
+        entity_tag::{IfNoneMatch, bundle_digest, representation_tag},
         module::WasmModuleMetadata,
     },
     error::WasmError,
@@ -97,16 +98,25 @@ impl WasmService {
         Ok(Some(bundle))
     }
 
+    /// Serves a bundle, or `NotModified` when the client already holds the
+    /// same representation. The precondition is checked before identity
+    /// decompression, so a revalidation never pays for decoding.
     pub async fn served_bundle(
         &self,
         module_id: Uuid,
         accepts_gzip: bool,
-    ) -> Result<Option<ServedWasmBundle>, WasmError> {
+        if_none_match: &IfNoneMatch,
+    ) -> Result<Option<ServedWasm>, WasmError> {
         let bundle = match self.bundle(module_id).await? {
             Some(bundle) => bundle,
             None => return Ok(None),
         };
         let content_type = bundle.kind.content_type();
+        let serve_gzip = bundle.is_gzipped && accepts_gzip;
+        let etag = representation_tag(&bundle.digest, serve_gzip);
+        if if_none_match.matches(&etag) {
+            return Ok(Some(ServedWasm::NotModified { etag }));
+        }
         if bundle.is_gzipped && !accepts_gzip {
             let decompression = self.coordination.try_identity_decompression()?;
             let compressed = bundle.bytes;
@@ -120,17 +130,19 @@ impl WasmService {
             })
             .await?
             .map_err(WasmError::Bundle)?;
-            return Ok(Some(ServedWasmBundle {
+            return Ok(Some(ServedWasm::Body(ServedWasmBundle {
                 bytes: Arc::from(bytes.into_boxed_slice()),
                 content_type,
                 content_encoding_gzip: false,
-            }));
+                etag,
+            })));
         }
-        Ok(Some(ServedWasmBundle {
+        Ok(Some(ServedWasm::Body(ServedWasmBundle {
             bytes: bundle.bytes,
             content_type,
             content_encoding_gzip: bundle.is_gzipped,
-        }))
+            etag,
+        })))
     }
 
     pub(super) async fn cache_bundle(
@@ -139,10 +151,24 @@ impl WasmService {
         gz_bytes: Vec<u8>,
         kind: super::super::domain::bundle::WasmBundleKind,
     ) {
-        let bundle = CachedWasmBundle {
-            bytes: Arc::from(gz_bytes.into_boxed_slice()),
-            is_gzipped: true,
-            kind,
+        // Hashing up to 50 MiB is blocking work; a failed task only skips
+        // admission, and the next read loads the bundle from PostgreSQL.
+        let bundle = match tokio::task::spawn_blocking(move || {
+            let digest = Arc::from(bundle_digest(&gz_bytes));
+            CachedWasmBundle {
+                bytes: Arc::from(gz_bytes.into_boxed_slice()),
+                is_gzipped: true,
+                kind,
+                digest,
+            }
+        })
+        .await
+        {
+            Ok(bundle) => bundle,
+            Err(error) => {
+                error!(wasm_module_id = %module_id, %error, "Could not hash a published WebAssembly bundle");
+                return;
+            }
         };
         self.admit_bundle(module_id, bundle).await;
     }
@@ -170,9 +196,10 @@ impl WasmService {
 }
 
 async fn cached_bundle(gz_bytes: Vec<u8>) -> Result<CachedWasmBundle, WasmError> {
-    let (kind, gz_bytes) = tokio::task::spawn_blocking(move || {
+    let (kind, digest, gz_bytes) = tokio::task::spawn_blocking(move || {
         let kind = sniff_kind_from_gzip_bytes(&gz_bytes)?;
-        Ok::<_, anyhow::Error>((kind, gz_bytes))
+        let digest = bundle_digest(&gz_bytes);
+        Ok::<_, anyhow::Error>((kind, digest, gz_bytes))
     })
     .await?
     .map_err(WasmError::Bundle)?;
@@ -180,5 +207,6 @@ async fn cached_bundle(gz_bytes: Vec<u8>) -> Result<CachedWasmBundle, WasmError>
         bytes: Arc::from(gz_bytes.into_boxed_slice()),
         is_gzipped: true,
         kind,
+        digest: Arc::from(digest),
     })
 }

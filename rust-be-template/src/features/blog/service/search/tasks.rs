@@ -14,7 +14,13 @@ where
         .acquire()
         .await
         .map_err(|error| BlogError::Search(anyhow::anyhow!("search limiter closed: {error}")))?;
-    let result = tokio::task::spawn_blocking(task).await?;
-    drop(permit);
+    // The permit moves into the blocking closure: if the awaiting request is
+    // cancelled, the index work keeps running and must keep its slot.
+    let result = tokio::task::spawn_blocking(move || {
+        let result = task();
+        drop(permit);
+        result
+    })
+    .await?;
     result.map_err(BlogError::Search)
 }

@@ -136,7 +136,7 @@ pub async fn search_posts(
         AuthStatus::LoggedOut => None,
     };
     let posts = service
-        .present_posts(matching, viewer_id)
+        .present_search_results(matching, viewer_id)
         .await
         .map_err(|error| map_blog_error(error, BlogOperation::Query))?;
     Ok(http_resp(

@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use super::comment::CommentResponse;
 use super::{cache::CachedPostInfo, vote::VoteState};
+use super::{comment::CommentResponse, comment_page::CommentCursor};
 use crate::features::accounts::domain::{
     account::DELETED_USER_DISPLAY_NAME, public_author::PublicAuthor,
 };
@@ -63,6 +65,27 @@ impl UserBadgeInfo {
             user_name: DELETED_USER_DISPLAY_NAME.to_owned(),
             user_profile_picture_url: String::new(),
             user_country_flag: None,
+        }
+    }
+
+    /// Public user ID and badge for `user_id` from a batched author projection.
+    /// A missing or deleted author resolves to the nil ID and the deleted badge.
+    pub fn resolve(
+        authors: &HashMap<Uuid, PublicAuthor>,
+        country_flags: &HashMap<i32, String>,
+        user_id: Uuid,
+    ) -> (Uuid, Self) {
+        match authors.get(&user_id) {
+            Some(author) => {
+                let flag = author
+                    .country_code()
+                    .and_then(|code| country_flags.get(&code).cloned());
+                (
+                    author.public_user_id(),
+                    Self::from_public_author(author, flag),
+                )
+            }
+            None => (Uuid::nil(), Self::deleted()),
         }
     }
 
@@ -184,6 +207,7 @@ pub struct ReadPostResult {
     pub post: Post,
     pub post_tags: Vec<String>,
     pub comments: Vec<CommentResponse>,
+    pub comments_next_cursor: Option<CommentCursor>,
     pub vote_state: VoteState,
     pub user_badge_info: UserBadgeInfo,
 }

@@ -186,6 +186,7 @@ mod tests {
             bytes: Arc::from(vec![0_u8; bytes].into_boxed_slice()),
             is_gzipped: true,
             kind: WasmBundleKind::WebAssembly,
+            digest: Arc::from("digest"),
         }
     }
 

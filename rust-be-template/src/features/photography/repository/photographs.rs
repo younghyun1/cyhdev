@@ -3,29 +3,23 @@ use diesel::{
     sql_types::{Array, BigInt, Uuid as SqlUuid},
 };
 use diesel_async::RunQueryDsl;
-use std::collections::HashMap;
 use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
-    features::blog::domain::vote::VoteState,
+    features::blog::domain::{comment_page::CommentPageRequest, vote::VoteState},
     features::photography::{
-        domain::{
-            photograph::{Photograph, PhotographDetail, PhotographPage},
-            social::PhotographComment,
-        },
+        domain::photograph::{Photograph, PhotographDetail, PhotographPage},
         error::PhotographyError,
         repository::{
-            enums::DbPhotographContext,
-            photography_repository::PhotographyRepository,
-            records::{PhotographCommentRecord, PhotographRecord},
+            comment_reads::load_comment_page, enums::DbPhotographContext,
+            photography_repository::PhotographyRepository, records::PhotographRecord,
         },
     },
-    persistence::public_authors::{load_deleted_user_ids, load_public_authors},
-    schema::{photograph_comment_votes, photograph_comments, photograph_votes, photographs},
+    persistence::public_authors::load_deleted_user_ids,
+    schema::{photograph_votes, photographs},
 };
 
-pub const PHOTOGRAPH_DETAIL_COMMENT_LIMIT: i64 = 1_000;
 const VIEW_DELTA_CHUNK_SIZE: usize = 256;
 const APPLY_VIEW_DELTAS_SQL: &str = "\
 UPDATE photographs AS photograph \
@@ -134,83 +128,32 @@ impl PhotographyRepository {
             .await
             .optional()?
             .ok_or(PhotographyError::PhotographNotFound)?;
-        let mut comment_records = photograph_comments::table
-            .filter(photograph_comments::photograph_id.eq(photograph_id))
-            .order((
-                (photograph_comments::photograph_comment_total_upvotes
-                    - photograph_comments::photograph_comment_total_downvotes)
-                    .desc(),
-                photograph_comments::photograph_comment_created_at.asc(),
-                photograph_comments::photograph_comment_id.asc(),
-            ))
-            .limit(PHOTOGRAPH_DETAIL_COMMENT_LIMIT + 1)
-            .select(PhotographCommentRecord::as_select())
-            .load::<PhotographCommentRecord>(&mut connection)
-            .await?;
-        if comment_records.len() > PHOTOGRAPH_DETAIL_COMMENT_LIMIT as usize {
-            warn!(%photograph_id, limit = PHOTOGRAPH_DETAIL_COMMENT_LIMIT, "Photograph detail comments were truncated at the fixed response ceiling");
-            comment_records.truncate(PHOTOGRAPH_DETAIL_COMMENT_LIMIT as usize);
-        }
-        let comments = comment_records
-            .into_iter()
-            .map(PhotographComment::from)
-            .collect::<Vec<_>>();
-        let mut ids = comments
-            .iter()
-            .map(|comment| comment.user_id)
-            .collect::<Vec<_>>();
-        ids.push(record.clone_author_id());
-        ids.sort_unstable();
-        ids.dedup();
-        let authors = load_public_authors(&mut connection, &ids).await?;
-        let (comment_votes, vote_state) = match viewer {
-            Some(user_id) => {
-                let comment_ids = comments
-                    .iter()
-                    .map(|comment| comment.photograph_comment_id)
-                    .collect::<Vec<_>>();
-                let rows = photograph_comment_votes::table
-                    .filter(photograph_comment_votes::photograph_comment_id.eq_any(&comment_ids))
-                    .filter(photograph_comment_votes::user_id.eq(user_id))
-                    .select((
-                        photograph_comment_votes::photograph_comment_id,
-                        photograph_comment_votes::is_upvote,
-                    ))
-                    .load::<(Uuid, bool)>(&mut connection)
-                    .await?;
-                let photograph_vote = photograph_votes::table
+        let owner_user_id = record.clone_author_id();
+        let comments = load_comment_page(
+            &mut connection,
+            photograph_id,
+            viewer,
+            CommentPageRequest::first_page(),
+            &[owner_user_id],
+        )
+        .await?;
+        let vote_state = match viewer {
+            Some(user_id) => vote_state(
+                photograph_votes::table
                     .filter(photograph_votes::photograph_id.eq(photograph_id))
                     .filter(photograph_votes::user_id.eq(user_id))
                     .select(photograph_votes::is_upvote)
                     .first::<bool>(&mut connection)
                     .await
-                    .optional()?;
-                (
-                    rows.into_iter()
-                        .map(|(id, vote)| (id, vote_state(Some(vote))))
-                        .collect::<HashMap<_, _>>(),
-                    vote_state(photograph_vote),
-                )
-            }
-            None => (HashMap::new(), VoteState::DidNotVote),
+                    .optional()?,
+            ),
+            None => VoteState::DidNotVote,
         };
-        let owner_user_id = record.clone_author_id();
         let photograph = record.into();
-        let comments = comments
-            .into_iter()
-            .map(|comment| {
-                let state = comment_votes
-                    .get(&comment.photograph_comment_id)
-                    .cloned()
-                    .unwrap_or(VoteState::DidNotVote);
-                (comment, state)
-            })
-            .collect();
         Ok(PhotographDetail {
             photograph,
             comments,
             vote_state,
-            authors,
             owner_user_id,
         })
     }

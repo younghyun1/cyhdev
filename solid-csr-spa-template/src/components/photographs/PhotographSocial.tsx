@@ -3,10 +3,12 @@
 // blog `posts/View.tsx` visual + interaction patterns (emerald up / rose down,
 // optimistic votes with rollback) against the separate photograph endpoints.
 //
-// The detail resource is fetched once per photograph (it increments the naive
-// view count server-side), so comment mutations update a LOCAL comment list
-// instead of refetching — otherwise every comment action would re-inflate the
-// view count.
+// The detail resource is fetched once per photograph (it records a view
+// server-side), so comment mutations update a LOCAL comment list instead of
+// refetching. The detail carries the first oldest-first comment page; "load
+// more" appends later pages, and the whole accumulated list is threaded again
+// so replies attach to parents from earlier pages. Deleted comments stay as
+// tombstones so other users' replies keep their place.
 
 import {
   Loading,
@@ -20,11 +22,16 @@ import { Key } from "@solid-primitives/keyed";
 import { useNavigate } from "@solidjs/router";
 import { photographyApi } from "../../services/all_api";
 import { createKeyedStore } from "../../state/keyed_store";
+import { mergeCommentPages } from "../../utils/commentPages";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { t } from "../../state/i18n";
 import { UserBadge } from "../UserBadge";
-import type { PhotographCommentResponse, VoteState } from "../../generated";
+import type {
+  CommentCursorResponse,
+  PhotographCommentResponse,
+  VoteState,
+} from "../../generated";
 
 interface CommentNode extends PhotographCommentResponse {
   children: CommentNode[];
@@ -54,12 +61,42 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   const [comments, setComments] = createSignal<
     ReadonlyArray<PhotographCommentResponse>
   >([]);
+  const [cursor, setCursor] = createSignal<CommentCursorResponse | null>(null);
+  const [loadingMore, setLoadingMore] = createSignal(false);
+  const [loadMoreFailed, setLoadMoreFailed] = createSignal(false);
   createEffect(
     () => detail(),
     (d) => {
       setComments(d.comments);
+      setCursor(d.comments_next_cursor ?? null);
     },
   );
+
+  const loadMore = async () => {
+    const after = cursor();
+    if (!after || loadingMore()) return;
+    setLoadingMore(true);
+    setLoadMoreFailed(false);
+    try {
+      const page = await photographyApi.listPhotographComments(
+        props.photographId,
+        after,
+      );
+      setComments((prev) =>
+        mergeCommentPages(
+          [prev, page.data.comments],
+          (c) => c.photograph_comment_id,
+          () => undefined,
+        ),
+      );
+      setCursor(page.data.next_cursor ?? null);
+    } catch (err) {
+      console.error("Loading more comments failed:", err);
+      setLoadMoreFailed(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const [optimistic, setOptimistic] = createStore<{
     photo?: OptimisticVote;
@@ -273,29 +310,21 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     }
   };
 
-  // Remove a comment and all of its descendants (server cascade-deletes them).
-  const removeSubtree = (
+  // The server replaces a deleted comment with a tombstone; mirror it locally
+  // so replies stay attached without refetching.
+  const markDeleted = (
     list: ReadonlyArray<PhotographCommentResponse>,
-    rootId: string,
-  ): ReadonlyArray<PhotographCommentResponse> => {
-    const doomed = new Set<string>([rootId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const c of list) {
-        const parent = c.parent_photograph_comment_id;
-        if (
-          parent &&
-          doomed.has(parent) &&
-          !doomed.has(c.photograph_comment_id)
-        ) {
-          doomed.add(c.photograph_comment_id);
-          changed = true;
-        }
-      }
-    }
-    return list.filter((c) => !doomed.has(c.photograph_comment_id));
-  };
+    commentId: string,
+  ): ReadonlyArray<PhotographCommentResponse> =>
+    list.map((c) =>
+      c.photograph_comment_id === commentId
+        ? {
+            ...c,
+            photograph_comment_content: "",
+            photograph_comment_deleted_at: new Date().toISOString(),
+          }
+        : c,
+    );
 
   const removeComment = async (commentId: string) => {
     if (!confirm(t("photos.delete_confirm").replace("{count}", "1"))) return;
@@ -305,7 +334,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         props.photographId,
         commentId,
       );
-      setComments((prev) => removeSubtree(prev, commentId));
+      setComments((prev) => markDeleted(prev, commentId));
     } catch (err) {
       console.error("Delete comment failed:", err);
     } finally {
@@ -318,6 +347,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
       {(comment) => {
         const cv = () => commentVote(comment());
         const id = () => comment().photograph_comment_id;
+        const deleted = () => Boolean(comment().photograph_comment_deleted_at);
         return (
           <div
             class="threaded-comment mt-2 pl-3 border-l border-line"
@@ -341,12 +371,19 @@ export default function PhotographSocial(props: PhotographSocialProps) {
               </span>
             </div>
 
+            <Show when={deleted()}>
+              <div class="text-ink-muted italic text-sm">
+                {t("blog.comments.deleted")}
+              </div>
+            </Show>
             <Show
-              when={editOpen[id()]}
+              when={!deleted() && editOpen[id()]}
               fallback={
-                <div class="text-ink whitespace-pre-wrap text-sm">
-                  {comment().photograph_comment_content}
-                </div>
+                <Show when={!deleted()}>
+                  <div class="text-ink whitespace-pre-wrap text-sm">
+                    {comment().photograph_comment_content}
+                  </div>
+                </Show>
               }
             >
               <div class="mt-1">
@@ -373,63 +410,65 @@ export default function PhotographSocial(props: PhotographSocialProps) {
               </div>
             </Show>
 
-            <div class="flex items-center gap-2 mt-1">
-              <button
-                class={[
-                  "text-lg px-1",
-                  cv().vs === 0
-                    ? "text-ok font-bold"
-                    : "text-ink-muted hover:text-ok",
-                ]}
-                onClick={() => voteComment(comment(), true)}
-                title={t("blog.vote.upvote")}
-              >
-                ▲
-              </button>
-              <span class="text-xs font-semibold text-ink">
-                {cv().up - cv().down}
-              </span>
-              <button
-                class={[
-                  "text-lg px-1",
-                  cv().vs === 1
-                    ? "text-danger font-bold"
-                    : "text-ink-muted hover:text-danger",
-                ]}
-                onClick={() => voteComment(comment(), false)}
-                title={t("blog.vote.downvote")}
-              >
-                ▼
-              </button>
-            </div>
+            <Show when={!deleted()}>
+              <div class="flex items-center gap-2 mt-1">
+                <button
+                  class={[
+                    "text-lg px-1",
+                    cv().vs === 0
+                      ? "text-ok font-bold"
+                      : "text-ink-muted hover:text-ok",
+                  ]}
+                  onClick={() => voteComment(comment(), true)}
+                  title={t("blog.vote.upvote")}
+                >
+                  ▲
+                </button>
+                <span class="text-xs font-semibold text-ink">
+                  {cv().up - cv().down}
+                </span>
+                <button
+                  class={[
+                    "text-lg px-1",
+                    cv().vs === 1
+                      ? "text-danger font-bold"
+                      : "text-ink-muted hover:text-danger",
+                  ]}
+                  onClick={() => voteComment(comment(), false)}
+                  title={t("blog.vote.downvote")}
+                >
+                  ▼
+                </button>
+              </div>
 
-            <div class="mt-1 flex gap-3">
-              <Show when={meId()}>
-                <button
-                  class={`${pageStyles.link} text-xs`}
-                  onClick={() => setReplyOpen(id(), !replyOpen[id()])}
-                >
-                  {t("blog.comments.reply")}
-                </button>
-              </Show>
-              <Show when={canModify(comment().user_id)}>
-                <button
-                  class={`${pageStyles.link} text-xs`}
-                  onClick={() => {
-                    setEditText(id(), comment().photograph_comment_content);
-                    setEditOpen(id(), true);
-                  }}
-                >
-                  {t("common.edit")}
-                </button>
-                <button
-                  class="text-xs text-danger hover:underline"
-                  onClick={() => removeComment(id())}
-                >
-                  {t("common.delete")}
-                </button>
-              </Show>
-            </div>
+              <div class="mt-1 flex gap-3">
+                <Show when={meId()}>
+                  <button
+                    class={`${pageStyles.link} text-xs`}
+                    onClick={() => setReplyOpen(id(), !replyOpen[id()])}
+                  >
+                    {t("blog.comments.reply")}
+                  </button>
+                </Show>
+                <Show when={canModify(comment().user_id)}>
+                  <button
+                    class={`${pageStyles.link} text-xs`}
+                    onClick={() => {
+                      setEditText(id(), comment().photograph_comment_content);
+                      setEditOpen(id(), true);
+                    }}
+                  >
+                    {t("common.edit")}
+                  </button>
+                  <button
+                    class="text-xs text-danger hover:underline"
+                    onClick={() => removeComment(id())}
+                  >
+                    {t("common.delete")}
+                  </button>
+                </Show>
+              </div>
+            </Show>
 
             <Show when={replyOpen[id()]}>
               <div class="mt-2">
@@ -541,6 +580,21 @@ export default function PhotographSocial(props: PhotographSocialProps) {
             }
           >
             {renderComments(commentTree())}
+          </Show>
+          <Show when={cursor()}>
+            <button
+              type="button"
+              class={`${pageStyles.buttonSecondary} mt-3 text-sm`}
+              disabled={loadingMore()}
+              onClick={loadMore}
+            >
+              {loadingMore() ? t("common.loading") : t("blog.comments.load_more")}
+            </button>
+          </Show>
+          <Show when={loadMoreFailed()}>
+            <p class="mt-2 text-sm text-danger">
+              {t("blog.comments.failed_load")}
+            </p>
           </Show>
         </div>
       </Loading>

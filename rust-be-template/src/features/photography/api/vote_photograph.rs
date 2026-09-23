@@ -11,20 +11,23 @@ use crate::{
     util::time::now::tokio_now,
 };
 use axum::{
-    Extension, Json,
+    Extension,
     extract::{Path, State},
     response::IntoResponse,
 };
 use std::sync::Arc;
+
+use super::social_json::SocialJson;
+use crate::util::extract::bounded_json::BoundedJson;
 use uuid::Uuid;
 
 #[utoipa::path(post, path = "/api/photographs/{photograph_id}/vote", tag = "photography", params(("photograph_id" = Uuid, Path, description = "Photograph to vote on")), request_body = VotePhotographRequest,
-responses((status = 200, description = "Vote recorded", body = VotePhotographResponse), (status = 401, body = CodeErrorResp), (status = 500, body = CodeErrorResp)))]
+responses((status = 200, description = "Vote recorded", body = VotePhotographResponse), (status = 401, body = CodeErrorResp), (status = 413, description = "Request body too large", body = CodeErrorResp), (status = 500, body = CodeErrorResp)))]
 pub async fn vote_photograph(
     Extension(user_id): Extension<Uuid>,
     State(state): State<Arc<ServerState>>,
     Path(photograph_id): Path<Uuid>,
-    Json(request): Json<VotePhotographRequest>,
+    BoundedJson(request): SocialJson<VotePhotographRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let counts = state

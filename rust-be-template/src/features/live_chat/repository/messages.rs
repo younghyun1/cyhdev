@@ -184,6 +184,8 @@ impl LiveChatRepository {
     }
 }
 
+/// Asserts the sender is active; `FOR SHARE` conflicts with the `FOR UPDATE`
+/// soft deletion takes, so deletion cannot commit mid-write.
 pub(super) async fn lock_active_user(
     connection: &mut AsyncPgConnection,
     user_id: Uuid,
@@ -195,7 +197,7 @@ pub(super) async fn lock_active_user(
         .filter(users::user_is_email_verified.eq(true))
         .filter(users::user_is_system_actor.eq(false))
         .select(users::user_id)
-        .for_update()
+        .for_share()
         .first::<Uuid>(&mut *connection)
         .await
         .optional()?;

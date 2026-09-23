@@ -6,13 +6,17 @@ import {
   createEffect,
   createStore,
   isPending,
-  refresh,
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import { createKeyedStore } from "../../state/keyed_store";
+import { mergeCommentPages } from "../../utils/commentPages";
 import { useParams, useNavigate } from "@solidjs/router";
 import { blogApi } from "../../services/all_api";
-import type { CommentResponse, VoteState } from "../../generated";
+import type {
+  CommentCursorResponse,
+  CommentResponse,
+  VoteState,
+} from "../../generated";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
@@ -102,12 +106,23 @@ export default function PostViewPage() {
   const [postResource, setPostResource] = createSignal<PostViewData | null>(
     null,
   );
+  // Comments after the first page, appended oldest first, and the cursor for
+  // the next page. The detail response carries the first page and cursor.
+  const [laterComments, setLaterComments] = createSignal<
+    ReadonlyArray<CommentResponse>
+  >([]);
+  const [commentsCursor, setCommentsCursor] =
+    createSignal<CommentCursorResponse | null>(null);
+  const [loadingMoreComments, setLoadingMoreComments] = createSignal(false);
+  const [loadMoreError, setLoadMoreError] = createSignal<string | null>(null);
   createEffect(
     () => postLoad(),
     (result) => {
       if (result.ok) {
         setPostLoadError(null);
         setPostResource(result.data);
+        setLaterComments([]);
+        setCommentsCursor(result.data?.comments_next_cursor ?? null);
         return;
       }
       if (result.status === 400 || result.status === 404) {
@@ -137,9 +152,47 @@ export default function PostViewPage() {
     >;
   }>({ comments: {} });
 
-  // Store for locally added comments (optimistic replies)
+  // Comments created in this view, and server responses for comments edited
+  // or deleted here. Local updates avoid refetching the post, which would
+  // count another view and drop the comment pages already loaded.
   const [localComments, setLocalComments] =
     createKeyedStore<CommentResponse>();
+  const [commentOverrides, setCommentOverrides] =
+    createKeyedStore<CommentResponse>();
+
+  const loadedComments = createMemo<ReadonlyArray<CommentResponse>>(() =>
+    mergeCommentPages(
+      [postResource()?.comments ?? [], laterComments()],
+      (comment) => comment.comment_id,
+      (id) => commentOverrides[id],
+    ),
+  );
+
+  // A comment created here can also arrive in a later page, so an edit or
+  // deletion updates both the local copy and the fetched one.
+  const replaceComment = (comment: CommentResponse) => {
+    setCommentOverrides(comment.comment_id, comment);
+    if (localComments[comment.comment_id]) {
+      setLocalComments(comment.comment_id, comment);
+    }
+  };
+
+  const loadMoreComments = async () => {
+    const cursor = commentsCursor();
+    const id = postResource()?.post.post_id;
+    if (!cursor || !id || loadingMoreComments()) return;
+    setLoadingMoreComments(true);
+    setLoadMoreError(null);
+    try {
+      const res = await blogApi.listPostComments(id, cursor);
+      setLaterComments((previous) => [...previous, ...res.data.comments]);
+      setCommentsCursor(res.data.next_cursor ?? null);
+    } catch {
+      setLoadMoreError(t("blog.comments.failed_load"));
+    } finally {
+      setLoadingMoreComments(false);
+    }
+  };
 
   // Per-comment reply state
   const [replyOpen, setReplyOpen] = createKeyedStore<boolean>();
@@ -162,11 +215,17 @@ export default function PostViewPage() {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = async (comment: CommentResponse) => {
     if (!confirm(t("blog.comments.delete_confirm"))) return;
     try {
-      await blogApi.deleteComment(postId()!, commentId);
-      refresh(postLoad);
+      await blogApi.deleteComment(postId()!, comment.comment_id);
+      // The server keeps a tombstone so replies stay attached; mirror it.
+      const tombstone: CommentResponse = {
+        ...comment,
+        comment_content: "",
+        comment_deleted_at: new Date().toISOString(),
+      };
+      replaceComment(tombstone);
     } catch (e) {
       alert(tx("blog.comments.delete_failed", { error: String(e) }));
     }
@@ -181,9 +240,8 @@ export default function PostViewPage() {
     const originalPostState = postResource()?.post;
     const originalCommentState =
       type === "comment" && ids.commentId
-        ? (postResource()?.comments.find(
-            (c) => c.comment_id === ids.commentId,
-          ) ?? localComments[ids.commentId])
+        ? (loadedComments().find((c) => c.comment_id === ids.commentId) ??
+          localComments[ids.commentId])
         : undefined;
 
     if (type === "post" && !originalPostState) return;
@@ -287,7 +345,7 @@ export default function PostViewPage() {
     setCommentLoading(true);
     setCommentError(null);
     try {
-      await blogApi.submitComment(
+      const res = await blogApi.submitComment(
         {
           is_guest: !isAuthenticated(),
           guest_id: null,
@@ -297,8 +355,10 @@ export default function PostViewPage() {
         },
         postId()!,
       );
+      if (res?.data) {
+        setLocalComments(res.data.comment_id, res.data);
+      }
       setCommentValue("");
-      refresh(postLoad);
     } catch (err: unknown) {
       setCommentError(
         err instanceof Error ? err.message : t("blog.comments.failed_submit"),
@@ -373,12 +433,14 @@ export default function PostViewPage() {
     setEditLoading(commentId, true);
     setEditError(commentId, null);
     try {
-      await blogApi.updateComment(
+      const res = await blogApi.updateComment(
         { comment_content: content },
         postId()!,
         commentId,
       );
-      refresh(postLoad);
+      if (res?.data) {
+        replaceComment(res.data);
+      }
       setEditOpen(commentId, false);
     } catch (err: unknown) {
       setEditError(
@@ -478,6 +540,8 @@ export default function PostViewPage() {
           const downvotes = () =>
             optimisticVotes.comments[comment().comment_id]?.total_downvotes ??
             comment().total_downvotes;
+          // Tombstones keep their place and replies but take no interaction.
+          const deleted = () => Boolean(comment().comment_deleted_at);
 
           return (
             <div
@@ -499,12 +563,19 @@ export default function PostViewPage() {
                   {new Date(comment().comment_created_at).toLocaleString()}
                 </span>
               </div>
+              <Show when={deleted()}>
+                <div class="text-ink-muted italic">
+                  {t("blog.comments.deleted")}
+                </div>
+              </Show>
               <Show
-                when={editOpen[comment().comment_id]}
+                when={!deleted() && editOpen[comment().comment_id]}
                 fallback={
-                  <div class="text-ink whitespace-pre-wrap">
-                    {comment().comment_content}
-                  </div>
+                  <Show when={!deleted()}>
+                    <div class="text-ink whitespace-pre-wrap">
+                      {comment().comment_content}
+                    </div>
+                  </Show>
                 }
               >
                 <div class="mt-2">
@@ -543,76 +614,78 @@ export default function PostViewPage() {
                   </div>
                 </div>
               </Show>
-              <div class="flex items-center gap-2 mt-2 mb-1">
-                <button
-                  class={[
-                    "text-lg px-1",
-                    voteState() === 0
-                      ? "text-ok font-bold"
-                      : "text-ink-muted hover:text-ok",
-                  ]}
-                  onClick={() =>
-                    handleVote("comment", true, {
-                      postId: postId(),
-                      commentId: comment().comment_id,
-                    })
-                  }
-                  title={t("blog.vote.upvote")}
-                >
-                  ▲
-                </button>
+              <Show when={!deleted()}>
+                <div class="flex items-center gap-2 mt-2 mb-1">
+                  <button
+                    class={[
+                      "text-lg px-1",
+                      voteState() === 0
+                        ? "text-ok font-bold"
+                        : "text-ink-muted hover:text-ok",
+                    ]}
+                    onClick={() =>
+                      handleVote("comment", true, {
+                        postId: postId(),
+                        commentId: comment().comment_id,
+                      })
+                    }
+                    title={t("blog.vote.upvote")}
+                  >
+                    ▲
+                  </button>
 
-                <span class="text-xs font-semibold tabular-nums text-ink">
-                  {upvotes() - downvotes()}
-                </span>
+                  <span class="text-xs font-semibold tabular-nums text-ink">
+                    {upvotes() - downvotes()}
+                  </span>
 
-                <button
-                  class={[
-                    "text-lg px-1",
-                    voteState() === 1
-                      ? "text-danger font-bold"
-                      : "text-ink-muted hover:text-danger",
-                  ]}
-                  onClick={() =>
-                    handleVote("comment", false, {
-                      postId: postId(),
-                      commentId: comment().comment_id,
-                    })
-                  }
-                  title={t("blog.vote.downvote")}
-                >
-                  ▼
-                </button>
-              </div>
-              <div class="mt-1 flex gap-3">
-                <button
-                  class={`${pageStyles.link} text-xs`}
-                  onClick={() => toggleReply(comment().comment_id)}
-                >
-                  {t("blog.comments.reply")}
-                </button>
-                <Show
-                  when={
-                    user()?.user_info?.user_id &&
-                    (comment().user_id === user()?.user_info?.user_id ||
-                      postResource()?.post?.user_id ===
-                        user()?.user_info?.user_id)
-                  }
-                >
+                  <button
+                    class={[
+                      "text-lg px-1",
+                      voteState() === 1
+                        ? "text-danger font-bold"
+                        : "text-ink-muted hover:text-danger",
+                    ]}
+                    onClick={() =>
+                      handleVote("comment", false, {
+                        postId: postId(),
+                        commentId: comment().comment_id,
+                      })
+                    }
+                    title={t("blog.vote.downvote")}
+                  >
+                    ▼
+                  </button>
+                </div>
+                <div class="mt-1 flex gap-3">
                   <button
                     class={`${pageStyles.link} text-xs`}
-                    onClick={() => toggleEdit(comment())}
+                    onClick={() => toggleReply(comment().comment_id)}
                   >
-                    {t("common.edit")}
+                    {t("blog.comments.reply")}
                   </button>
-                  <button
-                    class="text-xs text-danger hover:underline"
-                    onClick={() => handleDeleteComment(comment().comment_id)}
+                  <Show
+                    when={
+                      user()?.user_info?.user_id &&
+                      (comment().user_id === user()?.user_info?.user_id ||
+                        postResource()?.post?.user_id ===
+                          user()?.user_info?.user_id)
+                    }
                   >
-                    {t("common.delete")}
-                  </button>
-                </Show>
-              </div>
+                    <button
+                      class={`${pageStyles.link} text-xs`}
+                      onClick={() => toggleEdit(comment())}
+                    >
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      class="text-xs text-danger hover:underline"
+                      onClick={() => handleDeleteComment(comment())}
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </Show>
+                </div>
+              </Show>
               <Show when={replyOpen[comment().comment_id]}>
                 <div class="mt-2">
                   <textarea
@@ -699,22 +772,26 @@ export default function PostViewPage() {
               // separately when the sort order changes, so toggling sort does not
               // rebuild the whole tree.
               const commentTree = createMemo(() =>
-                buildCommentTree(data().comments || []),
+                buildCommentTree(loadedComments()),
               );
               const sortedComments = createMemo(() =>
                 sortCommentsTree(commentTree()),
               );
               const renderedPostHtml = createMemo(() => {
-                const post = data().post;
-                const clean = (raw: string) =>
-                  DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
-                const content = (post.post_content ?? "").trim();
-                if (content) return clean(content);
-                const markdown = markdownContentFromMetadata(
-                  post.post_metadata,
-                );
-                return markdown ? clean(markdown) : "";
+                const content = (data().post.post_content ?? "").trim();
+                return content
+                  ? DOMPurify.sanitize(content, {
+                      USE_PROFILES: { html: true },
+                    })
+                  : "";
               });
+              // Without rendered HTML, the Markdown source is shown as plain
+              // text: parsing it as HTML would drop line breaks and markup.
+              const fallbackPostText = createMemo(() =>
+                renderedPostHtml()
+                  ? ""
+                  : markdownContentFromMetadata(data().post.post_metadata),
+              );
               let renderedPostElement: HTMLDivElement | undefined;
               createEffect(
                 () => renderedPostHtml(),
@@ -852,12 +929,21 @@ export default function PostViewPage() {
                           </For>
                         </div>
                       </Show>
-                      <div
-                        class="prose mb-3"
-                        // eslint-disable-next-line solid/no-innerhtml
-                        innerHTML={renderedPostHtml()}
-                        ref={(element) => (renderedPostElement = element)}
-                      />
+                      <Show
+                        when={renderedPostHtml()}
+                        fallback={
+                          <div class="prose mb-3 whitespace-pre-wrap">
+                            {fallbackPostText()}
+                          </div>
+                        }
+                      >
+                        <div
+                          class="prose mb-3"
+                          // eslint-disable-next-line solid/no-innerhtml
+                          innerHTML={renderedPostHtml()}
+                          ref={(element) => (renderedPostElement = element)}
+                        />
+                      </Show>
                     </div>
                   </div>
                   <hr class={`my-5 ${pageStyles.divider}`} />
@@ -889,6 +975,23 @@ export default function PostViewPage() {
                       </label>
                     </div>
                     {renderComments(sortedComments())}
+                    <Show when={commentsCursor()}>
+                      <button
+                        type="button"
+                        class={`${pageStyles.buttonSecondary} mt-3`}
+                        disabled={loadingMoreComments()}
+                        onClick={loadMoreComments}
+                      >
+                        {loadingMoreComments()
+                          ? t("common.loading")
+                          : t("blog.comments.load_more")}
+                      </button>
+                    </Show>
+                    <Show when={loadMoreError()}>
+                      <div class="mt-2 text-sm text-danger">
+                        {loadMoreError()}
+                      </div>
+                    </Show>
                   </section>
                   <hr class={`my-5 ${pageStyles.divider}`} />
                   <section>

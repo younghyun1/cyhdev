@@ -110,7 +110,17 @@ impl PostSearchIndex {
                 return Ok(Box::new(PhrasePrefixQuery::new(vec![term])));
             }
         }
-        Ok(query_parser.parse_query(query_str)?)
+        // Visitor input is free text, not query syntax. Lenient parsing keeps
+        // every term it can interpret, so an unbalanced quote or a stray
+        // operator narrows the query instead of failing the request.
+        let (query, errors) = query_parser.parse_query_lenient(query_str);
+        if !errors.is_empty() {
+            tracing::debug!(
+                ignored_parse_errors = errors.len(),
+                "Blog title search ignored unparseable query syntax"
+            );
+        }
+        Ok(query)
     }
 
     fn build_tag_queries(

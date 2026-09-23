@@ -9,7 +9,7 @@ use super::super::{
     },
     error::BlogError,
 };
-use super::blog_service::BlogService;
+use super::blog_service::{BlogService, BlogWriteKind};
 
 impl BlogService {
     pub async fn submit_comment(
@@ -22,6 +22,7 @@ impl BlogService {
         let content = BlogCommentBody::parse(content)
             .map_err(|_| BlogError::InvalidInput)?
             .into_inner();
+        self.charge_write(user_id, BlogWriteKind::Comment).await?;
         let comment = self
             .repository
             .insert_comment(user_id, post_id, parent_comment_id, &content)
@@ -38,6 +39,8 @@ impl BlogService {
         let content = BlogCommentBody::parse(content)
             .map_err(|_| BlogError::InvalidInput)?
             .into_inner();
+        self.charge_write(requester_id, BlogWriteKind::Comment)
+            .await?;
         let comment = self
             .repository
             .update_comment(requester_id, comment_id, &content)
@@ -50,6 +53,8 @@ impl BlogService {
         requester_id: Uuid,
         comment_id: Uuid,
     ) -> Result<(), BlogError> {
+        self.charge_write(requester_id, BlogWriteKind::Comment)
+            .await?;
         self.repository
             .delete_comment(requester_id, comment_id)
             .await

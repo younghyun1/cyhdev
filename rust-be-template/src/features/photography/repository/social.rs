@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, dsl::count_star,
 };
@@ -98,7 +99,10 @@ impl PhotographyRepository {
         connection
             .transaction::<VoteCounts, PhotographyError, _>(async move |connection| {
                 lock_actor(connection, user_id).await?;
-                lock_comment(connection, comment_id).await?;
+                if lock_comment(connection, comment_id).await?.is_some() {
+                    // Tombstones keep their totals but accept no new votes.
+                    return Err(PhotographyError::CommentNotFound);
+                }
                 diesel::insert_into(photograph_comment_votes::table)
                     .values((
                         photograph_comment_votes::photograph_comment_id.eq(comment_id),
@@ -185,18 +189,19 @@ async fn lock_photograph(
         .ok_or(PhotographyError::PhotographNotFound)
 }
 
+/// Locks the comment row that serializes its vote recount and returns its
+/// deletion time.
 async fn lock_comment(
     connection: &mut AsyncPgConnection,
     comment_id: Uuid,
-) -> Result<(), PhotographyError> {
+) -> Result<Option<DateTime<Utc>>, PhotographyError> {
     photograph_comments::table
         .filter(photograph_comments::photograph_comment_id.eq(comment_id))
-        .select(photograph_comments::photograph_comment_id)
+        .select(photograph_comments::photograph_comment_deleted_at)
         .for_update()
-        .first::<Uuid>(&mut *connection)
+        .first::<Option<DateTime<Utc>>>(&mut *connection)
         .await
         .optional()?
-        .map(|_| ())
         .ok_or(PhotographyError::CommentNotFound)
 }
 

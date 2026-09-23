@@ -15,6 +15,7 @@ use crate::{
         },
         media::{
             cleanup::{REASON_SUPERSEDED_PROFILE_PICTURE, settle_durable_cleanup},
+            image_upload::declared_image_format,
             object_store::{ObjectLocation, ObjectStoreError},
             persistence::{
                 CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
@@ -42,9 +43,11 @@ impl AccountService {
         user_id: Uuid,
         upload: StagedUpload,
     ) -> Result<(), ProfilePictureUploadError> {
+        let format = declared_image_format(upload.content_type.as_deref())
+            .map_err(ProfilePictureUploadError::Processing)?;
         let mut processed = process_uploaded_image_files(
             upload.path(),
-            None,
+            format,
             vec![CyhdevImageType::ProfilePicture],
         )
         .await
