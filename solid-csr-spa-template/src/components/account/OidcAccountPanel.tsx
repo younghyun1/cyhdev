@@ -2,6 +2,10 @@ import { createSignal, onSettled, Show } from "solid-js";
 import type { OidcStatusResponse } from "../../generated";
 import { oidcApi } from "../../services/all_api";
 import { consumeOidcFragment } from "../../services/oidc_fragment";
+import {
+  PASSWORD_CONFIRMATION_FAILED,
+  apiErrorCode,
+} from "../../services/api_error_code";
 import { t } from "../../state/i18n";
 import { pageStyles } from "../../styles/pageStyles";
 
@@ -46,19 +50,32 @@ export default function OidcAccountPanel() {
     loadStatus().catch(() => setError(t("profile.oidc.failed")));
   });
 
-  const startLink = async () => {
+  const startLink = async (event: Event) => {
+    event.preventDefault();
+    if (!currentPassword()) {
+      setError(t("profile.update.password_required"));
+      return;
+    }
     setPending(true);
     setMessage(null);
     setError(null);
     try {
-      const response = await oidcApi.startLink();
+      const response = await oidcApi.startLink({
+        current_password: currentPassword(),
+      });
+      setCurrentPassword("");
       const authorizationUrl = response.data?.authorization_url;
       if (!response.success || !authorizationUrl) {
         throw new Error("authorization URL missing");
       }
       window.location.assign(authorizationUrl);
-    } catch {
-      setError(t("profile.oidc.failed"));
+    } catch (caught: unknown) {
+      setCurrentPassword("");
+      setError(
+        apiErrorCode(caught) === PASSWORD_CONFIRMATION_FAILED
+          ? t("profile.update.password_wrong")
+          : t("profile.oidc.failed"),
+      );
       setPending(false);
     }
   };
@@ -105,14 +122,33 @@ export default function OidcAccountPanel() {
         <Show
           when={status()?.linked}
           fallback={
-            <button
-              type="button"
-              class={`${pageStyles.buttonPrimary} mt-4`}
-              disabled={pending()}
-              onClick={startLink}
-            >
-              {pending() ? t("profile.oidc.linking") : t("profile.oidc.link")}
-            </button>
+            <form class="mt-4" onSubmit={startLink}>
+              <p class={`${pageStyles.muted} mb-3`}>
+                {t("profile.oidc.link_confirm_hint")}
+              </p>
+              <label class="block mb-2" for="oidc-link-password">
+                {t("profile.oidc.current_password")}
+              </label>
+              <input
+                id="oidc-link-password"
+                class={`${pageStyles.input} mb-3`}
+                type="password"
+                autocomplete="current-password"
+                maxlength={128}
+                value={currentPassword()}
+                onInput={(event) =>
+                  setCurrentPassword(event.currentTarget.value)
+                }
+                required
+              />
+              <button
+                type="submit"
+                class={pageStyles.buttonPrimary}
+                disabled={pending()}
+              >
+                {pending() ? t("profile.oidc.linking") : t("profile.oidc.link")}
+              </button>
+            </form>
           }
         >
           <form class="mt-4" onSubmit={unlink}>

@@ -20,7 +20,7 @@ use crate::{
             prune_forum_notifications::prune_forum_notifications,
             prune_live_chat::prune_live_chat_state,
             prune_photograph_batches::prune_photograph_batches,
-            retry_media_cleanup::retry_media_object_cleanup,
+            refresh_oidc_keys::refresh_oidc_keys, retry_media_cleanup::retry_media_object_cleanup,
             send_retention_notifications::send_retention_notifications,
         },
     },
@@ -157,6 +157,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 String::from("PRUNE_AUTH_ABUSE"),
                 10,
                 0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("REFRESH_OIDC_KEYS", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_hour_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    refresh_oidc_keys(coroutine_state).await
+                },
+                String::from("REFRESH_OIDC_KEYS"),
+                45, // minutes
+                00, // seconds
             )
         });
     }

@@ -121,6 +121,7 @@ use utoipa::OpenApi;
             LoginRequest,
             LoginResponse,
             OidcLinkCompleteRequest,
+            OidcLinkStartRequest,
             OidcUnlinkRequest,
             OidcStatusResponse,
             OidcAuthorizationResponse,

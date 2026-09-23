@@ -46,6 +46,7 @@ impl AccountRecord {
             user_name: self.user_name,
             user_email: self.user_email,
             updated_at: self.user_updated_at,
+            oidc_links_removed: 0,
         }
     }
 }
