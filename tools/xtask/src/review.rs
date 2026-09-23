@@ -42,120 +42,6 @@ pub(crate) fn run_unit_tests(root: &Path) -> TaskResult<()> {
     )
 }
 
-pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
-    require_test_database_url()?;
-    run_command(
-        Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--package",
-                "rust-be-template",
-                "--test",
-                "postgres_account_boundaries",
-                "--test",
-                "postgres_account_identity",
-                "--test",
-                "postgres_account_http_boundaries",
-                "--test",
-                "postgres_account_oidc",
-                "--test",
-                "postgres_account_oidc_reset",
-                "--test",
-                "postgres_account_verification",
-                "--test",
-                "postgres_account_lifecycle",
-                "--test",
-                "postgres_content_write_linearization",
-                "--test",
-                "postgres_live_chat_moderation",
-                "--test",
-                "postgres_live_chat_runtime",
-                "--test",
-                "postgres_cache_consistency",
-                "--test",
-                "postgres_i18n_sources",
-                "--test",
-                "postgres_profile_picture_history",
-                "--test",
-                "postgres_forum",
-                "--test",
-                "postgres_photography_invariants",
-                "--test",
-                "postgres_wasm",
-                "--test",
-                "postgres_retention_notifications",
-                "--test",
-                "postgres_authorization_admin",
-                "--test",
-                "postgres_runtime_bounds",
-                "--no-fail-fast",
-                "--",
-                "--ignored",
-                "--skip",
-                "embedded_migration_chain_reverts_and_reapplies",
-                "--skip",
-                "account_lifecycle_migration_reverts_and_reapplies",
-            ])
-            .current_dir(root),
-    )
-}
-
-pub(crate) fn run_migration_rollback(root: &Path) -> TaskResult<()> {
-    require_test_database_url()?;
-    run_command(
-        Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--package",
-                "rust-be-template",
-                "--test",
-                "postgres_account_boundaries",
-                "embedded_migration_chain_reverts_and_reapplies",
-                "--",
-                "--ignored",
-                "--exact",
-                "--test-threads=1",
-            ])
-            .current_dir(root),
-    )?;
-    run_command(
-        Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--package",
-                "rust-be-template",
-                "--test",
-                "postgres_account_lifecycle",
-                "account_lifecycle_migration_reverts_and_reapplies",
-                "--",
-                "--ignored",
-                "--exact",
-                "--test-threads=1",
-            ])
-            .current_dir(root),
-    )?;
-    run_command(
-        Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--package",
-                "rust-be-template",
-                "--test",
-                "postgres_migration_guards",
-                "--test",
-                "postgres_account_migrations",
-                "--",
-                "--ignored",
-                "--test-threads=1",
-            ])
-            .current_dir(root),
-    )
-}
-
 pub(crate) fn run_openapi_drift_check(root: &Path) -> TaskResult<()> {
     run_command(
         Command::new("cargo")
@@ -227,8 +113,14 @@ pub(crate) fn run_final_review(root: &Path) -> TaskResult<()> {
         ("unit tests", run_unit_tests),
         ("OpenAPI drift", run_openapi_drift_check),
         ("frontend checks", run_frontend_checks),
-        ("database integration", run_database_integration),
-        ("migration rollback", run_migration_rollback),
+        (
+            "database integration",
+            crate::database_review::run_database_integration,
+        ),
+        (
+            "migration rollback",
+            crate::database_review::run_migration_rollback,
+        ),
         ("image smoke", run_image_smoke),
         ("throughput thresholds", run_throughput_thresholds),
         ("secret scan", run_secret_scan),
@@ -301,10 +193,6 @@ fn required_environment_value(key: &'static str) -> TaskResult<String> {
             Err(TaskError(format!("{key} must contain valid UTF-8")))
         }
     }
-}
-
-fn require_test_database_url() -> TaskResult<()> {
-    crate::test_database::validate()
 }
 
 fn finish_operation(operation: &str, failures: Vec<String>) -> TaskResult<()> {
