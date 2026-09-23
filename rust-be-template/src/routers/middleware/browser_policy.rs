@@ -30,8 +30,6 @@ const PERMISSIONS: &str = "camera=(self), microphone=(self), display-capture=(),
 /// known to serve HTTPS, and a subdomain pin cannot be undone for a year.
 const STRICT_TRANSPORT_SECURITY: &str = "max-age=31536000";
 const REFERRER_POLICY: &str = "strict-origin-when-cross-origin";
-/// OpenStreetMap tiles for the photograph and visitor maps.
-const MAP_TILE_ORIGIN: &str = "https://tile.openstreetmap.org";
 /// Nominatim place search used by the batch-upload location picker.
 const GEOCODER_ORIGIN: &str = "https://nominatim.openstreetmap.org";
 /// Hashes beyond this many inline scripts indicate a broken shell, not a policy need.
@@ -162,7 +160,9 @@ pub fn application_content_security_policy(config: &BrowserPolicyConfig) -> anyh
         .map(str::to_owned)
         .collect::<Vec<_>>();
     image.extend(config.media_origins.iter().cloned());
-    image.push(MAP_TILE_ORIGIN.to_owned());
+    // Blog Markdown may embed images from any HTTPS host, and map tiles come from
+    // OpenStreetMap; images cannot execute script, so any HTTPS source is allowed.
+    image.push("https:".to_owned());
     let directives = [
         ("default-src", vec!["'self'".to_owned()]),
         ("script-src", script),

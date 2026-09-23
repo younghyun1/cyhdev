@@ -25,7 +25,7 @@ fn application_policy_lists_only_used_sources() -> anyhow::Result<()> {
     assert_eq!(
         application_content_security_policy(&production_config())?,
         "default-src 'self'; script-src 'self' 'sha256-abc='; style-src 'self' 'unsafe-inline'; \
-         img-src 'self' data: blob: https://cyhdev-img.s3.us-west-1.amazonaws.com https://tile.openstreetmap.org; \
+         img-src 'self' data: blob: https://cyhdev-img.s3.us-west-1.amazonaws.com https:; \
          font-src 'self' data:; connect-src 'self' wss://cyhdev.com https://nominatim.openstreetmap.org; \
          frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
     );

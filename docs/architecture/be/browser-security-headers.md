@@ -9,7 +9,7 @@ The Content-Security-Policy is built once at startup in `routers/main_router/htt
 - `default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, and `frame-src 'self'` for the map, EU5, and demo iframes.
 - `script-src 'self'` plus a SHA-256 hash of each inline script in the embedded `index.html`, computed from the file compiled into the binary, so the pre-paint theme script is allowed without `'unsafe-inline'` and a changed script cannot silently drift from the policy.
 - `style-src 'self' 'unsafe-inline'`, because the Markdown editor, Leaflet, chart tooltips, and sanitized fastfetch output set inline styles.
-- `img-src 'self' data: blob:` plus the media bucket's regional and global S3 origins (bucket from `util/s3.rs`, region from the AWS configuration) and `https://tile.openstreetmap.org`.
+- `img-src 'self' data: blob:` plus the media bucket's regional and global S3 origins (bucket from `util/s3.rs`, region from the AWS configuration) and `https:`, so blog Markdown images from other HTTPS hosts and OpenStreetMap tiles load; images cannot execute script.
 - `font-src 'self' data:` for bundled fonts that Vite may inline, and `connect-src 'self'` plus the WebSocket form of `PUBLIC_APP_ORIGIN` and `https://nominatim.openstreetmap.org` for the batch-upload place search.
 - No `'wasm-unsafe-eval'`: no page on this origin instantiates WebAssembly; demos and the EU5 app run in sandboxed frames under their own policies.
 
