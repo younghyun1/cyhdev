@@ -20,7 +20,7 @@ use super::{
     records::{CommentRecord, NewCommentRecord},
 };
 
-/// Owner, deletion state, and post of a comment locked for mutation.
+/// Owner and deletion state of a comment locked for mutation.
 struct LockedComment {
     owner_id: Uuid,
     deleted_at: Option<DateTime<Utc>>,

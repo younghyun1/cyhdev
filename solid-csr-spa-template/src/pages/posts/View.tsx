@@ -168,6 +168,15 @@ export default function PostViewPage() {
     ),
   );
 
+  // A comment created here can also arrive in a later page, so an edit or
+  // deletion updates both the local copy and the fetched one.
+  const replaceComment = (comment: CommentResponse) => {
+    setCommentOverrides(comment.comment_id, comment);
+    if (localComments[comment.comment_id]) {
+      setLocalComments(comment.comment_id, comment);
+    }
+  };
+
   const loadMoreComments = async () => {
     const cursor = commentsCursor();
     const id = postResource()?.post.post_id;
@@ -216,11 +225,7 @@ export default function PostViewPage() {
         comment_content: "",
         comment_deleted_at: new Date().toISOString(),
       };
-      if (localComments[comment.comment_id]) {
-        setLocalComments(comment.comment_id, tombstone);
-      } else {
-        setCommentOverrides(comment.comment_id, tombstone);
-      }
+      replaceComment(tombstone);
     } catch (e) {
       alert(tx("blog.comments.delete_failed", { error: String(e) }));
     }
@@ -434,11 +439,7 @@ export default function PostViewPage() {
         commentId,
       );
       if (res?.data) {
-        if (localComments[commentId]) {
-          setLocalComments(commentId, res.data);
-        } else {
-          setCommentOverrides(commentId, res.data);
-        }
+        replaceComment(res.data);
       }
       setEditOpen(commentId, false);
     } catch (err: unknown) {
