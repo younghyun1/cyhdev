@@ -12,7 +12,7 @@ use super::peer::RtcPeer;
 use super::publication::RtcPublication;
 use crate::features::live_chat::{
     domain::rtc::{RtcParticipant, RtcPeerPhase, RtcServerSignal},
-    service::cache::LiveChatServerEvent,
+    service::cache::{LiveChatBroadcast, LiveChatServerEvent},
 };
 
 /// Result of acquiring a room slot for a join: a reserved room, or a refusal.
@@ -37,7 +37,7 @@ pub struct RtcRoom {
     pub room_key: String,
     pub call_id: Uuid,
     peers: scc::HashMap<Uuid, Arc<RtcPeer>>,
-    broadcast_tx: broadcast::Sender<LiveChatServerEvent>,
+    broadcast_tx: broadcast::Sender<Arc<LiveChatBroadcast>>,
     occupancy: AtomicUsize,
     max_participants: usize,
     removed: AtomicBool,
@@ -48,7 +48,7 @@ impl RtcRoom {
     pub fn new(
         room_key: String,
         call_id: Uuid,
-        broadcast_tx: broadcast::Sender<LiveChatServerEvent>,
+        broadcast_tx: broadcast::Sender<Arc<LiveChatBroadcast>>,
         max_participants: usize,
     ) -> Arc<Self> {
         Arc::new(Self {
@@ -172,14 +172,13 @@ impl RtcRoom {
 
     /// Broadcast a peer-state change (join/update/leave) to every connection.
     pub fn broadcast_peer_state(&self, participant: &RtcParticipant, phase: RtcPeerPhase) {
-        let _ = self
-            .broadcast_tx
-            .send(LiveChatServerEvent::Rtc(RtcServerSignal::PeerState {
-                actor: participant.actor.clone(),
-                phase,
-                mic_on: participant.mic_on,
-                cam_on: participant.cam_on,
-            }));
+        let event = LiveChatServerEvent::Rtc(RtcServerSignal::PeerState {
+            actor: participant.actor.clone(),
+            phase,
+            mic_on: participant.mic_on,
+            cam_on: participant.cam_on,
+        });
+        let _ = self.broadcast_tx.send(LiveChatBroadcast::new(event));
     }
 
     /// Remove a peer from the registry, returning it if it was present.

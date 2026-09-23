@@ -8,3 +8,4 @@ pub mod messages;
 pub mod moderation;
 pub mod ports;
 pub mod rtc;
+pub mod typing;

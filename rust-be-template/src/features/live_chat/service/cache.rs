@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicI64, AtomicU64, AtomicUsize, Ordering},
     },
 };
 
@@ -13,12 +13,15 @@ use uuid::Uuid;
 
 mod ban;
 mod ban_store;
+mod broadcast_frame;
+mod connections;
 mod event;
 mod identity;
 mod message;
 mod moderation;
 mod rate;
-mod runtime_state;
+mod timeline;
+mod typing;
 
 #[cfg(test)]
 mod retained_identity_tests;
@@ -26,6 +29,8 @@ mod retained_identity_tests;
 pub use crate::features::live_chat::domain::actor::{ChatActor, ChatActorKey};
 pub use ban::CachedLiveChatBan;
 pub use ban_store::{BanCacheLookup, LIVE_CHAT_BAN_INDEX_MAX_ENTRIES};
+pub use broadcast_frame::LiveChatBroadcast;
+pub use connections::{ConnectionAdmission, LIVE_CHAT_MAX_CONNECTIONS_PER_ADDRESS};
 pub use event::{ChatConnectionState, LiveChatCacheStats, LiveChatServerEvent, TypingState};
 pub use message::{CachedChatMessage, ChatTimelineKey};
 pub use rate::MessageRateDecision;
@@ -34,6 +39,7 @@ use self::{
     message::ChatEvictionKey,
     rate::{LiveChatRateKey, LiveChatRateState},
 };
+use crate::features::live_chat::domain::ip_prefix::LiveChatIpPrefix;
 
 pub const LIVE_CHAT_CACHE_MAX_BYTES: usize = 128 * 1024 * 1024;
 pub const LIVE_CHAT_BROADCAST_CAPACITY: usize = 1024;
@@ -48,7 +54,14 @@ pub struct LiveChatCache {
     timeline: TreeIndex<ChatTimelineKey, Uuid>,
     eviction_queue: Mutex<VecDeque<ChatEvictionKey>>,
     typing_by_actor: HashMap<ChatActorKey, TypingState>,
+    /// Set while a coalesced typing broadcast is scheduled.
+    typing_broadcast_pending: AtomicBool,
+    /// Unix milliseconds of the last typing broadcast.
+    typing_broadcast_at_millis: AtomicI64,
     connected_clients: HashMap<Uuid, ChatConnectionState>,
+    /// Live connections per address group; each entry needs at least one
+    /// connection, so the map is bounded by `LIVE_CHAT_MAX_CONNECTIONS`.
+    connections_by_prefix: HashMap<LiveChatIpPrefix, usize>,
     disabled_connected_users: HashSet<Uuid>,
     disabled_connected_users_saturated: AtomicBool,
     identity_mutation: Mutex<()>,
@@ -68,7 +81,7 @@ pub struct LiveChatCache {
     message_count: AtomicUsize,
     connected_count: AtomicU64,
     max_bytes: usize,
-    broadcast_tx: broadcast::Sender<LiveChatServerEvent>,
+    broadcast_tx: broadcast::Sender<Arc<LiveChatBroadcast>>,
 }
 
 impl LiveChatCache {
@@ -79,7 +92,10 @@ impl LiveChatCache {
             timeline: TreeIndex::new(),
             eviction_queue: Mutex::new(VecDeque::new()),
             typing_by_actor: HashMap::new(),
+            typing_broadcast_pending: AtomicBool::new(false),
+            typing_broadcast_at_millis: AtomicI64::new(0),
             connected_clients: HashMap::new(),
+            connections_by_prefix: HashMap::new(),
             disabled_connected_users: HashSet::new(),
             disabled_connected_users_saturated: AtomicBool::new(false),
             identity_mutation: Mutex::new(()),
@@ -102,148 +118,18 @@ impl LiveChatCache {
         }
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<LiveChatServerEvent> {
+    pub fn subscribe(&self) -> broadcast::Receiver<Arc<LiveChatBroadcast>> {
         self.broadcast_tx.subscribe()
     }
 
     /// Clone of the room broadcast sender, used by the SFU to publish
     /// roster/peer-state changes to every connected client.
-    pub fn broadcast_sender(&self) -> broadcast::Sender<LiveChatServerEvent> {
+    pub fn broadcast_sender(&self) -> broadcast::Sender<Arc<LiveChatBroadcast>> {
         self.broadcast_tx.clone()
     }
 
     pub fn broadcast(&self, event: LiveChatServerEvent) {
-        let _ = self.broadcast_tx.send(event);
-    }
-
-    pub async fn clear_messages(&self) {
-        let mut eviction_queue = self.eviction_queue.lock().await;
-        self.messages_by_id.clear_async().await;
-        self.timeline.clear();
-        eviction_queue.clear();
-        self.total_bytes.store(0, Ordering::SeqCst);
-        self.message_count.store(0, Ordering::SeqCst);
-    }
-
-    pub async fn append_persisted_chat_message(&self, message: CachedChatMessage) {
-        let mut eviction_queue = self.eviction_queue.lock().await;
-        let estimated_bytes = message.estimated_bytes();
-        let timeline_key = ChatTimelineKey::from_message(&message);
-        let message_id = message.live_chat_message_id;
-        let message = Arc::new(message);
-
-        if let Some(previous) = self.messages_by_id.upsert_async(message_id, message).await {
-            let previous_timeline_key = ChatTimelineKey::from_message(&previous);
-            let _ = self.timeline.remove_async(&previous_timeline_key).await;
-            eviction_queue.retain(|entry| entry.live_chat_message_id != message_id);
-            self.total_bytes
-                .fetch_sub(previous.estimated_bytes(), Ordering::SeqCst);
-            self.message_count.fetch_sub(1, Ordering::SeqCst);
-        }
-
-        let _ = self
-            .timeline
-            .insert_async(timeline_key.clone(), message_id)
-            .await;
-        eviction_queue.push_back(ChatEvictionKey {
-            live_chat_message_id: message_id,
-            timeline_key,
-            estimated_bytes,
-        });
-        self.total_bytes
-            .fetch_add(estimated_bytes, Ordering::SeqCst);
-        self.message_count.fetch_add(1, Ordering::SeqCst);
-        self.evict_over_budget(&mut eviction_queue).await;
-    }
-
-    async fn evict_over_budget(&self, eviction_queue: &mut VecDeque<ChatEvictionKey>) {
-        while self.total_bytes.load(Ordering::SeqCst) > self.max_bytes {
-            let eviction_key = match eviction_queue.pop_front() {
-                Some(entry) => entry,
-                None => return,
-            };
-            if let Some((_, removed)) = self
-                .messages_by_id
-                .remove_if_async(&eviction_key.live_chat_message_id, |message| {
-                    ChatTimelineKey::from_message(message) == eviction_key.timeline_key
-                        && message.estimated_bytes() == eviction_key.estimated_bytes
-                })
-                .await
-            {
-                let _ = self.timeline.remove_async(&eviction_key.timeline_key).await;
-                self.total_bytes
-                    .fetch_sub(removed.estimated_bytes(), Ordering::SeqCst);
-                self.message_count.fetch_sub(1, Ordering::SeqCst);
-            }
-        }
-    }
-
-    pub async fn get_recent_chat_messages(&self, limit: usize) -> Vec<CachedChatMessage> {
-        let ids = {
-            let guard = Guard::new();
-            let mut ids = Vec::with_capacity(limit);
-            let mut iter = self.timeline.iter(&guard);
-            while ids.len() < limit {
-                match iter.next_back() {
-                    Some((_, message_id)) => ids.push(*message_id),
-                    None => break,
-                }
-            }
-            ids.reverse();
-            ids
-        };
-
-        let mut messages = Vec::with_capacity(ids.len());
-        for message_id in ids {
-            if let Some(message) = self
-                .messages_by_id
-                .read_async(&message_id, |_, message| (**message).clone())
-                .await
-            {
-                messages.push(message);
-            }
-        }
-        messages
-    }
-
-    pub async fn get_chat_messages_before(
-        &self,
-        before: ChatTimelineKey,
-        limit: usize,
-    ) -> Vec<CachedChatMessage> {
-        let ids = {
-            let guard = Guard::new();
-            let mut ids = Vec::with_capacity(limit);
-            let mut range = self.timeline.range(..before, &guard);
-            while ids.len() < limit {
-                match range.next_back() {
-                    Some((_, message_id)) => ids.push(*message_id),
-                    None => break,
-                }
-            }
-            ids.reverse();
-            ids
-        };
-
-        let mut messages = Vec::with_capacity(ids.len());
-        for message_id in ids {
-            if let Some(message) = self
-                .messages_by_id
-                .read_async(&message_id, |_, message| (**message).clone())
-                .await
-            {
-                messages.push(message);
-            }
-        }
-        messages
-    }
-
-    pub async fn get_timeline_key_for_message(&self, message_id: Uuid) -> Option<ChatTimelineKey> {
-        self.messages_by_id
-            .read_async(&message_id, |_, message| {
-                ChatTimelineKey::from_message(message)
-            })
-            .await
+        let _ = self.broadcast_tx.send(LiveChatBroadcast::new(event));
     }
 
     pub async fn stats(&self) -> LiveChatCacheStats {
