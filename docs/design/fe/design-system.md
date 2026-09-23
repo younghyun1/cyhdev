@@ -56,7 +56,7 @@ Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No
 - Links: amber, `underline-offset-4`, decoration fades in via `decoration-accent/40 -> decoration-accent`.
 - Nav: active route gets ink text + 2px amber underline (desktop) or amber left border + `bg-surface-2` (drawer).
 - Selection: `::selection` uses `--accent-soft`.
-- Motion: `transition-colors duration-90` for chrome, up to 200-300ms for icon swaps; everything gated by `prefers-reduced-motion: reduce`.
+- Motion: `transition-colors duration-90` for chrome, up to 200-300ms for icon swaps; everything gated by `prefers-reduced-motion: reduce`. The photograph viewer is the one loading-state exception: a decoded image fades in over 180ms, and a thin amber line sweeps continuously only while a load has taken longer than 150ms. Reduced motion removes the fade and holds the line still.
 - Grain: a fixed `body::before` SVG-noise overlay (2.5% light / 4% dark) above the ground, below content.
 
 ## Code blocks
