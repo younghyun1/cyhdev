@@ -121,6 +121,9 @@ impl RtcSession {
             // Already in the call; ignore duplicate join.
             return;
         }
+        // A peer the SFU tore down (failed media or an overflowing signal
+        // queue) still holds its participant row; close it before rejoining.
+        self.leave().await;
 
         let engine = match self.service.rtc.engine() {
             Some(engine) => engine,
@@ -223,8 +226,8 @@ impl RtcSession {
                 return;
             }
         };
-        peer.send_signal(RtcServerSignal::Answer { sdp: answer })
-            .await;
+        // The queue is new, so it only rejects when the connection is closing.
+        let _ = peer.send_signal(RtcServerSignal::Answer { sdp: answer });
 
         room.register_peer(peer.clone()).await;
         {
@@ -235,8 +238,7 @@ impl RtcSession {
         }
 
         let participants = room.roster().await;
-        peer.send_signal(RtcServerSignal::Roster { participants })
-            .await;
+        let _ = peer.send_signal(RtcServerSignal::Roster { participants });
         room.broadcast_peer_state(&peer.participant(), RtcPeerPhase::Joined);
 
         // Deliver existing publishers to the newcomer (SFU-offered renegotiation).
