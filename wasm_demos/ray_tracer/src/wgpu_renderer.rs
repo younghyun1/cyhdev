@@ -14,7 +14,6 @@ const FOV_DEG: f32 = 62.0;
 const CAMERA_DIST: f32 = 9.5;
 const CAMERA_LENS_RADIUS: f32 = 0.035;
 const MAX_TRACE_PASSES_PER_FRAME: u32 = 24;
-const RENDER_SCALE_MAX: f64 = 1.5;
 
 const TRACE_WGSL: &str = r#"
 struct Uniforms {
@@ -741,7 +740,7 @@ impl GpuState {
             .map_err(|_| "innerHeight failed".to_string())?
             .as_f64()
             .ok_or_else(|| "innerHeight missing".to_string())?;
-        let scale = dpr.min(RENDER_SCALE_MAX);
+        let scale = crate::view::render_scale(dpr);
         let width = (ww * scale).max(1.0) as u32;
         let height = (wh * scale).max(1.0) as u32;
         canvas.set_width(width);
@@ -1162,7 +1161,7 @@ impl GpuState {
             return;
         };
 
-        let scale = dpr.min(RENDER_SCALE_MAX);
+        let scale = crate::view::render_scale(dpr);
         let new_w = (ww * scale).max(1.0) as u32;
         let new_h = (wh * scale).max(1.0) as u32;
         if new_w == self.surface_config.width && new_h == self.surface_config.height {
