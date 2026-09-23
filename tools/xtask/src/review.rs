@@ -62,7 +62,7 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_account_oidc_reset",
                 "--test",
-                "postgres_account_signup_takeover",
+                "postgres_account_verification",
                 "--test",
                 "postgres_account_lifecycle",
                 "--test",
