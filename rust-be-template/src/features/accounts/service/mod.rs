@@ -1,6 +1,7 @@
 pub mod account_service;
 pub mod auth_abuse;
 mod auth_abuse_policy;
+mod auth_abuse_store;
 #[cfg(test)]
 mod auth_abuse_tests;
 pub mod authentication;
