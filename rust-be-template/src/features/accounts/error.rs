@@ -18,10 +18,16 @@ pub enum AccountError {
     DuplicateEmail(#[source] DieselError),
     #[error("user name already exists")]
     DuplicateUserName(#[source] DieselError),
+    #[error("user name is held by another account")]
+    UserNameUnavailable,
     #[error("account was not found")]
     AccountNotFound,
     #[error("credentials were not accepted")]
     InvalidCredentials,
+    #[error("the account's email address is not verified")]
+    EmailNotVerified,
+    #[error("a detached account mutation task failed before reporting its outcome")]
+    BackgroundTask(#[source] tokio::task::JoinError),
     #[error("the protected system actor cannot be deleted or purged")]
     SystemActorProtected,
     #[error("current database role does not authorize account hard purge")]
@@ -66,6 +72,8 @@ pub enum AccountError {
     PasswordResetTokenNotFound,
     #[error("token has already been consumed")]
     TokenAlreadyConsumed,
+    #[error("operating-system entropy was unavailable for a one-time email capability")]
+    CapabilityEntropy(#[source] getrandom::Error),
     #[error("account email is already verified")]
     EmailAlreadyVerified,
     #[error("role ID {0} is not recognized")]
@@ -108,8 +116,6 @@ pub enum AccountError {
     OidcDisabled,
     #[error("operating-system entropy was unavailable for OpenID Connect flow creation")]
     OidcFlowEntropy(#[source] getrandom::Error),
-    #[error("OpenID Connect pending-flow store reached its fixed limit of {max_flows} flows")]
-    OidcFlowStoreSaturated { max_flows: usize },
     #[error("OpenID Connect authorization flow was invalid, expired, or already consumed")]
     OidcFlowRejected,
     #[error("OpenID Connect provider rejected or failed the token exchange")]
@@ -148,7 +154,6 @@ impl AccountError {
             | Self::SessionTokenCollision
             | Self::SessionStoreSaturated { .. }
             | Self::OidcFlowEntropy(_)
-            | Self::OidcFlowStoreSaturated { .. }
             | Self::OidcTokenExchange(_) => true,
             Self::Query(error) | Self::Mutation(error) => is_retryable_diesel_error(error),
             _ => false,

@@ -1,6 +1,8 @@
 //! Domain types for bounded authentication-abuse controls.
 
-use std::time::Duration;
+use std::{net::IpAddr, time::Duration};
+
+use uuid::Uuid;
 
 /// Authentication surface with an independent abuse budget.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -11,6 +13,8 @@ pub enum AuthEndpoint {
     PasswordResetSubmit,
     EmailVerification,
     OidcStart,
+    /// Current-password confirmation on an authenticated account mutation.
+    PasswordConfirmation,
 }
 
 impl AuthEndpoint {
@@ -23,6 +27,7 @@ impl AuthEndpoint {
             Self::PasswordResetSubmit => "password_reset_submit",
             Self::EmailVerification => "email_verification",
             Self::OidcStart => "oidc_start",
+            Self::PasswordConfirmation => "password_confirmation",
         }
     }
 
@@ -44,8 +49,11 @@ impl AuthEndpoint {
 #[derive(Clone, Copy)]
 pub enum AuthIdentity<'a> {
     Email(&'a str),
+    /// One email as seen from one source address or IPv6 `/64`.
+    EmailFromIp(&'a str, IpAddr),
     UserName(&'a str),
     Token(&'a [u8]),
+    Account(Uuid),
 }
 
 /// Low-cardinality throttle dimension safe to emit in logs.
@@ -53,8 +61,10 @@ pub enum AuthIdentity<'a> {
 pub enum AuthThrottleDimension {
     IpPrefix,
     Email,
+    EmailAndIp,
     UserName,
     Token,
+    Account,
 }
 
 impl AuthThrottleDimension {
@@ -62,8 +72,10 @@ impl AuthThrottleDimension {
         match self {
             Self::IpPrefix => "ip_prefix",
             Self::Email => "email_digest",
+            Self::EmailAndIp => "email_ip_digest",
             Self::UserName => "user_name_digest",
             Self::Token => "token_digest",
+            Self::Account => "account_digest",
         }
     }
 }
@@ -107,6 +119,13 @@ impl AuthThrottleRejection {
     pub const fn capacity_saturated(self) -> bool {
         self.capacity_saturated
     }
+}
+
+/// Remaining failure budget after one failure was counted.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FailureBudget {
+    Remaining,
+    Exhausted,
 }
 
 /// Counts removed by one scheduled expiry sweep.

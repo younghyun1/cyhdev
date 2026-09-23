@@ -22,9 +22,13 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
             AccountMutation::Update => CodeError::DB_UPDATE_ERROR,
         },
         AccountError::DuplicateEmail(_) => CodeError::EMAIL_MUST_BE_UNIQUE,
-        AccountError::DuplicateUserName(_) => CodeError::USER_NAME_INVALID,
+        AccountError::DuplicateUserName(_) | AccountError::UserNameUnavailable => {
+            CodeError::USER_NAME_INVALID
+        }
         AccountError::AccountNotFound => CodeError::USER_NOT_FOUND,
         AccountError::InvalidCredentials => CodeError::INVALID_CREDENTIALS,
+        AccountError::EmailNotVerified => CodeError::LOGIN_EMAIL_NOT_VERIFIED,
+        AccountError::BackgroundTask(_) => CodeError::JOIN_ERROR,
         AccountError::SystemActorProtected => CodeError::SYSTEM_ACTOR_PROTECTED,
         AccountError::HardPurgeRequesterUnauthorized => CodeError::IS_NOT_SUPERUSER,
         AccountError::MediaCleanupNotFound => CodeError::MEDIA_CLEANUP_NOT_FOUND,
@@ -46,6 +50,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::EmailVerificationTokenNotFound => CodeError::INVALID_EMAIL_VERIFICATION_TOKEN,
         AccountError::PasswordResetTokenNotFound => CodeError::DB_QUERY_ERROR,
         AccountError::TokenAlreadyConsumed => CodeError::INVALID_REQUEST,
+        AccountError::CapabilityEntropy(_) => CodeError::DB_INSERTION_ERROR,
         AccountError::EmailAlreadyVerified => CodeError::USER_EMAIL_ALREADY_VERIFIED,
         AccountError::InvalidEmail => CodeError::EMAIL_INVALID,
         AccountError::InvalidUserName => CodeError::USER_NAME_INVALID,
@@ -70,9 +75,9 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         }
         AccountError::SessionStoreSaturated { .. } => CodeError::SESSION_STORE_SATURATED,
         AccountError::OidcDisabled => CodeError::OIDC_DISABLED,
-        AccountError::OidcFlowEntropy(_)
-        | AccountError::OidcFlowStoreSaturated { .. }
-        | AccountError::OidcTokenExchange(_) => CodeError::OIDC_TEMPORARILY_UNAVAILABLE,
+        AccountError::OidcFlowEntropy(_) | AccountError::OidcTokenExchange(_) => {
+            CodeError::OIDC_TEMPORARILY_UNAVAILABLE
+        }
         AccountError::OidcFlowRejected
         | AccountError::OidcTokenValidation(_)
         | AccountError::OidcProviderEmailRejected => CodeError::OIDC_FLOW_REJECTED,
@@ -87,10 +92,10 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
 
     let response = code_err(code, &error);
     match error {
-        AccountError::PasswordWorkSaturated { .. } => {
+        AccountError::PasswordWorkSaturated { max_jobs } => {
             tracing::warn!(
                 event = "auth_password_work_rejected",
-                max_jobs = crate::features::accounts::service::account_service::MAX_PASSWORD_JOBS,
+                max_jobs,
                 "Authentication password work rejected"
             );
             response.with_retry_after(std::time::Duration::from_secs(1))
@@ -105,13 +110,19 @@ pub(super) fn map_login_error(error: AccountError) -> CodeErrorResp {
             CodeError::INVALID_CREDENTIALS,
             "credentials were not accepted",
         ),
+        AccountError::EmailNotVerified => code_err(
+            CodeError::LOGIN_EMAIL_NOT_VERIFIED,
+            "email verification required before sign-in",
+        ),
         error => map_account_error(error, AccountMutation::Update),
     }
 }
 
 pub(super) fn map_signup_error(error: AccountError) -> CodeErrorResp {
     match error {
-        AccountError::DuplicateEmail(_) | AccountError::DuplicateUserName(_) => code_err(
+        AccountError::DuplicateEmail(_)
+        | AccountError::DuplicateUserName(_)
+        | AccountError::UserNameUnavailable => code_err(
             CodeError::ACCOUNT_IDENTITY_UNAVAILABLE,
             "requested account identity unavailable",
         ),

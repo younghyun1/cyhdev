@@ -19,6 +19,13 @@ pub struct LoginAccount {
     pub language: i32,
 }
 
+/// Credentials and role read by login in one query.
+pub struct LoginCandidate {
+    pub account: LoginAccount,
+    /// Absent only for legacy rows without a role assignment.
+    pub role: Option<super::role::RoleType>,
+}
+
 impl LoginAccount {
     pub fn session_principal(&self) -> SessionPrincipal {
         SessionPrincipal {
@@ -142,7 +149,7 @@ pub struct NewAccount {
 /// Account and verification-token data committed atomically at signup.
 pub struct NewAccountRegistration {
     pub account: NewAccount,
-    pub verification_token: Uuid,
+    pub verification_digest: super::capability_token::CapabilityDigest,
     pub verification_created_at: DateTime<Utc>,
     pub verification_expires_at: DateTime<Utc>,
 }
@@ -155,11 +162,25 @@ pub struct SignupReceipt {
     pub verify_by: DateTime<Utc>,
 }
 
-/// Fresh verification capability for an existing active unverified account.
-pub struct EmailVerificationIssue {
-    pub user_email: String,
-    pub token: Uuid,
-    pub verify_by: DateTime<Utc>,
+/// How a signup that collided with an existing email was settled.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum DuplicateRegistration {
+    /// The unverified account now holds the new submission's credentials and name.
+    ReplacedUnverified { user_id: Uuid },
+    /// The address belongs to a verified account, which is left untouched.
+    Unchanged,
+}
+
+/// Public result of a signup; every variant returns the same accepted response.
+#[derive(Debug, Clone)]
+pub enum SignupOutcome {
+    Registered(SignupReceipt),
+    /// A second signup for an unverified address replaced its password hash and user name and
+    /// invalidated the earlier verification link, so whoever registered the address first
+    /// cannot keep a password on the account its owner later verifies.
+    ReplacedUnverified(SignupReceipt),
+    /// The address is already verified; nothing changed and no email was sent.
+    AlreadyVerified,
 }
 
 /// Password-reset token state used for service-level validation.
@@ -189,13 +210,14 @@ pub struct PasswordResetReceipt {
     pub user_name: String,
     pub user_email: String,
     pub updated_at: DateTime<Utc>,
+    /// External sign-in links removed with the reset; never sent to the browser.
+    pub oidc_links_removed: usize,
 }
 
 /// Result of issuing a password-reset token.
 #[derive(Debug, Clone)]
 pub struct PasswordResetRequestReceipt {
     pub user_email: String,
-    pub token: Uuid,
     pub verify_by: DateTime<Utc>,
 }
 

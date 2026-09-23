@@ -1,8 +1,13 @@
 //! Same-origin completion and password-confirmed unlink operations.
 
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
-use axum::{Extension, Json, extract::State, response::IntoResponse};
+use axum::{
+    Extension, Json,
+    extract::{ConnectInfo, State},
+    http::HeaderMap,
+    response::IntoResponse,
+};
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 use zeroize::Zeroize;
@@ -14,10 +19,15 @@ use crate::{
             auth::oidc_response::OidcLinkResponse, response_data::http_resp_with_cookies_sensitive,
         },
     },
-    errors::code_error::HandlerResponse,
-    features::accounts::api::{
-        account_error::{AccountMutation, map_account_error},
-        login::{session_cookie, session_token_from_cookie},
+    errors::code_error::{CodeErrorResp, HandlerResponse},
+    features::accounts::{
+        api::{
+            account_error::{AccountMutation, map_account_error},
+            auth_abuse::request_client_ip,
+            login::{session_cookie, session_token_from_cookie},
+            password_confirmation::Confirmation,
+        },
+        error::AccountError,
     },
     init::state::ServerState,
     util::time::now::tokio_now,
@@ -46,28 +56,27 @@ pub async fn complete_oidc_link(
     let start = tokio_now();
     if request.completion_token.len() != COMPLETION_TOKEN_LENGTH {
         request.zeroize();
-        return Err(map_account_error(
-            crate::features::accounts::error::AccountError::OidcFlowRejected,
-            AccountMutation::Update,
-        ));
+        return Err(map_link_error(AccountError::OidcFlowRejected));
     }
     let completion = state
         .oidc_service()
         .consume_link_completion(&request.completion_token)
         .await;
     request.zeroize();
-    let (expected_user_id, identity) =
-        completion.map_err(|error| map_account_error(error, AccountMutation::Update))?;
+    let (expected_user_id, identity) = completion.map_err(map_link_error)?;
+    let oidc = state.oidc_service();
+    let provider_name = oidc.provider_name().unwrap_or("OpenID Connect");
     let receipt = state
         .account_service()
         .complete_oidc_link(
             user_id,
             expected_user_id,
             &identity,
+            provider_name,
             session_token_from_cookie(&cookie_jar),
         )
         .await
-        .map_err(|error| map_account_error(error, AccountMutation::Update))?;
+        .map_err(map_link_error)?;
     Ok(http_resp_with_cookies_sensitive(
         OidcLinkResponse { linked: true },
         (),
@@ -85,24 +94,29 @@ pub async fn complete_oidc_link(
     responses(
         (status = 200, description = "OIDC identity unlinked", body = OidcLinkResponse),
         (status = 400, description = "Current password rejected"),
-        (status = 401, description = "Verified local session required"),
-        (status = 409, description = "Another usable login method is required")
+        (status = 401, description = "Verified local session required, or revoked after repeated wrong passwords"),
+        (status = 409, description = "Another usable login method is required"),
+        (status = 429, description = "Password confirmation budget exhausted")
     )
 )]
 pub async fn unlink_oidc(
     Extension(user_id): Extension<Uuid>,
+    ConnectInfo(socket_addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     cookie_jar: CookieJar,
     State(state): State<Arc<ServerState>>,
     Json(mut request): Json<OidcUnlinkRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
     let oidc = state.oidc_service();
-    let issuer = oidc.issuer().ok_or_else(|| {
-        map_account_error(
-            crate::features::accounts::error::AccountError::OidcDisabled,
-            AccountMutation::Update,
-        )
-    })?;
+    let issuer = oidc
+        .issuer()
+        .ok_or_else(|| map_link_error(AccountError::OidcDisabled))?;
+    let confirmation = Confirmation {
+        user_id,
+        client_ip: request_client_ip(&headers, socket_addr),
+    };
+    confirmation.admit(&state).await?;
     let result = state
         .account_service()
         .unlink_oidc(
@@ -113,7 +127,14 @@ pub async fn unlink_oidc(
         )
         .await;
     request.zeroize();
-    let receipt = result.map_err(|error| map_account_error(error, AccountMutation::Update))?;
+    let receipt = confirmation
+        .settle(
+            &state,
+            session_token_from_cookie(&cookie_jar),
+            result,
+            map_link_error,
+        )
+        .await?;
     Ok(http_resp_with_cookies_sensitive(
         OidcLinkResponse { linked: false },
         (),
@@ -121,4 +142,8 @@ pub async fn unlink_oidc(
         Some(vec![session_cookie(&receipt.session_token)]),
         None,
     ))
+}
+
+fn map_link_error(error: AccountError) -> CodeErrorResp {
+    map_account_error(error, AccountMutation::Update)
 }

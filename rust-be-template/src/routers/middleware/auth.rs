@@ -6,6 +6,7 @@ use crate::{
         domain::session::{SESSION_COOKIE_NAME, Session},
         service::session_service::SessionService,
     },
+    routers::middleware::is_logged_in::ResolvedSession,
 };
 use axum::{
     body::Body,
@@ -21,24 +22,15 @@ pub async fn auth_middleware(
     mut request: Request<Body>,
     next: Next,
 ) -> HandlerResponse<impl IntoResponse> {
-    let session_token = match cookie_jar.get(SESSION_COOKIE_NAME) {
-        Some(session_cookie) => session_cookie.value(),
-        None => {
-            return Err(code_err(
-                CodeError::UNAUTHORIZED_ACCESS,
-                "Session cookie is missing".to_string(),
-            ));
-        }
-    };
-
-    let session: Session = match sessions.lookup(session_token).await {
-        Some(session) => session,
-        None => {
+    let session = match request.extensions().get::<ResolvedSession>() {
+        Some(ResolvedSession::Active(session)) => session.clone(),
+        Some(ResolvedSession::Absent) => {
             return Err(code_err(
                 CodeError::UNAUTHORIZED_ACCESS,
                 "Failed to retrieve session",
             ));
         }
+        None => lookup_session(&sessions, &cookie_jar).await?,
     };
 
     if !session.get_is_email_verified() {
@@ -54,4 +46,27 @@ pub async fn auth_middleware(
     let response = next.run(request).await;
 
     Ok(response)
+}
+
+/// Resolves the session directly when no outer middleware already did.
+async fn lookup_session(
+    sessions: &SessionService,
+    cookie_jar: &CookieJar,
+) -> HandlerResponse<Session> {
+    let session_token = match cookie_jar.get(SESSION_COOKIE_NAME) {
+        Some(session_cookie) => session_cookie.value(),
+        None => {
+            return Err(code_err(
+                CodeError::UNAUTHORIZED_ACCESS,
+                "Session cookie is missing".to_string(),
+            ));
+        }
+    };
+    match sessions.lookup(session_token).await {
+        Some(session) => Ok(session),
+        None => Err(code_err(
+            CodeError::UNAUTHORIZED_ACCESS,
+            "Failed to retrieve session",
+        )),
+    }
 }

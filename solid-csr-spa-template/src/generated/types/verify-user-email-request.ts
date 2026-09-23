@@ -2,5 +2,5 @@
 
 
 export type VerifyUserEmailRequest = {
-  readonly email_validation_token_id: string;
+  readonly email_verification_token: string;
 };

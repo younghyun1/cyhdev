@@ -48,6 +48,7 @@ impl From<OidcLoginRecord> for OidcAccount {
 pub(super) struct OidcAccountRecord {
     user_id: Uuid,
     user_name: String,
+    pub(super) user_email: String,
     pub(super) user_password_hash: String,
     user_is_email_verified: bool,
     user_country: i32,

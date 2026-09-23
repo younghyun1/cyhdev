@@ -55,7 +55,7 @@ pub async fn verify_user_email(
             .into_response();
         }
     };
-    let token = request.email_validation_token_id;
+    let token = request.email_verification_token.as_str();
     match state
         .auth_abuse_service()
         .check_identity(

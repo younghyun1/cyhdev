@@ -9,6 +9,10 @@ import {
   safeRedirectTarget,
 } from "../services/api";
 import { consumeOidcFragment } from "../services/oidc_fragment";
+import {
+  LOGIN_EMAIL_NOT_VERIFIED,
+  apiErrorCode,
+} from "../services/api_error_code";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 
@@ -20,6 +24,9 @@ function LoginPage() {
     null,
   );
   const [error, setError] = createSignal<string | null>(null);
+  // A correct password for an unverified account: no session exists until the owner
+  // follows the emailed link, and signing up again is the way to get a fresh one.
+  const [verificationRequired, setVerificationRequired] = createSignal(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -76,6 +83,7 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setVerificationRequired(false);
     try {
       const res = await authApi.login({
         user_email: email(),
@@ -90,11 +98,15 @@ function LoginPage() {
         setSuperuser(false);
         setError(t("auth.login.failed"));
       }
-    } catch {
+    } catch (caught: unknown) {
       setAuthenticated(false);
       setUser(null);
       setSuperuser(false);
-      setError(t("auth.login.failed"));
+      if (apiErrorCode(caught) === LOGIN_EMAIL_NOT_VERIFIED) {
+        setVerificationRequired(true);
+      } else {
+        setError(t("auth.login.failed"));
+      }
     } finally {
       setLoading(false);
     }
@@ -160,6 +172,21 @@ function LoginPage() {
           <Show when={error()}>
             <div class={`${pageStyles.alertError} w-full mb-3 text-center`}>
               {error()}
+            </div>
+          </Show>
+          <Show when={verificationRequired()}>
+            <div class={`${pageStyles.cardPadded} w-full mb-3`} role="status">
+              <p class="mb-2">{t("auth.login.verification_required")}</p>
+              <p class={`${pageStyles.muted} mb-3`}>
+                {t("auth.login.verification_resend_hint")}
+              </p>
+              <button
+                class={`${pageStyles.buttonSecondary} w-full`}
+                type="button"
+                onClick={() => navigate("/register")}
+              >
+                {t("auth.login.verification_resend")}
+              </button>
             </div>
           </Show>
           <button

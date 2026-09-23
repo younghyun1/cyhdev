@@ -8,14 +8,14 @@ use crate::{
     features::{
         accounts::{
             repository::account_repository::AccountRepository,
-            service::session_service::SessionService,
+            service::{password_work::PasswordJobs, session_service::SessionService},
         },
         live_chat::service::lifecycle::LiveChatAccountLifecyclePort,
     },
     util::media::object_store::MediaObjectStore,
 };
 
-pub const MAX_PASSWORD_JOBS: usize = 4;
+pub use crate::features::accounts::service::password_work::MAX_PASSWORD_JOBS;
 pub const MAX_EMAIL_JOBS: usize = 16;
 
 pub struct AccountServiceDependencies {
@@ -39,7 +39,7 @@ pub struct AccountService {
     pub(super) email_client: Arc<AsyncSmtpTransport<Tokio1Executor>>,
     pub(super) public_app_origin: Arc<str>,
     pub(super) dummy_password_hash: Arc<str>,
-    pub(super) password_jobs: tokio::sync::Semaphore,
+    pub(super) password_jobs: PasswordJobs,
     pub(super) email_jobs: Arc<tokio::sync::Semaphore>,
     /// Excludes retained-email delivery while hard purge removes private identity.
     pub(super) retention_notification_delivery_gate: tokio::sync::RwLock<()>,
@@ -47,6 +47,11 @@ pub struct AccountService {
     pub(super) retention_notification_run_gate: tokio::sync::Mutex<()>,
     /// Prevents a login from creating a stale session while an account mutation commits.
     pub(super) session_consistency: tokio::sync::RwLock<()>,
+    /// Excludes role and account-authority changes while a privileged operation relies on a
+    /// database-current authority check. It is separate from `session_consistency` so a long
+    /// administrative side effect never queues a writer in front of ordinary logins. Mutations
+    /// that take both locks acquire this one first.
+    pub(super) authority_consistency: tokio::sync::RwLock<()>,
 }
 
 impl AccountService {
@@ -70,22 +75,12 @@ impl AccountService {
             email_client: Arc::new(email_client),
             public_app_origin,
             dummy_password_hash: Arc::from(dummy_password_hash),
-            password_jobs: tokio::sync::Semaphore::new(MAX_PASSWORD_JOBS),
+            password_jobs: PasswordJobs::new(),
             email_jobs: Arc::new(tokio::sync::Semaphore::new(MAX_EMAIL_JOBS)),
             retention_notification_delivery_gate: tokio::sync::RwLock::new(()),
             retention_notification_run_gate: tokio::sync::Mutex::new(()),
             session_consistency: tokio::sync::RwLock::new(()),
+            authority_consistency: tokio::sync::RwLock::new(()),
         }
-    }
-
-    pub(super) fn try_password_job(
-        &self,
-    ) -> Result<tokio::sync::SemaphorePermit<'_>, crate::features::accounts::error::AccountError>
-    {
-        self.password_jobs.try_acquire().map_err(|_| {
-            crate::features::accounts::error::AccountError::PasswordWorkSaturated {
-                max_jobs: MAX_PASSWORD_JOBS,
-            }
-        })
     }
 }

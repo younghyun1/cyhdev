@@ -2,11 +2,9 @@
 
 use std::sync::Arc;
 
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use openidconnect::{
-    AuthorizationCode, CsrfToken, EndpointMaybeSet, EndpointNotSet, EndpointSet, Nonce,
-    PkceCodeChallenge, PkceCodeVerifier, Scope, TokenResponse,
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
+    AuthorizationCode, CsrfToken, Nonce, PkceCodeChallenge, PkceCodeVerifier, Scope,
+    core::{CoreAuthenticationFlow, CoreProviderMetadata},
 };
 use zeroize::Zeroizing;
 
@@ -20,22 +18,16 @@ use crate::{
 
 use super::{
     config::OidcConfig,
-    flow_store::{CompletedLink, OidcFlowStores, OneTimeToken, PendingAuthorization},
+    flow_store::{
+        BrowserBinding, CompletedLink, OidcFlowStores, OneTimeToken, PendingAuthorization,
+        random_token,
+    },
     http_client::OidcHttpClient,
-    validation::{identity_from_claims, verify_access_token_hash},
+    signing_keys::{KeyRefresh, SigningKeys},
+    validation::{IdentityRejection, validated_identity},
 };
 
-const OIDC_SECRET_BYTES: usize = 32;
 const MAX_AUTHORIZATION_CODE_BYTES: usize = 8 * 1024;
-
-type DiscoveredCoreClient = CoreClient<
-    EndpointSet,
-    EndpointNotSet,
-    EndpointNotSet,
-    EndpointNotSet,
-    EndpointMaybeSet,
-    EndpointMaybeSet,
->;
 
 pub struct OidcService {
     enabled: Option<EnabledOidcService>,
@@ -44,7 +36,7 @@ pub struct OidcService {
 struct EnabledOidcService {
     provider_name: Arc<str>,
     issuer: Arc<str>,
-    client: DiscoveredCoreClient,
+    keys: SigningKeys,
     http_client: OidcHttpClient,
     flows: OidcFlowStores,
 }
@@ -52,6 +44,12 @@ struct EnabledOidcService {
 pub(crate) enum OidcCallbackOutcome {
     Login(OidcIdentityClaims),
     LinkReady { completion_token: OneTimeToken },
+}
+
+/// A started flow: the provider URL and the secret for the browser-binding cookie.
+pub(crate) struct OidcAuthorizationStart {
+    pub(crate) authorization_url: String,
+    pub(crate) browser_binding: OneTimeToken,
 }
 
 impl OidcService {
@@ -74,18 +72,18 @@ impl OidcService {
             ));
         }
         let issuer: Arc<str> = Arc::from(provider_metadata.issuer().as_str());
-        let client = CoreClient::from_provider_metadata(
+        let keys = SigningKeys::new(
             provider_metadata,
             config.client_id,
             config.client_secret,
-        )
-        .set_redirect_uri(config.redirect_url);
+            config.redirect_url,
+        );
 
         Ok(Self {
             enabled: Some(EnabledOidcService {
                 provider_name: config.provider_name,
                 issuer,
-                client,
+                keys,
                 http_client,
                 flows: OidcFlowStores::default(),
             }),
@@ -106,13 +104,15 @@ impl OidcService {
         self.enabled.as_ref().map(|enabled| enabled.issuer.as_ref())
     }
 
+    /// Starts a flow bound to the browser that will present the returned binding cookie.
     pub(crate) async fn start_authorization(
         &self,
         mode: OidcFlowMode,
-    ) -> Result<String, AccountError> {
+    ) -> Result<OidcAuthorizationStart, AccountError> {
         let enabled = self.enabled.as_ref().ok_or(AccountError::OidcDisabled)?;
         let pkce_secret = random_secret()?;
         let nonce = random_secret()?;
+        let browser_binding = random_token().map_err(AccountError::OidcFlowEntropy)?;
         let verifier = PkceCodeVerifier::new(pkce_secret.as_str().to_owned());
         let challenge = PkceCodeChallenge::from_code_verifier_sha256(&verifier);
         let state = enabled
@@ -121,10 +121,11 @@ impl OidcService {
                 mode,
                 pkce_verifier: pkce_secret,
                 nonce: nonce.clone(),
+                browser_binding: BrowserBinding::of_cookie(browser_binding.expose()),
             })
             .await?;
-        let (authorization_url, _, _) = enabled
-            .client
+        let client = enabled.keys.client().await;
+        let (authorization_url, _, _) = client
             .authorize_url(
                 CoreAuthenticationFlow::AuthorizationCode,
                 move || CsrfToken::new(state.expose().to_owned()),
@@ -133,22 +134,28 @@ impl OidcService {
             .add_scope(Scope::new("email".to_owned()))
             .set_pkce_challenge(challenge)
             .url();
-        Ok(authorization_url.to_string())
+        Ok(OidcAuthorizationStart {
+            authorization_url: authorization_url.to_string(),
+            browser_binding,
+        })
     }
 
-    pub(crate) async fn cancel_authorization(&self, state: &str) -> Option<OidcFlowMode> {
+    /// Consumes a denied flow; its mode is revealed only to the browser that started it.
+    pub(crate) async fn cancel_authorization(
+        &self,
+        state: &str,
+        browser_binding: Option<&str>,
+    ) -> Option<OidcFlowMode> {
         let enabled = self.enabled.as_ref()?;
-        enabled
-            .flows
-            .take_pending(state)
-            .await
-            .map(|pending| pending.mode)
+        let pending = enabled.flows.take_pending(state).await?;
+        binding_matches(&pending, browser_binding).then_some(pending.mode)
     }
 
     pub(crate) async fn finish_authorization(
         &self,
         state: &str,
         code: &str,
+        browser_binding: Option<&str>,
     ) -> Result<OidcCallbackOutcome, AccountError> {
         let enabled = self.enabled.as_ref().ok_or(AccountError::OidcDisabled)?;
         if code.is_empty() || code.len() > MAX_AUTHORIZATION_CODE_BYTES {
@@ -159,8 +166,13 @@ impl OidcService {
             .take_pending(state)
             .await
             .ok_or(AccountError::OidcFlowRejected)?;
-        let token_response = enabled
-            .client
+        // A callback URL replayed in another browser lacks the cookie, so an attacker cannot
+        // sign a victim into the attacker's account by making them open it.
+        if !binding_matches(&pending, browser_binding) {
+            return Err(AccountError::OidcFlowRejected);
+        }
+        let client = enabled.keys.client().await;
+        let token_response = client
             .exchange_code(AuthorizationCode::new(code.to_owned()))
             .map_err(|error| AccountError::OidcTokenExchange(anyhow::Error::new(error)))?
             .set_pkce_verifier(PkceCodeVerifier::new(
@@ -169,29 +181,15 @@ impl OidcService {
             .request_async(&enabled.http_client)
             .await
             .map_err(|error| AccountError::OidcTokenExchange(anyhow::Error::new(error)))?;
-        let id_token = token_response.id_token().ok_or_else(|| {
-            AccountError::OidcTokenValidation(anyhow::anyhow!("missing ID token"))
-        })?;
-        let verifier = enabled
-            .client
-            .id_token_verifier()
-            .require_issuer_match(true)
-            .require_audience_match(true);
-        let claims = id_token
-            .claims(&verifier, &Nonce::new(pending.nonce.as_str().to_owned()))
-            .map_err(|error| AccountError::OidcTokenValidation(anyhow::Error::new(error)))?;
-        if claims.issuer().as_str() != enabled.issuer.as_ref()
-            || !claims
-                .audiences()
-                .iter()
-                .any(|audience| audience.as_str() == enabled.client.client_id().as_str())
-        {
-            return Err(AccountError::OidcTokenValidation(anyhow::anyhow!(
-                "issuer or audience mismatch"
-            )));
-        }
-        verify_access_token_hash(id_token, claims, &token_response, &verifier)?;
-        let identity = identity_from_claims(claims)?;
+        let identity =
+            match validated_identity(&client, &token_response, &pending.nonce, &enabled.issuer) {
+                Ok(identity) => identity,
+                Err(IdentityRejection::Invalid(error)) => return Err(error),
+                Err(IdentityRejection::UnknownSigningKey) => {
+                    self.identity_after_key_refresh(enabled, &token_response, &pending.nonce)
+                        .await?
+                }
+            };
 
         match pending.mode {
             OidcFlowMode::Login => Ok(OidcCallbackOutcome::Login(identity)),
@@ -220,10 +218,50 @@ impl OidcService {
             .ok_or(AccountError::OidcFlowRejected)?;
         Ok((completed.expected_user_id, completed.identity))
     }
+
+    /// Periodic refresh so rotated keys are installed before the first token needs them.
+    pub(crate) async fn refresh_signing_keys(&self) {
+        let Some(enabled) = self.enabled.as_ref() else {
+            return;
+        };
+        if let Err(error) = enabled.keys.refresh(&enabled.http_client).await {
+            tracing::warn!(
+                event = "oidc_signing_key_refresh_failed",
+                error = %error,
+                "OpenID Connect signing key refresh failed; keeping current keys"
+            );
+        }
+    }
+
+    async fn identity_after_key_refresh(
+        &self,
+        enabled: &EnabledOidcService,
+        token_response: &openidconnect::core::CoreTokenResponse,
+        nonce: &str,
+    ) -> Result<OidcIdentityClaims, AccountError> {
+        let unknown_key = || {
+            AccountError::OidcTokenValidation(anyhow::anyhow!(
+                "ID token signing key is not in the provider key set"
+            ))
+        };
+        match enabled.keys.refresh(&enabled.http_client).await? {
+            KeyRefresh::Installed { .. } => {}
+            KeyRefresh::RateLimited => return Err(unknown_key()),
+        }
+        let client = enabled.keys.client().await;
+        match validated_identity(&client, token_response, nonce, &enabled.issuer) {
+            Ok(identity) => Ok(identity),
+            Err(IdentityRejection::Invalid(error)) => Err(error),
+            Err(IdentityRejection::UnknownSigningKey) => Err(unknown_key()),
+        }
+    }
+}
+
+fn binding_matches(pending: &PendingAuthorization, browser_binding: Option<&str>) -> bool {
+    browser_binding.is_some_and(|value| BrowserBinding::of_cookie(value) == pending.browser_binding)
 }
 
 fn random_secret() -> Result<Zeroizing<String>, AccountError> {
-    let mut bytes = Zeroizing::new([0_u8; OIDC_SECRET_BYTES]);
-    getrandom::fill(bytes.as_mut()).map_err(AccountError::OidcFlowEntropy)?;
-    Ok(Zeroizing::new(URL_SAFE_NO_PAD.encode(bytes.as_ref())))
+    let token = random_token().map_err(AccountError::OidcFlowEntropy)?;
+    Ok(Zeroizing::new(token.expose().to_owned()))
 }

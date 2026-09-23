@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::features::accounts::{
     domain::lifecycle::{ResolvedMediaCleanup, UnresolvedMediaCleanup},
     error::AccountError,
-    service::account_service::AccountService,
+    service::{account_service::AccountService, media_cleanup_location::original_url_names_key},
 };
 use crate::util::{
     media::{
@@ -222,12 +222,17 @@ fn retry_backoff(attempt_count: i32) -> Duration {
     Duration::seconds(seconds)
 }
 
+/// Accepts only the configured bucket and the key the recorded original URL itself names.
+///
+/// The repository rejects any `original_url` that differs from the stored one, so deriving
+/// the key from the caller's copy binds the resolution to the stored URL.
 fn validate_location(original_url: &str, bucket: &str, key: &str) -> Result<(), AccountError> {
     let valid = !original_url.is_empty()
         && original_url.len() <= 4_096
         && bucket == AWS_S3_BUCKET_NAME
         && !key.is_empty()
-        && key.len() <= 1_024;
+        && key.len() <= 1_024
+        && original_url_names_key(original_url, bucket, key);
     if valid {
         Ok(())
     } else {
@@ -273,6 +278,15 @@ mod tests {
         );
         assert!(matches!(
             validate_location(&original_url, "attacker-controlled", "images/example.avif"),
+            Err(AccountError::InvalidMediaCleanupLocation)
+        ));
+    }
+
+    #[test]
+    fn reconciliation_rejects_a_key_the_original_url_does_not_name() {
+        let original_url = format!("s3://{AWS_S3_BUCKET_NAME}/images/example.avif");
+        assert!(matches!(
+            validate_location(&original_url, AWS_S3_BUCKET_NAME, "images/other.avif"),
             Err(AccountError::InvalidMediaCleanupLocation)
         ));
     }

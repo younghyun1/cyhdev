@@ -1,5 +1,7 @@
 //! Audited authorization administration use cases.
 
+use std::sync::Arc;
+
 use uuid::Uuid;
 
 use crate::features::accounts::{
@@ -13,27 +15,31 @@ use crate::features::accounts::{
         },
         role::RoleType,
     },
-    service::account_service::AccountService,
+    service::{account_service::AccountService, session_coordination::run_to_completion},
 };
 
 /// Read lease proving database-current Younghyun authority for an external side effect.
+///
+/// The lease holds only the authority lock, never the session-consistency lock, so an
+/// operation lasting seconds (a Minecraft RPC or an i18n synchronization) cannot stall logins
+/// behind a queued role change.
 #[must_use = "the authority lease must remain alive through the privileged operation"]
 pub struct YounghyunAuthorityLease<'a> {
-    _session_consistency: tokio::sync::RwLockReadGuard<'a, ()>,
+    _authority_consistency: tokio::sync::RwLockReadGuard<'a, ()>,
 }
 
 impl AccountService {
-    /// Rechecks PostgreSQL authority while excluding concurrent service role changes.
+    /// Rechecks PostgreSQL authority while excluding concurrent role and account-state changes.
     pub async fn acquire_current_younghyun_authority(
         &self,
         actor_user_id: Uuid,
     ) -> Result<YounghyunAuthorityLease<'_>, AuthorizationError> {
-        let session_consistency = self.session_consistency.read().await;
+        let authority_consistency = self.authority_consistency.read().await;
         self.repository
             .ensure_current_younghyun_authority(actor_user_id)
             .await?;
         Ok(YounghyunAuthorityLease {
-            _session_consistency: session_consistency,
+            _authority_consistency: authority_consistency,
         })
     }
 
@@ -94,7 +100,7 @@ impl AccountService {
     }
 
     pub async fn assign_role_as_administrator(
-        &self,
+        self: &Arc<Self>,
         actor_user_id: Uuid,
         target_user_id: Uuid,
         role_id: Uuid,
@@ -105,20 +111,26 @@ impl AccountService {
             RoleType::from_uuid(role_id).ok_or(AuthorizationError::InvalidRoleId(role_id))?;
         let reason =
             AuthorizationReason::try_new(reason).map_err(|_| AuthorizationError::InvalidReason)?;
-        let _session_consistency = self.session_consistency.write().await;
-        let receipt = self
-            .repository
-            .assign_role_with_audit(
-                actor_user_id,
-                target_user_id,
-                role_type,
-                &reason,
-                request_id,
-            )
-            .await?;
-        self.refresh_sessions_after_commit(target_user_id, "admin_assign_role")
-            .await;
-        Ok(receipt)
+        let service = Arc::clone(self);
+        run_to_completion(async move {
+            let _authority_consistency = service.authority_consistency.write().await;
+            let _session_consistency = service.session_consistency.write().await;
+            let receipt = service
+                .repository
+                .assign_role_with_audit(
+                    actor_user_id,
+                    target_user_id,
+                    role_type,
+                    &reason,
+                    request_id,
+                )
+                .await?;
+            service
+                .refresh_sessions_after_commit(target_user_id, "admin_assign_role")
+                .await;
+            Ok(receipt)
+        })
+        .await
     }
 
     pub async fn set_role_permission_as_administrator(
@@ -134,7 +146,9 @@ impl AccountService {
             RoleType::from_uuid(role_id).ok_or(AuthorizationError::InvalidRoleId(role_id))?;
         let reason =
             AuthorizationReason::try_new(reason).map_err(|_| AuthorizationError::InvalidReason)?;
-        let _session_consistency = self.session_consistency.write().await;
+        // Permission bindings change authority but no session field, so only the authority
+        // lock is needed; logins keep flowing while the binding commits.
+        let _authority_consistency = self.authority_consistency.write().await;
         self.repository
             .set_role_permission_with_audit(
                 actor_user_id,
