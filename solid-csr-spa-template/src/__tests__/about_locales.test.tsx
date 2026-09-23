@@ -35,11 +35,16 @@ describe("About page localization", () => {
 
     for (const entry of headings) {
       setLocaleSignal(entry.locale);
-      await waitFor(() => {
-        const main = screen.getByRole("main");
-        expect(main.getAttribute("lang")).toBe(entry.locale);
-        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe(entry[heading]);
-      });
+      // Each locale page is a lazy chunk that Vitest transforms on first
+      // import, which can exceed the default one-second wait on a busy machine.
+      await waitFor(
+        () => {
+          const main = screen.getByRole("main");
+          expect(main.getAttribute("lang")).toBe(entry.locale);
+          expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe(entry[heading]);
+        },
+        { timeout: 10_000 },
+      );
     }
-  });
+  }, 60_000);
 });

@@ -16,6 +16,37 @@ export const [clientNow, setClientNow] = createSignal<Date | null>(null);
 // Monotonic token to drop out-of-order health refreshes.
 let healthSeq = 0;
 
+/**
+ * Minimum spacing between automatic refreshes. Route changes arrive in bursts
+ * (every photo arrow-key step is a navigation), while the status bar only needs
+ * roughly current counters; the uptime display ticks locally in between.
+ */
+export const HEALTH_REFRESH_TTL_MS = 30_000;
+
+let lastRefreshStartedAt: number | null = null;
+let refreshInFlight: Promise<void> | null = null;
+
+/**
+ * Refreshes health unless a refresh is already running or one started within
+ * the TTL. Explicit user refreshes call `refreshHealthState` directly.
+ */
+export function refreshHealthStateIfStale(
+  now: number = performance.now(),
+  ttlMs: number = HEALTH_REFRESH_TTL_MS,
+): Promise<void> {
+  if (refreshInFlight) return refreshInFlight;
+  if (lastRefreshStartedAt !== null && now - lastRefreshStartedAt < ttlMs) {
+    return Promise.resolve();
+  }
+  return refreshHealthState();
+}
+
+/** Test hook: forget refresh timing so each case starts cold. */
+export function resetHealthRefreshTiming(): void {
+  lastRefreshStartedAt = null;
+  refreshInFlight = null;
+}
+
 export const parseUptimeToMs = (uptime: string | undefined): number | null => {
   if (!uptime) return null;
   let total = 0;
@@ -71,7 +102,17 @@ export const formatIsoAge = (
   return `${mins}m ${secs}s ago`;
 };
 
-export async function refreshHealthState() {
+export function refreshHealthState(): Promise<void> {
+  lastRefreshStartedAt = performance.now();
+  const request = runHealthRefresh();
+  refreshInFlight = request;
+  void request.finally(() => {
+    if (refreshInFlight === request) refreshInFlight = null;
+  });
+  return request;
+}
+
+async function runHealthRefresh(): Promise<void> {
   const seq = ++healthSeq;
   const start = performance.now();
   try {

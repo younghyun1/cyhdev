@@ -28,7 +28,7 @@ Semantic CSS variables declared on `:root` (light) and `.dark`, exposed to Tailw
 
 `--glow-ok` / `--glow-danger` are 60% color-mix halos for the status dots (`shadow-[0_0_8px_2px_var(--glow-ok)]`).
 
-Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No raw `slate-*`/`gray-*`/`blue-*` palette classes; the audit `grep -rnE "(slate|gray|blue|amber|emerald|rose|red)-[0-9]" src/` must stay empty. Inline `<style>` blocks (projects, photographs, visitor board) use `var(--...)` directly; literal colors are allowed only for mode-independent areas: image letterboxes, overlay scrims, on-image controls.
+Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No raw `slate-*`/`gray-*`/`blue-*` palette classes; the audit `grep -rnE "(slate|gray|blue|amber|emerald|rose|red)-[0-9]" src/` must stay empty. Route stylesheets and inline `<style>` blocks use `var(--...)` directly; literal colors are allowed only for mode-independent areas: image letterboxes, overlay scrims, on-image controls.
 
 ## Typography
 
@@ -56,7 +56,7 @@ Policy: amber is the only decorative accent. `ok`/`danger` are semantic only. No
 - Links: amber, `underline-offset-4`, decoration fades in via `decoration-accent/40 -> decoration-accent`.
 - Nav: active route gets ink text + 2px amber underline (desktop) or amber left border + `bg-surface-2` (drawer).
 - Selection: `::selection` uses `--accent-soft`.
-- Motion: `transition-colors duration-90` for chrome, up to 200-300ms for icon swaps; everything gated by `prefers-reduced-motion: reduce`.
+- Motion: `transition-colors duration-90` for chrome, up to 200-300ms for icon swaps; everything gated by `prefers-reduced-motion: reduce`. The photograph viewer is the one loading-state exception: a decoded image fades in over 180ms, and a thin amber line sweeps continuously only while a load has taken longer than 150ms. Reduced motion removes the fade and holds the line still.
 - Grain: a fixed `body::before` SVG-noise overlay (2.5% light / 4% dark) above the ground, below content.
 
 ## Code blocks

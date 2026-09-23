@@ -3,6 +3,7 @@ import {
   createEffect,
   flush,
   For,
+  Repeat,
   Show,
   onSettled,
   createMemo,
@@ -15,6 +16,7 @@ import type { RouteSectionProps } from "@solidjs/router";
 import { photographyApi } from "../services/all_api";
 import { isSuperuser } from "../state/auth";
 import { pageStyles } from "../styles/pageStyles";
+import "../styles/photographs.css";
 
 import type {
   GetPhotographsResponse,
@@ -22,6 +24,7 @@ import type {
 } from "../generated";
 import { t, tx, locale } from "../state/i18n";
 import PhotographSocial from "../components/photographs/PhotographSocial";
+import PhotoStageImage from "../components/photographs/PhotoStageImage";
 import {
   trackFromUpload,
   setBatchCompletionHandler,
@@ -39,188 +42,6 @@ const loadPhotographMap = () =>
 const BatchUploadFields = lazy(loadBatchUploadFields);
 const ProcessingModal = lazy(loadProcessingModal);
 const PhotographMap = lazy(loadPhotographMap);
-
-// --- Styles ---
-const styles = `
-/* Flex Masonry Layout */
-.masonry-grid {
-  display: flex;
-  width: 100%;
-  max-width: 1600px;
-  gap: 1rem;
-  padding: 1rem;
-}
-.masonry-column {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  flex: 1;
-  min-width: 0; /* Prevents flex items from overflowing */
-}
-
-.photo-card {
-  border-radius: 0.5rem;
-  overflow: hidden;
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.2s, box-shadow 0.2s;
-  background-color: var(--surface-2);
-  width: 100%;
-}
-.photo-card:hover {
-  transform: scale(1.02);
-  z-index: 10;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
-.photo-card img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-/* Small view/vote summary rendered below the image, outside the picture. */
-.photo-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.72rem;
-  line-height: 1;
-  color: var(--ink-muted);
-}
-.photo-meta .pm-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-/* Month-year section header above each masonry block. */
-.photo-section-title {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 1.25rem 1.75rem 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-/* Modals */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-  padding: 1rem;
-}
-.modal-content {
-  background-color: var(--surface);
-  border-radius: 0.5rem;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: auto;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-.upload-modal {
-  width: 700px;
-  max-width: 100%;
-}
-.details-modal {
-  max-width: 95vw;
-  width: 100%;
-  height: 90vh;
-  flex-direction: row;
-  overflow: hidden;
-}
-@media (max-width: 768px) {
-  .details-modal {
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  .details-image-container {
-    width: 100%;
-    height: 50vh;
-  }
-  .details-info {
-    width: 100%;
-    padding: 1rem;
-  }
-}
-.details-image-container {
-  flex: 3;
-  background: black;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  position: relative;
-}
-.details-image-container {
-  flex: 3;
-  background: black;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  position: relative;
-}
-.nav-btn {
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
-}
-.details-image-container:hover .nav-btn {
-  opacity: 1;
-}
-@media (max-width: 768px) {
-  .nav-btn {
-    opacity: 1;
-  }
-}
-.details-image-container img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-.details-info {
-  flex: 1;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  overflow-y: auto;
-  min-width: 300px;
-}
-.map-container {
-  height: 300px;
-  width: 100%;
-  border-radius: 0.5rem;
-  margin-top: 0.5rem;
-  z-index: 1;
-}
-/* Leaflet Geosearch Customization */
-.leaflet-control-geosearch form {
-  background: var(--surface);
-  border-radius: 4px;
-  padding: 2px;
-}
-.leaflet-control-geosearch input {
-  color: var(--ink);
-}
-.emoji-marker {
-  font-size: 2rem;
-  line-height: 1.2;
-  text-align: center;
-  transform: translateY(-10%);
-}
-.processing-modal {
-  width: 720px;
-  max-width: 100%;
-}
-`;
 
 export default function Photographs(props: RouteSectionProps) {
   const isMobile = createMediaQuery("(max-width: 767px)");
@@ -253,14 +74,23 @@ export default function Photographs(props: RouteSectionProps) {
   let detailTouchStartX = 0;
   let detailTouchStartY = 0;
 
+  // Desktop warms the detail map for every visitor, but the upload form (with
+  // leaflet-geosearch) and the processing modal only once the viewer is known
+  // to be a superuser, since nobody else can open them. A failed preload is
+  // ignored; rendering the lazy component requests its chunk on its own.
   onSettled(() => {
     if (isMobile()) return;
-    void Promise.all([
-      loadBatchUploadFields(),
-      loadProcessingModal(),
-      loadPhotographMap(),
-    ]);
+    loadPhotographMap().catch(() => {});
   });
+  createEffect(
+    () => !isMobile() && isSuperuser() === true,
+    (preloadAdminTools) => {
+      if (!preloadAdminTools) return;
+      Promise.all([loadBatchUploadFields(), loadProcessingModal()]).catch(
+        () => {},
+      );
+    },
+  );
 
   // --- URL-synced detail modal ---
   // The detail view is /photographs/:photograph_id rendered as a modal over the
@@ -286,7 +116,7 @@ export default function Photographs(props: RouteSectionProps) {
         setSelectedPhoto(null);
         return;
       }
-      const inList = photos().find((p) => p.photograph_id === id);
+      const inList = untrack(photos).find((p) => p.photograph_id === id);
       if (inList) {
         setSelectedPhoto(inList);
         return;
@@ -533,6 +363,21 @@ export default function Photographs(props: RouteSectionProps) {
   // Neighbours are resolved from the loaded list and navigated to by URL (the
   // route effect then swaps the modal content). On a cold deep-link the photo is
   // not in the list (idx === -1), so prev/next are unavailable.
+  const selectedIndex = createMemo(() => {
+    const current = selectedPhoto();
+    if (!current) return -1;
+    return photos().findIndex((p) => p.photograph_id === current.photograph_id);
+  });
+  // Full-size links of the loaded neighbours, preloaded by the viewer stage.
+  const neighborLinks = createMemo(() => {
+    const idx = selectedIndex();
+    if (idx === -1) return [];
+    const list = photos();
+    return [list[idx - 1], list[idx + 1]]
+      .filter((p): p is PhotographItem => p !== undefined)
+      .map((p) => p.photograph_link);
+  });
+
   const navigatePhoto = async (direction: "prev" | "next") => {
     const current = selectedPhoto();
     if (!current) return;
@@ -584,7 +429,6 @@ export default function Photographs(props: RouteSectionProps) {
 
   return (
     <>
-      <style>{styles}</style>
       <main class={pageStyles.page}>
         <div class="flex flex-col items-center w-full">
           {/* Header / Actions */}
@@ -654,16 +498,38 @@ export default function Photographs(props: RouteSectionProps) {
             </div>
           </Show>
 
-          {/* Month-year segmented masonry */}
-          <For each={segments()}>
+          {/* First-page placeholder. The sentinel below shows text only for
+              later pages, so nothing painted near the top moves when the first
+              cards replace this block. */}
+          <Show when={photos().length === 0 && loading()}>
+            <div class="photo-skeleton" role="status">
+              <span class="sr-only">{t("common.loading")}</span>
+              <div class="photo-skeleton-title" aria-hidden="true" />
+              <div class="masonry-grid mx-auto" aria-hidden="true">
+                <Repeat count={numColumns()}>
+                  {() => (
+                    <div class="masonry-column">
+                      <div class="photo-card photo-skeleton-card" />
+                      <div class="photo-card photo-skeleton-card" />
+                    </div>
+                  )}
+                </Repeat>
+              </div>
+            </div>
+          </Show>
+
+          {/* Month-year segmented masonry. Segments are keyed by month and
+              columns by position, so appending a page or deleting photos keeps
+              the existing card and image elements instead of rebuilding them. */}
+          <For each={segments()} keyed={(seg) => seg.key}>
             {(seg) => (
               <>
-                <h2 class="photo-section-title">{seg.label}</h2>
+                <h2 class="photo-section-title">{seg().label}</h2>
                 <div class="masonry-grid mx-auto">
-                  <For each={columnsFor(seg.photos)}>
+                  <For each={columnsFor(seg().photos)} keyed={false}>
                     {(colPhotos) => (
                       <div class="masonry-column">
-                        <For each={colPhotos}>
+                        <For each={colPhotos()}>
                           {(photo) => (
                             <div
                               class="photo-card"
@@ -762,7 +628,7 @@ export default function Photographs(props: RouteSectionProps) {
 
           {/* Loading / Sentinel */}
           <div id="scroll-sentinel" class="h-10 w-full flex justify-center p-4">
-            <Show when={loading()}>
+            <Show when={loading() && photos().length > 0}>
               <span class={pageStyles.muted}>{t("photos.loading_more")}</span>
             </Show>
             <Show when={!hasMore() && photos().length > 0}>
@@ -842,13 +708,7 @@ export default function Photographs(props: RouteSectionProps) {
               }}
             >
               {/* --- PREV BUTTON --- */}
-              <Show
-                when={
-                  photos().findIndex(
-                    (p) => p.photograph_id === selectedPhoto()?.photograph_id,
-                  ) > 0
-                }
-              >
+              <Show when={selectedIndex() > 0}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -875,20 +735,17 @@ export default function Photographs(props: RouteSectionProps) {
                 </button>
               </Show>
 
-              <img
+              <PhotoStageImage
                 src={selectedPhoto()!.photograph_link}
                 alt={selectedPhoto()!.photograph_comments}
-                decoding="async"
+                neighbors={neighborLinks()}
               />
 
               {/* --- NEXT BUTTON --- */}
               <Show
                 when={
                   // CHANGED CONDITION: Show if not last element OR if server has more
-                  photos().findIndex(
-                    (p) => p.photograph_id === selectedPhoto()?.photograph_id,
-                  ) <
-                    photos().length - 1 || hasMore()
+                  selectedIndex() < photos().length - 1 || hasMore()
                 }
               >
                 <button
@@ -903,12 +760,7 @@ export default function Photographs(props: RouteSectionProps) {
                   {/* Optional: Show spinner if loading next page while hovering next button */}
                   <Show
                     when={
-                      loading() &&
-                      photos().findIndex(
-                        (p) =>
-                          p.photograph_id === selectedPhoto()?.photograph_id,
-                      ) ===
-                        photos().length - 1
+                      loading() && selectedIndex() === photos().length - 1
                     }
                     fallback={
                       <svg
