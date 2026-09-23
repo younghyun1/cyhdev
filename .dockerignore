@@ -12,6 +12,11 @@
 **/*.key
 **/*.p12
 **/*.pfx
+**/*.jks
+**/*.keystore
+**/*.bks
+**/.pgpass
+**/.netrc
 **/db/password.txt
 **/*credentials*.json
 **/service-account.json
