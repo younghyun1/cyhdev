@@ -3,6 +3,8 @@
 #[cfg(test)]
 mod container_tests;
 mod eu5_web;
+#[cfg(test)]
+mod eu5_web_tests;
 mod evidence_manifest;
 #[cfg(test)]
 mod main_tests;
@@ -172,7 +174,7 @@ fn run_native_build(root: &Path) -> TaskResult<()> {
 }
 
 fn run_image(root: &Path) -> TaskResult<()> {
-    eu5_web::require_checkout(root)?;
+    eu5_web::require_pinned_checkout(root)?;
     let source_date_epoch = release::source_date_epoch(root)?;
     let mut command = Command::new("docker");
     command
