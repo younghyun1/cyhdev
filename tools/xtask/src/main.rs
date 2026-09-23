@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod container_tests;
+mod database_review;
 mod eu5_web;
 #[cfg(test)]
 mod eu5_web_tests;
@@ -70,7 +71,7 @@ fn run() -> TaskResult<()> {
                 .args(["run", "dev"])
                 .current_dir(root.join("solid-csr-spa-template")),
         ),
-        "db-integration" => review::run_database_integration(&root),
+        "db-integration" => database_review::run_database_integration(&root),
         "eu5-web-stage" => eu5_web::run(&root),
         "evidence" => evidence_manifest::run(&root),
         "final-review" => review::run_final_review(&root),
@@ -87,7 +88,7 @@ fn run() -> TaskResult<()> {
         "frontend-check" => review::run_frontend_checks(&root),
         "image" => run_image(&root),
         "image-smoke" => review::run_image_smoke(&root),
-        "migration-rollback" => review::run_migration_rollback(&root),
+        "migration-rollback" => database_review::run_migration_rollback(&root),
         "openapi" => review::run_openapi_drift_check(&root),
         "secret-scan" => review::run_secret_scan(&root),
         "test" | "unit" => review::run_unit_tests(&root),
