@@ -4,7 +4,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use super::{CachedLiveChatBan, LiveChatCache};
-use crate::features::live_chat::domain::ban::LiveChatBan;
+use crate::features::live_chat::domain::{ban::LiveChatBan, ip_prefix::ban_networks_for};
 
 pub const LIVE_CHAT_BAN_INDEX_MAX_ENTRIES: usize = 50_000;
 
@@ -86,10 +86,10 @@ impl LiveChatCache {
             }
         }
 
-        if let Some(ip) = ban.banned_ip {
+        if let Some(network) = ban.banned_ip {
             let updated = self
                 .bans_by_ip
-                .update_async(&ip, |_, current| {
+                .update_async(&network, |_, current| {
                     if replacement_is_stronger(current, ban) {
                         *current = ban.clone();
                     }
@@ -97,7 +97,7 @@ impl LiveChatCache {
                 .await
                 .is_some();
             if !updated && self.bans_by_ip.len() < LIVE_CHAT_BAN_INDEX_MAX_ENTRIES {
-                let _ = self.bans_by_ip.insert_async(ip, ban.clone()).await;
+                let _ = self.bans_by_ip.insert_async(network, ban.clone()).await;
             } else if !updated {
                 fully_admitted = false;
                 self.ban_rejected_admissions.fetch_add(1, Ordering::Relaxed);
@@ -128,22 +128,24 @@ impl LiveChatCache {
             }
         }
 
-        match self
-            .bans_by_ip
-            .read_async(&ip, |_, ban| ban.is_active(now))
-            .await
-        {
-            Some(true) => {
-                self.ban_cache_hits.fetch_add(1, Ordering::Relaxed);
-                return BanCacheLookup::Banned;
+        for network in ban_networks_for(ip).iter() {
+            match self
+                .bans_by_ip
+                .read_async(&network, |_, ban| ban.is_active(now))
+                .await
+            {
+                Some(true) => {
+                    self.ban_cache_hits.fetch_add(1, Ordering::Relaxed);
+                    return BanCacheLookup::Banned;
+                }
+                Some(false) => {
+                    let _ = self
+                        .bans_by_ip
+                        .remove_if_async(&network, |ban| !ban.is_active(now))
+                        .await;
+                }
+                None => {}
             }
-            Some(false) => {
-                let _ = self
-                    .bans_by_ip
-                    .remove_if_async(&ip, |ban| !ban.is_active(now))
-                    .await;
-            }
-            None => {}
         }
 
         self.ban_cache_misses.fetch_add(1, Ordering::Relaxed);
@@ -170,5 +172,78 @@ impl LiveChatCache {
             database_read_throughs: self.ban_database_read_throughs.load(Ordering::Relaxed),
             rejected_admissions: self.ban_rejected_admissions.load(Ordering::Relaxed),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::IpAddr;
+
+    use chrono::Duration;
+
+    use super::*;
+    use crate::features::live_chat::domain::ip_prefix::LiveChatIpPrefix;
+
+    fn ban(network: ipnet::IpNet, expires_in: Option<Duration>) -> CachedLiveChatBan {
+        let now = Utc::now();
+        CachedLiveChatBan {
+            live_chat_ban_id: Uuid::now_v7(),
+            user_id: None,
+            banned_ip: Some(network),
+            reason: "test".to_owned(),
+            ban_source: "test".to_owned(),
+            banned_at: now,
+            expires_at: expires_in.map(|duration| now + duration),
+        }
+    }
+
+    #[tokio::test]
+    async fn subscriber_prefix_ban_covers_every_address_in_the_prefix()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let cache = LiveChatCache::new(1024);
+        let banned: IpAddr = "2001:db8:5:6::1".parse()?;
+        let network = LiveChatIpPrefix::of(banned).network();
+        assert!(
+            cache
+                .cache_ban(ban(network, Some(Duration::hours(24))))
+                .await
+        );
+        let neighbor: IpAddr = "2001:db8:5:6:ffff::2".parse()?;
+        let outsider: IpAddr = "2001:db8:5:7::1".parse()?;
+        assert_eq!(
+            cache.lookup_ban(None, neighbor).await,
+            BanCacheLookup::Banned
+        );
+        assert_eq!(
+            cache.lookup_ban(None, outsider).await,
+            BanCacheLookup::NotBanned
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn legacy_host_bans_and_expiry_are_honored() -> Result<(), Box<dyn std::error::Error>> {
+        let cache = LiveChatCache::new(1024);
+        let host: IpAddr = "2001:db8::9".parse()?;
+        assert!(cache.cache_ban(ban(ipnet::IpNet::from(host), None)).await);
+        assert_eq!(cache.lookup_ban(None, host).await, BanCacheLookup::Banned);
+        let sibling: IpAddr = "2001:db8::a".parse()?;
+        assert_eq!(
+            cache.lookup_ban(None, sibling).await,
+            BanCacheLookup::NotBanned
+        );
+
+        let expired: IpAddr = "198.51.100.3".parse()?;
+        let network = LiveChatIpPrefix::of(expired).network();
+        assert!(
+            cache
+                .cache_ban(ban(network, Some(Duration::seconds(-1))))
+                .await
+        );
+        assert_eq!(
+            cache.lookup_ban(None, expired).await,
+            BanCacheLookup::NotBanned
+        );
+        Ok(())
     }
 }

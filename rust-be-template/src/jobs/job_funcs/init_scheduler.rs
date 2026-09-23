@@ -18,7 +18,7 @@ use crate::{
             compress_logs::compress_old_logs, flush_photograph_views::flush_photograph_views,
             flush_visitor_logs::flush_visitor_logs, prune_auth_abuse::prune_auth_abuse,
             prune_forum_notifications::prune_forum_notifications,
-            prune_live_chat::prune_live_chat_state,
+            prune_live_chat::prune_live_chat_rate_windows, prune_live_chat::prune_live_chat_state,
             prune_photograph_batches::prune_photograph_batches,
             retry_media_cleanup::retry_media_object_cleanup,
             send_retention_notifications::send_retention_notifications,
@@ -172,6 +172,22 @@ pub async fn task_init(state: Arc<ServerState>) -> anyhow::Result<()> {
                 },
                 String::from("PRUNE_LIVE_CHAT_STATE"),
                 30,
+                0,
+            )
+        });
+    }
+
+    {
+        let state = Arc::clone(&state);
+        supervise("PRUNE_LIVE_CHAT_RATE_WINDOWS", move || {
+            let state = Arc::clone(&state);
+            schedule_task_every_second_at(
+                state,
+                move |coroutine_state: Arc<ServerState>| async move {
+                    prune_live_chat_rate_windows(coroutine_state).await
+                },
+                String::from("PRUNE_LIVE_CHAT_RATE_WINDOWS"),
+                500,
                 0,
             )
         });

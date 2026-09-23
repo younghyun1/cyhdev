@@ -15,7 +15,10 @@ use super::{
 };
 use crate::features::live_chat::{
     domain::actor::ChatActor,
-    service::{cache::LiveChatServerEvent, live_chat_service::LiveChatService},
+    service::{
+        cache::{LiveChatServerEvent, MessageRateDecision},
+        live_chat_service::LiveChatService,
+    },
 };
 
 pub(super) async fn handle_client_message(
@@ -102,22 +105,36 @@ async fn handle_send_message(
         return false;
     }
 
-    if service
+    match service
         .cache
         .record_message_attempt(actor.user_id, client_ip, now)
         .await
     {
-        if let Some(ban) = persist_live_chat_ban(Arc::clone(&service), &actor, client_ip).await {
-            let _ = service.cache.cache_ban(ban).await;
+        MessageRateDecision::Allowed => {}
+        MessageRateDecision::Abnormal => {
+            if let Some(ban) = persist_live_chat_ban(Arc::clone(&service), &actor, client_ip).await
+            {
+                let _ = service.cache.cache_ban(ban).await;
+            }
+            send_error(
+                out,
+                "banned",
+                "Live chat access denied for abnormal messaging patterns.",
+                wire_protocol,
+            )
+            .await;
+            return false;
         }
-        send_error(
-            out,
-            "banned",
-            "Live chat access denied for abnormal messaging patterns.",
-            wire_protocol,
-        )
-        .await;
-        return false;
+        MessageRateDecision::Saturated => {
+            send_error(
+                out,
+                "rate_limited",
+                "Live chat is busy. Please try again shortly.",
+                wire_protocol,
+            )
+            .await;
+            return true;
+        }
     }
 
     let body = body.trim().to_string();
