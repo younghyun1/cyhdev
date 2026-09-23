@@ -9,19 +9,35 @@ ARG NODE_DOCKER_TAG=24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b6413
 ARG ALPINE_DOCKER_TAG=3.23@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
 
 # Build the pinned EU5 source revision as a browser-native ES module package.
+# wasm-pack would otherwise download wasm-bindgen and binaryen release archives
+# with no integrity check. wasm-bindgen is built from crates.io, whose index
+# checksums cover every locked crate, and wasm-opt comes from Alpine's signed
+# binaryen package. `--mode no-install` makes wasm-pack use those PATH binaries:
+# it fails when the locked wasm-bindgen version is absent, and it would skip
+# wasm-opt silently, so the build step checks both first.
 FROM rustlang/rust:${RUST_ALPINE_DOCKER_TAG} AS eu5-wasm
 ARG WASM_PACK_VERSION=0.15.0
 ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}"
-RUN apk add --no-cache clang lld musl-dev git ca-certificates make perl \
+RUN apk add --no-cache binaryen clang lld musl-dev git ca-certificates make perl \
     && rustup target add wasm32-unknown-unknown --toolchain "$RUSTUP_TOOLCHAIN" \
     && cargo install wasm-pack --version "$WASM_PACK_VERSION" --locked
+# Must equal the wasm-bindgen version in vendor/eu5-location-filter/Cargo.lock;
+# the build step rejects a mismatch after the submodule moves.
+ARG WASM_BINDGEN_VERSION=0.2.127
+RUN cargo install wasm-bindgen-cli --version "$WASM_BINDGEN_VERSION" --locked
 WORKDIR /workspace/vendor/eu5-location-filter
 COPY vendor/eu5-location-filter/ ./
 RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-location-filter/target,sharing=locked \
     --mount=type=cache,id=cyhdev-eu5-cargo-registry,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=cyhdev-eu5-cargo-git,target=/usr/local/cargo/git/db,sharing=locked \
-    --mount=type=cache,id=cyhdev-wasm-pack-cache,target=/root/.cache/.wasm-pack,sharing=locked \
-    wasm-pack build --release --target web --no-pack --no-typescript -- \
+    locked_bindgen="$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)" \
+    && if [ "$locked_bindgen" != "$WASM_BINDGEN_VERSION" ]; then \
+        echo "EU5 Cargo.lock requires wasm-bindgen ${locked_bindgen:-<missing>}; set WASM_BINDGEN_VERSION to match" >&2; \
+        exit 1; \
+    fi \
+    && wasm-bindgen --version \
+    && wasm-opt --version \
+    && wasm-pack build --release --mode no-install --target web --no-pack --no-typescript -- \
         --locked --no-default-features --features web \
     && test -s pkg/eu5_location_filter.js \
     && test "$(od -An -tx1 -N4 pkg/eu5_location_filter_bg.wasm | tr -d ' \n')" = "0061736d"
