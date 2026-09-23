@@ -73,7 +73,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route("/api/blog/posts/{post_id}", get(read_post))
         .route("/api/blog/search", get(search_posts))
         .route("/api/live-chat/messages", get(get_live_chat_messages))
-        .route("/api/live-chat/cache-stats", get(get_live_chat_cache_stats))
         .route("/api/i18n/ui-text", get(get_ui_text_bundle))
         .route("/api/photographs/get", get(get_photographs))
         .route("/api/photographs/{photograph_id}", get(read_photograph))
@@ -263,6 +262,10 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .route(
             "/api/admin/live-chat/messages/{message_id}",
             delete(crate::features::live_chat::api::delete_message::delete_live_chat_message),
+        )
+        .route(
+            "/api/admin/live-chat/cache-stats",
+            get(get_live_chat_cache_stats),
         )
         .route("/api/admin/sync-i18n-cache", post(sync_i18n_cache))
         .route(

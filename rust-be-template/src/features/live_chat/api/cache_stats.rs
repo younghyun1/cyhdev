@@ -12,12 +12,16 @@ use crate::{
     util::time::now::tokio_now,
 };
 
+/// Operational cache metrics for superusers. Served from the superuser router,
+/// so connection counts and cache pressure are not public reconnaissance data.
 #[utoipa::path(
     get,
-    path = "/api/live-chat/cache-stats",
+    path = "/api/admin/live-chat/cache-stats",
     tag = "live_chat",
     responses(
         (status = 200, description = "Live chat cache stats", body = LiveChatCacheStatsResponse),
+        (status = 401, description = "Unauthenticated", body = CodeErrorResp),
+        (status = 403, description = "Current superuser authority required", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]
@@ -31,4 +35,24 @@ pub async fn get_live_chat_cache_stats(
         (),
         start,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::docs::ApiDoc;
+    use utoipa::OpenApi;
+
+    #[test]
+    fn cache_stats_are_documented_only_as_a_superuser_route() -> Result<(), serde_json::Error> {
+        let document = serde_json::to_value(ApiDoc::openapi())?;
+        assert!(
+            document["paths"]
+                .get("/api/live-chat/cache-stats")
+                .is_none()
+        );
+        let responses = &document["paths"]["/api/admin/live-chat/cache-stats"]["get"]["responses"];
+        assert!(responses.get("401").is_some());
+        assert!(responses.get("403").is_some());
+        Ok(())
+    }
 }
