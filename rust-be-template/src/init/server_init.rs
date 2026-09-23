@@ -2,7 +2,6 @@ use std::{
     net::{IpAddr, SocketAddr},
     path::PathBuf,
     sync::Arc,
-    time::Duration,
 };
 
 use axum::{
@@ -11,8 +10,6 @@ use axum::{
     response::Redirect,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
-use diesel_async::pooled_connection::bb8::Pool;
 use lettre::{AsyncSmtpTransport, Tokio1Executor, transport::smtp::authentication::Credentials};
 use tracing::info;
 
@@ -21,11 +18,13 @@ use crate::{
     routers::main_router::build_router, util::extract::Host,
 };
 
-use super::{config::DbConfig, state::ServerState};
+use super::{
+    db_config::DbConfig,
+    db_pool::{self, DbPoolSettings, build_pool, with_session_options},
+    state::ServerState,
+};
 
 pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()> {
-    let num_cores: u32 = num_cpus::get_physical() as u32;
-
     let host_ip: IpAddr = std::env::var("HOST_IP")
         .map_err(|e| anyhow::anyhow!("Failed to load HOST_IP from .env: {}", e))?
         .parse::<std::net::IpAddr>()
@@ -76,20 +75,15 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
         "Loaded database configuration"
     );
 
-    let pool_config =
-        AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(db_url.clone());
-
-    let pool = Pool::builder()
-        .min_idle(Some(num_cores))
-        .max_size(num_cores * 10u32)
-        .connection_timeout(Duration::from_secs(2))
-        .build(pool_config)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to build connection pool: {}", e))?;
+    let pool_settings = DbPoolSettings::from_env()?;
+    let pool = build_pool(&with_session_options(&db_url)?, pool_settings).await?;
 
     info!(
-        min_idle_connections = num_cores,
-        max_connections = num_cores * 10u32,
+        min_idle_connections = pool_settings.min_idle(),
+        max_connections = pool_settings.max_size,
+        statement_timeout_ms = db_pool::STATEMENT_TIMEOUT.as_millis(),
+        lock_timeout_ms = db_pool::LOCK_TIMEOUT.as_millis(),
+        idle_in_transaction_timeout_ms = db_pool::IDLE_IN_TRANSACTION_TIMEOUT.as_millis(),
         "Connection pool built"
     );
 
