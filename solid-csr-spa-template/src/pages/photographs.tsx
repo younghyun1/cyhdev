@@ -253,14 +253,23 @@ export default function Photographs(props: RouteSectionProps) {
   let detailTouchStartX = 0;
   let detailTouchStartY = 0;
 
+  // Desktop warms the detail map for every visitor, but the upload form (with
+  // leaflet-geosearch) and the processing modal only once the viewer is known
+  // to be a superuser, since nobody else can open them. A failed preload is
+  // harmless: the lazy component retries the import when it renders.
   onSettled(() => {
     if (isMobile()) return;
-    void Promise.all([
-      loadBatchUploadFields(),
-      loadProcessingModal(),
-      loadPhotographMap(),
-    ]);
+    loadPhotographMap().catch(() => {});
   });
+  createEffect(
+    () => !isMobile() && isSuperuser() === true,
+    (preloadAdminTools) => {
+      if (!preloadAdminTools) return;
+      Promise.all([loadBatchUploadFields(), loadProcessingModal()]).catch(
+        () => {},
+      );
+    },
+  );
 
   // --- URL-synced detail modal ---
   // The detail view is /photographs/:photograph_id rendered as a modal over the
