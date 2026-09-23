@@ -6,7 +6,10 @@ use diesel_async::RunQueryDsl;
 use diesel_migrations::MigrationHarness;
 
 use rust_be_template::{
-    features::accounts::{domain::role::RoleType, error::AccountError},
+    features::accounts::{
+        domain::{capability_token::CapabilityDigest, role::RoleType},
+        error::AccountError,
+    },
     init::db_migrations::MIGRATIONS,
     schema::email_verification_tokens,
 };
@@ -207,11 +210,11 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let consumed = seed_account(&context, "VerifyConsumed").await?;
         context
             .accounts
-            .verify_email(consumed.verification_token)
+            .verify_email(&consumed.verification_token)
             .await?;
         match context
             .accounts
-            .verify_email(consumed.verification_token)
+            .verify_email(&consumed.verification_token)
             .await
         {
             Err(AccountError::EmailVerificationTokenAlreadyUsed) => {}
@@ -221,9 +224,11 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let expired = seed_account(&context, "VerifyExpired").await?;
         let fabricated = seed_account(&context, "VerifyFuture").await?;
         let now = Utc::now();
+        let expired_digest = digest_of(&expired.verification_token)?;
+        let fabricated_digest = digest_of(&fabricated.verification_token)?;
         let mut connection = context.pool.get().await?;
         diesel::update(email_verification_tokens::table.filter(
-            email_verification_tokens::email_verification_token.eq(expired.verification_token),
+            email_verification_tokens::email_verification_token_hash.eq(expired_digest.as_bytes()),
         ))
         .set((
             email_verification_tokens::email_verification_token_created_at
@@ -233,9 +238,12 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         ))
         .execute(&mut connection)
         .await?;
-        diesel::update(email_verification_tokens::table.filter(
-            email_verification_tokens::email_verification_token.eq(fabricated.verification_token),
-        ))
+        diesel::update(
+            email_verification_tokens::table.filter(
+                email_verification_tokens::email_verification_token_hash
+                    .eq(fabricated_digest.as_bytes()),
+            ),
+        )
         .set((
             email_verification_tokens::email_verification_token_created_at
                 .eq(now + Duration::hours(1)),
@@ -247,7 +255,7 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         drop(connection);
         match context
             .accounts
-            .verify_email(expired.verification_token)
+            .verify_email(&expired.verification_token)
             .await
         {
             Err(AccountError::EmailVerificationTokenExpired) => {}
@@ -256,7 +264,7 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         }
         match context
             .accounts
-            .verify_email(fabricated.verification_token)
+            .verify_email(&fabricated.verification_token)
             .await
         {
             Err(AccountError::EmailVerificationTokenFabricated) => Ok(()),
@@ -264,6 +272,16 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             Ok(_) => require(false, "future-created verification token was accepted"),
         }
     })
+}
+
+fn digest_of(token: &str) -> TestResult<CapabilityDigest> {
+    match CapabilityDigest::from_submitted(token) {
+        Some(digest) => Ok(digest),
+        None => {
+            require(false, "fixture issued a non-canonical verification token")?;
+            Err(Box::new(AccountError::EmailVerificationTokenNotFound) as BoxError)
+        }
+    }
 }
 
 struct MigrationRoundTrip {

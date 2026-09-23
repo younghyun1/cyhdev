@@ -10,7 +10,7 @@ use zeroize::Zeroizing;
 
 use rust_be_template::{
     features::accounts::{
-        domain::account::SignupCommand,
+        domain::{account::SignupCommand, capability_token::CapabilityToken},
         repository::account_repository::AccountRepository,
         service::{
             account_service::{AccountService, AccountServiceDependencies},
@@ -57,7 +57,8 @@ pub struct AccountFixture {
     pub user_id: Uuid,
     pub user_name: String,
     pub email: String,
-    pub verification_token: Uuid,
+    /// Raw verification capability; PostgreSQL holds only its digest.
+    pub verification_token: String,
     pub country: i32,
     pub language: i32,
 }
@@ -148,7 +149,7 @@ pub async fn seed_verified_account(
     let fixture = seed_account(context, label).await?;
     context
         .accounts
-        .verify_email(fixture.verification_token)
+        .verify_email(&fixture.verification_token)
         .await?;
     Ok(fixture)
 }
@@ -159,20 +160,20 @@ pub async fn seed_verified_account(
 pub async fn known_verification_token(
     context: &AccountTestContext,
     user_id: Uuid,
-) -> TestResult<Uuid> {
-    let token = Uuid::new_v4();
+) -> TestResult<String> {
+    let (token, digest) = CapabilityToken::generate()?;
     let mut connection = context.pool.get().await?;
     let updated = diesel::update(
         email_verification_tokens::table
             .filter(email_verification_tokens::user_id.eq(user_id))
             .filter(email_verification_tokens::email_verification_token_used_at.is_null()),
     )
-    .set(email_verification_tokens::email_verification_token.eq(token))
+    .set(email_verification_tokens::email_verification_token_hash.eq(digest.as_bytes()))
     .execute(&mut connection)
     .await?;
     drop(connection);
     if updated == 1 {
-        Ok(token)
+        Ok(token.expose().to_owned())
     } else {
         Err(Box::new(HarnessError::Assertion {
             message: "account did not have exactly one unused verification token",

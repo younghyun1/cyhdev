@@ -72,6 +72,8 @@ pub enum AccountError {
     PasswordResetTokenNotFound,
     #[error("token has already been consumed")]
     TokenAlreadyConsumed,
+    #[error("operating-system entropy was unavailable for a one-time email capability")]
+    CapabilityEntropy(#[source] getrandom::Error),
     #[error("account email is already verified")]
     EmailAlreadyVerified,
     #[error("role ID {0} is not recognized")]

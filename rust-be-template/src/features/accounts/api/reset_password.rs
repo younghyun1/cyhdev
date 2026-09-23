@@ -45,12 +45,10 @@ pub async fn reset_password(
         )
         .await
         .map_err(map_auth_throttle_rejection)?;
+    let new_password = Zeroizing::new(mem::take(&mut request.new_password));
     let receipt = state
         .account_service()
-        .reset_password(
-            request.password_reset_token,
-            Zeroizing::new(mem::take(&mut request.new_password)),
-        )
+        .reset_password(&request.password_reset_token, new_password)
         .await
         .map_err(map_password_reset_error)?;
 

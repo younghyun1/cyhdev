@@ -44,6 +44,7 @@ use crate::{
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
         (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Correct password, but the email address is not verified; no session is issued"),
         (status = 429, description = "Authentication attempt budget exhausted"),
         (status = 503, description = "Session capacity unavailable"),
         (status = 500, description = "Internal server error")

@@ -4,12 +4,14 @@ use chrono::Utc;
 use lettre::AsyncTransport;
 use std::sync::Arc;
 use tracing::error;
-use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use crate::{
     features::accounts::{
-        domain::account::PasswordResetReceipt,
+        domain::{
+            account::PasswordResetReceipt,
+            capability_token::{CapabilityDigest, CapabilityToken},
+        },
         error::AccountError,
         service::{
             account_service::AccountService,
@@ -38,32 +40,35 @@ impl AccountService {
             .await?;
 
         let now = Utc::now();
-        let token = Uuid::new_v4();
+        let (token, digest) =
+            CapabilityToken::generate().map_err(AccountError::CapabilityEntropy)?;
         let receipt = self
             .repository
             .issue_password_reset_token(
                 user_email,
-                token,
+                &digest,
                 now,
                 now + PASSWORD_RESET_TOKEN_VALID_DURATION,
             )
             .await?;
         if let Some(receipt) = receipt {
-            self.send_password_reset_email(receipt.user_email, receipt.token);
+            self.send_password_reset_email(receipt.user_email, &token);
         }
         Ok(())
     }
 
     pub async fn reset_password(
         self: &Arc<Self>,
-        token_value: Uuid,
+        token_value: &str,
         new_password: Zeroizing<String>,
     ) -> Result<PasswordResetReceipt, AccountError> {
         if !validate_auth_password(&new_password) {
             return Err(AccountError::InvalidPassword);
         }
+        let digest = CapabilityDigest::from_submitted(token_value)
+            .ok_or(AccountError::PasswordResetTokenNotFound)?;
         let now = Utc::now();
-        let token = match self.repository.password_reset_token(token_value).await? {
+        let token = match self.repository.password_reset_token(&digest).await? {
             Some(token) => token,
             None => return Err(AccountError::PasswordResetTokenNotFound),
         };
@@ -99,7 +104,7 @@ impl AccountService {
         .await
     }
 
-    fn send_password_reset_email(&self, user_email: String, token: Uuid) {
+    fn send_password_reset_email(&self, user_email: String, token: &CapabilityToken) {
         let email_job = match self.email_jobs.clone().try_acquire_owned() {
             Ok(email_job) => email_job,
             Err(_) => {
@@ -113,11 +118,15 @@ impl AccountService {
             }
         };
         let email_client = self.email_client.clone();
-        let public_app_origin = Arc::clone(&self.public_app_origin);
+        let link = Zeroizing::new(format!(
+            "{}/reset-password#token={}",
+            self.public_app_origin,
+            token.expose()
+        ));
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match PasswordResetEmail::new()
-                .set_link(&format!("{public_app_origin}/reset-password#token={token}"))
+                .set_link(&link)
                 .to_message(&user_email)
             {
                 Ok(message) => message,

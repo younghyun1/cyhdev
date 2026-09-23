@@ -222,10 +222,10 @@ diesel::table! {
     email_verification_tokens (email_verification_token_id) {
         email_verification_token_id -> Uuid,
         user_id -> Uuid,
-        email_verification_token -> Uuid,
         email_verification_token_expires_at -> Timestamptz,
         email_verification_token_created_at -> Timestamptz,
         email_verification_token_used_at -> Nullable<Timestamptz>,
+        email_verification_token_hash -> Bytea,
     }
 }
 
@@ -368,10 +368,10 @@ diesel::table! {
     password_reset_tokens (password_reset_token_id) {
         password_reset_token_id -> Uuid,
         user_id -> Uuid,
-        password_reset_token -> Uuid,
         password_reset_token_expires_at -> Timestamptz,
         password_reset_token_created_at -> Timestamptz,
         password_reset_token_used_at -> Nullable<Timestamptz>,
+        password_reset_token_hash -> Bytea,
     }
 }
 

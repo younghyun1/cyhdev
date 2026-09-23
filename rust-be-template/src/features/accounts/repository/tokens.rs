@@ -11,6 +11,7 @@ use crate::{
             EmailVerificationReceipt, EmailVerificationToken, PasswordResetReceipt,
             PasswordResetRequestReceipt, PasswordResetToken,
         },
+        domain::capability_token::CapabilityDigest,
         error::AccountError,
         repository::{
             account_repository::AccountRepository,
@@ -28,7 +29,7 @@ impl AccountRepository {
     pub async fn issue_password_reset_token(
         &self,
         user_email: &str,
-        token: Uuid,
+        digest: &CapabilityDigest,
         created_at: DateTime<Utc>,
         expires_at: DateTime<Utc>,
     ) -> Result<Option<PasswordResetRequestReceipt>, AccountError> {
@@ -60,7 +61,7 @@ impl AccountRepository {
                     diesel::insert_into(password_reset_tokens::table)
                         .values(NewPasswordResetTokenRecord {
                             user_id,
-                            password_reset_token: token,
+                            password_reset_token_hash: digest.as_bytes(),
                             password_reset_token_expires_at: expires_at,
                             password_reset_token_created_at: created_at,
                         })
@@ -68,7 +69,6 @@ impl AccountRepository {
                         .await?;
                     Ok(Some(PasswordResetRequestReceipt {
                         user_email: stored_email,
-                        token,
                         verify_by: expires_at,
                     }))
                 },
@@ -78,11 +78,11 @@ impl AccountRepository {
 
     pub async fn password_reset_token(
         &self,
-        token: Uuid,
+        digest: &CapabilityDigest,
     ) -> Result<Option<PasswordResetToken>, AccountError> {
         let mut connection = self.connection().await?;
         password_reset_tokens::table
-            .filter(password_reset_tokens::password_reset_token.eq(token))
+            .filter(password_reset_tokens::password_reset_token_hash.eq(digest.as_bytes()))
             .select(PasswordResetTokenRecord::as_select())
             .first::<PasswordResetTokenRecord>(&mut connection)
             .await
@@ -140,11 +140,11 @@ impl AccountRepository {
 
     pub async fn email_verification_token(
         &self,
-        token: Uuid,
+        digest: &CapabilityDigest,
     ) -> Result<Option<EmailVerificationToken>, AccountError> {
         let mut connection = self.connection().await?;
         email_verification_tokens::table
-            .filter(email_verification_tokens::email_verification_token.eq(token))
+            .filter(email_verification_tokens::email_verification_token_hash.eq(digest.as_bytes()))
             .select(EmailVerificationTokenRecord::as_select())
             .first::<EmailVerificationTokenRecord>(&mut connection)
             .await
