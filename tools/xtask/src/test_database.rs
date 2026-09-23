@@ -2,7 +2,7 @@
 
 use std::{env, net::IpAddr, process::Command};
 
-use crate::{TaskError, TaskResult};
+use crate::{TaskError, TaskResult, psql_connection::PsqlConnection};
 
 const DISPOSABLE_MAINTENANCE_DATABASE: &str = "cyhdev_test_maintenance";
 const REMOTE_OVERRIDE_ENV: &str = "TEST_DATABASE_ALLOW_REMOTE_CI";
@@ -25,22 +25,16 @@ pub(crate) fn validate() -> TaskResult<()> {
         ));
     }
 
-    let output = Command::new("psql")
-        .args([
-            "--no-psqlrc",
-            "--quiet",
-            "--tuples-only",
-            "--no-align",
-            "--field-separator=|",
-            "--set=ON_ERROR_STOP=1",
-            "--dbname",
-            &database_url,
-            "--command",
-            "SELECT current_setting('server_version_num'), current_database(), COALESCE(inet_server_addr()::text, '')",
-        ])
-        .output()
-        .map_err(|error| TaskError(format!("failed to execute psql for test database validation: {error}")))?;
+    let connection = PsqlConnection::parse(&database_url)?;
     drop(database_url);
+    let mut command = validation_command(&connection);
+    drop(connection);
+    let output = command.output().map_err(|error| {
+        TaskError(format!(
+            "failed to execute psql for test database validation: {error}"
+        ))
+    })?;
+    drop(command);
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(TaskError(format!(
@@ -75,6 +69,30 @@ pub(crate) fn validate() -> TaskResult<()> {
     validate_server_address(server_address)
 }
 
+/// Builds the version, database, and address probe. The password goes through
+/// the child environment, never argv; do not Debug-format the returned command,
+/// since that would print PGPASSWORD.
+fn validation_command(connection: &PsqlConnection) -> Command {
+    let mut command = Command::new("psql");
+    command
+        .args([
+            "--no-psqlrc",
+            "--quiet",
+            "--tuples-only",
+            "--no-align",
+            "--field-separator=|",
+            "--set=ON_ERROR_STOP=1",
+            "--dbname",
+            &connection.url,
+            "--command",
+            "SELECT current_setting('server_version_num'), current_database(), COALESCE(inet_server_addr()::text, '')",
+        ]);
+    if let Some(password) = &connection.password {
+        command.env("PGPASSWORD", password);
+    }
+    command
+}
+
 fn validate_server_address(server_address: &str) -> TaskResult<()> {
     if server_address.is_empty() {
         return Ok(());
@@ -97,5 +115,46 @@ fn validate_server_address(server_address: &str) -> TaskResult<()> {
         Err(TaskError(format!(
             "remote PostgreSQL server {address} is forbidden; CI must set CI=true and {REMOTE_OVERRIDE_ENV}=1 explicitly"
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+
+    use super::{PsqlConnection, validation_command};
+
+    #[test]
+    fn psql_receives_the_password_only_through_its_environment() -> crate::TaskResult<()> {
+        let connection = PsqlConnection::parse(
+            "postgres://tester:fixture-pass@127.0.0.1:5432/cyhdev_test_maintenance",
+        )?;
+        let command = validation_command(&connection);
+        let arguments = command
+            .get_args()
+            .map(|argument| argument.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        assert!(
+            arguments
+                .iter()
+                .all(|argument| !argument.contains("fixture-pass"))
+        );
+        assert!(
+            arguments
+                .contains(&"postgres://tester@127.0.0.1:5432/cyhdev_test_maintenance".to_owned())
+        );
+        assert_eq!(
+            command.get_envs().collect::<Vec<_>>(),
+            [(OsStr::new("PGPASSWORD"), Some(OsStr::new("fixture-pass")))]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn psql_keeps_ambient_password_sources_without_a_uri_password() -> crate::TaskResult<()> {
+        let connection =
+            PsqlConnection::parse("postgres://tester@localhost/cyhdev_test_maintenance")?;
+        assert_eq!(validation_command(&connection).get_envs().count(), 0);
+        Ok(())
     }
 }
