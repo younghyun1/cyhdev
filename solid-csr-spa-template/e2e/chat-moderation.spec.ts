@@ -3,7 +3,7 @@ import { installApiMocks, setUiPreferences } from "./fixtures";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const message = {
-  live_chat_message_id: id, room_key: "main", user_id: null, guest_ip: null,
+  live_chat_message_id: id, room_key: "main", user_id: null,
   sender_kind: 2, sender_display_name: "Guest", sender_country_flag: null,
   user_profile_picture_url: null, message_body: "Message selected for moderation",
   message_created_at: "2026-09-21T12:00:00Z", message_edited_at: null, message_deleted_at: null,
@@ -17,8 +17,8 @@ for (const mode of ["superuser", "authenticated", "logged-out"] as const) {
     await page.routeWebSocket("**/ws/live-chat", (socket) => {
       publish = (body) => socket.send(body);
       socket.send(JSON.stringify({
-        type: "hello", actor: { actor_key: { type: "guest", value: "192.0.2.1" },
-          sender_kind: 2, user_id: null, guest_ip: null, display_name: "Guest",
+        type: "hello", actor: { actor_key: { type: "guest", value: "0a1b2c3d4e5f60718293a4b5c6d7e8f9" },
+          sender_kind: 2, user_id: null, display_name: "Guest",
           country_flag: null, user_profile_picture_url: null },
         recent_messages: [message], connected_count: 1,
       }));

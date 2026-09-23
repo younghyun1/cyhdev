@@ -555,7 +555,6 @@ export const UI_TEXT_KEYS = [
   "live_chat.send",
   "live_chat.delete_confirm",
   "live_chat.delete_failed",
-  "live_chat.guest_ip",
   "live_chat.connection_failed",
   "live_chat.not_connected",
   "live_chat.send_failed",

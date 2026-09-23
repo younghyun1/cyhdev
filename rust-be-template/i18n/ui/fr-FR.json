@@ -640,7 +640,6 @@
   "live_chat.send": "Envoyer",
   "live_chat.delete_confirm": "Supprimer ce message pour tout le monde ? Cette action est irréversible.",
   "live_chat.delete_failed": "Impossible de supprimer le message. Veuillez réessayer.",
-  "live_chat.guest_ip": "IP de l'invité",
   "live_chat.connection_failed": "La connexion à la discussion en direct a échoué.",
   "live_chat.not_connected": "La discussion en direct n'est pas connectée.",
   "live_chat.send_failed": "Impossible d'envoyer le message.",

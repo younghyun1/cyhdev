@@ -8,11 +8,12 @@ export type ChatActorKey =
       value: string;
     };
 
+/// Guests are identified only by an opaque server-keyed `actor_key` value; the
+/// protocol never carries guest IP addresses.
 export interface ChatActor {
   actor_key: ChatActorKey;
   sender_kind: number;
   user_id: string | null;
-  guest_ip: string | null;
   display_name: string;
   country_flag: string | null;
   user_profile_picture_url: string | null;
@@ -22,7 +23,6 @@ export interface LiveChatMessageItem {
   live_chat_message_id: string;
   room_key: string;
   user_id: string | null;
-  guest_ip: string | null;
   sender_kind: number;
   sender_display_name: string;
   sender_country_flag: string | null;

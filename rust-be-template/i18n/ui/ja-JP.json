@@ -625,7 +625,6 @@
   "live_chat.send": "送信",
   "live_chat.delete_confirm": "このメッセージを全員から削除しますか？この操作は取り消せません。",
   "live_chat.delete_failed": "メッセージを削除できませんでした。再試行してください。",
-  "live_chat.guest_ip": "ゲスト IP",
   "live_chat.connection_failed": "ライブチャットの接続に失敗しました。",
   "live_chat.not_connected": "ライブチャットに接続されていません。",
   "live_chat.send_failed": "メッセージを送信できませんでした。",

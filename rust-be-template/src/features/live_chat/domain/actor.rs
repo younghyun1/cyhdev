@@ -4,10 +4,12 @@ use uuid::Uuid;
 
 use crate::features::accounts::domain::account::DELETED_USER_DISPLAY_NAME;
 use crate::features::live_chat::domain::{
-    guest_nickname::guest_nickname_for_ip,
+    guest_identity::GuestIdentityKey,
     message::{LIVE_CHAT_SENDER_KIND_GUEST, LIVE_CHAT_SENDER_KIND_USER},
 };
 
+/// Public actor identity. A guest key is the keyed hash from
+/// [`GuestIdentityKey`], never the address itself.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub enum ChatActorKey {
     User(Uuid),
@@ -19,6 +21,8 @@ pub struct ChatActor {
     pub actor_key: ChatActorKey,
     pub sender_kind: i16,
     pub user_id: Option<Uuid>,
+    /// Server-side only: persistence, bans, and rate limits. Wire encoders
+    /// must never serialize this field.
     pub guest_ip: Option<IpAddr>,
     pub display_name: String,
     pub country_flag: Option<String>,
@@ -26,14 +30,19 @@ pub struct ChatActor {
 }
 
 impl ChatActor {
-    pub fn guest(ip: IpAddr, country_flag: Option<String>) -> Self {
-        let display_name = guest_nickname_for_ip(ip);
+    pub fn guest(
+        ip: IpAddr,
+        identity_key: &GuestIdentityKey,
+        country_flag: Option<String>,
+    ) -> Self {
+        let ip = ip.to_canonical();
+        let identity = identity_key.identify(ip);
         Self {
-            actor_key: ChatActorKey::Guest(ip.to_string()),
+            actor_key: ChatActorKey::Guest(identity.actor_key),
             sender_kind: LIVE_CHAT_SENDER_KIND_GUEST,
             user_id: None,
             guest_ip: Some(ip),
-            display_name,
+            display_name: identity.nickname,
             country_flag,
             user_profile_picture_url: None,
         }

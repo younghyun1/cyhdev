@@ -8,7 +8,8 @@ use rust_be_template::{
     features::{
         accounts::domain::role::RoleType,
         live_chat::{
-            domain::actor::ChatActor, error::LiveChatError,
+            domain::{actor::ChatActor, guest_identity::GuestIdentityKey},
+            error::LiveChatError,
             repository::live_chat_repository::LiveChatRepository,
         },
     },
@@ -31,7 +32,11 @@ fn moderation_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let context = account_test_context(database)?;
         let admin = seed_account(&context, "ChatModerator").await?;
         let repository = LiveChatRepository::new(context.pool.clone());
-        let guest = ChatActor::guest("192.0.2.1".parse()?, None);
+        let guest = ChatActor::guest(
+            "192.0.2.1".parse()?,
+            &GuestIdentityKey::from_secret(&[0x5a; 32]),
+            None,
+        );
         let first = repository
             .insert_message(&guest, "retained".to_owned())
             .await?;

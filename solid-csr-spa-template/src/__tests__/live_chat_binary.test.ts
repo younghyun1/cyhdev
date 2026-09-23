@@ -8,11 +8,26 @@ import {
   encodeRtcMediaStateFrame,
   encodeSendMessageFrame,
   encodeTypingFrame,
-  formatIpv6Canonical,
+  LIVE_CHAT_BINARY_PROTOCOL,
 } from "../services/live_chat_binary";
 
 const CLIENT_MESSAGE_ID = "018f3f7d-5a76-7d8f-8123-456789abcdef";
 const MESSAGE_ID = "018f3f7d-5a76-7d8f-8123-456789abc001";
+const GUEST_KEY = "5f0c1e2d3b4a69788796a5b4c3d2e1f0";
+const GUEST_ACTOR = {
+  actor_key: { type: "guest", value: GUEST_KEY },
+  sender_kind: 2,
+  user_id: null,
+  display_name: "curious otter",
+  country_flag: "🇺🇸",
+  user_profile_picture_url: null,
+} as const;
+
+describe("live chat binary protocol version", () => {
+  it("negotiates the guest-key protocol revision", () => {
+    expect(LIVE_CHAT_BINARY_PROTOCOL).toBe("livechat.bin.v2");
+  });
+});
 describe("live chat binary client frames", () => {
   it("encodes send_message as type byte, raw UUID, and UTF-8 body", () => {
     const frame = bytes(encodeSendMessageFrame(CLIENT_MESSAGE_ID, "hello"));
@@ -59,73 +74,40 @@ describe("live chat binary server frames", () => {
     });
   });
 
-  it("decodes typing_set with binary IPv4 guest actor", () => {
+  it("decodes typing_set with an opaque guest key", () => {
     const expiresAtMs = 1_700_000_000_000;
     const frame = [
       0x84,
       ...i64(expiresAtMs),
       1,
-      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
+      ...guestActorBytes(GUEST_KEY, "curious otter", "🇺🇸"),
     ];
 
     expect(decodeServerEventFrame(buffer(frame))).toEqual({
       type: "typing_set",
       expires_at: new Date(expiresAtMs).toISOString(),
-      actors: [
-        {
-          actor_key: { type: "guest", value: "203.0.113.9" },
-          sender_kind: 2,
-          user_id: null,
-          guest_ip: "203.0.113.9",
-          display_name: "curious otter",
-          country_flag: "🇺🇸",
-          user_profile_picture_url: null,
-        },
-      ],
+      actors: [GUEST_ACTOR],
     });
   });
 
-  it("decodes message_ack with binary IPv6 guest IP and edited/deleted timestamps", () => {
+  it("decodes a guest message_ack with edited/deleted timestamps and no address", () => {
     const createdAtMs = 1_700_000_000_000;
     const editedAtMs = 1_700_000_001_000;
     const deletedAtMs = 1_700_000_002_000;
     const frame = [
       0x83,
       ...uuidBytes(CLIENT_MESSAGE_ID),
-      ...messageBytes({
-        guestIpKind: "ipv6",
-        guestIpBytes: [
-          0x20,
-          0x01,
-          0x0d,
-          0xb8,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          1,
-        ],
-        createdAtMs,
-        editedAtMs,
-        deletedAtMs,
-      }),
+      ...messageBytes({ createdAtMs, editedAtMs, deletedAtMs }),
     ];
 
-    expect(decodeServerEventFrame(buffer(frame))).toEqual({
+    const decoded = decodeServerEventFrame(buffer(frame));
+    expect(decoded).toEqual({
       type: "message_ack",
       client_message_id: CLIENT_MESSAGE_ID,
       message: {
         live_chat_message_id: MESSAGE_ID,
         room_key: "main",
         user_id: null,
-        guest_ip: "2001:db8::1",
         sender_kind: 2,
         sender_display_name: "merry raccoon",
         sender_country_flag: "🇺🇸",
@@ -136,6 +118,12 @@ describe("live chat binary server frames", () => {
         message_deleted_at: new Date(deletedAtMs).toISOString(),
       },
     });
+    expect(JSON.stringify(decoded)).not.toContain("guest_ip");
+  });
+
+  it("rejects v1 frames that still carry an address family byte", () => {
+    const v1Actor = [0x02, 0x04, 203, 0, 113, 9, 2, ...str("x"), 0xff, 0xff, 0xff, 0xff];
+    expect(decodeServerEventFrame(buffer([0x84, ...i64(0), 1, ...v1Actor]))).toBeNull();
   });
 
   it("returns null for malformed/trailing frames", () => {
@@ -216,7 +204,7 @@ describe("live chat RTC binary frames", () => {
     const frame = [
       0x90,
       0x04,
-      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
+      ...guestActorBytes(GUEST_KEY, "curious otter", "🇺🇸"),
       1,
       1,
       0,
@@ -224,15 +212,7 @@ describe("live chat RTC binary frames", () => {
     expect(decodeServerEventFrame(buffer(frame))).toEqual({
       type: "rtc",
       kind: "peer_state",
-      actor: {
-        actor_key: { type: "guest", value: "203.0.113.9" },
-        sender_kind: 2,
-        user_id: null,
-        guest_ip: "203.0.113.9",
-        display_name: "curious otter",
-        country_flag: "🇺🇸",
-        user_profile_picture_url: null,
-      },
+      actor: GUEST_ACTOR,
       phase: "joined",
       mic_on: true,
       cam_on: false,
@@ -244,7 +224,7 @@ describe("live chat RTC binary frames", () => {
       0x90,
       0x05,
       1,
-      ...guestActorBytes("203.0.113.9", "curious otter", "🇺🇸"),
+      ...guestActorBytes(GUEST_KEY, "curious otter", "🇺🇸"),
       0,
       1,
     ];
@@ -253,15 +233,7 @@ describe("live chat RTC binary frames", () => {
       kind: "roster",
       participants: [
         {
-          actor: {
-            actor_key: { type: "guest", value: "203.0.113.9" },
-            sender_kind: 2,
-            user_id: null,
-            guest_ip: "203.0.113.9",
-            display_name: "curious otter",
-            country_flag: "🇺🇸",
-            user_profile_picture_url: null,
-          },
+          actor: GUEST_ACTOR,
           mic_on: false,
           cam_on: true,
         },
@@ -281,79 +253,42 @@ describe("live chat RTC binary frames", () => {
       message: "full",
     });
   });
-});
 
-describe("IPv6 canonical formatting (must match Rust Ipv6Addr Display)", () => {
-  it("compresses the longest zero run", () => {
-    expect(
-      formatIpv6Canonical([0x2001, 0xdb8, 0, 0, 0, 0, 0, 1]),
-    ).toBe("2001:db8::1");
-  });
-
-  it("prefers the leftmost run on ties", () => {
-    expect(
-      formatIpv6Canonical([0x2001, 0xdb8, 0, 0, 1, 0, 0, 1]),
-    ).toBe("2001:db8::1:0:0:1");
-  });
-
-  it("leaves single zeros uncompressed", () => {
-    expect(
-      formatIpv6Canonical([0x2001, 0xdb8, 0, 1, 1, 0, 1, 1]),
-    ).toBe("2001:db8:0:1:1:0:1:1");
-  });
-
-  it("formats unspecified and loopback", () => {
-    expect(formatIpv6Canonical([0, 0, 0, 0, 0, 0, 0, 0])).toBe("::");
-    expect(formatIpv6Canonical([0, 0, 0, 0, 0, 0, 0, 1])).toBe("::1");
-  });
-
-  it("formats IPv4-mapped addresses in dotted form", () => {
-    expect(
-      formatIpv6Canonical([0, 0, 0, 0, 0, 0xffff, 0xc000, 0x0221]),
-    ).toBe("::ffff:192.0.2.33");
-  });
-
-  it("decodes an IPv6 guest actor with the canonical guest_ip", () => {
-    const ipBytes = [
-      0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-    ];
+  it("decodes a user actor without any address field", () => {
     const frame = [
       0x90,
       0x04,
-      0x02,
-      0x06,
-      ...ipBytes,
-      2,
-      ...str("curious otter"),
-      ...str("🇺🇸"),
+      0x01,
+      ...uuidBytes(MESSAGE_ID),
+      1,
+      ...str("younghyun"),
       0xff,
       0xff,
-      1,
-      1,
+      0xff,
+      0xff,
       0,
+      0,
+      1,
     ];
     expect(decodeServerEventFrame(buffer(frame))).toEqual({
       type: "rtc",
       kind: "peer_state",
       actor: {
-        actor_key: { type: "guest", value: "2001:db8::1" },
-        sender_kind: 2,
-        user_id: null,
-        guest_ip: "2001:db8::1",
-        display_name: "curious otter",
-        country_flag: "🇺🇸",
+        actor_key: { type: "user", value: MESSAGE_ID },
+        sender_kind: 1,
+        user_id: MESSAGE_ID,
+        display_name: "younghyun",
+        country_flag: null,
         user_profile_picture_url: null,
       },
-      phase: "joined",
-      mic_on: true,
-      cam_on: false,
+      phase: "left",
+      mic_on: false,
+      cam_on: true,
     });
   });
 });
 
 function messageBytes(input: {
-  guestIpKind: "ipv4" | "ipv6";
-  guestIpBytes: number[];
   createdAtMs: number;
   editedAtMs: number;
   deletedAtMs: number;
@@ -362,8 +297,6 @@ function messageBytes(input: {
     ...uuidBytes(MESSAGE_ID),
     ...str("main"),
     0x02,
-    input.guestIpKind === "ipv4" ? 0x04 : 0x06,
-    ...input.guestIpBytes,
     2,
     ...str("merry raccoon"),
     ...str("🇺🇸"),
@@ -377,17 +310,8 @@ function messageBytes(input: {
   ];
 }
 
-function guestActorBytes(ip: string, displayName: string, flag: string): number[] {
-  return [
-    0x02,
-    0x04,
-    ...ip.split(".").map((part) => Number(part)),
-    2,
-    ...str(displayName),
-    ...str(flag),
-    0xff,
-    0xff,
-  ];
+function guestActorBytes(guestKey: string, displayName: string, flag: string): number[] {
+  return [0x02, ...str(guestKey), 2, ...str(displayName), ...str(flag), 0xff, 0xff];
 }
 
 function uuidBytes(uuid: string): number[] {
