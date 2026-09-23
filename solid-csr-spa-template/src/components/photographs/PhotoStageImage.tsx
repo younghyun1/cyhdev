@@ -4,6 +4,7 @@ import {
   createMemo,
   createSignal,
   onCleanup,
+  untrack,
 } from "solid-js";
 import { t } from "../../state/i18n";
 import { createImagePreloader } from "./imagePreloader";
@@ -53,6 +54,9 @@ export default function PhotoStageImage(props: PhotoStageImageProps) {
   createEffect(
     () => ({ src: props.src, attempt: attempt() }),
     ({ src }) => {
+      // Revisiting a photo that failed earlier retries it; show that attempt
+      // as loading rather than the stale error.
+      if (untrack(failedSrc) === src) setFailedSrc(null);
       // Cleared when the photo changes or the viewer closes, so a superseded
       // or aborted load can never reveal its image or error.
       let current = true;
@@ -118,8 +122,6 @@ export default function PhotoStageImage(props: PhotoStageImageProps) {
             class="photo-stage-retry"
             onClick={(event) => {
               event.stopPropagation();
-              // Back to the loading state for the retry, not the stale error.
-              setFailedSrc(null);
               setAttempt((count) => count + 1);
             }}
           >

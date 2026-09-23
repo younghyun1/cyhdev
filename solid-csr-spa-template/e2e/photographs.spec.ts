@@ -238,13 +238,28 @@ test("viewer reports a failed photograph and retries it", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await installApiMocks(page, "logged-out");
   const failing = new Set(["1-full"]);
+  const secondRetry = gate();
   await serveImages(page, {}, failing);
-  await openViewer(page, [photo(1, "Broken photo")]);
+  await openViewer(page, [photo(1, "Broken photo"), photo(2, "Working photo")]);
   const alert = page.getByRole("alert");
   await expect(alert).toContainText("This photograph could not be loaded.");
   await expect(page.locator(".details-info")).toContainText("Broken photo");
   const retry = alert.getByRole("button", { name: "Try again" });
   expect((await retry.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+  // Coming back to the failed photo retries it and shows that as loading.
+  await page.keyboard.press("ArrowRight");
+  await expect(stageImage(page, 2)).toBeVisible();
+  await page.route("**/e2e-photos/1-full.svg", async (route) => {
+    await secondRetry.wait;
+    await route.fallback();
+  });
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".details-info")).toContainText("Broken photo");
+  await expect(page.locator("[data-photo-loading]")).toBeVisible();
+  await expect(alert).toHaveCount(0);
+  secondRetry.open();
+  await expect(alert).toContainText("This photograph could not be loaded.");
 
   failing.clear();
   await retry.click();
