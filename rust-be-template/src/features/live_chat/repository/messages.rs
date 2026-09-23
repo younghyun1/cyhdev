@@ -2,8 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::Utc;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
+    BoolExpressionMethods, ExpressionMethods, IntoSql, JoinOnDsl, NullableExpressionMethods,
     OptionalExtension, QueryDsl, SelectableHelper,
+    sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
@@ -28,10 +29,23 @@ pub struct UserPresentation {
     pub deleted_user_ids: HashSet<Uuid>,
 }
 
+/// `(message_created_at, live_chat_message_id)` as one row value, so keyset
+/// cursors compile to `ROW(a, b) < ROW($1, $2)`. PostgreSQL uses a row
+/// comparison as a range bound on the matching index columns; the equivalent
+/// `a < x OR (a = x AND b < y)` chain only filters after the scan.
+type TimelinePosition = Record<(Timestamptz, SqlUuid)>;
+
 impl LiveChatRepository {
-    pub async fn recent_messages(&self, limit: i64) -> Result<Vec<LiveChatMessage>, LiveChatError> {
+    /// Newest visible messages of one room, oldest first. Served by the partial
+    /// `live_chat_messages_room_visible_keyset_idx` index.
+    pub async fn recent_messages(
+        &self,
+        room_key: &str,
+        limit: i64,
+    ) -> Result<Vec<LiveChatMessage>, LiveChatError> {
         let mut connection = self.connection().await?;
         let mut rows = live_chat_messages::table
+            .filter(live_chat_messages::room_key.eq(room_key))
             .filter(live_chat_messages::message_deleted_at.is_null())
             .select(MessageRecord::as_select())
             .order((
@@ -64,16 +78,16 @@ impl LiveChatRepository {
             .await
             .optional()?
             .ok_or(LiveChatError::InvalidCursor)?;
+        let position = (
+            live_chat_messages::message_created_at,
+            live_chat_messages::live_chat_message_id,
+        )
+            .into_sql::<TimelinePosition>();
+        let cursor = (before.1, before_message_id).into_sql::<TimelinePosition>();
         let mut rows = live_chat_messages::table
             .filter(live_chat_messages::room_key.eq(before.0))
             .filter(live_chat_messages::message_deleted_at.is_null())
-            .filter(
-                live_chat_messages::message_created_at.lt(before.1).or(
-                    live_chat_messages::message_created_at
-                        .eq(before.1)
-                        .and(live_chat_messages::live_chat_message_id.lt(before_message_id)),
-                ),
-            )
+            .filter(position.lt(cursor))
             .select(MessageRecord::as_select())
             .order((
                 live_chat_messages::message_created_at.desc(),
