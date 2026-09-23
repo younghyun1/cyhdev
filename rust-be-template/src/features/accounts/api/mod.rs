@@ -18,6 +18,7 @@ pub mod oidc_callback;
 pub mod oidc_link;
 pub mod oidc_start;
 pub mod oidc_status;
+mod password_confirmation;
 pub mod profile_picture_history;
 pub mod public_user;
 pub mod resend_email_verification_email;

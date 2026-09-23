@@ -46,6 +46,7 @@ impl AccountRecord {
             user_name: self.user_name,
             user_email: self.user_email,
             updated_at: self.user_updated_at,
+            oidc_links_removed: 0,
         }
     }
 }
@@ -209,18 +210,18 @@ pub(super) struct NewUserRoleRecord {
 
 #[derive(Insertable)]
 #[diesel(table_name = email_verification_tokens)]
-pub(super) struct NewEmailVerificationTokenRecord {
+pub(super) struct NewEmailVerificationTokenRecord<'a> {
     pub(super) user_id: Uuid,
-    pub(super) email_verification_token: Uuid,
+    pub(super) email_verification_token_hash: &'a [u8],
     pub(super) email_verification_token_expires_at: DateTime<Utc>,
     pub(super) email_verification_token_created_at: DateTime<Utc>,
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = password_reset_tokens)]
-pub(super) struct NewPasswordResetTokenRecord {
+pub(super) struct NewPasswordResetTokenRecord<'a> {
     pub(super) user_id: Uuid,
-    pub(super) password_reset_token: Uuid,
+    pub(super) password_reset_token_hash: &'a [u8],
     pub(super) password_reset_token_expires_at: DateTime<Utc>,
     pub(super) password_reset_token_created_at: DateTime<Utc>,
 }

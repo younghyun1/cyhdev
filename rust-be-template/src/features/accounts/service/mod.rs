@@ -1,6 +1,7 @@
 pub mod account_service;
 pub mod auth_abuse;
 mod auth_abuse_policy;
+mod auth_abuse_store;
 #[cfg(test)]
 mod auth_abuse_tests;
 pub mod authentication;
@@ -8,7 +9,9 @@ pub mod authorization;
 pub mod forum_authority;
 pub mod lifecycle;
 pub mod media_cleanup;
+mod media_cleanup_location;
 pub mod oidc;
+mod password_work;
 pub mod passwords;
 pub mod profile_picture_cleanup;
 pub mod profile_picture_upload;

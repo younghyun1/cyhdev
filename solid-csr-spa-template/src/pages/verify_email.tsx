@@ -41,7 +41,7 @@ function VerifyEmailPage() {
     setError(null);
     try {
       const response = await authApi.verifyUserEmail({
-        email_validation_token_id: link.token,
+        email_verification_token: link.token,
       });
       if (!response.success || !response.data) {
         setError(t("auth.verify_email.failed"));

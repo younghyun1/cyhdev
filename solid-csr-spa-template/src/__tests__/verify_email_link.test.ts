@@ -4,7 +4,7 @@ import { consumeEmailVerificationFragment } from "../pages/verify_email_link";
 
 describe("email verification link consumption", () => {
   it("retains a canonical fragment token only in returned component state", () => {
-    const token = "6ba7b810-9dad-41d1-80b4-00c04fd430c8";
+    const token = "Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE";
     window.history.replaceState(
       { source: "test" },
       "",
@@ -25,15 +25,11 @@ describe("email verification link consumption", () => {
 
   it.each([
     ["", "missing"],
-    ["#token=not-a-uuid", "invalid"],
-    [
-      "#token=6ba7b810-9dad-41d1-80b4-00c04fd430c8&source=email",
-      "invalid",
-    ],
-    [
-      "#token=6ba7b810-9dad-41d1-80b4-00c04fd430c8&token=6ba7b810-9dad-41d1-80b4-00c04fd430c8",
-      "invalid",
-    ],
+    ["#token=too-short", "invalid"],
+    // Links issued before tokens were stored as digests carried UUIDs; they no longer verify.
+    ["#token=6ba7b810-9dad-41d1-80b4-00c04fd430c8", "invalid"],
+    ["#token=Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE&source=email", "invalid"],
+    ["#token=Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE&token=Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE", "invalid"],
   ] as const)("classifies and scrubs %s", (fragment, expectedKind) => {
     window.history.replaceState(null, "", `/verify-email${fragment}`);
 

@@ -1,8 +1,14 @@
 //! Authenticated full-profile update with current-password confirmation.
 
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
-use axum::{Extension, Json, extract::State, response::IntoResponse};
+use axum::{
+    Extension, Json,
+    extract::{ConnectInfo, State},
+    http::HeaderMap,
+    response::IntoResponse,
+};
+use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
 use crate::{
@@ -12,9 +18,14 @@ use crate::{
             auth::update_profile_response::UpdateProfileResponse, response_data::http_resp,
         },
     },
-    errors::code_error::{CodeError, CodeErrorResp, HandlerResponse, code_err},
+    errors::code_error::{CodeErrorResp, HandlerResponse},
     features::accounts::{
-        api::account_error::{AccountMutation, map_account_error},
+        api::{
+            account_error::{AccountMutation, map_account_error},
+            auth_abuse::request_client_ip,
+            login::session_token_from_cookie,
+            password_confirmation::Confirmation,
+        },
         domain::account::ProfileUpdateCommand,
         error::AccountError,
     },
@@ -32,16 +43,25 @@ use crate::{
         (status = 400, description = "Invalid profile field or password confirmation", body = CodeErrorResp),
         (status = 401, description = "Authentication required", body = CodeErrorResp),
         (status = 409, description = "Profile identity conflict", body = CodeErrorResp),
+        (status = 429, description = "Password confirmation budget exhausted", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )
 )]
 pub async fn update_profile(
     Extension(user_id): Extension<Uuid>,
+    ConnectInfo(socket_addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    cookie_jar: CookieJar,
     State(state): State<Arc<ServerState>>,
     Json(request): Json<UpdateProfileRequest>,
 ) -> HandlerResponse<impl IntoResponse> {
     let start = tokio_now();
-    let profile = state
+    let confirmation = Confirmation {
+        user_id,
+        client_ip: request_client_ip(&headers, socket_addr),
+    };
+    confirmation.admit(&state).await?;
+    let result = state
         .account_service()
         .update_profile(
             user_id,
@@ -53,8 +73,15 @@ pub async fn update_profile(
                 subdivision: request.user_subdivision,
             },
         )
-        .await
-        .map_err(map_profile_update_error)?;
+        .await;
+    let profile = confirmation
+        .settle(
+            &state,
+            session_token_from_cookie(&cookie_jar),
+            result,
+            map_profile_update_error,
+        )
+        .await?;
     Ok(http_resp(
         UpdateProfileResponse {
             user_id: profile.user_id,
@@ -69,11 +96,5 @@ pub async fn update_profile(
 }
 
 fn map_profile_update_error(error: AccountError) -> CodeErrorResp {
-    match error {
-        AccountError::WrongPassword => code_err(
-            CodeError::ACCOUNT_PASSWORD_CONFIRMATION_FAILED,
-            AccountError::WrongPassword,
-        ),
-        error => map_account_error(error, AccountMutation::Update),
-    }
+    map_account_error(error, AccountMutation::Update)
 }

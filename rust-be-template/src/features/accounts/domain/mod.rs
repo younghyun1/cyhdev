@@ -1,6 +1,7 @@
 pub mod account;
 pub mod auth_abuse;
 pub mod authorization;
+pub mod capability_token;
 pub mod forum_authority;
 pub mod lifecycle;
 pub mod oidc;

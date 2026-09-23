@@ -10,7 +10,7 @@ use zeroize::Zeroizing;
 
 use rust_be_template::{
     features::accounts::{
-        domain::account::SignupCommand,
+        domain::{account::SignupCommand, capability_token::CapabilityToken},
         repository::account_repository::AccountRepository,
         service::{
             account_service::{AccountService, AccountServiceDependencies},
@@ -62,7 +62,8 @@ pub struct AccountFixture {
     pub user_id: Uuid,
     pub user_name: String,
     pub email: String,
-    pub verification_token: Uuid,
+    /// Raw verification capability; PostgreSQL holds only its digest.
+    pub verification_token: String,
     pub country: i32,
     pub language: i32,
 }
@@ -126,20 +127,14 @@ pub async fn seed_account(context: &AccountTestContext, label: &str) -> TestResu
         .await?;
 
     let account = match context.repository.login_account_by_email(&email).await? {
-        Some(account) => account,
+        Some(candidate) => candidate.account,
         None => {
             return Err(Box::new(HarnessError::Assertion {
                 message: "registered account was not readable",
             }));
         }
     };
-    let mut connection = context.pool.get().await?;
-    let verification_token = email_verification_tokens::table
-        .filter(email_verification_tokens::user_id.eq(account.user_id))
-        .select(email_verification_tokens::email_verification_token)
-        .first::<Uuid>(&mut connection)
-        .await?;
-    drop(connection);
+    let verification_token = known_verification_token(context, account.user_id).await?;
 
     Ok(AccountFixture {
         user_id: account.user_id,
@@ -149,4 +144,61 @@ pub async fn seed_account(context: &AccountTestContext, label: &str) -> TestResu
         country,
         language,
     })
+}
+
+/// Seeds an account and completes email verification so it can sign in.
+pub async fn seed_verified_account(
+    context: &AccountTestContext,
+    label: &str,
+) -> TestResult<AccountFixture> {
+    let fixture = seed_account(context, label).await?;
+    context
+        .accounts
+        .verify_email(&fixture.verification_token)
+        .await?;
+    Ok(fixture)
+}
+
+/// Replaces the account's unused verification token with one the test knows.
+///
+/// Only a digest of the emailed token is stored, so tests cannot read a token back.
+pub async fn known_verification_token(
+    context: &AccountTestContext,
+    user_id: Uuid,
+) -> TestResult<String> {
+    let (token, digest) = CapabilityToken::generate()?;
+    let mut connection = context.pool.get().await?;
+    let updated = diesel::update(
+        email_verification_tokens::table
+            .filter(email_verification_tokens::user_id.eq(user_id))
+            .filter(email_verification_tokens::email_verification_token_used_at.is_null()),
+    )
+    .set(email_verification_tokens::email_verification_token_hash.eq(digest.as_bytes()))
+    .execute(&mut connection)
+    .await?;
+    drop(connection);
+    if updated == 1 {
+        Ok(token.expose().to_owned())
+    } else {
+        Err(Box::new(HarnessError::Assertion {
+            message: "account did not have exactly one unused verification token",
+        }))
+    }
+}
+
+/// Signup input reusing a fixture's valid geography.
+pub fn signup_command(
+    user_name: &str,
+    user_email: &str,
+    password: &str,
+    geography: &AccountFixture,
+) -> SignupCommand {
+    SignupCommand {
+        user_name: user_name.to_owned(),
+        user_email: user_email.to_owned(),
+        password: Zeroizing::new(password.to_owned()),
+        country: geography.country,
+        language: geography.language,
+        subdivision: None,
+    }
 }

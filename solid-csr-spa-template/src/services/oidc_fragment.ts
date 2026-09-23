@@ -1,10 +1,10 @@
+import { isCapabilityToken } from "./capability_token";
+
 export type OidcFragmentResult =
   | { readonly kind: "none" }
   | { readonly kind: "login-success" }
   | { readonly kind: "link-ready"; readonly completionToken: string }
   | { readonly kind: "failed" };
-
-const COMPLETION_TOKEN = /^[A-Za-z0-9_-]{43}$/;
 
 /** Parses only the OIDC fragment namespace; unrelated page anchors are untouched. */
 export function parseOidcFragment(fragment: string): OidcFragmentResult {
@@ -13,7 +13,7 @@ export function parseOidcFragment(fragment: string): OidcFragmentResult {
   const params = new URLSearchParams(raw);
   const completionToken = params.get("oidc_link_token");
   if (completionToken !== null) {
-    return COMPLETION_TOKEN.test(completionToken)
+    return isCapabilityToken(completionToken)
       ? { kind: "link-ready", completionToken }
       : { kind: "failed" };
   }

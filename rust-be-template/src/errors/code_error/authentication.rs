@@ -207,6 +207,22 @@ impl CodeError {
         message: "OpenID Connect is temporarily unavailable.",
         log_level: Level::WARN,
     };
+    /// A correct password for an account whose email is unverified; no session is issued.
+    pub const LOGIN_EMAIL_NOT_VERIFIED: CodeError = CodeError {
+        success: false,
+        error_code: 68,
+        http_status_code: StatusCode::FORBIDDEN,
+        message: "Verify your email address before signing in.",
+        log_level: Level::INFO,
+    };
+    /// The presenting session was revoked after repeated wrong password confirmations.
+    pub const PASSWORD_CONFIRMATION_SESSION_REVOKED: CodeError = CodeError {
+        success: false,
+        error_code: 69,
+        http_status_code: StatusCode::UNAUTHORIZED,
+        message: "Too many incorrect password confirmations. Sign in again.",
+        log_level: Level::WARN,
+    };
     pub const EMAIL_NOT_VERIFIED: CodeError = CodeError {
         success: false,
         error_code: 41,

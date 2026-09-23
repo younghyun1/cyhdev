@@ -1,7 +1,11 @@
-//! Post-signature validation and bounded claim extraction.
+//! ID-token signature, claim, and access-token-hash validation with bounded extraction.
 
-use openidconnect::{AccessTokenHash, OAuth2TokenResponse};
+use openidconnect::{
+    AccessTokenHash, ClaimsVerificationError, Nonce, OAuth2TokenResponse,
+    SignatureVerificationError, TokenResponse,
+};
 
+use super::signing_keys::DiscoveredCoreClient;
 use crate::features::accounts::{
     domain::oidc::{
         MAX_OIDC_ISSUER_BYTES, MAX_OIDC_PROVIDER_EMAIL_BYTES, MAX_OIDC_SUBJECT_BYTES,
@@ -10,7 +14,58 @@ use crate::features::accounts::{
     error::AccountError,
 };
 
-pub(super) fn identity_from_claims(
+/// Why an ID token was not accepted.
+pub(super) enum IdentityRejection {
+    /// The token names a signing key the cached JWKS lacks; a key refresh may fix it.
+    UnknownSigningKey,
+    Invalid(AccountError),
+}
+
+impl From<AccountError> for IdentityRejection {
+    fn from(error: AccountError) -> Self {
+        Self::Invalid(error)
+    }
+}
+
+/// Validates the ID token against one key set and returns the owned identity claims.
+pub(super) fn validated_identity(
+    client: &DiscoveredCoreClient,
+    token_response: &openidconnect::core::CoreTokenResponse,
+    nonce: &str,
+    expected_issuer: &str,
+) -> Result<OidcIdentityClaims, IdentityRejection> {
+    let id_token = token_response
+        .id_token()
+        .ok_or_else(|| AccountError::OidcTokenValidation(anyhow::anyhow!("missing ID token")))?;
+    let verifier = client
+        .id_token_verifier()
+        .require_issuer_match(true)
+        .require_audience_match(true);
+    let claims = match id_token.claims(&verifier, &Nonce::new(nonce.to_owned())) {
+        Ok(claims) => claims,
+        Err(ClaimsVerificationError::SignatureVerification(
+            SignatureVerificationError::NoMatchingKey,
+        )) => return Err(IdentityRejection::UnknownSigningKey),
+        Err(error) => {
+            return Err(AccountError::OidcTokenValidation(anyhow::Error::new(error)).into());
+        }
+    };
+    if claims.issuer().as_str() != expected_issuer
+        || !claims
+            .audiences()
+            .iter()
+            .any(|audience| audience.as_str() == client.client_id().as_str())
+    {
+        return Err(AccountError::OidcTokenValidation(anyhow::anyhow!(
+            "issuer or audience mismatch"
+        ))
+        .into());
+    }
+    verify_access_token_hash(id_token, claims, token_response, &verifier)?;
+    Ok(identity_from_claims(claims)?)
+}
+
+fn identity_from_claims(
     claims: &openidconnect::core::CoreIdTokenClaims,
 ) -> Result<OidcIdentityClaims, AccountError> {
     let issuer = claims.issuer().as_str();
@@ -44,7 +99,7 @@ pub(super) fn identity_from_claims(
     })
 }
 
-pub(super) fn verify_access_token_hash(
+fn verify_access_token_hash(
     id_token: &openidconnect::core::CoreIdToken,
     claims: &openidconnect::core::CoreIdTokenClaims,
     token_response: &openidconnect::core::CoreTokenResponse,

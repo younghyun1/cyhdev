@@ -1,6 +1,15 @@
 use std::{error::Error, sync::Arc};
 
-use axum::{Extension, Router, http::StatusCode, middleware::from_fn_with_state, routing::get};
+use axum::response::IntoResponse;
+use axum::{
+    Extension, Router,
+    body::Body,
+    extract::Request,
+    http::StatusCode,
+    middleware::{Next, from_fn, from_fn_with_state},
+    response::Response,
+    routing::get,
+};
 use reqwest::header::COOKIE;
 use uuid::Uuid;
 
@@ -14,7 +23,10 @@ use crate::{
         error::AccountError,
         service::session_service::SessionService,
     },
-    routers::middleware::auth::auth_middleware,
+    routers::middleware::{
+        auth::auth_middleware,
+        is_logged_in::{ResolvedSession, is_logged_in_middleware},
+    },
 };
 
 fn login_account(user_id: Uuid, verified: bool) -> LoginAccount {
@@ -170,4 +182,94 @@ async fn protected_handler(
     Extension(_role_type): Extension<RoleType>,
 ) -> StatusCode {
     StatusCode::NO_CONTENT
+}
+
+#[tokio::test]
+async fn inner_auth_middleware_reuses_the_outer_session_resolution() -> Result<(), Box<dyn Error>> {
+    let sessions = Arc::new(SessionService::with_max_sessions(2));
+    let account = login_account(Uuid::new_v4(), true);
+    let token = sessions
+        .create(&account, RoleType::User, None, None)
+        .await?;
+    // The outer layer resolves the cookie; an intermediate layer then revokes the session. The
+    // inner gate still admits the request because it trusts the published resolution instead
+    // of performing a second lookup, which proves only one lookup happens per request.
+    let revoking_sessions = Arc::clone(&sessions);
+    let router = Router::new()
+        .route("/protected", get(protected_handler))
+        .layer(from_fn_with_state(Arc::clone(&sessions), auth_middleware))
+        .layer(from_fn(move |request: Request<Body>, next: Next| {
+            let sessions = Arc::clone(&revoking_sessions);
+            async move {
+                let resolved = matches!(
+                    request.extensions().get::<ResolvedSession>(),
+                    Some(ResolvedSession::Active(_))
+                );
+                let _ = sessions.remove_for_user(account_user_id(&request)).await;
+                let response: Response = next.run(request).await;
+                if resolved {
+                    response
+                } else {
+                    (StatusCode::IM_A_TEAPOT, "resolution missing").into_response()
+                }
+            }
+        }))
+        .layer(from_fn_with_state(
+            Arc::clone(&sessions),
+            is_logged_in_middleware,
+        ));
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
+    let address = listener.local_addr()?;
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+    let server = tokio::spawn(async move {
+        axum::serve(listener, router)
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.await;
+            })
+            .await
+    });
+    let client = reqwest::Client::new();
+    let url = format!("http://{address}/protected");
+
+    let reused = client
+        .get(&url)
+        .header(COOKIE, format!("{SESSION_COOKIE_NAME}={}", token.expose()))
+        .send()
+        .await?;
+    assert_eq!(reused.status(), StatusCode::NO_CONTENT);
+    assert!(sessions.is_empty());
+
+    let absent = client.get(&url).send().await?;
+    assert_eq!(absent.status(), StatusCode::IM_A_TEAPOT);
+
+    let _ = shutdown_tx.send(());
+    server.await??;
+    Ok(())
+}
+
+fn account_user_id(request: &Request<Body>) -> Uuid {
+    match request.extensions().get::<ResolvedSession>() {
+        Some(ResolvedSession::Active(session)) => session.user_id,
+        Some(ResolvedSession::Absent) | None => Uuid::nil(),
+    }
+}
+
+#[tokio::test]
+async fn per_user_cap_evicts_the_oldest_session_of_that_user_only() -> Result<(), AccountError> {
+    let sessions = SessionService::with_limits(8, 2);
+    let busy = login_account(Uuid::new_v4(), true);
+    let other = login_account(Uuid::new_v4(), true);
+    let other_token = sessions.create(&other, RoleType::User, None, None).await?;
+    let oldest = sessions.create(&busy, RoleType::User, None, None).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    let middle = sessions.create(&busy, RoleType::User, None, None).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    let newest = sessions.create(&busy, RoleType::User, None, None).await?;
+
+    assert!(sessions.lookup(oldest.expose()).await.is_none());
+    assert!(sessions.lookup(middle.expose()).await.is_some());
+    assert!(sessions.lookup(newest.expose()).await.is_some());
+    assert!(sessions.lookup(other_token.expose()).await.is_some());
+    assert_eq!(sessions.len(), 3);
+    Ok(())
 }

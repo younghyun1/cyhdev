@@ -13,8 +13,11 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 use crate::{
     errors::code_error::{CodeError, HandlerResponse, code_err},
     features::accounts::{
-        api::login::{session_cookie, session_token_from_cookie},
-        domain::oidc::OidcFlowMode,
+        api::{
+            login::{session_cookie, session_token_from_cookie},
+            oidc_start::binding_removal_cookie,
+        },
+        domain::oidc::{OIDC_BINDING_COOKIE_NAME, OidcFlowMode},
         service::oidc::provider::OidcCallbackOutcome,
     },
     init::state::ServerState,
@@ -37,7 +40,7 @@ pub struct OidcCallbackQuery {
         ("error" = Option<String>, Query, description = "Provider denial code")
     ),
     responses(
-        (status = 303, description = "Redirect to the exact public application origin"),
+        (status = 303, description = "Redirect to the exact public application origin; clears the browser-binding cookie"),
         (status = 404, description = "OIDC is not configured")
     )
 )]
@@ -52,9 +55,15 @@ pub async fn oidc_callback(
         return Err(code_err(CodeError::OIDC_DISABLED, "OIDC is disabled"));
     }
 
+    let browser_binding = cookie_jar
+        .get(OIDC_BINDING_COOKIE_NAME)
+        .map(|cookie| cookie.value());
     if query.error.is_some() {
         let mode = match query.state.as_deref() {
-            Some(state_token) => oidc.cancel_authorization(state_token).await,
+            Some(state_token) => {
+                oidc.cancel_authorization(state_token, browser_binding)
+                    .await
+            }
             None => None,
         };
         return Ok(failure_redirect(public_origin.as_str(), mode));
@@ -64,7 +73,10 @@ pub async fn oidc_callback(
         _ => return Ok(failure_redirect(public_origin.as_str(), None)),
     };
 
-    let outcome = match oidc.finish_authorization(state_token, code).await {
+    let outcome = match oidc
+        .finish_authorization(state_token, code, browser_binding)
+        .await
+    {
         Ok(outcome) => outcome,
         Err(error) => {
             tracing::warn!(
@@ -135,8 +147,17 @@ fn redirect_response(
     Ok(response)
 }
 
+/// Redirect with private-response headers that also clears the browser-binding cookie.
 fn hardened_redirect(location: &str) -> Response {
     let mut response = Redirect::to(location).into_response();
+    match HeaderValue::from_str(&binding_removal_cookie().to_string()) {
+        Ok(removal) => {
+            response.headers_mut().append(header::SET_COOKIE, removal);
+        }
+        Err(error) => {
+            tracing::warn!(error = %error, "Could not encode OIDC binding removal cookie");
+        }
+    }
     response.headers_mut().insert(
         header::CACHE_CONTROL,
         HeaderValue::from_static("no-store, max-age=0"),
@@ -165,5 +186,15 @@ mod tests {
             response.headers().get(header::REFERRER_POLICY),
             Some(&HeaderValue::from_static("no-referrer"))
         );
+        let clears_binding = response
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok())
+            .any(|value| {
+                value.starts_with(&format!("{OIDC_BINDING_COOKIE_NAME}="))
+                    && value.contains("Max-Age=0")
+            });
+        assert!(clears_binding);
     }
 }

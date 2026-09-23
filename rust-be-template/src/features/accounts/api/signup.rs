@@ -56,7 +56,6 @@ pub async fn signup_handler(
         .await
         .map_err(map_auth_throttle_rejection)?;
     let start = tokio_now();
-    let duplicate_email = Zeroizing::new(request.user_email.clone());
     let command = SignupCommand {
         user_name: mem::take(&mut request.user_name),
         user_email: mem::take(&mut request.user_email),
@@ -65,23 +64,12 @@ pub async fn signup_handler(
         language: request.user_language,
         subdivision: request.user_subdivision,
     };
+    // Registered, replaced-unverified, and already-verified signups share one response, and
+    // a held user name maps to one 409 whether or not the email exists.
     let result = state.account_service().signup(command).await;
     match result {
         Ok(_) => {}
-        Err(AccountError::DuplicateEmail(_)) => {
-            if let Err(error) = state
-                .account_service()
-                .resend_verification_for_duplicate_email(&duplicate_email)
-                .await
-            {
-                tracing::error!(
-                    event = "signup_verification_reissue_failed",
-                    error = %error,
-                    "Failed to reissue signup verification capability"
-                );
-            }
-        }
-        Err(error @ AccountError::DuplicateUserName(_)) => {
+        Err(error @ (AccountError::DuplicateUserName(_) | AccountError::UserNameUnavailable)) => {
             tokio::time::sleep_until(start + SIGNUP_RESPONSE_FLOOR).await;
             return Err(map_signup_error(error));
         }

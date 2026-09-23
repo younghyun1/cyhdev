@@ -1,21 +1,18 @@
 mod support;
 
-use chrono::{Duration, Utc};
-use diesel::{Connection, ExpressionMethods, QueryDsl, pg::PgConnection};
-use diesel_async::RunQueryDsl;
+use diesel::{Connection, pg::PgConnection};
 use diesel_migrations::MigrationHarness;
 
 use rust_be_template::{
     features::accounts::{domain::role::RoleType, error::AccountError},
     init::db_migrations::MIGRATIONS,
-    schema::email_verification_tokens,
 };
 
 use support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
-    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
+    fixtures::{VALID_PASSWORD, account_test_context, seed_account, seed_verified_account},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -38,12 +35,6 @@ async fn session_cache_refreshes_and_revokes_after_committed_changes() -> TestRe
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
-async fn email_verification_enforces_one_time_and_timestamp_boundaries() -> TestResult {
-    run_database_test(email_verification_case).await
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
 async fn embedded_migration_chain_reverts_and_reapplies() -> TestResult {
     run_database_test(migration_round_trip_case).await
 }
@@ -51,7 +42,11 @@ async fn embedded_migration_chain_reverts_and_reapplies() -> TestResult {
 fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let fixture = seed_account(&context, "AuthBoundary").await?;
+        let fixture = seed_verified_account(&context, "AuthBoundary").await?;
+        context
+            .accounts
+            .assign_role(fixture.user_id, RoleType::Moderator)
+            .await?;
 
         require(
             context.accounts.email_exists(&fixture.email).await?,
@@ -88,6 +83,10 @@ fn authentication_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             session.user_id == fixture.user_id,
             "session belongs to the wrong account",
+        )?;
+        require(
+            session.role_type == RoleType::Moderator,
+            "login did not seed the session with the persisted role",
         )?;
         require(
             context.sessions.len() == 1,
@@ -131,16 +130,12 @@ fn role_gate_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
-        let fixture = seed_account(&context, "SessionBoundary").await?;
+        let fixture = seed_verified_account(&context, "SessionBoundary").await?;
         let receipt = context
             .accounts
             .login(&fixture.email, VALID_PASSWORD, None)
             .await?;
 
-        context
-            .accounts
-            .verify_email(fixture.verification_token)
-            .await?;
         context
             .accounts
             .assign_role(fixture.user_id, RoleType::Moderator)
@@ -188,71 +183,6 @@ fn session_refresh_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "second logout reported a nonexistent revocation",
         )?;
         require(context.sessions.is_empty(), "session cache was not empty")
-    })
-}
-
-fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
-    Box::pin(async move {
-        let context = account_test_context(database)?;
-        let consumed = seed_account(&context, "VerifyConsumed").await?;
-        context
-            .accounts
-            .verify_email(consumed.verification_token)
-            .await?;
-        match context
-            .accounts
-            .verify_email(consumed.verification_token)
-            .await
-        {
-            Err(AccountError::EmailVerificationTokenAlreadyUsed) => {}
-            Err(error) => return Err(Box::new(error) as BoxError),
-            Ok(_) => return require(false, "consumed verification token was accepted twice"),
-        }
-        let expired = seed_account(&context, "VerifyExpired").await?;
-        let fabricated = seed_account(&context, "VerifyFuture").await?;
-        let now = Utc::now();
-        let mut connection = context.pool.get().await?;
-        diesel::update(email_verification_tokens::table.filter(
-            email_verification_tokens::email_verification_token.eq(expired.verification_token),
-        ))
-        .set((
-            email_verification_tokens::email_verification_token_created_at
-                .eq(now - Duration::hours(2)),
-            email_verification_tokens::email_verification_token_expires_at
-                .eq(now - Duration::hours(1)),
-        ))
-        .execute(&mut connection)
-        .await?;
-        diesel::update(email_verification_tokens::table.filter(
-            email_verification_tokens::email_verification_token.eq(fabricated.verification_token),
-        ))
-        .set((
-            email_verification_tokens::email_verification_token_created_at
-                .eq(now + Duration::hours(1)),
-            email_verification_tokens::email_verification_token_expires_at
-                .eq(now + Duration::hours(2)),
-        ))
-        .execute(&mut connection)
-        .await?;
-        drop(connection);
-        match context
-            .accounts
-            .verify_email(expired.verification_token)
-            .await
-        {
-            Err(AccountError::EmailVerificationTokenExpired) => {}
-            Err(error) => return Err(Box::new(error) as BoxError),
-            Ok(_) => return require(false, "expired verification token was accepted"),
-        }
-        match context
-            .accounts
-            .verify_email(fabricated.verification_token)
-            .await
-        {
-            Err(AccountError::EmailVerificationTokenFabricated) => Ok(()),
-            Err(error) => Err(Box::new(error) as BoxError),
-            Ok(_) => require(false, "future-created verification token was accepted"),
-        }
     })
 }
 

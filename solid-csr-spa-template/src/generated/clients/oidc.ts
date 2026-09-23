@@ -5,6 +5,7 @@ import type {
   OidcAuthorizationResponse,
   OidcLinkCompleteRequest,
   OidcLinkResponse,
+  OidcLinkStartRequest,
   OidcStatusResponse,
   OidcUnlinkRequest,
 } from "../api-types";
@@ -38,13 +39,16 @@ export function createOidcClient(transport: ApiTransport) {
         signal: options.signal,
       });
     },
-    startOidcLink: async (options: ApiRequestOptions = {}) => {
+    startOidcLink: async (input: {
+      readonly body: OidcLinkStartRequest;
+    }, options: ApiRequestOptions = {}) => {
       const path = "/api/auth/oidc/link/start";
       const url = path;
       return requestJson<ApiResponse<OidcAuthorizationResponse>>(transport, url, {
         method: "POST",
-        headers: requestHeaders(options.headers, false),
+        headers: requestHeaders(options.headers, true),
         signal: options.signal,
+        body: JSON.stringify(input.body),
       });
     },
     startOidcLogin: async (options: ApiRequestOptions = {}) => {

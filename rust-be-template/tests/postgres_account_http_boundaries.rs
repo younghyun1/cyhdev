@@ -12,7 +12,9 @@ use reqwest::header::COOKIE;
 use uuid::Uuid;
 
 use rust_be_template::{
-    features::accounts::domain::{role::RoleType, session::SESSION_COOKIE_NAME},
+    features::accounts::domain::{
+        account::SessionPrincipal, role::RoleType, session::SESSION_COOKIE_NAME,
+    },
     routers::middleware::{auth::auth_middleware, role::require_superuser_middleware},
 };
 
@@ -31,9 +33,22 @@ fn http_authorization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
         let fixture = seed_account(&context, "HttpBoundary").await?;
-        let login = context
-            .accounts
-            .login(&fixture.email, VALID_PASSWORD, None)
+        // Login no longer issues unverified sessions; this one stands in for a session that
+        // predates that rule, so the middleware and verification revocation stay covered.
+        let unverified = context
+            .sessions
+            .create_principal(
+                &SessionPrincipal {
+                    user_id: fixture.user_id,
+                    user_name: fixture.user_name.clone(),
+                    is_email_verified: false,
+                    country: fixture.country,
+                    language: fixture.language,
+                },
+                RoleType::User,
+                None,
+                None,
+            )
             .await?;
 
         let protected_router = Router::new()
@@ -64,7 +79,7 @@ fn http_authorization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let result = exercise_authorization_routes(
             &context,
             &fixture,
-            login.session_token.expose(),
+            unverified.expose(),
             &format!("http://{address}"),
         )
         .await;
@@ -79,24 +94,34 @@ fn http_authorization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 async fn exercise_authorization_routes(
     context: &AccountTestContext,
     fixture: &support::fixtures::AccountFixture,
-    session_token: &str,
+    unverified_token: &str,
     base_url: &str,
 ) -> TestResult {
     let client = reqwest::Client::new();
     require(
-        route_status(&client, base_url, "/protected", session_token).await?
+        route_status(&client, base_url, "/protected", unverified_token).await?
             == StatusCode::BAD_REQUEST,
         "unverified session passed authentication middleware",
     )?;
 
     context
         .accounts
-        .verify_email(fixture.verification_token)
+        .verify_email(&fixture.verification_token)
         .await?;
+    require(
+        route_status(&client, base_url, "/protected", unverified_token).await?
+            == StatusCode::UNAUTHORIZED,
+        "verification upgraded a pre-existing session instead of revoking it",
+    )?;
+    let login = context
+        .accounts
+        .login(&fixture.email, VALID_PASSWORD, None)
+        .await?;
+    let session_token = login.session_token.expose();
     require(
         route_status(&client, base_url, "/protected", session_token).await?
             == StatusCode::NO_CONTENT,
-        "verified session was not refreshed for authentication middleware",
+        "verified login did not pass authentication middleware",
     )?;
     require(
         route_status(&client, base_url, "/superuser", session_token).await?

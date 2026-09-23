@@ -10,7 +10,7 @@ use crate::{
     features::accounts::{
         domain::{
             account::SessionPrincipal,
-            oidc::{OidcAccount, OidcIdentityClaims, OidcUnlinkCandidate},
+            oidc::{OidcAccount, OidcIdentityClaims, OidcLinkReceipt, OidcUnlinkCandidate},
         },
         error::AccountError,
         repository::{
@@ -93,12 +93,13 @@ impl AccountRepository {
         &self,
         user_id: Uuid,
         identity: &OidcIdentityClaims,
-    ) -> Result<SessionPrincipal, AccountError> {
+    ) -> Result<OidcLinkReceipt, AccountError> {
         let mut connection = self.connection().await?;
         let now = Utc::now();
         connection
-            .transaction::<SessionPrincipal, AccountError, _>(async move |connection| {
+            .transaction::<OidcLinkReceipt, AccountError, _>(async move |connection| {
                 let account = lock_verified_account(connection, user_id).await?;
+                let owner_email = account.user_email.clone();
                 let existing = account_oidc_identities::table
                     .filter(account_oidc_identities::account_oidc_identity_user_id.eq(user_id))
                     .filter(
@@ -127,7 +128,11 @@ impl AccountRepository {
                     ))
                     .execute(&mut *connection)
                     .await?;
-                    return Ok(account.into());
+                    return Ok(OidcLinkReceipt {
+                        principal: account.into(),
+                        owner_email,
+                        newly_linked: false,
+                    });
                 }
 
                 let result = diesel::insert_into(account_oidc_identities::table)
@@ -142,7 +147,11 @@ impl AccountRepository {
                     .execute(&mut *connection)
                     .await;
                 match result {
-                    Ok(_) => Ok(account.into()),
+                    Ok(_) => Ok(OidcLinkReceipt {
+                        principal: account.into(),
+                        owner_email,
+                        newly_linked: true,
+                    }),
                     Err(error) => Err(classify_identity_insert(error)),
                 }
             })

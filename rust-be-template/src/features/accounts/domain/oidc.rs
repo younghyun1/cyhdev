@@ -8,6 +8,10 @@ use super::{account::SessionPrincipal, session::SessionToken};
 pub const MAX_OIDC_ISSUER_BYTES: usize = 1_024;
 pub const MAX_OIDC_SUBJECT_BYTES: usize = 255;
 pub const MAX_OIDC_PROVIDER_EMAIL_BYTES: usize = 254;
+/// Host-only cookie that binds a pending authorization to the browser that started it.
+pub const OIDC_BINDING_COOKIE_NAME: &str = "__Host-cyhdev-oidc-binding";
+/// Matches the pending-flow lifetime; the callback clears the cookie either way.
+pub const OIDC_BINDING_COOKIE_SECONDS: i64 = 10 * 60;
 
 /// Verified identity claims retained only after signature and nonce validation.
 #[derive(Clone)]
@@ -43,6 +47,14 @@ impl From<OidcAccount> for SessionPrincipal {
             language: account.language,
         }
     }
+}
+
+/// Committed link with what the owner notice needs.
+pub struct OidcLinkReceipt {
+    pub principal: SessionPrincipal,
+    pub owner_email: String,
+    /// False when the same issuer and subject were already linked and only refreshed.
+    pub newly_linked: bool,
 }
 
 /// Credential snapshot used to confirm an unlink transaction.

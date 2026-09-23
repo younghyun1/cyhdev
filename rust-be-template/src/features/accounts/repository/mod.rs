@@ -23,4 +23,5 @@ pub mod retention_notification_outcomes;
 pub mod retention_notifications;
 pub mod roles;
 mod sql_enums;
+mod sql_functions;
 pub mod tokens;

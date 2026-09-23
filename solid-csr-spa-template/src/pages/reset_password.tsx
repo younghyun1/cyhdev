@@ -1,11 +1,9 @@
 import { createSignal, Show, onSettled, onCleanup } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { authApi } from "../services/all_api";
+import { isCapabilityToken } from "../services/capability_token";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
-
-const CANONICAL_UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function ResetPasswordPage() {
   const [resetToken, setResetToken] = createSignal<string | null>(null);
@@ -36,7 +34,7 @@ function ResetPasswordPage() {
       "",
       window.location.pathname,
     );
-    if (token !== undefined && CANONICAL_UUID.test(token)) {
+    if (token !== undefined && isCapabilityToken(token)) {
       setResetToken(token);
     } else {
       setError(t("auth.reset_password.missing_token_link"));

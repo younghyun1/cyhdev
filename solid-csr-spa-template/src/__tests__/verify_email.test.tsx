@@ -22,7 +22,7 @@ describe("email verification confirmation", () => {
     window.history.replaceState(
       null,
       "",
-      "/verify-email#token=6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+      "/verify-email#token=Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE",
     );
   });
 
@@ -48,7 +48,7 @@ describe("email verification confirmation", () => {
 
     await waitFor(() => {
       expect(verifyUserEmail).toHaveBeenCalledWith({
-        email_validation_token_id: "6ba7b810-9dad-41d1-80b4-00c04fd430c8",
+        email_verification_token: "Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE",
       });
     });
   });
