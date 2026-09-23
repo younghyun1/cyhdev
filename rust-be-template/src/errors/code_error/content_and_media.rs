@@ -102,4 +102,11 @@ impl CodeError {
         message: "Photograph not found!",
         log_level: Level::INFO,
     };
+    pub const CONTENT_WRITE_THROTTLED: CodeError = CodeError {
+        success: false,
+        error_code: 110,
+        http_status_code: StatusCode::TOO_MANY_REQUESTS,
+        message: "The comment or vote budget is exhausted; retry later.",
+        log_level: Level::WARN,
+    };
 }

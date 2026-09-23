@@ -58,6 +58,7 @@ fn deleted_comment_author_does_not_change_comment_content() {
         parent_photograph_comment_id: None,
         photograph_comment_total_upvotes: 5,
         photograph_comment_total_downvotes: 1,
+        photograph_comment_deleted_at: None,
     };
 
     let response = PhotographCommentResponse::from_comment_votestate_and_badge_info(

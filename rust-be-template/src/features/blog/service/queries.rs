@@ -115,6 +115,24 @@ impl BlogService {
         Ok(result)
     }
 
+    /// Presents search hits, dropping drafts unless the viewer manages the blog.
+    ///
+    /// The index holds only published posts, but a failed removal after
+    /// unpublishing could leave a stale document; the hydrated metadata is
+    /// authoritative, so a draft hit never reaches an unauthorized viewer.
+    pub async fn present_search_results(
+        &self,
+        mut posts: Vec<CachedPostInfo>,
+        viewer_id: Option<Uuid>,
+    ) -> Result<Vec<PostInfoWithVote>, BlogError> {
+        if posts.iter().any(|post| !post.post_is_published)
+            && !self.repository.can_manage_blog(viewer_id).await?
+        {
+            posts.retain(|post| post.post_is_published);
+        }
+        self.present_posts(posts, viewer_id).await
+    }
+
     async fn posts_from_ids(&self, post_ids: Vec<Uuid>) -> Result<Vec<CachedPostInfo>, BlogError> {
         let guards = self.lock_post_set(&post_ids).await;
         let mut by_id = HashMap::with_capacity(post_ids.len());

@@ -1,8 +1,10 @@
+//! Blog comment writes: creation, edits, and tombstone deletion.
+
 use std::collections::HashMap;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
-use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -13,17 +15,15 @@ use crate::{
 
 use super::super::{domain::comment::Comment, error::BlogError};
 use super::{
-    authority::{lock_active_user, require_owner_or_superuser},
+    authority::{lock_active_user, require_owner_or_superuser, require_visible_post},
     blog_repository::BlogRepository,
     records::{CommentRecord, NewCommentRecord},
 };
 
-pub const MAX_COMPATIBILITY_POST_COMMENTS: usize = 1_000;
-const MAX_COMPATIBILITY_COMMENT_QUERY_ROWS: i64 = 1_001;
-
-pub struct CommentList {
-    pub comments: Vec<Comment>,
-    pub truncated: bool,
+/// Owner, deletion state, and post of a comment locked for mutation.
+struct LockedComment {
+    owner_id: Uuid,
+    deleted_at: Option<DateTime<Utc>>,
 }
 
 impl BlogRepository {
@@ -37,32 +37,6 @@ impl BlogRepository {
             .map_err(BlogError::Database)
     }
 
-    pub async fn comments_for_post(&self, post_id: Uuid) -> Result<CommentList, BlogError> {
-        let mut connection = self.connection().await?;
-        let mut comments = comments::table
-            .filter(comments::post_id.eq(post_id))
-            .order((
-                comments::comment_created_at.asc(),
-                comments::comment_id.asc(),
-            ))
-            .select(CommentRecord::as_select())
-            .limit(MAX_COMPATIBILITY_COMMENT_QUERY_ROWS)
-            .load::<CommentRecord>(&mut connection)
-            .await
-            .map_err(BlogError::Database)?
-            .into_iter()
-            .map(Comment::from)
-            .collect::<Vec<_>>();
-        let truncated = comments.len() > MAX_COMPATIBILITY_POST_COMMENTS;
-        if truncated {
-            comments.truncate(MAX_COMPATIBILITY_POST_COMMENTS);
-        }
-        Ok(CommentList {
-            comments,
-            truncated,
-        })
-    }
-
     pub async fn insert_comment(
         &self,
         user_id: Uuid,
@@ -74,24 +48,28 @@ impl BlogRepository {
         connection
             .transaction::<Comment, BlogError, _>(async move |connection| {
                 lock_active_user(connection, user_id).await?;
-                posts::table
+                let published = posts::table
                     .find(post_id)
-                    .select(posts::post_id)
-                    .first::<Uuid>(&mut *connection)
+                    .select(posts::post_is_published)
+                    .first::<bool>(&mut *connection)
                     .await
                     .optional()?
-                    .map(|_| ())
                     .ok_or(BlogError::PostNotFound)?;
+                require_visible_post(connection, user_id, published).await?;
                 if let Some(parent_comment_id) = parent_comment_id {
-                    let parent_post_id = comments::table
+                    let (parent_post_id, parent_deleted_at) = comments::table
                         .find(parent_comment_id)
-                        .select(comments::post_id)
-                        .first::<Uuid>(&mut *connection)
+                        .select((comments::post_id, comments::comment_deleted_at))
+                        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
                         .await
                         .optional()?
                         .ok_or(BlogError::CommentNotFound)?;
                     if parent_post_id != post_id {
                         return Err(BlogError::InvalidInput);
+                    }
+                    // A tombstone keeps existing replies attached but takes no new ones.
+                    if parent_deleted_at.is_some() {
+                        return Err(BlogError::CommentNotFound);
                     }
                 }
                 diesel::insert_into(comments::table)
@@ -119,15 +97,12 @@ impl BlogRepository {
         let mut connection = self.connection().await?;
         connection
             .transaction::<Comment, BlogError, _>(async move |connection| {
-                let owner_id = comments::table
-                    .find(comment_id)
-                    .select(comments::user_id)
-                    .for_update()
-                    .first::<Uuid>(&mut *connection)
-                    .await
-                    .optional()?
-                    .ok_or(BlogError::CommentNotFound)?;
-                require_owner_or_superuser(connection, requester_id, owner_id).await?;
+                let role = lock_active_user(connection, requester_id).await?;
+                let locked = lock_comment(connection, comment_id).await?;
+                require_owner_or_superuser(requester_id, role, locked.owner_id)?;
+                if locked.deleted_at.is_some() {
+                    return Err(BlogError::CommentNotFound);
+                }
                 diesel::update(comments::table.find(comment_id))
                     .set((
                         comments::comment_content.eq(content),
@@ -142,6 +117,9 @@ impl BlogRepository {
             .await
     }
 
+    /// Replaces a comment with a tombstone so replies by other users survive.
+    ///
+    /// Repeating the request after deletion succeeds without further change.
     pub async fn delete_comment(
         &self,
         requester_id: Uuid,
@@ -150,20 +128,39 @@ impl BlogRepository {
         let mut connection = self.connection().await?;
         connection
             .transaction::<(), BlogError, _>(async move |connection| {
-                let owner_id = comments::table
-                    .find(comment_id)
-                    .select(comments::user_id)
-                    .for_update()
-                    .first::<Uuid>(&mut *connection)
-                    .await
-                    .optional()?
-                    .ok_or(BlogError::CommentNotFound)?;
-                require_owner_or_superuser(connection, requester_id, owner_id).await?;
-                diesel::delete(comments::table.find(comment_id))
+                let role = lock_active_user(connection, requester_id).await?;
+                let locked = lock_comment(connection, comment_id).await?;
+                require_owner_or_superuser(requester_id, role, locked.owner_id)?;
+                if locked.deleted_at.is_some() {
+                    return Ok(());
+                }
+                diesel::update(comments::table.find(comment_id))
+                    .set((
+                        comments::comment_content.eq(""),
+                        comments::comment_deleted_at.eq(Some(Utc::now())),
+                    ))
                     .execute(&mut *connection)
                     .await?;
                 Ok(())
             })
             .await
     }
+}
+
+async fn lock_comment(
+    connection: &mut AsyncPgConnection,
+    comment_id: Uuid,
+) -> Result<LockedComment, BlogError> {
+    comments::table
+        .find(comment_id)
+        .select((comments::user_id, comments::comment_deleted_at))
+        .for_update()
+        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+        .await
+        .optional()?
+        .map(|(owner_id, deleted_at)| LockedComment {
+            owner_id,
+            deleted_at,
+        })
+        .ok_or(BlogError::CommentNotFound)
 }

@@ -88,6 +88,7 @@ fn retained_comment_masks_author_without_changing_content_or_votes() {
         parent_comment_id: None,
         total_upvotes: 8,
         total_downvotes: 1,
+        comment_deleted_at: None,
     };
     let response = CommentResponse::from_comment_votestate_and_badge_info(
         comment,

@@ -1,3 +1,4 @@
+pub mod comment_page_query;
 pub mod get_posts_request;
 pub mod read_post;
 pub mod submit_comment;

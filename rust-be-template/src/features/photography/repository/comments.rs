@@ -1,6 +1,8 @@
-use chrono::Utc;
+//! Photograph comment writes: creation, edits, and tombstone deletion.
+
+use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
-use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -16,7 +18,7 @@ use crate::{
     },
     persistence::active_user::{ActiveUserWriteError, lock_active_superuser, lock_active_user},
     persistence::public_authors::load_public_authors,
-    schema::{photograph_comment_votes, photograph_comments},
+    schema::{photograph_comment_votes, photograph_comments, photographs},
 };
 
 impl PhotographyRepository {
@@ -28,16 +30,30 @@ impl PhotographyRepository {
         let comment = connection
             .transaction::<PhotographComment, PhotographyError, _>(async move |connection| {
                 lock_user(connection, command.user_id).await?;
+                photographs::table
+                    .filter(photographs::photograph_id.eq(command.photograph_id))
+                    .select(photographs::photograph_id)
+                    .first::<Uuid>(&mut *connection)
+                    .await
+                    .optional()?
+                    .ok_or(PhotographyError::PhotographNotFound)?;
                 if let Some(parent_id) = command.parent_comment_id {
-                    let parent_photograph = photograph_comments::table
+                    let (parent_photograph, parent_deleted_at) = photograph_comments::table
                         .filter(photograph_comments::photograph_comment_id.eq(parent_id))
-                        .select(photograph_comments::photograph_id)
-                        .first::<Uuid>(&mut *connection)
+                        .select((
+                            photograph_comments::photograph_id,
+                            photograph_comments::photograph_comment_deleted_at,
+                        ))
+                        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
                         .await
                         .optional()?
                         .ok_or(PhotographyError::CommentNotFound)?;
                     if parent_photograph != command.photograph_id {
                         return Err(PhotographyError::InvalidInput);
+                    }
+                    // A tombstone keeps existing replies attached but takes no new ones.
+                    if parent_deleted_at.is_some() {
+                        return Err(PhotographyError::CommentNotFound);
                     }
                 }
                 let record = diesel::insert_into(photograph_comments::table)
@@ -64,15 +80,12 @@ impl PhotographyRepository {
         let mutation = connection
             .transaction::<CommentMutation, PhotographyError, _>(async move |connection| {
                 lock_user(connection, requester_id).await?;
-                let author_id = photograph_comments::table
-                    .filter(photograph_comments::photograph_comment_id.eq(comment_id))
-                    .select(photograph_comments::user_id)
-                    .first::<Uuid>(&mut *connection)
-                    .await
-                    .optional()?
-                    .ok_or(PhotographyError::CommentNotFound)?;
+                let (author_id, deleted_at) = lock_comment(connection, comment_id).await?;
                 if author_id != requester_id {
                     lock_superuser(connection, requester_id).await?;
+                }
+                if deleted_at.is_some() {
+                    return Err(PhotographyError::CommentNotFound);
                 }
                 let record = diesel::update(
                     photograph_comments::table
@@ -110,6 +123,9 @@ impl PhotographyRepository {
             .unwrap_or_else(PublicAuthor::deleted))
     }
 
+    /// Replaces a comment with a tombstone so replies by other users survive.
+    ///
+    /// Repeating the request after deletion succeeds without further change.
     pub async fn delete_comment(
         &self,
         requester_id: Uuid,
@@ -119,26 +135,45 @@ impl PhotographyRepository {
         connection
             .transaction::<(), PhotographyError, _>(async move |connection| {
                 lock_user(connection, requester_id).await?;
-                let author_id = photograph_comments::table
-                    .filter(photograph_comments::photograph_comment_id.eq(comment_id))
-                    .select(photograph_comments::user_id)
-                    .first::<Uuid>(&mut *connection)
-                    .await
-                    .optional()?
-                    .ok_or(PhotographyError::CommentNotFound)?;
+                let (author_id, deleted_at) = lock_comment(connection, comment_id).await?;
                 if author_id != requester_id {
                     lock_superuser(connection, requester_id).await?;
                 }
-                diesel::delete(
+                if deleted_at.is_some() {
+                    return Ok(());
+                }
+                diesel::update(
                     photograph_comments::table
                         .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
                 )
+                .set((
+                    photograph_comments::photograph_comment_content.eq(""),
+                    photograph_comments::photograph_comment_deleted_at.eq(Some(Utc::now())),
+                ))
                 .execute(&mut *connection)
                 .await?;
                 Ok(())
             })
             .await
     }
+}
+
+/// Locks a comment after its actor, returning its author and deletion time.
+async fn lock_comment(
+    connection: &mut AsyncPgConnection,
+    comment_id: Uuid,
+) -> Result<(Uuid, Option<DateTime<Utc>>), PhotographyError> {
+    photograph_comments::table
+        .filter(photograph_comments::photograph_comment_id.eq(comment_id))
+        .select((
+            photograph_comments::user_id,
+            photograph_comments::photograph_comment_deleted_at,
+        ))
+        .for_update()
+        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+        .await
+        .optional()?
+        .ok_or(PhotographyError::CommentNotFound)
 }
 
 fn vote_state(vote: Option<bool>) -> VoteState {
@@ -150,13 +185,13 @@ fn vote_state(vote: Option<bool>) -> VoteState {
 }
 
 async fn lock_user(
-    connection: &mut diesel_async::AsyncPgConnection,
+    connection: &mut AsyncPgConnection,
     user_id: Uuid,
 ) -> Result<(), PhotographyError> {
     map_authority(lock_active_user(connection, user_id).await)
 }
 async fn lock_superuser(
-    connection: &mut diesel_async::AsyncPgConnection,
+    connection: &mut AsyncPgConnection,
     user_id: Uuid,
 ) -> Result<(), PhotographyError> {
     map_authority(lock_active_superuser(connection, user_id).await)

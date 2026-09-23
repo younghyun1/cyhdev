@@ -1,3 +1,4 @@
+pub mod comment_reads;
 pub mod comments;
 pub mod enums;
 pub mod media;

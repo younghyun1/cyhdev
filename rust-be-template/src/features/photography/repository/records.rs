@@ -3,6 +3,7 @@ use diesel::{Insertable, Queryable, Selectable};
 use uuid::Uuid;
 
 use crate::{
+    features::blog::domain::comment_page::CommentCursor,
     features::photography::{
         domain::{
             photograph::{NewPhotograph, Photograph},
@@ -109,6 +110,20 @@ pub(super) struct PhotographCommentRecord {
     parent_photograph_comment_id: Option<Uuid>,
     photograph_comment_total_upvotes: i64,
     photograph_comment_total_downvotes: i64,
+    photograph_comment_deleted_at: Option<DateTime<Utc>>,
+}
+
+impl PhotographCommentRecord {
+    pub(super) const fn cursor(&self) -> CommentCursor {
+        CommentCursor {
+            created_at: self.photograph_comment_created_at,
+            comment_id: self.photograph_comment_id,
+        }
+    }
+
+    pub(super) const fn author_id(&self) -> Uuid {
+        self.user_id
+    }
 }
 
 impl From<PhotographCommentRecord> for PhotographComment {
@@ -123,6 +138,7 @@ impl From<PhotographCommentRecord> for PhotographComment {
             parent_photograph_comment_id: row.parent_photograph_comment_id,
             photograph_comment_total_upvotes: row.photograph_comment_total_upvotes,
             photograph_comment_total_downvotes: row.photograph_comment_total_downvotes,
+            photograph_comment_deleted_at: row.photograph_comment_deleted_at,
         }
     }
 }

@@ -3,6 +3,7 @@
 import type {
   ApiResponse,
   DeletePhotographCommentResponse,
+  PhotographCommentPageResponse,
   PhotographCommentResponse,
   SubmitPhotographCommentRequest,
   UpdatePhotographCommentRequest,
@@ -10,6 +11,7 @@ import type {
   VotePhotographResponse,
 } from "../api-types";
 import {
+  appendQuery,
   interpolatePath,
   requestHeaders,
   requestJson,
@@ -29,6 +31,24 @@ export function createPhotographySocialClient(transport: ApiTransport) {
       const url = path;
       return requestJson<ApiResponse<DeletePhotographCommentResponse>>(transport, url, {
         method: "DELETE",
+        headers: requestHeaders(options.headers, false),
+        signal: options.signal,
+      });
+    },
+    listPhotographComments: async (input: {
+      readonly path: {
+        readonly photograph_id: string;
+      };
+      readonly query?: {
+        readonly after_comment_id?: string;
+        readonly after_created_at?: string;
+        readonly limit?: number;
+      };
+    }, options: ApiRequestOptions = {}) => {
+      const path = interpolatePath("/api/photographs/{photograph_id}/comments", input.path);
+      const url = appendQuery(path, input.query);
+      return requestJson<ApiResponse<PhotographCommentPageResponse>>(transport, url, {
+        method: "GET",
         headers: requestHeaders(options.headers, false),
         signal: options.signal,
       });
