@@ -143,64 +143,66 @@ pub fn client_network(ip: IpAddr) -> IpAddr {
 
 #[cfg(test)]
 mod tests {
-    use std::net::IpAddr;
+    use std::{error::Error, net::IpAddr};
 
     use super::{ConnectionLimiter, ConnectionRejection, client_network};
 
-    fn ip(value: &str) -> IpAddr {
-        match value.parse() {
-            Ok(ip) => ip,
-            Err(error) => panic!("static address is invalid: {error}"),
-        }
+    type TestResult = Result<(), Box<dyn Error>>;
+
+    fn ip(value: &str) -> Result<IpAddr, Box<dyn Error>> {
+        Ok(value.parse::<IpAddr>()?)
     }
 
     #[test]
-    fn per_client_limit_applies_before_the_global_limit() {
+    fn per_client_limit_applies_before_the_global_limit() -> TestResult {
         let limiter = ConnectionLimiter::new("test", 3, 2);
-        let first = limiter.try_acquire(ip("192.0.2.1"));
-        let second = limiter.try_acquire(ip("192.0.2.1"));
+        let first = limiter.try_acquire(ip("192.0.2.1")?);
+        let second = limiter.try_acquire(ip("192.0.2.1")?);
         assert!(first.is_ok() && second.is_ok());
         assert_eq!(
-            limiter.try_acquire(ip("192.0.2.1")).err(),
+            limiter.try_acquire(ip("192.0.2.1")?).err(),
             Some(ConnectionRejection::ClientLimit)
         );
-        let other = limiter.try_acquire(ip("198.51.100.7"));
+        let other = limiter.try_acquire(ip("198.51.100.7")?);
         assert!(other.is_ok());
         assert_eq!(
-            limiter.try_acquire(ip("203.0.113.9")).err(),
+            limiter.try_acquire(ip("203.0.113.9")?).err(),
             Some(ConnectionRejection::GlobalLimit)
         );
         assert_eq!(limiter.active(), 3);
         drop(first);
         assert_eq!(limiter.active(), 2);
-        assert!(limiter.try_acquire(ip("192.0.2.1")).is_ok());
+        assert!(limiter.try_acquire(ip("192.0.2.1")?).is_ok());
+        Ok(())
     }
 
     #[test]
-    fn released_permits_remove_idle_client_entries() {
+    fn released_permits_remove_idle_client_entries() -> TestResult {
         let limiter = ConnectionLimiter::new("test", 8, 1);
-        let permit = limiter.try_acquire(ip("192.0.2.1"));
+        let permit = limiter.try_acquire(ip("192.0.2.1")?);
         assert!(permit.is_ok());
         drop(permit);
         assert_eq!(limiter.active(), 0);
         assert_eq!(limiter.inner.per_client.len(), 0);
-        assert!(limiter.try_acquire(ip("192.0.2.1")).is_ok());
+        assert!(limiter.try_acquire(ip("192.0.2.1")?).is_ok());
+        Ok(())
     }
 
     #[test]
-    fn ipv6_clients_share_a_slash_64_and_mapped_ipv4_is_canonical() {
+    fn ipv6_clients_share_a_slash_64_and_mapped_ipv4_is_canonical() -> TestResult {
         assert_eq!(
-            client_network(ip("2001:db8:1:2:aaaa::1")),
-            ip("2001:db8:1:2::")
+            client_network(ip("2001:db8:1:2:aaaa::1")?),
+            ip("2001:db8:1:2::")?
         );
-        assert_eq!(client_network(ip("::ffff:192.0.2.1")), ip("192.0.2.1"));
+        assert_eq!(client_network(ip("::ffff:192.0.2.1")?), ip("192.0.2.1")?);
         let limiter = ConnectionLimiter::new("test", 8, 1);
-        let held = limiter.try_acquire(ip("2001:db8:1:2::1"));
+        let held = limiter.try_acquire(ip("2001:db8:1:2::1")?);
         assert!(held.is_ok());
         assert_eq!(
-            limiter.try_acquire(ip("2001:db8:1:2:ffff::9")).err(),
+            limiter.try_acquire(ip("2001:db8:1:2:ffff::9")?).err(),
             Some(ConnectionRejection::ClientLimit)
         );
-        assert!(limiter.try_acquire(ip("2001:db8:1:3::1")).is_ok());
+        assert!(limiter.try_acquire(ip("2001:db8:1:3::1")?).is_ok());
+        Ok(())
     }
 }

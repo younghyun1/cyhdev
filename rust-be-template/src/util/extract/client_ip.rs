@@ -130,29 +130,23 @@ mod tests {
     use super::{TrustedProxyConfig, resolve_client_ip};
     use axum::http::{HeaderMap, HeaderValue};
     use ipnet::IpNet;
-    use std::net::{IpAddr, SocketAddr};
+    use std::{
+        error::Error,
+        net::{IpAddr, SocketAddr},
+    };
 
-    fn two_hop_config() -> TrustedProxyConfig {
-        let network = match "10.0.0.0/8".parse::<IpNet>() {
-            Ok(network) => network,
-            Err(error) => panic!("static trusted network is invalid: {error}"),
-        };
-        TrustedProxyConfig {
+    type TestResult = Result<(), Box<dyn Error>>;
+
+    fn two_hop_config() -> Result<TrustedProxyConfig, Box<dyn Error>> {
+        Ok(TrustedProxyConfig {
             hops: 2,
-            networks: vec![network],
-        }
-    }
-
-    fn socket(value: &str) -> SocketAddr {
-        match value.parse::<SocketAddr>() {
-            Ok(socket) => socket,
-            Err(error) => panic!("static socket address is invalid: {error}"),
-        }
+            networks: vec!["10.0.0.0/8".parse::<IpNet>()?],
+        })
     }
 
     #[test]
-    fn forwarded_chain_requires_trusted_socket_and_intermediate_hops() {
-        let config = two_hop_config();
+    fn forwarded_chain_requires_trusted_socket_and_intermediate_hops() -> TestResult {
+        let config = two_hop_config()?;
         let mut headers = HeaderMap::new();
         headers.insert(
             "x-forwarded-for",
@@ -169,11 +163,12 @@ mod tests {
             resolve_client_ip(&headers, untrusted_peer, &config),
             untrusted_peer.ip(),
         );
+        Ok(())
     }
 
     #[test]
-    fn forwarded_chain_reads_every_field_line_in_order() {
-        let config = two_hop_config();
+    fn forwarded_chain_reads_every_field_line_in_order() -> TestResult {
+        let config = two_hop_config()?;
         let mut headers = HeaderMap::new();
         // The client-controlled first line is spoofed; the proxy appended the
         // real client and its own hop as separate field lines.
@@ -185,42 +180,38 @@ mod tests {
             resolve_client_ip(&headers, peer, &config),
             IpAddr::from([192, 0, 2, 9]),
         );
+        Ok(())
     }
 
     #[test]
-    fn oversized_or_invalid_multi_line_chain_falls_back_to_peer() {
-        let config = two_hop_config();
+    fn oversized_or_invalid_multi_line_chain_falls_back_to_peer() -> TestResult {
+        let config = two_hop_config()?;
         let peer = SocketAddr::from(([10, 9, 8, 7], 443));
         let mut oversized = HeaderMap::new();
-        let long_line = "192.0.2.1,".repeat(150);
-        for _ in 0..2 {
-            match HeaderValue::from_str(&long_line) {
-                Ok(value) => oversized.append("x-forwarded-for", value),
-                Err(error) => panic!("static header is invalid: {error}"),
-            };
-        }
+        let long_line = HeaderValue::from_str(&"192.0.2.1,".repeat(150))?;
+        oversized.append("x-forwarded-for", long_line.clone());
+        oversized.append("x-forwarded-for", long_line);
         assert_eq!(resolve_client_ip(&oversized, peer, &config), peer.ip());
 
         let mut invalid = HeaderMap::new();
         invalid.append("x-forwarded-for", HeaderValue::from_static("192.0.2.9"));
-        match HeaderValue::from_bytes(b"\xff10.1.2.3") {
-            Ok(value) => invalid.append("x-forwarded-for", value),
-            Err(error) => panic!("opaque header bytes are invalid: {error}"),
-        };
+        invalid.append("x-forwarded-for", HeaderValue::from_bytes(b"\xff10.1.2.3")?);
         assert_eq!(resolve_client_ip(&invalid, peer, &config), peer.ip());
+        Ok(())
     }
 
     #[test]
-    fn ipv4_mapped_addresses_are_canonicalized() {
-        let config = two_hop_config();
+    fn ipv4_mapped_addresses_are_canonicalized() -> TestResult {
+        let config = two_hop_config()?;
         let mut headers = HeaderMap::new();
         headers.insert(
             "x-forwarded-for",
             HeaderValue::from_static("::ffff:192.0.2.9, ::ffff:10.1.2.3"),
         );
         // The mapped peer and mapped hop still match the IPv4 trusted network.
+        let mapped_peer = "[::ffff:10.9.8.7]:443".parse::<SocketAddr>()?;
         assert_eq!(
-            resolve_client_ip(&headers, socket("[::ffff:10.9.8.7]:443"), &config),
+            resolve_client_ip(&headers, mapped_peer, &config),
             IpAddr::from([192, 0, 2, 9]),
         );
 
@@ -228,18 +219,16 @@ mod tests {
             hops: 0,
             networks: Vec::new(),
         };
+        let mapped_untrusted = "[::ffff:203.0.113.4]:443".parse::<SocketAddr>()?;
         assert_eq!(
-            resolve_client_ip(
-                &HeaderMap::new(),
-                socket("[::ffff:203.0.113.4]:443"),
-                &no_proxy
-            ),
+            resolve_client_ip(&HeaderMap::new(), mapped_untrusted, &no_proxy),
             IpAddr::from([203, 0, 113, 4]),
         );
-        let native_v6 = socket("[2001:db8::1]:443");
+        let native_v6 = "[2001:db8::1]:443".parse::<SocketAddr>()?;
         assert_eq!(
             resolve_client_ip(&HeaderMap::new(), native_v6, &no_proxy),
             native_v6.ip(),
         );
+        Ok(())
     }
 }
