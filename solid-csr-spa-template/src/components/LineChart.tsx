@@ -51,11 +51,21 @@ export default function LineChart(props: LineChartProps) {
     };
   });
 
+  // Data streams every second while options change only with theme or
+  // viewport, so each is applied on its own change and a streamed sample never
+  // swaps in a new options object.
   createEffect(
-    () => ({ data: props.data, options: props.options }),
-    ({ data, options }) => {
+    () => props.data,
+    (data) => {
       if (!chart) return;
       chart.data = data;
+      chart.update("none");
+    },
+  );
+  createEffect(
+    () => props.options,
+    (options) => {
+      if (!chart) return;
       chart.options = options;
       chart.update("none");
     },
