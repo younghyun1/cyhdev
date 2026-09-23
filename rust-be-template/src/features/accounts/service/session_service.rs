@@ -19,6 +19,11 @@ use crate::features::accounts::{
 };
 
 pub const MAX_SESSIONS: usize = 16_384;
+/// Sessions one account may hold; a new login evicts that account's oldest session.
+///
+/// Without a per-account cap, one set of credentials could fill the whole store and lock
+/// every other account out with 503s.
+pub const MAX_SESSIONS_PER_USER: usize = 16;
 const MAX_TOKEN_GENERATION_ATTEMPTS: usize = 4;
 
 /// Owns all session authority for the single backend process.
@@ -26,6 +31,7 @@ pub struct SessionService {
     sessions: scc::HashMap<SessionKey, Session>,
     active_slots: AtomicUsize,
     max_sessions: usize,
+    max_sessions_per_user: usize,
 }
 
 impl Default for SessionService {
@@ -40,10 +46,15 @@ impl SessionService {
     }
 
     pub(crate) fn with_max_sessions(max_sessions: usize) -> Self {
+        Self::with_limits(max_sessions, MAX_SESSIONS_PER_USER)
+    }
+
+    pub(crate) fn with_limits(max_sessions: usize, max_sessions_per_user: usize) -> Self {
         Self {
             sessions: scc::HashMap::with_capacity(max_sessions),
             active_slots: AtomicUsize::new(0),
             max_sessions,
+            max_sessions_per_user: max_sessions_per_user.max(1),
         }
     }
 
@@ -79,6 +90,7 @@ impl SessionService {
         if let Some(previous_token) = previous_token {
             let _ = self.remove(previous_token).await;
         }
+        self.evict_oldest_for_user(account.user_id).await;
 
         if !self.try_reserve_slot() {
             let _ = self.purge_expired().await;
@@ -199,6 +211,36 @@ impl SessionService {
             })
             .await;
         (pruned, self.sessions.len())
+    }
+
+    /// Leaves room for one more session by removing the account's oldest ones.
+    ///
+    /// The scan is linear in the store, which login's Argon2 work and throttles dwarf.
+    /// Concurrent logins for one account can each evict, so the cap may briefly undershoot
+    /// but never overshoots by more than the number of concurrent logins.
+    async fn evict_oldest_for_user(&self, user_id: uuid::Uuid) -> usize {
+        let keep = self.max_sessions_per_user - 1;
+        let mut owned = Vec::new();
+        self.sessions
+            .iter_async(|key, session| {
+                if session.user_id == user_id {
+                    owned.push((session.created_at, *key));
+                }
+                true
+            })
+            .await;
+        if owned.len() <= keep {
+            return 0;
+        }
+        owned.sort_unstable_by_key(|(created_at, _)| *created_at);
+        let excess = owned.len() - keep;
+        let mut evicted = 0_usize;
+        for (_, key) in owned.into_iter().take(excess) {
+            if self.remove_key(&key).await {
+                evicted += 1;
+            }
+        }
+        evicted
     }
 
     async fn generate_unique_credential(&self) -> Result<(SessionToken, SessionKey), AccountError> {

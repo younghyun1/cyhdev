@@ -253,3 +253,23 @@ fn account_user_id(request: &Request<Body>) -> Uuid {
         Some(ResolvedSession::Absent) | None => Uuid::nil(),
     }
 }
+
+#[tokio::test]
+async fn per_user_cap_evicts_the_oldest_session_of_that_user_only() -> Result<(), AccountError> {
+    let sessions = SessionService::with_limits(8, 2);
+    let busy = login_account(Uuid::new_v4(), true);
+    let other = login_account(Uuid::new_v4(), true);
+    let other_token = sessions.create(&other, RoleType::User, None, None).await?;
+    let oldest = sessions.create(&busy, RoleType::User, None, None).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    let middle = sessions.create(&busy, RoleType::User, None, None).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(2)).await;
+    let newest = sessions.create(&busy, RoleType::User, None, None).await?;
+
+    assert!(sessions.lookup(oldest.expose()).await.is_none());
+    assert!(sessions.lookup(middle.expose()).await.is_some());
+    assert!(sessions.lookup(newest.expose()).await.is_some());
+    assert!(sessions.lookup(other_token.expose()).await.is_some());
+    assert_eq!(sessions.len(), 3);
+    Ok(())
+}
