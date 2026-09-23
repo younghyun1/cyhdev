@@ -11,6 +11,7 @@ use crate::features::photography::{
     error::PhotographyError,
     service::batch_session::BatchSession,
 };
+use crate::util::image::batch_pipeline::BatchStagingDir;
 
 pub const MAX_FILE_SIZE_BYTES: u64 = 150 * 1024 * 1024;
 pub const MAX_FILES_PER_BATCH: usize = 50;
@@ -34,6 +35,7 @@ impl PhotographyService {
         user_id: Uuid,
         batch_id: Uuid,
         context: PhotographContext,
+        staging: BatchStagingDir,
         files: Vec<StagedBatchFile>,
         metadata: Vec<BatchMetadata>,
     ) -> Result<BatchAccepted, PhotographyError> {
@@ -71,14 +73,20 @@ impl PhotographyService {
                 longitude,
             });
         }
-        let batch = Arc::new(BatchSession::new(batch_id, user_id, total, now));
+        let batch = Arc::new(BatchSession::new(
+            batch_id,
+            user_id,
+            total,
+            now,
+            staging.path().to_path_buf(),
+        ));
         for item in items {
             batch.register_item(item).await;
         }
         if !self.register_batch(Arc::clone(&batch)).await {
             return Err(PhotographyError::BatchSaturated);
         }
-        self.spawn_batch(batch, pipeline, user_id, context);
+        self.spawn_batch(batch, staging, pipeline, user_id, context);
         Ok(BatchAccepted {
             batch_id,
             total,

@@ -134,7 +134,18 @@ lettre = { version = "0.11.23", default-features = false, features = [
 bigdecimal = { version = "0.4.10", features = ["serde"] }
 
 # image processing
-image = "0.25.10"
+# Only decoders for the upload allowlist in util/media/image_upload.rs, plus the
+# AVIF encoder. rayon keeps the encoder multi-threaded under its explicit cap.
+image = { version = "0.25.10", default-features = false, features = [
+    "avif",
+    "bmp",
+    "gif",
+    "jpeg",
+    "png",
+    "rayon",
+    "tiff",
+    "webp",
+] }
 fast_image_resize = { version = "6.1.0", features = ["image"]}
 kamadak-exif = "0.6.1"
 tempfile = "3.27.0"

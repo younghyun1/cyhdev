@@ -1,8 +1,10 @@
 pub mod batch;
+mod batch_item;
 pub mod batch_session;
 pub mod batch_upload;
 pub mod batch_worker;
 pub mod media;
+mod media_delete;
 pub mod photography_service;
 pub mod reads;
 pub mod social;

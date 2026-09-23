@@ -10,7 +10,8 @@ use crate::util::{
         process_uploaded_image_files::{ProcessedImageFile, process_uploaded_image_files},
     },
     media::{
-        object_store::ObjectLocation, persistence::PendingMediaObject, staged_upload::StagedUpload,
+        image_upload::declared_image_format, object_store::ObjectLocation,
+        persistence::PendingMediaObject, staged_upload::StagedUpload,
     },
     s3::AWS_S3_BUCKET_NAME,
 };
@@ -53,11 +54,16 @@ pub(super) async fn prepare_thumbnail(
     thumbnail: StagedUpload,
     region: &str,
 ) -> Result<PreparedThumbnail, WasmError> {
-    let mut outputs =
-        process_uploaded_image_files(thumbnail.path(), None, vec![CyhdevImageType::DemoThumbnail])
-            .await
-            .map_err(WasmError::Image)?
-            .into_iter();
+    let format =
+        declared_image_format(thumbnail.content_type.as_deref()).map_err(WasmError::Image)?;
+    let mut outputs = process_uploaded_image_files(
+        thumbnail.path(),
+        format,
+        vec![CyhdevImageType::DemoThumbnail],
+    )
+    .await
+    .map_err(WasmError::Image)?
+    .into_iter();
     let processed = match outputs.next() {
         Some(processed) => processed,
         None => {
