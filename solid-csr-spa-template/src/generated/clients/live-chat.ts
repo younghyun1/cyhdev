@@ -31,7 +31,7 @@ export function createLiveChatClient(transport: ApiTransport) {
       });
     },
     getLiveChatCacheStats: async (options: ApiRequestOptions = {}) => {
-      const path = "/api/live-chat/cache-stats";
+      const path = "/api/admin/live-chat/cache-stats";
       const url = path;
       return requestJson<ApiResponse<LiveChatCacheStatsResponse>>(transport, url, {
         method: "GET",

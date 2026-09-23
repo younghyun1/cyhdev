@@ -183,7 +183,7 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
         "DELETE",
         "/api/admin/live-chat/messages/{message_id}"
     ),
-    operation!("live-chat", "GET", "/api/live-chat/cache-stats"),
+    operation!("live-chat", "GET", "/api/admin/live-chat/cache-stats"),
     operation!("forum", "GET", "/api/forum/capabilities"),
     operation!("forum", "GET", "/api/forum/topics"),
     operation!("forum", "POST", "/api/forum/topics"),
