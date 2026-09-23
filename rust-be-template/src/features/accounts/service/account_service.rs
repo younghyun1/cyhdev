@@ -47,6 +47,11 @@ pub struct AccountService {
     pub(super) retention_notification_run_gate: tokio::sync::Mutex<()>,
     /// Prevents a login from creating a stale session while an account mutation commits.
     pub(super) session_consistency: tokio::sync::RwLock<()>,
+    /// Excludes role and account-authority changes while a privileged operation relies on a
+    /// database-current authority check. It is separate from `session_consistency` so a long
+    /// administrative side effect never queues a writer in front of ordinary logins. Mutations
+    /// that take both locks acquire this one first.
+    pub(super) authority_consistency: tokio::sync::RwLock<()>,
 }
 
 impl AccountService {
@@ -75,6 +80,7 @@ impl AccountService {
             retention_notification_delivery_gate: tokio::sync::RwLock::new(()),
             retention_notification_run_gate: tokio::sync::Mutex::new(()),
             session_consistency: tokio::sync::RwLock::new(()),
+            authority_consistency: tokio::sync::RwLock::new(()),
         }
     }
 

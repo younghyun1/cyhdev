@@ -51,6 +51,8 @@ impl AccountService {
         }
         drop(session_consistency_read);
 
+        // Deletion ends any authority the account holds, so it excludes authority leases too.
+        let authority_consistency = self.authority_consistency.write().await;
         let session_consistency = self.session_consistency.write().await;
         let deleted_at = Utc::now();
         let retention_days = u64::try_from(ACCOUNT_RETENTION_DAYS)
@@ -73,6 +75,7 @@ impl AccountService {
 
         self.sessions.remove_for_user(user_id).await;
         drop(session_consistency);
+        drop(authority_consistency);
         self.live_chat_lifecycle
             .anonymize_deleted_account(user_id)
             .await;
@@ -86,6 +89,7 @@ impl AccountService {
         user_id: Uuid,
     ) -> Result<HardPurgeAccountReceipt, AccountError> {
         let retention_delivery = self.retention_notification_delivery_gate.write().await;
+        let authority_consistency = self.authority_consistency.write().await;
         let session_consistency = self.session_consistency.write().await;
         let receipt = self
             .repository
@@ -98,6 +102,7 @@ impl AccountService {
             .finalize_profile_cleanup(requester_id, user_id, &receipt.non_cloud_profile_ids)
             .await?;
         drop(session_consistency);
+        drop(authority_consistency);
         Ok(HardPurgeAccountReceipt {
             user_id: receipt.user_id,
             hard_purged_at: receipt.hard_purged_at,
