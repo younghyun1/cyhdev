@@ -76,6 +76,21 @@ describe("batch status polling", () => {
     expect(getBatchStatus).toHaveBeenCalledTimes(4);
   });
 
+  it("polls a newly tracked batch at the base interval even during a backoff", async () => {
+    getBatchStatus.mockRejectedValue({ status: 503 });
+    trackBatch(status(false));
+    for (let round = 0; round < 4; round += 1) {
+      await vi.advanceTimersByTimeAsync(nextPollDelay(round));
+    }
+    expect(getBatchStatus).toHaveBeenCalledTimes(4);
+
+    getBatchStatus.mockResolvedValue({ data: status(false) });
+    trackBatch({ ...status(false), batch_id: "batch-2" });
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
+    // One round polls both active batches.
+    expect(getBatchStatus).toHaveBeenCalledTimes(6);
+  });
+
   it("does not back off for missing batches inside the grace period", async () => {
     getBatchStatus.mockRejectedValue({ status: 404 });
     trackBatch(status(false));

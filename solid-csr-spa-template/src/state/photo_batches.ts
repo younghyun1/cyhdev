@@ -80,8 +80,10 @@ export function trackBatch(initial: BatchStatusResponse): void {
   });
   // Writes land on the microtask flush; the active-batch scan must see this one.
   flush();
-  // A fresh upload was just accepted, so the server is reachable again.
+  // A fresh upload was just accepted, so the server is reachable again; drop
+  // any long backoff timer so the new batch is polled at the base interval.
   consecutiveFailedRounds = 0;
+  clearPollTimer();
   ensurePolling();
 }
 
