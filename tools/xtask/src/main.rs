@@ -8,6 +8,7 @@ mod eu5_web_tests;
 mod evidence_manifest;
 #[cfg(test)]
 mod main_tests;
+mod psql_connection;
 mod release;
 mod review;
 mod secret_scan;
