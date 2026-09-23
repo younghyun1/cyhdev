@@ -90,6 +90,8 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         )
         .route("/api/auth/reset-password", post(reset_password))
         .route("/api/auth/verify-user-email", post(verify_user_email))
+        // Logout needs only the presented cookie, so any session can end itself.
+        .route("/api/auth/logout", post(logout))
         .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE))
         .layer(from_fn_with_state(
             state.auth_abuse_service(),
@@ -152,7 +154,6 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .layer(auth_middleware.clone());
 
     let protected_account_router = Router::new()
-        .route("/api/auth/logout", post(logout))
         .route("/api/auth/account", delete(delete_account))
         .route("/api/auth/profile", patch(update_profile))
         .layer(DefaultBodyLimit::max(AUTH_REQUEST_SIZE));
