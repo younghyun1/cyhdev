@@ -175,5 +175,5 @@ pub(super) struct NewTagRecord<'a> {
 #[diesel(table_name = post_tags)]
 pub(super) struct NewPostTagRecord {
     pub post_id: Uuid,
-    pub tag_id: i16,
+    pub tag_id: i32,
 }

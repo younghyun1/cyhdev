@@ -173,6 +173,13 @@ pub struct PostRead {
     pub tags: Option<Vec<String>>,
 }
 
+/// Replaces a post's tag links, inserting only tag names that do not exist.
+///
+/// `tags.tag_id` is an identity column, and PostgreSQL consumes an identity
+/// value for every row an insert attempts, even one `ON CONFLICT DO NOTHING`
+/// skips. Reading existing names first keeps re-saving a post from burning
+/// identifiers; the conflict clause only absorbs a concurrent insert of the
+/// same new name.
 async fn replace_tags(
     connection: &mut diesel_async::AsyncPgConnection,
     post_id: Uuid,
@@ -184,29 +191,26 @@ async fn replace_tags(
     if requested_tags.is_empty() {
         return Ok(());
     }
-    let rows = requested_tags
+    let mut tag_ids = tag_ids_by_name(connection, requested_tags).await?;
+    let missing = requested_tags
         .iter()
+        .filter(|tag| !tag_ids.contains_key(tag.as_str()))
         .map(|tag| NewTagRecord { tag_name: tag })
         .collect::<Vec<_>>();
-    diesel::insert_into(tags::table)
-        .values(rows)
-        .on_conflict(tags::tag_name)
-        .do_nothing()
-        .execute(&mut *connection)
-        .await?;
-    let tag_ids = tags::table
-        .filter(tags::tag_name.eq_any(requested_tags))
-        .select((tags::tag_id, tags::tag_name))
-        .load::<(i16, String)>(&mut *connection)
-        .await?
-        .into_iter()
-        .map(|(id, name)| (name, id))
-        .collect::<HashMap<_, _>>();
+    if !missing.is_empty() {
+        diesel::insert_into(tags::table)
+            .values(missing)
+            .on_conflict(tags::tag_name)
+            .do_nothing()
+            .execute(&mut *connection)
+            .await?;
+        tag_ids = tag_ids_by_name(connection, requested_tags).await?;
+    }
     let links = requested_tags
         .iter()
         .map(|tag| {
             tag_ids
-                .get(tag)
+                .get(tag.as_str())
                 .copied()
                 .map(|tag_id| NewPostTagRecord { post_id, tag_id })
                 .ok_or(BlogError::Invariant("persisted post tag was not readable"))
@@ -217,6 +221,19 @@ async fn replace_tags(
         .execute(&mut *connection)
         .await?;
     Ok(())
+}
+
+async fn tag_ids_by_name(
+    connection: &mut diesel_async::AsyncPgConnection,
+    names: &[String],
+) -> Result<HashMap<String, i32>, BlogError> {
+    Ok(tags::table
+        .filter(tags::tag_name.eq_any(names))
+        .select((tags::tag_name, tags::tag_id))
+        .load::<(String, i32)>(&mut *connection)
+        .await?
+        .into_iter()
+        .collect())
 }
 
 fn classify_write_error(error: diesel::result::Error) -> BlogError {
