@@ -112,9 +112,17 @@ impl ShutdownHooks {
 /// Add further steps here in the order they must run, for example closing open
 /// calls before flushing counters that those calls update.
 pub fn server_shutdown_hooks(state: &Arc<ServerState>) -> ShutdownHooks {
+    let live_chat = state.live_chat_service();
     let visitors = state.visitor_service();
     let photographs = state.photography_service();
     ShutdownHooks::new(HOOK_BUDGET, PER_HOOK_LIMIT)
+        .with_hook("close_open_calls", move || async move {
+            live_chat
+                .close_open_calls()
+                .await
+                .map(|_| ())
+                .map_err(|error| anyhow::anyhow!("{error}"))
+        })
         .with_hook("flush_visitor_logs", move || async move {
             visitors.flush().await.map(|_| ())
         })
