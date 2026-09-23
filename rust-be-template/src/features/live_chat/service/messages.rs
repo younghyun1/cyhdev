@@ -4,6 +4,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use super::{
+    super::domain::{ban::LIVE_CHAT_ABUSE_BAN_DURATION, ip_prefix::LiveChatIpPrefix},
     super::error::LiveChatError,
     cache::{
         BanCacheLookup, CachedChatMessage, CachedLiveChatBan, ChatActor,
@@ -16,6 +17,12 @@ impl LiveChatService {
     pub async fn prune_runtime(&self, now: chrono::DateTime<chrono::Utc>) {
         self.cache.clear_expired_rate_windows(now).await;
         self.cache.clear_expired_typing(now).await;
+    }
+
+    /// Drop rate windows that can no longer affect the one-second limit, so
+    /// the bounded table only holds senders active in the last two seconds.
+    pub async fn prune_stale_rate_windows(&self, now: chrono::DateTime<chrono::Utc>) {
+        self.cache.clear_stale_rate_windows(now).await;
     }
 
     pub async fn enrich_messages(
@@ -159,12 +166,20 @@ impl LiveChatService {
         }
     }
 
+    /// Persist a 24-hour abuse ban for the sender's address group (IPv4 exact,
+    /// IPv6 /64) and account.
     pub async fn persist_abuse_ban(
         &self,
         actor: &ChatActor,
         ip: IpAddr,
     ) -> Option<CachedLiveChatBan> {
-        match self.repository.insert_abuse_ban(actor, ip).await {
+        let network = LiveChatIpPrefix::of(ip).network();
+        let expires_at = chrono::Utc::now() + LIVE_CHAT_ABUSE_BAN_DURATION;
+        match self
+            .repository
+            .insert_abuse_ban(actor, network, expires_at)
+            .await
+        {
             Ok(ban) => Some(CachedLiveChatBan::from(ban)),
             Err(error_value) => {
                 error!(error = %error_value, user_id = ?actor.user_id, client_ip = %ip, "Failed to persist live chat ban");

@@ -1,12 +1,12 @@
 use std::{
     collections::VecDeque,
-    net::IpAddr,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
     },
 };
 
+use ipnet::IpNet;
 use scc::{Guard, HashMap, HashSet, TreeIndex};
 use tokio::sync::{Mutex, broadcast};
 use uuid::Uuid;
@@ -28,6 +28,7 @@ pub use ban::CachedLiveChatBan;
 pub use ban_store::{BanCacheLookup, LIVE_CHAT_BAN_INDEX_MAX_ENTRIES};
 pub use event::{ChatConnectionState, LiveChatCacheStats, LiveChatServerEvent, TypingState};
 pub use message::{CachedChatMessage, ChatTimelineKey};
+pub use rate::MessageRateDecision;
 
 use self::{
     message::ChatEvictionKey,
@@ -52,7 +53,8 @@ pub struct LiveChatCache {
     disabled_connected_users_saturated: AtomicBool,
     identity_mutation: Mutex<()>,
     bans_by_user: HashMap<Uuid, CachedLiveChatBan>,
-    bans_by_ip: HashMap<IpAddr, CachedLiveChatBan>,
+    /// Keyed by banned network: /32 or /128 hosts and IPv6 /64 subscriber groups.
+    bans_by_ip: HashMap<IpNet, CachedLiveChatBan>,
     ban_mutation: Mutex<()>,
     ban_cache_complete: AtomicBool,
     ban_cache_hits: AtomicU64,

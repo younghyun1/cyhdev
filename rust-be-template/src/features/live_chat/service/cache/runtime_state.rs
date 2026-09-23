@@ -1,101 +1,14 @@
-use std::{net::IpAddr, sync::atomic::Ordering};
+use std::sync::atomic::Ordering;
 
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::{
-    ChatActor, ChatActorKey, ChatConnectionState, LIVE_CHAT_ABNORMAL_MESSAGE_LIMIT_PER_SECOND,
-    LIVE_CHAT_MAX_CONNECTIONS, LIVE_CHAT_RATE_MAX_ENTRIES, LIVE_CHAT_TYPING_MAX_ENTRIES,
-    LiveChatCache, TypingState,
-    rate::{LiveChatRateKey, LiveChatRateState},
+    ChatActor, ChatActorKey, ChatConnectionState, LIVE_CHAT_MAX_CONNECTIONS,
+    LIVE_CHAT_TYPING_MAX_ENTRIES, LiveChatCache, TypingState,
 };
 
 impl LiveChatCache {
-    pub async fn record_message_attempt(
-        &self,
-        user_id: Option<Uuid>,
-        ip: IpAddr,
-        now: DateTime<Utc>,
-    ) -> bool {
-        let ip_abnormal = self
-            .record_message_attempt_for_key(LiveChatRateKey::Ip(ip), now)
-            .await;
-        let user_abnormal = match user_id {
-            Some(user_id) => {
-                self.record_message_attempt_for_key(LiveChatRateKey::User(user_id), now)
-                    .await
-            }
-            None => false,
-        };
-        ip_abnormal || user_abnormal
-    }
-
-    async fn record_message_attempt_for_key(
-        &self,
-        key: LiveChatRateKey,
-        now: DateTime<Utc>,
-    ) -> bool {
-        let mut is_abnormal = false;
-        if self
-            .message_rate_by_key
-            .update_async(&key, |_, state| {
-                if now.signed_duration_since(state.window_started_at) < ChronoDuration::seconds(1) {
-                    state.count = state.count.saturating_add(1);
-                } else {
-                    state.window_started_at = now;
-                    state.count = 1;
-                }
-                is_abnormal = state.count > LIVE_CHAT_ABNORMAL_MESSAGE_LIMIT_PER_SECOND;
-            })
-            .await
-            .is_none()
-        {
-            if self
-                .message_rate_count
-                .try_update(Ordering::SeqCst, Ordering::SeqCst, |current| {
-                    (current < LIVE_CHAT_RATE_MAX_ENTRIES).then_some(current + 1)
-                })
-                .is_err()
-            {
-                return true;
-            }
-            match self
-                .message_rate_by_key
-                .insert_async(
-                    key,
-                    LiveChatRateState {
-                        window_started_at: now,
-                        count: 1,
-                    },
-                )
-                .await
-            {
-                Ok(_) => {}
-                Err((key, _state)) => {
-                    self.message_rate_count.fetch_sub(1, Ordering::SeqCst);
-                    let mut raced_is_abnormal = false;
-                    let _ = self
-                        .message_rate_by_key
-                        .update_async(&key, |_, state| {
-                            if now.signed_duration_since(state.window_started_at)
-                                < ChronoDuration::seconds(1)
-                            {
-                                state.count = state.count.saturating_add(1);
-                            } else {
-                                state.window_started_at = now;
-                                state.count = 1;
-                            }
-                            raced_is_abnormal =
-                                state.count > LIVE_CHAT_ABNORMAL_MESSAGE_LIMIT_PER_SECOND;
-                        })
-                        .await;
-                    return raced_is_abnormal;
-                }
-            }
-        }
-        is_abnormal
-    }
-
     pub async fn set_typing(&self, mut state: TypingState) -> bool {
         let actor_key = state.actor.actor_key.clone();
         if let ChatActorKey::User(user_id) = &actor_key
@@ -150,30 +63,6 @@ impl LiveChatCache {
             })
             .await;
         self.typing_count.fetch_sub(removed, Ordering::SeqCst);
-    }
-
-    pub async fn clear_stale_rate_windows(&self, now: DateTime<Utc>) {
-        self.clear_rate_windows_before(now, ChronoDuration::seconds(2))
-            .await;
-    }
-
-    pub async fn clear_expired_rate_windows(&self, now: DateTime<Utc>) {
-        self.clear_rate_windows_before(now, ChronoDuration::seconds(60))
-            .await;
-    }
-
-    async fn clear_rate_windows_before(&self, now: DateTime<Utc>, age: ChronoDuration) {
-        let mut removed = 0usize;
-        self.message_rate_by_key
-            .retain_async(|_, state| {
-                let retain = now.signed_duration_since(state.window_started_at) < age;
-                if !retain {
-                    removed = removed.saturating_add(1);
-                }
-                retain
-            })
-            .await;
-        self.message_rate_count.fetch_sub(removed, Ordering::SeqCst);
     }
 
     pub async fn active_typing_actors(&self, now: DateTime<Utc>) -> Vec<ChatActor> {
