@@ -32,6 +32,7 @@ impl TrustedProxyConfig {
     }
 
     fn trusts(&self, ip: IpAddr) -> bool {
+        let ip = ip.to_canonical();
         self.networks.iter().any(|network| network.contains(&ip))
     }
 }
@@ -43,6 +44,11 @@ impl TrustedProxyConfig {
 /// configured trusted-hop count. When no trusted proxy boundary is configured we
 /// ignore client-supplied headers entirely and use the socket peer; this is the
 /// fail-safe default for ban enforcement and visitor logging.
+///
+/// Every returned address is canonical: an IPv4-mapped IPv6 address such as
+/// `::ffff:192.0.2.1`, which dual-stack listeners and some proxies report, becomes
+/// the plain IPv4 address, so bans, rate limits, and visitor rows use one key per
+/// client.
 pub fn extract_client_ip(headers: &HeaderMap, fallback: SocketAddr) -> Option<IpAddr> {
     let config = TRUSTED_PROXIES.get_or_init(TrustedProxyConfig::from_environment);
     Some(resolve_client_ip(headers, fallback, config))
@@ -53,34 +59,52 @@ fn resolve_client_ip(
     fallback: SocketAddr,
     config: &TrustedProxyConfig,
 ) -> IpAddr {
-    if config.hops == 0 || !config.trusts(fallback.ip()) {
-        return fallback.ip();
+    let peer = fallback.ip().to_canonical();
+    if config.hops == 0 || !config.trusts(peer) {
+        return peer;
     }
 
-    let raw = match headers.get("x-forwarded-for") {
-        Some(value) if value.as_bytes().len() <= MAX_FORWARDED_FOR_BYTES => match value.to_str() {
-            Ok(raw) => raw,
-            Err(_) => return fallback.ip(),
-        },
-        Some(_) | None => return fallback.ip(),
+    let raw = match forwarded_for_chain(headers) {
+        Some(raw) => raw,
+        None => return peer,
     };
     let mut right_to_left = raw.rsplit(',').map(str::trim);
     for _ in 1..config.hops {
-        let trusted_hop = match right_to_left.next().and_then(|value| value.parse().ok()) {
+        let trusted_hop = match right_to_left.next().and_then(parse_hop) {
             Some(ip) => ip,
-            None => return fallback.ip(),
+            None => return peer,
         };
         if !config.trusts(trusted_hop) {
-            return fallback.ip();
+            return peer;
         }
     }
-    match right_to_left
-        .next()
-        .and_then(|value| value.parse::<IpAddr>().ok())
-    {
-        Some(client_ip) => client_ip,
-        None => fallback.ip(),
+    right_to_left.next().and_then(parse_hop).unwrap_or(peer)
+}
+
+/// Joins every `X-Forwarded-For` field line in received order.
+///
+/// RFC 9110 permits a list header to arrive as several field lines, and a proxy
+/// may append its own line instead of extending the first one. Reading only the
+/// first line would treat an attacker-supplied leading line as the proxy's hop.
+/// The combined value keeps the existing byte bound; an oversized or non-UTF-8
+/// chain falls back to the socket peer.
+fn forwarded_for_chain(headers: &HeaderMap) -> Option<String> {
+    let mut chain = String::new();
+    for value in headers.get_all("x-forwarded-for") {
+        let line = value.to_str().ok()?;
+        if !chain.is_empty() {
+            chain.push(',');
+        }
+        chain.push_str(line);
+        if chain.len() > MAX_FORWARDED_FOR_BYTES {
+            return None;
+        }
     }
+    (!chain.is_empty()).then_some(chain)
+}
+
+fn parse_hop(value: &str) -> Option<IpAddr> {
+    value.parse::<IpAddr>().ok().map(|ip| ip.to_canonical())
 }
 
 fn parse_trusted_networks(raw: &str) -> Vec<IpNet> {
@@ -108,16 +132,27 @@ mod tests {
     use ipnet::IpNet;
     use std::net::{IpAddr, SocketAddr};
 
-    #[test]
-    fn forwarded_chain_requires_trusted_socket_and_intermediate_hops() {
+    fn two_hop_config() -> TrustedProxyConfig {
         let network = match "10.0.0.0/8".parse::<IpNet>() {
             Ok(network) => network,
             Err(error) => panic!("static trusted network is invalid: {error}"),
         };
-        let config = TrustedProxyConfig {
+        TrustedProxyConfig {
             hops: 2,
             networks: vec![network],
-        };
+        }
+    }
+
+    fn socket(value: &str) -> SocketAddr {
+        match value.parse::<SocketAddr>() {
+            Ok(socket) => socket,
+            Err(error) => panic!("static socket address is invalid: {error}"),
+        }
+    }
+
+    #[test]
+    fn forwarded_chain_requires_trusted_socket_and_intermediate_hops() {
+        let config = two_hop_config();
         let mut headers = HeaderMap::new();
         headers.insert(
             "x-forwarded-for",
@@ -133,6 +168,78 @@ mod tests {
         assert_eq!(
             resolve_client_ip(&headers, untrusted_peer, &config),
             untrusted_peer.ip(),
+        );
+    }
+
+    #[test]
+    fn forwarded_chain_reads_every_field_line_in_order() {
+        let config = two_hop_config();
+        let mut headers = HeaderMap::new();
+        // The client-controlled first line is spoofed; the proxy appended the
+        // real client and its own hop as separate field lines.
+        headers.append("x-forwarded-for", HeaderValue::from_static("198.51.100.66"));
+        headers.append("x-forwarded-for", HeaderValue::from_static("192.0.2.9"));
+        headers.append("x-forwarded-for", HeaderValue::from_static("10.1.2.3"));
+        let peer = SocketAddr::from(([10, 9, 8, 7], 443));
+        assert_eq!(
+            resolve_client_ip(&headers, peer, &config),
+            IpAddr::from([192, 0, 2, 9]),
+        );
+    }
+
+    #[test]
+    fn oversized_or_invalid_multi_line_chain_falls_back_to_peer() {
+        let config = two_hop_config();
+        let peer = SocketAddr::from(([10, 9, 8, 7], 443));
+        let mut oversized = HeaderMap::new();
+        let long_line = "192.0.2.1,".repeat(150);
+        for _ in 0..2 {
+            match HeaderValue::from_str(&long_line) {
+                Ok(value) => oversized.append("x-forwarded-for", value),
+                Err(error) => panic!("static header is invalid: {error}"),
+            };
+        }
+        assert_eq!(resolve_client_ip(&oversized, peer, &config), peer.ip());
+
+        let mut invalid = HeaderMap::new();
+        invalid.append("x-forwarded-for", HeaderValue::from_static("192.0.2.9"));
+        match HeaderValue::from_bytes(b"\xff10.1.2.3") {
+            Ok(value) => invalid.append("x-forwarded-for", value),
+            Err(error) => panic!("opaque header bytes are invalid: {error}"),
+        };
+        assert_eq!(resolve_client_ip(&invalid, peer, &config), peer.ip());
+    }
+
+    #[test]
+    fn ipv4_mapped_addresses_are_canonicalized() {
+        let config = two_hop_config();
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-forwarded-for",
+            HeaderValue::from_static("::ffff:192.0.2.9, ::ffff:10.1.2.3"),
+        );
+        // The mapped peer and mapped hop still match the IPv4 trusted network.
+        assert_eq!(
+            resolve_client_ip(&headers, socket("[::ffff:10.9.8.7]:443"), &config),
+            IpAddr::from([192, 0, 2, 9]),
+        );
+
+        let no_proxy = TrustedProxyConfig {
+            hops: 0,
+            networks: Vec::new(),
+        };
+        assert_eq!(
+            resolve_client_ip(
+                &HeaderMap::new(),
+                socket("[::ffff:203.0.113.4]:443"),
+                &no_proxy
+            ),
+            IpAddr::from([203, 0, 113, 4]),
+        );
+        let native_v6 = socket("[2001:db8::1]:443");
+        assert_eq!(
+            resolve_client_ip(&HeaderMap::new(), native_v6, &no_proxy),
+            native_v6.ip(),
         );
     }
 }
