@@ -20,6 +20,6 @@ Read [API contracts](../docs/design/fe/api-contracts.md) before adding HTTP call
 
 From the root: `npm --prefix solid-csr-spa-template ci`, then `cargo xtask frontend`. The dev server listens on port 3000. Final verification is `cargo xtask frontend-check`; it includes typecheck, zero-warning lint, Vitest, and the Vite build, but not Playwright. For focused tests, use `npm --prefix solid-csr-spa-template run test -- <test-file>`.
 
-For browser behavior, run `npm --prefix solid-csr-spa-template run test:e2e:chromium`, or `test:e2e` for Chromium and WebKit, with installed Playwright browsers. The config starts a local dev server; inspect each test's fixtures before assuming a backend is required. Performance tests use the separate `test:e2e:performance` script. Record browser checks actually run.
+For browser behavior, run `npm --prefix solid-csr-spa-template run test:e2e:chromium`, or `test:e2e` for Chromium and WebKit, with installed Playwright browsers. The config starts a local dev server; inspect each test's fixtures before assuming a backend is required. Performance tests use the separate `test:e2e:performance` script, and `test:e2e:security` checks the built frontend under the backend's Content-Security-Policy. Record browser checks actually run.
 
 Keep `dist/`, `node_modules/`, and staged `public/eu5-locations-db/app/` untracked. EU5 staging uses root `cargo xtask eu5-web-stage`; consult [vendor instructions](../vendor/AGENTS.md).
