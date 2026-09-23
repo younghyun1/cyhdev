@@ -66,6 +66,8 @@ pub(crate) fn run_database_integration(root: &Path) -> TaskResult<()> {
                 "--test",
                 "postgres_live_chat_moderation",
                 "--test",
+                "postgres_live_chat_runtime",
+                "--test",
                 "postgres_cache_consistency",
                 "--test",
                 "postgres_i18n_sources",

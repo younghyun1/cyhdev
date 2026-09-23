@@ -1,5 +1,6 @@
 pub mod actors;
 pub mod cache;
+pub mod calls;
 pub mod guest_identity;
 pub mod lifecycle;
 pub mod live_chat_service;
