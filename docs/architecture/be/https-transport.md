@@ -1,6 +1,6 @@
 # HTTPS transport latency
 
-The HTTPS listener wraps its Rustls acceptor with axum-server's `NoDelayAcceptor`, which sets `TCP_NODELAY` on each accepted TCP socket before TLS negotiation. Preserve this setting when changing listener construction. HTTP/2 headers and DATA can be emitted separately; leaving Nagle's algorithm enabled can delay response completion while waiting for a TCP acknowledgement. This setting applies to the entire HTTPS listener, including map tiles, APIs, and static assets.
+The HTTPS listener wraps its Rustls acceptor with axum-server's `NoDelayAcceptor`, which sets `TCP_NODELAY` on each accepted TCP socket before TLS negotiation. Preserve this setting when changing listener construction. HTTP/2 headers and DATA can be emitted separately; leaving Nagle's algorithm enabled can delay response completion while waiting for a TCP acknowledgement. This setting applies to the entire HTTPS listener, including map tiles, APIs, and static assets. Connection admission runs before this acceptor and TLS; protocol timeouts, connection caps, and shutdown draining are described in [HTTP and database runtime bounds](http-runtime-bounds.md).
 
 ## Evidence
 

@@ -5,8 +5,8 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool}
 
 #[derive(QueryableByName)]
 struct VersionRow {
-    #[diesel(sql_type = diesel::sql_types::Text)]
-    version: String,
+    #[diesel(sql_type = diesel::sql_types::Integer)]
+    version_num: i32,
 }
 
 pub struct ServerStatusRepository {
@@ -18,12 +18,16 @@ impl ServerStatusRepository {
         Self { pool }
     }
 
-    pub async fn database_version(&self) -> anyhow::Result<(String, std::time::Duration)> {
+    /// Returns `server_version_num` (for example 180001) and the query round trip.
+    ///
+    /// The numeric setting avoids exposing the packager's build string, which the
+    /// textual `server_version` includes.
+    pub async fn database_version_num(&self) -> anyhow::Result<(i32, std::time::Duration)> {
         let mut connection = self.pool.get().await?;
         let start = tokio::time::Instant::now();
-        let row = sql_query("SELECT current_setting('server_version') AS version")
+        let row = sql_query("SELECT current_setting('server_version_num')::integer AS version_num")
             .get_result::<VersionRow>(&mut connection)
             .await?;
-        Ok((row.version, start.elapsed()))
+        Ok((row.version_num, start.elapsed()))
     }
 }

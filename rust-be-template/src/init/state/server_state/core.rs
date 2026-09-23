@@ -90,4 +90,8 @@ impl ServerState {
     pub fn public_app_origin(&self) -> PublicAppOrigin {
         self.public_app_origin.clone()
     }
+
+    pub fn media_region(&self) -> Arc<str> {
+        Arc::clone(&self.media_region)
+    }
 }

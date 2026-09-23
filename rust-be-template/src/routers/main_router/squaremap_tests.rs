@@ -10,6 +10,7 @@ async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<d
     let web = directory.path().join("web");
     std::fs::create_dir(&web)?;
     std::fs::write(web.join("index.html"), "<title>Map</title>")?;
+    std::fs::write(web.join("style.css"), "body{}")?;
     std::fs::write(web.join("players.json"), "[]")?;
     std::fs::write(directory.path().join("secret.txt"), "private")?;
     let app = Router::new()
@@ -31,10 +32,28 @@ async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<d
         .await?;
     assert_eq!(index.status(), StatusCode::OK);
     assert_eq!(index.headers()[header::CACHE_CONTROL], "public, no-cache");
-    let modified = index.headers()[header::LAST_MODIFIED].clone();
-    assert_eq!(index.text().await?, "<title>Map</title>");
-    let conditional = client
+    // HTML carries the storage shim, so file validators are withheld and ignored.
+    assert!(!index.headers().contains_key(header::LAST_MODIFIED));
+    assert!(!index.headers().contains_key(header::ETAG));
+    assert_eq!(
+        index.text().await?,
+        super::storage_shim::with_shim("<title>Map</title>")
+    );
+    let unconditional = client
         .get(format!("{origin}/minecraft/map/index.html"))
+        .header(header::IF_MODIFIED_SINCE, "Wed, 01 Jan 2031 00:00:00 GMT")
+        .send()
+        .await?;
+    assert_eq!(unconditional.status(), StatusCode::OK);
+    assert!(unconditional.text().await?.contains("cyhdev-storage-probe"));
+    let style = client
+        .get(format!("{origin}/minecraft/map/style.css"))
+        .send()
+        .await?;
+    let modified = style.headers()[header::LAST_MODIFIED].clone();
+    assert_eq!(style.text().await?, "body{}");
+    let conditional = client
+        .get(format!("{origin}/minecraft/map/style.css"))
         .header(header::IF_MODIFIED_SINCE, modified)
         .send()
         .await?;

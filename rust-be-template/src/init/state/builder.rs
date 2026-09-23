@@ -136,6 +136,7 @@ impl ServerStateBuilder {
                 .map(ToString::to_string)
                 .unwrap_or_else(|| "us-west-1".to_owned()),
         );
+        let state_media_region = Arc::clone(&media_region);
         let media_object_store: Arc<dyn MediaObjectStore> =
             Arc::new(S3MediaObjectStore::from_config(&media_config));
         let account_repository = Arc::new(AccountRepository::new(pool.clone()));
@@ -280,6 +281,7 @@ impl ServerStateBuilder {
             session_service,
             deployment_environment,
             public_app_origin,
+            media_region: state_media_region,
         })
     }
 }

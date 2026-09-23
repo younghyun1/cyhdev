@@ -1,15 +1,25 @@
 //! Process-owned runtime/build/host status service.
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
+use std::{
+    net::IpAddr,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use crate::features::server_status::{
     domain::system_info::SystemInfo,
     repository::server_status_repository::ServerStatusRepository,
-    service::{fastfetch::FastFetchCache, system_info_state::SystemInfoState},
+    service::{
+        database_status::{
+            DATABASE_STATUS_TTL, DatabaseStatus, DatabaseStatusCache, major_version,
+        },
+        fastfetch::FastFetchCache,
+        system_info_state::SystemInfoState,
+    },
 };
+use crate::util::connection_limit::{ConnectionLimiter, ConnectionPermit, ConnectionRejection};
 
 pub struct RuntimeStatus {
     pub uptime: tokio::time::Duration,
@@ -18,7 +28,8 @@ pub struct RuntimeStatus {
 }
 
 pub struct ServerStateStatus {
-    pub database_version: String,
+    /// Major version only; the full version string identifies the packager and patch level.
+    pub database_major_version: u32,
     pub database_latency: std::time::Duration,
     pub runtime: RuntimeStatus,
 }
@@ -43,10 +54,17 @@ pub struct ServerStatusService {
     repository: Arc<ServerStatusRepository>,
     system: SystemInfoState,
     fastfetch: FastFetchCache,
+    database_status: DatabaseStatusCache,
     app_name_version: Arc<str>,
     started_at: tokio::time::Instant,
     responses_handled: AtomicU64,
+    host_stats_sockets: ConnectionLimiter,
 }
+
+/// Concurrent host-stats sockets; each costs one task and a sample per second.
+pub const HOST_STATS_MAX_SOCKETS: usize = 256;
+/// Per IPv4 address or IPv6 /64, enough for a few open tabs behind one NAT.
+pub const HOST_STATS_MAX_SOCKETS_PER_CLIENT: usize = 4;
 
 impl ServerStatusService {
     pub fn new(
@@ -58,10 +76,24 @@ impl ServerStatusService {
             repository,
             system: SystemInfoState::new(),
             fastfetch: FastFetchCache::new(),
+            database_status: DatabaseStatusCache::new(DATABASE_STATUS_TTL),
             app_name_version: app_name_version.into(),
             started_at,
             responses_handled: AtomicU64::new(0),
+            host_stats_sockets: ConnectionLimiter::new(
+                "host_stats_sockets",
+                HOST_STATS_MAX_SOCKETS,
+                HOST_STATS_MAX_SOCKETS_PER_CLIENT,
+            ),
         }
+    }
+
+    /// Reserves a host-stats socket slot for `client_ip` until the permit is dropped.
+    pub fn admit_host_stats_socket(
+        &self,
+        client_ip: IpAddr,
+    ) -> Result<ConnectionPermit, ConnectionRejection> {
+        self.host_stats_sockets.try_acquire(client_ip)
     }
 
     pub fn app_name_version(&self) -> &str {
@@ -84,11 +116,25 @@ impl ServerStatusService {
         self.fastfetch.initialize().await;
     }
 
+    /// Database fields come from a cache refreshed at most every [`DATABASE_STATUS_TTL`].
     pub async fn state(&self, runtime: RuntimeStatus) -> anyhow::Result<ServerStateStatus> {
-        let (database_version, database_latency) = self.repository.database_version().await?;
+        let repository = Arc::clone(&self.repository);
+        let database = self
+            .database_status
+            .get_or_refresh(|| async move {
+                let (version_num, latency) = repository.database_version_num().await?;
+                let major_version = major_version(version_num).ok_or_else(|| {
+                    anyhow::anyhow!("unexpected server_version_num {version_num}")
+                })?;
+                Ok(DatabaseStatus {
+                    major_version,
+                    latency,
+                })
+            })
+            .await?;
         Ok(ServerStateStatus {
-            database_version,
-            database_latency,
+            database_major_version: database.major_version,
+            database_latency: database.latency,
             runtime,
         })
     }

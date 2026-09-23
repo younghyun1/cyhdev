@@ -373,6 +373,9 @@ export async function setUiPreferences(
 ): Promise<void> {
   await page.addInitScript(
     ({ locale: nextLocale, theme: nextTheme }) => {
+      // Init scripts also run in the sandboxed map and EU5 frames, whose opaque
+      // origin has no Web Storage; only the application document needs these.
+      if (window !== window.top) return;
       localStorage.setItem("ui_locale", nextLocale);
       localStorage.setItem("theme", nextTheme);
     },
