@@ -203,6 +203,8 @@ pub struct PasswordResetReceipt {
     pub user_name: String,
     pub user_email: String,
     pub updated_at: DateTime<Utc>,
+    /// External sign-in links removed with the reset; never sent to the browser.
+    pub oidc_links_removed: usize,
 }
 
 /// Result of issuing a password-reset token.

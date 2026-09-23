@@ -1,5 +1,6 @@
 import type {
   OidcLinkCompleteRequest,
+  OidcLinkStartRequest,
   OidcUnlinkRequest,
 } from "../../generated";
 import { contractApi } from "../account_api";
@@ -7,7 +8,8 @@ import { contractApi } from "../account_api";
 export const oidcApi = {
   status: () => contractApi.oidcStatus(),
   startLogin: () => contractApi.startOidcLogin(),
-  startLink: () => contractApi.startOidcLink(),
+  startLink: (body: OidcLinkStartRequest) =>
+    contractApi.startOidcLink({ body }),
   completeLink: (body: OidcLinkCompleteRequest) =>
     contractApi.completeOidcLink({ body }),
   unlink: (body: OidcUnlinkRequest) => contractApi.unlinkOidc({ body }),

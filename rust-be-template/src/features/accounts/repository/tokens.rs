@@ -22,7 +22,7 @@ use crate::{
             sql_functions::lower,
         },
     },
-    schema::{email_verification_tokens, password_reset_tokens, users},
+    schema::{account_oidc_identities, email_verification_tokens, password_reset_tokens, users},
 };
 
 impl AccountRepository {
@@ -103,7 +103,7 @@ impl AccountRepository {
             user_updated_at: consumed_at,
         };
         let transaction_result = connection
-            .transaction::<AccountRecord, diesel::result::Error, _>(async |connection| {
+            .transaction::<(AccountRecord, usize), diesel::result::Error, _>(async |connection| {
                 let consumed = diesel::update(
                     password_reset_tokens::table
                         .filter(password_reset_tokens::password_reset_token_id.eq(token.token_id))
@@ -117,7 +117,7 @@ impl AccountRepository {
                     return Err(diesel::result::Error::RollbackTransaction);
                 }
 
-                diesel::update(
+                let account = diesel::update(
                     users::table
                         .filter(users::user_id.eq(token.user_id))
                         .filter(users::user_deleted_at.is_null()),
@@ -125,12 +125,24 @@ impl AccountRepository {
                 .set(&update)
                 .returning(AccountRecord::as_returning())
                 .get_result(&mut *connection)
-                .await
+                .await?;
+                // A reset proves control of the email, not of linked providers. Removing the
+                // links ends access held by whoever linked one while they had the account.
+                let links_removed = diesel::delete(account_oidc_identities::table.filter(
+                    account_oidc_identities::account_oidc_identity_user_id.eq(token.user_id),
+                ))
+                .execute(&mut *connection)
+                .await?;
+                Ok((account, links_removed))
             })
             .await;
 
         match transaction_result {
-            Ok(account) => Ok(account.into_password_reset_receipt()),
+            Ok((account, links_removed)) => {
+                let mut receipt = account.into_password_reset_receipt();
+                receipt.oidc_links_removed = links_removed;
+                Ok(receipt)
+            }
             Err(diesel::result::Error::RollbackTransaction) => {
                 Err(AccountError::TokenAlreadyConsumed)
             }

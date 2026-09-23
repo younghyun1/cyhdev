@@ -99,6 +99,14 @@ impl AccountService {
                 result => result?,
             };
             service.sessions.remove_for_user(receipt.user_id).await;
+            if receipt.oidc_links_removed > 0 {
+                tracing::warn!(
+                    event = "oidc_links_removed_after_password_reset",
+                    user_id = %receipt.user_id,
+                    removed = receipt.oidc_links_removed,
+                    "Removed linked sign-in methods with a password reset"
+                );
+            }
             Ok(receipt)
         })
         .await

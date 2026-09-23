@@ -64,12 +64,15 @@ pub async fn complete_oidc_link(
         .await;
     request.zeroize();
     let (expected_user_id, identity) = completion.map_err(map_link_error)?;
+    let oidc = state.oidc_service();
+    let provider_name = oidc.provider_name().unwrap_or("OpenID Connect");
     let receipt = state
         .account_service()
         .complete_oidc_link(
             user_id,
             expected_user_id,
             &identity,
+            provider_name,
             session_token_from_cookie(&cookie_jar),
         )
         .await

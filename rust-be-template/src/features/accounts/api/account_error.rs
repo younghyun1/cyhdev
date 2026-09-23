@@ -75,9 +75,9 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         }
         AccountError::SessionStoreSaturated { .. } => CodeError::SESSION_STORE_SATURATED,
         AccountError::OidcDisabled => CodeError::OIDC_DISABLED,
-        AccountError::OidcFlowEntropy(_)
-        | AccountError::OidcFlowStoreSaturated { .. }
-        | AccountError::OidcTokenExchange(_) => CodeError::OIDC_TEMPORARILY_UNAVAILABLE,
+        AccountError::OidcFlowEntropy(_) | AccountError::OidcTokenExchange(_) => {
+            CodeError::OIDC_TEMPORARILY_UNAVAILABLE
+        }
         AccountError::OidcFlowRejected
         | AccountError::OidcTokenValidation(_)
         | AccountError::OidcProviderEmailRejected => CodeError::OIDC_FLOW_REJECTED,

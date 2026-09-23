@@ -10,7 +10,7 @@ pub(crate) use crate::dto::{
         auth::{
             delete_account_request::DeleteAccountRequest,
             login_request::LoginRequest,
-            oidc_request::{OidcLinkCompleteRequest, OidcUnlinkRequest},
+            oidc_request::{OidcLinkCompleteRequest, OidcLinkStartRequest, OidcUnlinkRequest},
             reset_password::ResetPasswordProcessRequest,
             reset_password_request::ResetPasswordRequest,
             signup_request::SignupRequest,

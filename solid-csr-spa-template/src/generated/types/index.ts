@@ -82,6 +82,7 @@ export * from "./moderate-forum-topic-request";
 export * from "./oidc-authorization-response";
 export * from "./oidc-link-complete-request";
 export * from "./oidc-link-response";
+export * from "./oidc-link-start-request";
 export * from "./oidc-status-response";
 export * from "./oidc-unlink-request";
 export * from "./pagination-meta";
