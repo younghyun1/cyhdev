@@ -75,6 +75,10 @@ fn wrap_operation(operation: &mut Operation) {
             continue;
         };
         if let Some(content) = response.content.get_mut("application/json") {
+            // Reusable media references are owned by components, not this operation.
+            let RefOr::T(content) = content else {
+                continue;
+            };
             let data = content.schema.clone().unwrap_or_else(null_schema);
             if !is_envelope(&data) {
                 content.schema = Some(envelope_schema(data));
@@ -82,7 +86,7 @@ fn wrap_operation(operation: &mut Operation) {
         } else if response.content.is_empty() {
             response.content.insert(
                 "application/json".to_owned(),
-                Content::new(Some(envelope_schema(null_schema()))),
+                Content::new(Some(envelope_schema(null_schema()))).into(),
             );
         }
     }
@@ -111,4 +115,71 @@ fn is_envelope(schema: &RefOr<Schema>) -> bool {
     object.properties.contains_key("success")
         && object.properties.contains_key("data")
         && object.properties.contains_key("meta")
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{Operation, wrap_operation};
+
+    #[test]
+    fn json_successes_are_wrapped_once_and_empty_successes_use_null()
+    -> Result<(), serde_json::Error> {
+        let mut operation: Operation = serde_json::from_value(json!({
+            "responses": {
+                "200": {"description": "OK", "content": {
+                    "application/json": {"schema": {"$ref": "#/components/schemas/Payload"}}
+                }},
+                "202": {"description": "Accepted"}
+            }
+        }))?;
+        wrap_operation(&mut operation);
+        let wrapped = serde_json::to_value(&operation)?;
+        let responses = &wrapped["responses"];
+        assert_eq!(
+            responses["200"]["content"]["application/json"]["schema"]["properties"]["data"],
+            json!({"$ref": "#/components/schemas/Payload"})
+        );
+        assert_eq!(
+            responses["202"]["content"]["application/json"]["schema"]["properties"]["data"],
+            json!({"type": "null"})
+        );
+        assert_eq!(
+            responses["200"]["content"]["application/json"]["schema"]["required"],
+            json!(["success", "data", "meta"])
+        );
+        wrap_operation(&mut operation);
+        assert_eq!(serde_json::to_value(&operation)?, wrapped);
+        Ok(())
+    }
+
+    #[test]
+    fn raw_health_binary_errors_and_references_are_preserved() -> Result<(), serde_json::Error> {
+        for fixture in [
+            json!({"operationId": "healthcheck", "responses": {
+                "200": {"description": "OK", "content": {
+                    "application/json": {"schema": {"type": "object"}}
+                }}
+            }}),
+            json!({"responses": {
+                "200": {"description": "Binary", "content": {
+                    "application/octet-stream": {"schema": {"type": "string"}}
+                }},
+                "201": {"description": "Referenced media", "content": {
+                    "application/json": {"$ref": "#/components/mediaTypes/Envelope"}
+                }},
+                "202": {"$ref": "#/components/responses/Accepted"},
+                "400": {"description": "Error", "content": {
+                    "application/json": {"schema": {"type": "object"}}
+                }}
+            }}),
+        ] {
+            let mut operation: Operation = serde_json::from_value(fixture)?;
+            let original = serde_json::to_value(&operation)?;
+            wrap_operation(&mut operation);
+            assert_eq!(serde_json::to_value(&operation)?, original);
+        }
+        Ok(())
+    }
 }

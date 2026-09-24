@@ -38,8 +38,8 @@ tower-http = { version = "0.7.1", features = [
 ] }
 
 # OpenAPI
-utoipa = { version = "5.5.0", features = ["axum_extras", "uuid", "chrono", "repr"] }
-utoipa-swagger-ui = { version = "9.0.2", features = ["axum", "vendored"] }
+utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "chrono", "repr"] }
+utoipa-swagger-ui = { version = "10.0.1", features = ["axum", "vendored"] }
 
 # parallelism
 # rayon = "1.10.0"
@@ -78,7 +78,7 @@ tracing-appender.workspace = true
 
 # error
 anyhow.workspace = true
-thiserror = "2.0.20"
+thiserror = "2.0.21"
 
 # system information
 num_cpus = "1.17.0"
@@ -176,7 +176,7 @@ memmap2 = "0.9.11"
 
 # aws
 # Preserve S3 defaults except its legacy rustls feature, which pulls Hyper 0.14/Rustls 0.21.
-aws-sdk-s3 = { version = "1.148.0", default-features = false, features = [
+aws-sdk-s3 = { version = "1.149.0", default-features = false, features = [
     "behavior-version-latest",
     "default-https-client",
     "http-1x",
