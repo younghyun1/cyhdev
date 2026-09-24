@@ -13,6 +13,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [September 23 performance and security fixes and verification](plans/2026-09-23-performance-security-review.md)
 - [Signup retry allowances](plans/2026-09-23-signup-retry-limits.md)
 - [AVIF encoding preference](plans/2026-09-23-avif-encoding.md)
+- [September 23 crate upgrade compatibility](plans/2026-09-23-crate-upgrade-compatibility.md)
 - [RTC, security, statistics, and localization verification](plans/2026-09-21-parallel-followups.md)
 - [About page localization](plans/2026-09-22-about-localization.md)
 - `architecture/be/` - backend architecture and boundary conventions.
