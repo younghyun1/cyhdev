@@ -4,6 +4,8 @@ mod auth_abuse_policy;
 mod auth_abuse_store;
 #[cfg(test)]
 mod auth_abuse_tests;
+#[cfg(test)]
+mod auth_signup_limits_tests;
 pub mod authentication;
 pub mod authorization;
 pub mod forum_authority;
