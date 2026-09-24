@@ -11,6 +11,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Page layout and status metadata fixes](plans/2026-09-21-page-polish.md)
 - [Performance and security findings](plans/2026-09-21-performance-security-findings.md)
 - [September 23 performance and security fixes and verification](plans/2026-09-23-performance-security-review.md)
+- [Signup retry allowances](plans/2026-09-23-signup-retry-limits.md)
 - [RTC, security, statistics, and localization verification](plans/2026-09-21-parallel-followups.md)
 - [About page localization](plans/2026-09-22-about-localization.md)
 - `architecture/be/` - backend architecture and boundary conventions.
