@@ -4,7 +4,6 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter, Write},
     path::{Path, PathBuf},
-    sync::LazyLock,
     time::Instant,
 };
 
@@ -17,7 +16,7 @@ use tempfile::TempPath;
 use tokio::sync::Semaphore;
 use tracing::info;
 
-use super::image_variant::{AVIF_QUALITY, CyhdevImageType, format_size};
+use super::image_variant::{AVIF_QUALITY, AVIF_SPEED, CyhdevImageType, format_size};
 
 const FILE_BUFFER_BYTES: usize = 64 * 1024;
 const MAX_DECODED_PIXELS: u64 = 64 * 1024 * 1024;
@@ -43,15 +42,6 @@ impl ProcessedImageFile {
 }
 
 static IMAGE_PROCESSING_PERMITS: Semaphore = Semaphore::const_new(MAX_CONCURRENT_IMAGE_JOBS);
-
-/// Encoder threads per job: half the cores, so the two concurrent jobs
-/// together use about every core and never oversubscribe the host that also
-/// serves requests. Without a cap each encode would claim the whole pool.
-static AVIF_ENCODER_THREADS: LazyLock<usize> = LazyLock::new(|| {
-    std::thread::available_parallelism()
-        .map(|cores| (cores.get() / 2).max(1))
-        .unwrap_or(1)
-});
 
 /// Decodes one staged source and writes ordered, progressively smaller variants.
 ///
@@ -203,9 +193,8 @@ fn encode_to_temp_file(
         .tempfile()?;
     let (file, path) = named.into_parts();
     let mut writer = BufWriter::with_capacity(FILE_BUFFER_BYTES, file);
-    let encoder =
-        AvifEncoder::new_with_speed_quality(&mut writer, image_type.avif_speed(), AVIF_QUALITY)
-            .with_num_threads(Some(*AVIF_ENCODER_THREADS));
+    // Use encoder-managed threading; the outer semaphore bounds concurrent image jobs.
+    let encoder = AvifEncoder::new_with_speed_quality(&mut writer, AVIF_SPEED, AVIF_QUALITY);
     image.write_with_encoder(encoder)?;
     writer.flush()?;
     let size_bytes = writer.get_ref().metadata()?.len();
@@ -224,8 +213,7 @@ mod tests {
     use image::ImageFormat;
 
     use super::{
-        AVIF_ENCODER_THREADS, CyhdevImageType, require_matching_signature, validate_dimensions,
-        validate_variant_order,
+        CyhdevImageType, require_matching_signature, validate_dimensions, validate_variant_order,
     };
 
     #[test]
@@ -248,15 +236,18 @@ mod tests {
         let outputs = super::process_files(
             source.path(),
             ImageFormat::Png,
-            vec![CyhdevImageType::Thumbnail],
+            vec![
+                CyhdevImageType::Photograph,
+                CyhdevImageType::Thumbnail,
+                CyhdevImageType::DemoThumbnail,
+                CyhdevImageType::ProfilePicture,
+            ],
         )?;
-        let encoded = std::fs::read(
-            outputs
-                .first()
-                .map(|output| output.path())
-                .ok_or_else(|| anyhow::anyhow!("no thumbnail output"))?,
-        )?;
-        assert_eq!(encoded.get(4..12), Some(b"ftypavif".as_slice()));
+        assert_eq!(outputs.len(), 4);
+        for output in outputs {
+            let encoded = std::fs::read(output.path())?;
+            assert_eq!(encoded.get(4..12), Some(b"ftypavif".as_slice()));
+        }
         assert!(
             super::process_files(
                 source.path(),
@@ -266,12 +257,6 @@ mod tests {
             .is_err()
         );
         Ok(())
-    }
-
-    #[test]
-    fn encoder_threads_stay_within_the_host() {
-        let cores = std::thread::available_parallelism().map_or(1, |cores| cores.get());
-        assert!(*AVIF_ENCODER_THREADS >= 1 && *AVIF_ENCODER_THREADS <= cores);
     }
 
     #[test]
