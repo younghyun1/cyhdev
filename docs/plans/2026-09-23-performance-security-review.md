@@ -24,6 +24,8 @@ The findings below preserve the original pre-fix review at `b2a0ecb`, including 
 
 **Retention is policy.** Visitor rows, request logs, and server-side stored IPs are kept indefinitely by the owner's decision on September 23. Retention, truncation, and row coalescing are out of scope; performance work on these tables must keep every raw row.
 
+**AVIF compression takes priority over encode time.** The later [encoding preference](2026-09-23-avif-encoding.md) supersedes this review's thread cap and faster-thumbnail proposal: all variants use speed 1 with encoder-managed threading, at quality 80.
+
 **Guest IPs stay server side.** Decided September 23: remove guest IPs from every browser-facing format and use an opaque keyed hash for guest identity and nicknames. Stored IPs remain for bans, rate limits, and geo lookup. Original finding: Chat actor records, message history, the binary codec, and public `GET /api/live-chat/messages` all include `guest_ip` (`features/live_chat/api/rtc_signal.rs:41`, `dto/responses/live_chat/live_chat_message_response.rs:13`, `features/live_chat/api/binary_codec/writer.rs:106`). The original [live chat plan](live-chat.md) lists public guest IP display as a goal, but the browser never renders it and guest nicknames now exist. If display is no longer intended, remove the field from every wire format and derive guest keys and nicknames from a keyed hash of the IP. If it is intended, consider displaying a truncated prefix only.
 
 ## Security: medium
