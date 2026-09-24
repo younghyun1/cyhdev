@@ -1,8 +1,14 @@
 # Performance and security review, September 23
 
-Status: active; review complete, fixes in progress on branch `fix/performance-security-review` from `2f3364c`. Review checkout: `main` at `b2a0ecb`. Scope: source-level review of the backend (accounts, content, realtime, HTTP layer, persistence), the browser application, WASM demos, the Squaremap plugin, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md), which covered dependency advisories, secret scanning, visitor-map popups, chat deletion, and cold-cache page metrics; those results are not repeated here.
+Status: active; implementation merged locally, final verification in progress on September 23. Checkout: `fix/performance-security-review` at `a5e41e6`, with no upstream; includes `origin/main` at `b2a0ecb`. Scope: backend accounts, content, realtime, HTTP, persistence, browser performance, photo viewer loading, WASM demos, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md).
 
-Every finding was traced in source. Items marked plausible have a confirmed code path but an unconfirmed impact (query plans, cancellation timing, proxy behavior). No finding was exercised against a running server. Backend paths are relative to `rust-be-template/src/` and browser paths to `solid-csr-spa-template/src/`, unless they start with a package directory.
+Completed: merged account/session/OIDC, chat/RTC, HTTP/security-header, content/persistence/media, frontend/photo-viewer, and tooling/WASM fixes. Regenerated browser contracts. Retention remains indefinite by policy; guest IPs remain server side. The viewer clears to black on navigation, delays its amber progress line by 150 ms, fades in decoded images, and preloads neighbours.
+
+Verification: the implementation handoff records passing `cargo xtask openapi`, `cargo xtask clippy`, `cargo xtask fmt`, `cargo xtask frontend-check` (179 tests), and `cargo test --locked --package xtask` (44 tests). Final unit, PostgreSQL integration/rollback, and Chromium browser checks are being rerun; earlier unit evidence was incomplete. Logs for this continuation use `/tmp/cyhdev-final-*.log`.
+
+Remaining: finish those checks and repair failures, record results here, and remove the six merged temporary worktrees. Public push/PR and deployment order remain an owner decision because the production service is unpatched. No release builds. WebKit and live two-account RTC checks have unmet prerequisites described in the implementation handoff.
+
+The findings below preserve the original pre-fix review at `b2a0ecb`, including its source locations and proposed remedies; they do not describe the current implementation. Every finding was traced in source. Items marked plausible had an unconfirmed impact (query plans, cancellation timing, proxy behavior). No finding was exercised against a running server during that review. Backend paths are relative to `rust-be-template/src/` and browser paths to `solid-csr-spa-template/src/`, unless they start with a package directory.
 
 ## Fix first
 
@@ -66,7 +72,7 @@ Every finding was traced in source. Items marked plausible have a confirmed code
 
 Session tokens are 256-bit, stored as SHA-256, rotated on login, and sent in a `__Host-` Secure HttpOnly Strict cookie. Unsafe methods and WebSocket upgrades require an exact trusted `Origin`; CORS uses the same allowlist. Login and reset use dummy hashes, response floors, and generic errors. OIDC validates PKCE, nonce, issuer, audience, and `at_hash`, and links by issuer and subject only. Markdown renders with Comrak defaults at write time, then DOMPurify; other user text renders as text. Uploads are superuser-only, streamed with byte and pixel limits, and re-encoded to AVIF without EXIF. All SQL uses bound Diesel queries; transactions exclude network work; list endpoints batch related rows. The Squaremap plugin socket is owner-only with bounded requests. CI pins actions by SHA with read-only permissions. xtask spawns processes without a shell.
 
-## Verification
+## Original review verification
 
 - `cargo audit`: unchanged since September 21 (rsa RUSTSEC-2023-0071, lru RUSTSEC-2026-0253, paste unmaintained). First audit of the EU5 lockfile: no vulnerabilities; four unmaintained warnings without fixed releases (bincode 2.0.1, paste, rustybuzz 0.20.1, ttf-parser 0.25.1).
 - `npm audit` and `npm audit --omit=dev`: zero vulnerabilities.
@@ -75,4 +81,14 @@ Session tokens are 256-bit, stored as SHA-256, rotated on login, and sent in a `
 
 ## Next action
 
-Fix the five items under "Fix first" in order, each with a regression test: an integration test for the duplicate-signup flow, a WebSocket test sending a frame above 64 KiB, a unit test for full-table rate behavior, a PostgreSQL test deleting a parent comment, and a server test for header-read timeout. Resolve the guest IP decision before changing chat wire formats, since that touches generated contracts. Keep this document off the public remote until the account and WebSocket items are fixed.
+Finish `cargo xtask unit`, then run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55450/cyhdev_test_maintenance cargo xtask db-integration` and the same environment with `cargo xtask migration-rollback`. Run the Chromium, security, and performance Playwright suites serially because their default output directories overlap. Update the final evidence and completion status, then remove clean merged temporary worktrees. Public publication and deployment remain separate decisions.
+
+## Deployment handoff
+
+- Deploy frontend and backend together: chat now uses `livechat.bin.v2`, reset and verification tokens are no longer UUIDs, and comment pagination and cache-stats contracts changed.
+- Eight September 23 migrations add case-insensitive identity, token digests, chat keysets, the visitor-board projection, comment tombstones and keysets, index cleanup, and wider tag identities. Before deployment, check case-insensitive email and user-name collisions using the queries in the identity migration; existing rows are never merged automatically. The chat index uses blocking `CREATE INDEX`; allow for migration lock and backfill time.
+- Set `LIVE_CHAT_GUEST_KEY_SECRET` to at least 32 bytes to keep guest nicknames stable across restarts. Optional pool and connection overrides are `DB_POOL_MAX_SIZE` (default 24), `HTTP_MAX_CONNECTIONS`, and `HTTP_MAX_CONNECTIONS_PER_IP`. A `DB_URL` containing `options` is rejected.
+- HSTS lasts one year outside `CURR_ENV=local`. Allow at least 25 seconds for service shutdown. The runtime image uses UID 65532, which needs read access to mounted certificates.
+- At the next authorized deployment-image build, verify `wasm-bindgen-cli` installation and wasm-pack discovery of `/usr/bin/wasm-opt`. No optimized image was built during this work.
+- User-visible changes include verification required before login, removal of OIDC links on password reset, upload codecs restricted to PNG/JPEG/GIF/WebP/TIFF/BMP, and eight chat connections per IPv4 address or IPv6 /64. Existing permanent automatic bans remain permanent.
+- The external credential rotation and stable Solid dependency promotion obligations in [`TODO`](../../TODO) remain open. Local verification does not close them.
