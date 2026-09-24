@@ -15,7 +15,7 @@ The limiter generates a 256-bit process key from operating-system entropy at sta
 | Endpoint | Source-IP windows | Identity or token windows |
 | --- | --- | --- |
 | Login | 10 per minute and 50 per hour | Failures only: email from one source, 5 per 15 minutes; email from all sources, 20 per hour |
-| Signup | 3 per hour and 10 per day | Normalized email and user name: 2 per day each |
+| Signup | 10 per hour and 20 per day | Normalized email and user name: 5 per day each |
 | Password-reset request | 5 per hour and 20 per day | Normalized email: 1 per 15 minutes and 3 per day |
 | Password-reset submission | 10 per 15 minutes | Token digest: 5 per 15 minutes |
 | Email verification | 20 per hour | Token digest: 5 per hour |
