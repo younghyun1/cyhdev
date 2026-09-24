@@ -123,7 +123,7 @@ RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx
 FROM rust-base AS smoke-build
 ARG APP_NAME
 COPY . ./
-# Frontend correctness has its own Wave 8 gate. A deterministic placeholder is
+# Frontend correctness is checked by `cargo xtask frontend-check`. A deterministic placeholder is
 # sufficient to compile and lay out the backend development image without
 # coupling this smoke target to production frontend bundling.
 RUN mkdir -p solid-csr-spa-template/dist \
@@ -134,7 +134,7 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
     cargo build --locked --package "$APP_NAME" && \
     cp "./target/debug/$APP_NAME" /bin/server
 
-# A runnable development-profile layout used by the Wave 8 image smoke gate.
+# A runnable development-profile layout used by `cargo xtask image-smoke`.
 # Runtime secrets remain injected by the caller; the build only verifies that
 # the executable and immutable Geo-IP assets land at their runtime paths.
 FROM alpine:${ALPINE_DOCKER_TAG} AS smoke
