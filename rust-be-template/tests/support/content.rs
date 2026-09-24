@@ -53,7 +53,7 @@ pub async fn verified_account(
     let account = seed_account(context, label).await?;
     context
         .accounts
-        .verify_email(account.verification_token)
+        .verify_email(&account.verification_token)
         .await?;
     if manager {
         context
