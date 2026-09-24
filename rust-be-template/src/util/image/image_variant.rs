@@ -7,6 +7,9 @@ pub const IMAGE_ENCODING_FORMAT: ImageFormat = ImageFormat::Avif;
 /// AVIF quality for every variant; `cavif` and the `image` default use 80.
 pub const AVIF_QUALITY: u8 = 80;
 
+/// Use the slowest preset for every variant, prioritizing compression over encode time.
+pub const AVIF_SPEED: u8 = 1;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum CyhdevImageType {
@@ -23,16 +26,6 @@ impl CyhdevImageType {
             CyhdevImageType::Photograph => 6000,
             CyhdevImageType::Thumbnail => 800,
             CyhdevImageType::DemoThumbnail => 512,
-        }
-    }
-
-    /// rav1e speed, 1 (slowest) to 10. Full-size images keep the library
-    /// default of 4; thumbnails are small previews where a faster preset
-    /// saves most of the encode time at a size cost no one sees.
-    pub fn avif_speed(&self) -> u8 {
-        match self {
-            CyhdevImageType::ProfilePicture | CyhdevImageType::Photograph => 4,
-            CyhdevImageType::Thumbnail | CyhdevImageType::DemoThumbnail => 8,
         }
     }
 
