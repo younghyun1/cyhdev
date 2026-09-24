@@ -1,12 +1,14 @@
 # Performance and security review, September 23
 
-Status: active; implementation merged locally, final verification in progress on September 23. Checkout: `fix/performance-security-review` at `a5e41e6`, with no upstream; includes `origin/main` at `b2a0ecb`. Scope: backend accounts, content, realtime, HTTP, persistence, browser performance, photo viewer loading, WASM demos, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md).
+Status: complete for local implementation and available verification on September 23. Checkout: `fix/performance-security-review` at `558b92b` before this completion record, with no upstream; includes `origin/main` at `b2a0ecb`. Scope: backend accounts, content, realtime, HTTP, persistence, browser performance, photo viewer loading, WASM demos, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md).
 
 Completed: merged account/session/OIDC, chat/RTC, HTTP/security-header, content/persistence/media, frontend/photo-viewer, and tooling/WASM fixes. Regenerated browser contracts. Retention remains indefinite by policy; guest IPs remain server side. The viewer clears to black on navigation, delays its amber progress line by 150 ms, fades in decoded images, and preloads neighbours.
 
-Verification: the implementation handoff records passing `cargo xtask openapi`, `cargo xtask clippy`, `cargo xtask fmt`, `cargo xtask frontend-check` (179 tests), and `cargo test --locked --package xtask` (44 tests). Final unit, PostgreSQL integration/rollback, and Chromium browser checks are being rerun; earlier unit evidence was incomplete. Logs for this continuation use `/tmp/cyhdev-final-*.log`.
+Cleanup: removed all six clean merged temporary worktrees and their branches after confirming their commits are reachable from this branch. Stopped the disposable PostgreSQL container. The unrelated profile-documentation worktree remains intact.
 
-Remaining: finish those checks and repair failures, record results here, and remove the six merged temporary worktrees. Public push/PR and deployment order remain an owner decision because the production service is unpatched. No release builds. WebKit and live two-account RTC checks have unmet prerequisites described in the implementation handoff.
+Verification: the implementation handoff records passing `cargo xtask openapi`, `cargo xtask clippy`, `cargo xtask fmt`, `cargo xtask frontend-check` (179 tests), and `cargo test --locked --package xtask` (44 tests) on the merged implementation. Final unit, PostgreSQL integration/rollback, and Chromium browser checks passed as detailed below. This continuation changed documentation only. Logs use `/tmp/cyhdev-final-*.log`.
+
+Remaining: public push/PR and deployment order remain an owner decision because the production service is unpatched. WebKit, live-service checks, query-plan measurements, and optimized build verification remain outside the evidence below. No local implementation failures remain.
 
 The findings below preserve the original pre-fix review at `b2a0ecb`, including its source locations and proposed remedies; they do not describe the current implementation. Every finding was traced in source. Items marked plausible had an unconfirmed impact (query plans, cancellation timing, proxy behavior). No finding was exercised against a running server during that review. Backend paths are relative to `rust-be-template/src/` and browser paths to `solid-csr-spa-template/src/`, unless they start with a package directory.
 
@@ -81,7 +83,32 @@ Session tokens are 256-bit, stored as SHA-256, rotated on login, and sent in a `
 
 ## Next action
 
-Finish `cargo xtask unit`, then run `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55450/cyhdev_test_maintenance cargo xtask db-integration` and the same environment with `cargo xtask migration-rollback`. Run the Chromium, security, and performance Playwright suites serially because their default output directories overlap. Update the final evidence and completion status, then remove clean merged temporary worktrees. Public publication and deployment remain separate decisions.
+Agree on publication and coordinated deployment order using the deployment handoff below. Start with `git switch fix/performance-security-review` and `git status --short --branch`; the complete fixes are committed locally. No push, PR, deployment, or live-service mutation was performed.
+
+## Final verification
+
+| Command | Observed result |
+| --- | --- |
+| `cargo xtask unit` | Passed: 354 tests, including 44 xtask tests. PostgreSQL cases are ignored here and exercised by the next two commands. Four manual backend tests remain ignored. |
+| `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55450/cyhdev_test_maintenance cargo xtask db-integration` | Passed: 43 tests across 22 suites on disposable PostgreSQL 18.6. |
+| Same environment, `cargo xtask migration-rollback` | Passed: nine tests, including full-chain revert/reapply, case-insensitive identity collisions, token conversion, and retained-state rollback guards. |
+| `npm --prefix solid-csr-spa-template run test:e2e:chromium` | Passed: 209 tests; one live RTC test skipped. Includes viewer loading, retry, preloading, reduced motion, gallery node preservation, and route layout checks. |
+| `npm --prefix solid-csr-spa-template run test:e2e:security -- --project=chromium` | Passed: 36 tests covering application CSP, violation detection, and opaque-origin map/EU5 behavior. |
+| `npm --prefix solid-csr-spa-template run test:e2e:performance` | Passed: five-run cold-cache mobile medians across six routes, with 150 ms network latency, 200 KiB/s download, and 4x CPU throttling. |
+| Documentation checks | Local links resolve, command and configuration references match their implementations, and `git diff --check` passes. |
+
+| Route | Median LCP (ms) | Median interaction (ms) | Median CLS |
+| --- | --- | --- | --- |
+| `/` | 1112 | 32 | 0.000089 |
+| `/blog` | 1344 | 40 | 0.000045 |
+| `/forum` | 1332 | 40 | 0.026788 |
+| `/photographs` | 1404 | 40 | 0.000025 |
+| `/login` | 1308 | 40 | 0.006070 |
+| `/live-chat` | 1376 | 40 | 0.000770 |
+
+Verification corrections: the earlier unit log stopped during compilation, so the full command was rerun successfully. The first browser run overlapped the security suite and lost shared Playwright trace files, causing nine `ENOENT` failures; the serial full rerun passed. Run browser suites serially or give them separate output directories. Runtime documentation was corrected to include closing calls and flushing blog views during shutdown, and the chunked i18n upserts.
+
+Limitations: WebKit was not rerun because the installed engine is too old. Live RTC requires a local backend and two accounts; the ignored Minecraft cases require a running plugin/management endpoint, and the ignored TLS latency experiment needs its manual harness. No seeded `EXPLAIN`, production-data migration, throughput benchmark, Docker smoke build, or optimized deployment build was run during this continuation; release builds are prohibited. Browser suites use local API fixtures, so they do not establish live production behavior.
 
 ## Deployment handoff
 
