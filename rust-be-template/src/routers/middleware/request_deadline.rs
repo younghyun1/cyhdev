@@ -1,11 +1,11 @@
-//! Per-request time bounds for every HTTP route except WebSocket sessions.
+//! Per-request time bounds for every HTTP route, including WebSocket handshakes.
 //!
 //! Two limits apply. A deadline covers the whole handler future, including reading the
 //! body, so a slow trickle cannot hold a worker indefinitely. An idle timeout between
 //! request body frames fails a stalled upload early, well before a long upload
 //! deadline. Upload routes get deadlines sized for their body limits at a slow but
-//! usable link; WebSocket upgrades are exempt because their session runs after the
-//! 101 response in its own task, bounded by the socket's own caps and timeouts.
+//! usable link. WebSocket handshakes use the ordinary deadline; their sessions run
+//! after the 101 response in separate tasks with their own caps and timeouts.
 //! Response streaming after the head is not covered; hyper's HTTP/2 keep-alive and
 //! the connection caps bound clients that stop reading.
 
@@ -14,7 +14,7 @@ use std::time::Duration;
 use axum::{
     body::Body,
     extract::Request,
-    http::{HeaderMap, HeaderValue, Method, StatusCode, header},
+    http::{HeaderValue, Method, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -30,8 +30,6 @@ pub enum RequestBudget {
     Upload,
     /// The 1 GiB batch photograph upload.
     BatchUpload,
-    /// WebSocket upgrades.
-    Unbounded,
 }
 
 /// Deadline for the handler future and idle limit between body frames.
@@ -42,10 +40,8 @@ pub struct RequestLimits {
 }
 
 impl RequestBudget {
-    pub fn classify(method: &Method, path: &str, headers: &HeaderMap) -> Self {
-        if headers.contains_key(header::UPGRADE) || path.starts_with("/ws/") {
-            return Self::Unbounded;
-        }
+    /// Client-supplied upgrade headers cannot exempt an ordinary request from its limits.
+    pub fn classify(method: &Method, path: &str) -> Self {
         if method == Method::POST {
             if path == "/api/photographs/batch-upload" {
                 return Self::BatchUpload;
@@ -70,40 +66,36 @@ impl RequestBudget {
         Self::Ordinary
     }
 
-    pub const fn limits(self) -> Option<RequestLimits> {
+    pub const fn limits(self) -> RequestLimits {
         const ORDINARY_IDLE: Duration = Duration::from_secs(30);
         const UPLOAD_IDLE: Duration = Duration::from_secs(60);
         match self {
-            Self::Ordinary => Some(RequestLimits {
+            Self::Ordinary => RequestLimits {
                 deadline: Duration::from_secs(30),
                 body_idle: ORDINARY_IDLE,
-            }),
-            Self::Administrative => Some(RequestLimits {
+            },
+            Self::Administrative => RequestLimits {
                 deadline: Duration::from_secs(120),
                 body_idle: ORDINARY_IDLE,
-            }),
+            },
             // 150 MiB in 15 minutes needs about 1.4 Mbit/s.
-            Self::Upload => Some(RequestLimits {
+            Self::Upload => RequestLimits {
                 deadline: Duration::from_secs(15 * 60),
                 body_idle: UPLOAD_IDLE,
-            }),
+            },
             // 1 GiB in an hour needs about 2.4 Mbit/s.
-            Self::BatchUpload => Some(RequestLimits {
+            Self::BatchUpload => RequestLimits {
                 deadline: Duration::from_secs(60 * 60),
                 body_idle: UPLOAD_IDLE,
-            }),
-            Self::Unbounded => None,
+            },
         }
     }
 }
 
 /// Applies the budget for this request's route.
 pub async fn enforce_request_deadline(request: Request, next: Next) -> Response {
-    let budget = RequestBudget::classify(request.method(), request.uri().path(), request.headers());
-    match budget.limits() {
-        Some(limits) => bounded(limits, budget, request, next).await,
-        None => next.run(request).await,
-    }
+    let budget = RequestBudget::classify(request.method(), request.uri().path());
+    bounded(budget.limits(), budget, request, next).await
 }
 
 /// Runs the rest of the stack under `limits`; separate for tests with short limits.

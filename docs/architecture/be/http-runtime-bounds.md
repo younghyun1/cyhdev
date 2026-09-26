@@ -14,13 +14,12 @@ Hyper has no idle timer for an HTTP/2 connection without streams, and a client t
 
 | Routes | Deadline | Body idle limit |
 | --- | --- | --- |
-| Ordinary API, static, and map requests | 30 s | 30 s |
+| Ordinary API, static, map, and WebSocket handshake requests | 30 s | 30 s |
 | `/api/admin/*` | 120 s | 30 s |
 | `POST` photograph, profile-picture, WASM module, and WASM asset uploads | 15 min | 60 s |
 | `POST /api/photographs/batch-upload` (1 GiB limit) | 60 min | 60 s |
-| `/ws/*` and any request with an `Upgrade` header | none | none |
 
-Upload deadlines assume roughly 1.4 to 2.4 Mbit/s for a full-size body. WebSocket sessions run after the 101 response and carry their own limits. Response streaming after the head is not timed; HTTP/2 pings and the connection caps bound clients that stop reading.
+Upload deadlines assume roughly 1.4 to 2.4 Mbit/s for a full-size body. Client-supplied `Upgrade` headers never disable these limits. WebSocket handshakes use the ordinary deadline; sessions run after the 101 response and carry their own limits. Response streaming after the head is not timed; HTTP/2 pings and the connection caps bound clients that stop reading.
 
 ## WebSocket limits
 
