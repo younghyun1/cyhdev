@@ -1,4 +1,8 @@
-//! Machine-validated W3/W8 command registration and evidence requirements.
+//! Machine-validated command registration and evidence requirements.
+
+#[cfg(test)]
+#[path = "evidence_manifest_tests.rs"]
+mod tests;
 
 use std::{
     fs,
@@ -28,6 +32,7 @@ enum Entry {
 }
 
 pub(crate) fn run(root: &Path) -> TaskResult<()> {
+    remove_receipt(&root.join("target/final-review/evidence.json"))?;
     let manifest_path = root.join(MANIFEST_PATH);
     let manifest = read_bounded(&manifest_path, MAX_MANIFEST_BYTES)?;
     let entries = parse_manifest(&manifest)?;
@@ -75,6 +80,33 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
     )
 }
 
+/// Invalidate prior receipts before a complete review runs their producers.
+pub(crate) fn clear_runtime_receipts(root: &Path) -> TaskResult<()> {
+    let manifest = read_bounded(&root.join(MANIFEST_PATH), MAX_MANIFEST_BYTES)?;
+    for entry in parse_manifest(&manifest)? {
+        if let Entry::Evidence {
+            runtime: true,
+            path,
+            ..
+        } = entry
+        {
+            remove_receipt(&root.join(path))?;
+        }
+    }
+    remove_receipt(&root.join("target/final-review/evidence.json"))
+}
+
+fn remove_receipt(path: &Path) -> TaskResult<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(TaskError(format!(
+            "failed to remove stale receipt {}: {error}",
+            path.display()
+        ))),
+    }
+}
+
 fn parse_manifest(contents: &str) -> TaskResult<Vec<Entry>> {
     let mut schema_seen = false;
     let mut entries = Vec::new();
@@ -92,6 +124,10 @@ fn parse_manifest(contents: &str) -> TaskResult<Vec<Entry>> {
                 marker: required_field(marker, index)?,
             }),
             [kind @ ("source" | "runtime"), label, path, minimum, maximum] => {
+                let path = safe_relative_path(path, index)?;
+                if *kind == "runtime" && !path.starts_with("target") {
+                    return Err(line_error(index, "runtime evidence must be under target/"));
+                }
                 let minimum_bytes = parse_bound(minimum, index)?;
                 let maximum_bytes = parse_bound(maximum, index)?;
                 if minimum_bytes > maximum_bytes {
@@ -100,7 +136,7 @@ fn parse_manifest(contents: &str) -> TaskResult<Vec<Entry>> {
                 entries.push(Entry::Evidence {
                     runtime: *kind == "runtime",
                     label: required_field(label, index)?,
-                    path: safe_relative_path(path, index)?,
+                    path,
                     minimum_bytes,
                     maximum_bytes,
                 });
@@ -161,12 +197,7 @@ fn validate_evidence(
     }
     if runtime {
         let contents = read_bounded(&root.join(relative), maximum_bytes)?;
-        let first = contents.bytes().find(|byte| !byte.is_ascii_whitespace());
-        if !matches!(first, Some(b'[' | b'{')) {
-            return Err(TaskError(format!(
-                "runtime evidence `{label}` is not a JSON document"
-            )));
-        }
+        crate::evidence_runtime::validate(label, &contents)?;
     }
     Ok(())
 }
@@ -247,26 +278,4 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
         digest = digest.wrapping_mul(0x0000_0100_0000_01b3);
     }
     digest
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_manifest;
-
-    #[test]
-    fn parses_bounded_registration_and_evidence_records() -> Result<(), String> {
-        let manifest = "schema\t1\nregistration\tcommand:test\ttools/a.rs\tmarker\nsource\ttest-source\tsrc/a.rs\t1\t10\nruntime\ttest-report\ttarget/a.json\t2\t20\n";
-        let entries = parse_manifest(manifest).map_err(|error| error.to_string())?;
-        if entries.len() == 3 {
-            Ok(())
-        } else {
-            Err(format!("expected three entries, got {}", entries.len()))
-        }
-    }
-
-    #[test]
-    fn rejects_parent_path_components() {
-        let manifest = "schema\t1\nsource\ttest\t../secret\t1\t10\n";
-        assert!(parse_manifest(manifest).is_err());
-    }
 }

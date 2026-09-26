@@ -1,12 +1,12 @@
 # Executable W3/W8 registration and evidence requirements. Fields are tab-separated.
 schema	1
 registration	module:evidence-manifest	tools/xtask/src/main.rs	mod evidence_manifest;
-registration	command:db-integration	tools/xtask/src/main.rs	"db-integration" => review::run_database_integration(&root)
+registration	command:db-integration	tools/xtask/src/main.rs	"db-integration" => database_review::run_database_integration(&root)
 registration	command:final-review	tools/xtask/src/main.rs	"final-review" => review::run_final_review(&root)
 registration	command:format	tools/xtask/src/main.rs	"fmt" => review::run_format_check(&root)
 registration	command:frontend-check	tools/xtask/src/main.rs	"frontend-check" => review::run_frontend_checks(&root)
 registration	command:image-smoke	tools/xtask/src/main.rs	"image-smoke" => review::run_image_smoke(&root)
-registration	command:migration-rollback	tools/xtask/src/main.rs	"migration-rollback" => review::run_migration_rollback(&root)
+registration	command:migration-rollback	tools/xtask/src/main.rs	"migration-rollback" => database_review::run_migration_rollback(&root)
 registration	command:openapi	tools/xtask/src/main.rs	"openapi" => review::run_openapi_drift_check(&root)
 registration	command:secret-scan	tools/xtask/src/main.rs	"secret-scan" => review::run_secret_scan(&root)
 registration	command:unit	tools/xtask/src/main.rs	"test" | "unit" => review::run_unit_tests(&root)
@@ -16,10 +16,10 @@ registration	review:clippy	tools/xtask/src/review.rs	("Clippy", run_clippy)
 registration	review:unit	tools/xtask/src/review.rs	("unit tests", run_unit_tests)
 registration	review:openapi	tools/xtask/src/review.rs	("OpenAPI drift", run_openapi_drift_check)
 registration	review:frontend	tools/xtask/src/review.rs	("frontend checks", run_frontend_checks)
-registration	review:database	tools/xtask/src/review.rs	("database integration", run_database_integration)
-registration	review:cache-consistency	tools/xtask/src/review.rs	"postgres_cache_consistency"
-registration	review:migrations	tools/xtask/src/review.rs	("migration rollback", run_migration_rollback)
-registration	review:migration-guards	tools/xtask/src/review.rs	"postgres_migration_guards"
+registration	review:database	tools/xtask/src/review.rs	crate::database_review::run_database_integration,
+registration	review:cache-consistency	tools/xtask/src/database_review.rs	"postgres_cache_consistency"
+registration	review:migrations	tools/xtask/src/review.rs	crate::database_review::run_migration_rollback,
+registration	review:migration-guards	tools/xtask/src/database_review.rs	"postgres_migration_guards"
 registration	review:image	tools/xtask/src/review.rs	("image smoke", run_image_smoke)
 registration	review:throughput	tools/xtask/src/review.rs	("throughput thresholds", run_throughput_thresholds)
 registration	review:secrets	tools/xtask/src/review.rs	("secret scan", run_secret_scan)

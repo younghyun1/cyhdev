@@ -107,6 +107,9 @@ pub(crate) fn run_secret_scan(root: &Path) -> TaskResult<()> {
 }
 
 pub(crate) fn run_final_review(root: &Path) -> TaskResult<()> {
+    // A failed producer must not leave an older passing report available to
+    // the final evidence check.
+    crate::evidence_manifest::clear_runtime_receipts(root)?;
     let steps: [ReviewStep; 11] = [
         ("format", run_format_check),
         ("Clippy", run_clippy),

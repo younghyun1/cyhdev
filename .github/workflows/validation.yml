@@ -1,0 +1,91 @@
+name: Validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep clean development-profile builds within hosted runner disk capacity.
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+
+jobs:
+  rust-and-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:18.6-trixie@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cyhdev_test_maintenance
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cyhdev_test_maintenance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install --yes clang lld libpq-dev libzstd-dev pkg-config postgresql-client
+      - name: Install configured Rust toolchain and formatter
+        run: |
+          rustup show active-toolchain
+          rustup component add rustfmt
+      - name: Check Rust formatting
+        run: cargo xtask fmt
+      - name: Run native unit and tooling regression tests
+        run: cargo xtask unit
+      - name: Check generated HTTP contracts
+        run: cargo xtask openapi
+      - name: Run PostgreSQL integration and rollback tests
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cyhdev_test_maintenance
+          # PostgreSQL reports its container address even through a loopback
+          # port mapping. This override applies only to this disposable service.
+          TEST_DATABASE_ALLOW_REMOTE_CI: "1"
+          RUST_TEST_THREADS: "2"
+        run: |
+          cargo xtask db-integration
+          cargo xtask migration-rollback
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Install configured Rust toolchain
+        run: rustup show active-toolchain
+      - name: Check frontend types, lint, unit tests, and bundle
+        run: cargo xtask frontend-check
+      - name: Install locked Chromium browser dependencies
+        working-directory: solid-csr-spa-template
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: Run Chromium regressions
+        working-directory: solid-csr-spa-template
+        run: npm run test:e2e:chromium
