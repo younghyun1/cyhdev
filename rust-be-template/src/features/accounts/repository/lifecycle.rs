@@ -19,6 +19,7 @@ use crate::{
         error::AccountError,
         repository::{
             account_repository::AccountRepository,
+            authorization_guard::lock_active_younghyun_assignments,
             retention_notifications::insert_retention_notification_schedule,
         },
     },
@@ -77,6 +78,10 @@ impl AccountRepository {
         let mut connection = self.connection().await?;
         connection
             .transaction::<SoftDeleteAccountReceipt, AccountError, _>(async move |connection| {
+                let owners = lock_active_younghyun_assignments(connection).await?;
+                if owners.len() == 1 && owners.contains(&user_id) {
+                    return Err(AccountError::LastActiveYounghyun);
+                }
                 let locked_identity = users::table
                     .filter(users::user_id.eq(user_id))
                     .select((

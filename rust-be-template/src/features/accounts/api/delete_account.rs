@@ -42,7 +42,7 @@ use crate::{
         (status = 400, description = "Invalid lifecycle request or password confirmation", body = CodeErrorResp),
         (status = 401, description = "Authentication required", body = CodeErrorResp),
         (status = 403, description = "Protected system actor", body = CodeErrorResp),
-        (status = 409, description = "Account lifecycle conflict", body = CodeErrorResp),
+        (status = 409, description = "Account lifecycle conflict or final active owner", body = CodeErrorResp),
         (status = 429, description = "Password confirmation budget exhausted", body = CodeErrorResp),
         (status = 500, description = "Internal server error", body = CodeErrorResp)
     )

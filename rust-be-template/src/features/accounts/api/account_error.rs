@@ -41,6 +41,7 @@ pub(super) fn map_account_error(error: AccountError, mutation: AccountMutation) 
         AccountError::AccountAlreadyDeleted
         | AccountError::AccountNotDeleted
         | AccountError::AccountNotHardPurged
+        | AccountError::LastActiveYounghyun
         | AccountError::RetentionPeriodActive { .. }
         | AccountError::AccountChanged => CodeError::ACCOUNT_LIFECYCLE_CONFLICT,
         AccountError::SystemActorMissing
@@ -141,5 +142,24 @@ pub(super) fn map_password_reset_error(error: AccountError) -> CodeErrorResp {
             "password reset capability was not accepted",
         ),
         error => map_account_error(error, AccountMutation::Update),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::StatusCode;
+
+    use super::{AccountMutation, map_account_error};
+    use crate::{errors::code_error::CodeError, features::accounts::error::AccountError};
+
+    #[test]
+    fn final_owner_deletion_uses_the_existing_lifecycle_conflict() {
+        let response =
+            map_account_error(AccountError::LastActiveYounghyun, AccountMutation::Update);
+        assert_eq!(response.http_status_code, StatusCode::CONFLICT);
+        assert_eq!(
+            response.error_code,
+            CodeError::ACCOUNT_LIFECYCLE_CONFLICT.error_code
+        );
     }
 }

@@ -4,7 +4,9 @@ Account deletion preserves authored content while removing the account as an aut
 
 ## Soft deletion
 
-`DELETE /api/auth/account` is a protected route under the existing exact-Origin gate. It requires the current password even when a valid session exists. `AccountService` takes the session-consistency write lock, verifies the password against the active account, and asks the repository to perform one row-locked transaction.
+`DELETE /api/auth/account` is a protected route under the existing exact-Origin gate. It requires the current password even when a valid session exists. `AccountService` verifies the password under the session-consistency read lock, then takes the authority and session-consistency write locks and asks the repository to perform one row-locked transaction. The transaction rechecks the password hash so a concurrent credential change rejects deletion.
+
+Before locking the target account, deletion locks every active owner assignment in the same user-ID order as role administration. The final active owner cannot delete their account; this returns the existing HTTP 409 lifecycle conflict without changing identity or revoking sessions. A second owner permits deletion, but competing deletions or owner demotions must commit in order and re-evaluate the remaining owner set.
 
 The transaction copies the current name, email, ISO country, ISO language, and optional subdivision into `deleted_account_retention`. It does not retain a password hash. It then deletes linked OIDC provider identity, role assignments, and password-reset and email-verification tokens; marks the email unverified; replaces the name, email, and password with unique non-credential tombstone values; copies the protected system actor's valid country and language; clears subdivision; and sets `user_deleted_at` with `user_purge_after` 30 days later. Persisted live-chat sender names become `Deleted user` while internal `user_id` attribution remains. Authored photograph latitude and longitude are zeroed transactionally; first hard purge repeats chat-name and coordinate scrubbing to cover writes that began before soft deletion committed.
 

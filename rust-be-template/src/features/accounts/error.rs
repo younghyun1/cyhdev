@@ -30,6 +30,8 @@ pub enum AccountError {
     BackgroundTask(#[source] tokio::task::JoinError),
     #[error("the protected system actor cannot be deleted or purged")]
     SystemActorProtected,
+    #[error("the last active owner cannot delete their account")]
+    LastActiveYounghyun,
     #[error("current database role does not authorize account hard purge")]
     HardPurgeRequesterUnauthorized,
     #[error("media cleanup record was not found")]

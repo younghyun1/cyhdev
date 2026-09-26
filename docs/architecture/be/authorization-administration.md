@@ -4,6 +4,8 @@ The account feature has four exclusive roles: `younghyun`, `moderator`, `user`, 
 
 Role changes reject no-ops, system actors, deleted accounts, removal of the last active Younghyun, and an actor demoting their own Younghyun assignment. Younghyun is the irreducible owner role, so its seeded permissions cannot be revoked. Stable lock ordering serializes competing owner demotions, so concurrent requests cannot each observe the other owner and leave no administrator. After commit, `AccountService` refreshes every RAM session for the target account from PostgreSQL; a failed refresh revokes those sessions. The service-level session-consistency write lock prevents a login from publishing stale role state during that commit and refresh. Role and permission changes first take a separate authority lock, which long privileged side effects hold as readers after rechecking database authority; a queued role change therefore waits behind them without blocking logins. Administrative permission checks use current PostgreSQL bindings and are not cached, so binding changes need no cache invalidation.
 
+Self-service account deletion uses the same ordered owner locks before locking its target account. Deletion rejects the final active owner, so an account deletion racing with a role demotion cannot bypass owner preservation. An owner may delete their account after another active owner exists.
+
 Permissions use validated lowercase namespace keys such as `authorization.roles.manage`; Rust and PostgreSQL enforce the same 3-to-64-character grammar. The migration seeds a fixed initial catalog and grants it to Younghyun. The administration API changes bindings for existing catalog entries; it does not create arbitrary permission names.
 
 ## Audit and privacy

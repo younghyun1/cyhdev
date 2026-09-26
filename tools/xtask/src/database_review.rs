@@ -11,6 +11,7 @@ use crate::{TaskResult, run_command};
 const INTEGRATION_SUITES: &[&str] = &[
     "postgres_account_boundaries",
     "postgres_account_identity",
+    "postgres_account_owner_deletion",
     "postgres_account_http_boundaries",
     "postgres_account_oidc",
     "postgres_account_oidc_reset",
