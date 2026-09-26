@@ -1,5 +1,7 @@
 # Integration tests
 
+`postgres_account_owner_deletion` proves that final-owner self-deletion preserves identity, authority, and sessions; deletion succeeds with another active owner; and concurrent deletions or deletion racing with owner demotion preserve one active owner through database locking. It is included in `cargo xtask db-integration`.
+
 `postgres_live_chat_moderation` covers database-current superuser authority, content erasure, idempotent deletion, tombstone pagination, demotion, and deleted-account rejection. It is included in `cargo xtask db-integration`.
 
 `postgres_live_chat_runtime` covers automatic bans stored per IPv6 /64 with a 24-hour expiry, room-scoped recent history, exact row-comparison keyset pages over tied timestamps and tombstone cursors, and idempotent closing of call and participant rows left open by a previous process. It is included in `cargo xtask db-integration`.

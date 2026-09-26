@@ -108,6 +108,11 @@ fn moderation_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .assign_role(admin.user_id, RoleType::Younghyun)
             .await?;
+        let remaining_owner = seed_account(&context, "ChatRemainingOwner").await?;
+        context
+            .accounts
+            .assign_role(remaining_owner.user_id, RoleType::Younghyun)
+            .await?;
         context
             .accounts
             .soft_delete_account(admin.user_id, VALID_PASSWORD)

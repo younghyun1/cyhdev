@@ -40,7 +40,22 @@ pub(super) async fn lock_active_younghyun_authority(
     connection: &mut diesel_async::AsyncPgConnection,
     actor_user_id: Uuid,
 ) -> Result<(LockedYounghyun, usize), AuthorizationError> {
-    let owners = user_roles::table
+    let owners = lock_active_younghyun_assignments(connection).await?;
+    let owner_count = owners.len();
+    match owners.into_iter().find(|user_id| *user_id == actor_user_id) {
+        Some(user_id) => Ok((LockedYounghyun { user_id }, owner_count)),
+        None => Err(AuthorizationError::Unauthorized),
+    }
+}
+
+/// Locks the owner set before any target account row in a destructive mutation.
+///
+/// Deletion and role changes share this order so each observes the owner set left
+/// by the previous commit, even when separate processes issue the mutations.
+pub(super) async fn lock_active_younghyun_assignments(
+    connection: &mut diesel_async::AsyncPgConnection,
+) -> Result<Vec<Uuid>, diesel::result::Error> {
+    user_roles::table
         .inner_join(users::table)
         .filter(user_roles::role_id.eq(RoleType::Younghyun.id()))
         .filter(users::user_deleted_at.is_null())
@@ -49,10 +64,5 @@ pub(super) async fn lock_active_younghyun_authority(
         .select(user_roles::user_id)
         .for_update()
         .load::<Uuid>(&mut *connection)
-        .await?;
-    let owner_count = owners.len();
-    match owners.into_iter().find(|user_id| *user_id == actor_user_id) {
-        Some(user_id) => Ok((LockedYounghyun { user_id }, owner_count)),
-        None => Err(AuthorizationError::Unauthorized),
-    }
+        .await
 }
