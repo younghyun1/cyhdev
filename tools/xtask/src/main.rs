@@ -7,6 +7,7 @@ mod eu5_web;
 #[cfg(test)]
 mod eu5_web_tests;
 mod evidence_manifest;
+mod evidence_runtime;
 #[cfg(test)]
 mod main_tests;
 mod psql_connection;
