@@ -1,6 +1,45 @@
 import { expect, test } from "@playwright/test";
 import { installApiMocks, setUiPreferences } from "./fixtures";
 
+for (const query of ["page=4", "q=rust&type=title&page=4"]) {
+  test(`blog pagination preserves a direct link with ${query}`, async ({ page }) => {
+    await installApiMocks(page, "logged-out");
+    const requests: string[] = [];
+    await page.route(/\/api\/blog\/(posts|search)\?/, async (route) => {
+      const search = new URL(route.request().url()).searchParams;
+      requests.push(search.get("page") ?? "1");
+      await route.fulfill({ json: {
+        success: true,
+        data: { available_pages: 10, posts: [] },
+        meta: { time_to_process: "1ms" },
+      } });
+    });
+    await page.goto(`/blog?${query}`, { waitUntil: "networkidle" });
+    await expect(page.locator(".blog-pagination")).toContainText("4");
+    expect(new URL(page.url()).searchParams.get("page")).toBe("4");
+    expect(requests).toEqual(["4"]);
+    await page.reload({ waitUntil: "networkidle" });
+    expect(new URL(page.url()).searchParams.get("page")).toBe("4");
+    expect(requests).toEqual(["4", "4"]);
+  });
+}
+
+test("blog pagination clamps to the server total after loading", async ({ page }) => {
+  await installApiMocks(page, "logged-out");
+  const requests: string[] = [];
+  await page.route("**/api/blog/posts**", async (route) => {
+    requests.push(new URL(route.request().url()).searchParams.get("page") ?? "1");
+    await route.fulfill({ json: {
+      success: true,
+      data: { available_pages: 10, posts: [] },
+      meta: { time_to_process: "1ms" },
+    } });
+  });
+  await page.goto("/blog?page=14", { waitUntil: "networkidle" });
+  expect(new URL(page.url()).searchParams.get("page")).toBe("10");
+  expect(requests).toEqual(["14", "10"]);
+});
+
 for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) {
   test(`search alignment and status metadata at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });

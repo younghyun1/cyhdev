@@ -51,7 +51,7 @@ export default function PostsList() {
   const [searchType, setSearchType] = createSignal<"title" | "tag">(
     initialFilters.type,
   );
-  const [debouncedQuery, setDebouncedQuery] = createSignal("");
+  const [debouncedQuery, setDebouncedQuery] = createSignal(initialFilters.query);
   const [tagInput, setTagInput] = createSignal("");
   const [selectedTags, setSelectedTags] = createSignal<string[]>(
     initialFilters.tags,
@@ -153,7 +153,7 @@ export default function PostsList() {
               page: currentPage,
               posts_per_page: PAGE_SIZE,
             });
-      return { ok: true as const, res };
+      return { ok: true as const, res, currentPage };
     } catch (err) {
       return { ok: false as const, error: String(err) };
     }
@@ -178,15 +178,11 @@ export default function PostsList() {
         setDisplayPosts(data.posts);
       }
       if (data && "available_pages" in data) {
-        setAvailablePages(data.available_pages ?? 1);
-      }
-    },
-  );
-  createEffect(
-    () => ({ totalPages: availablePages(), current: page() }),
-    ({ totalPages, current }) => {
-      if (totalPages > 0 && current > totalPages) {
-        setPage(totalPages);
+        const totalPages = Math.max(1, data.available_pages ?? 1);
+        setAvailablePages(totalPages);
+        // Clamp only against the total returned for this request; the initial
+        // placeholder must not overwrite a page restored from the URL.
+        if (result.currentPage > totalPages) setPage(totalPages);
       }
     },
   );

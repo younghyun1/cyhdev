@@ -163,6 +163,157 @@ async function openViewer(page: Page, items: ReturnType<typeof photo>[]) {
   await expect(page.locator(".details-modal")).toBeVisible();
 }
 
+async function servePhotoDetails(page: Page, items: ReturnType<typeof photo>[]) {
+  await page.route("**/api/photographs/*", async (route) => {
+    const id = new URL(route.request().url()).pathname.split("/").pop();
+    const item = items.find((entry) => entry.photograph_id === id);
+    if (!item) return route.fallback();
+    await route.fulfill({
+      json: {
+        success: true,
+        data: { photograph: item, comments: [], vote_state: 2 },
+        meta: { time_to_process: "1ms" },
+      },
+    });
+  });
+}
+
+test("comment caret arrows keep the photograph and draft selected", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "authenticated");
+  await serveImages(page);
+  const items = [photo(1), photo(2)];
+  await servePhotoDetails(page, items);
+  await openViewer(page, items);
+  const composer = page.locator(".details-modal textarea");
+  await composer.fill("Comment draft");
+  await composer.press("ArrowLeft");
+  await composer.press("ArrowRight");
+  await expect(page).toHaveURL(new RegExp(`${photo(1).photograph_id}$`));
+  await expect(composer).toHaveValue("Comment draft");
+  await expect(composer).toBeFocused();
+
+  // The same shortcut still navigates when focus is outside an editable field.
+  await page.locator("[data-photo-close]").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(new RegExp(`${photo(2).photograph_id}$`));
+  await expect(composer).toHaveValue("");
+});
+
+test("photo votes and pending failures belong to the photograph that started them", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "authenticated");
+  await serveImages(page);
+  const items = [photo(1), photo(2)];
+  await servePhotoDetails(page, items);
+  const firstVote = gate();
+  const mutations: { method: string; path: string }[] = [];
+  await page.route("**/api/photographs/*/vote", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    mutations.push({ method: route.request().method(), path });
+    if (path.includes(photo(1).photograph_id)) {
+      await firstVote.wait;
+      await route.fulfill({ status: 500, json: { success: false } });
+    } else {
+      await route.fulfill({ json: { success: true, data: null } });
+    }
+  });
+  await openViewer(page, items);
+  const upvote = page.getByRole("button", { name: "Upvote", exact: true });
+  await upvote.click();
+  await expect(upvote).toBeDisabled();
+  await expect.poll(() => mutations.length).toBe(1);
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(new RegExp(`${photo(2).photograph_id}$`));
+  await expect(upvote).toBeEnabled();
+  await expect(upvote).not.toHaveClass(/font-bold/);
+  await upvote.click();
+  await expect(upvote).toBeEnabled();
+  await expect(upvote).toHaveClass(/font-bold/);
+  expect(mutations).toEqual(items.map((item) => ({
+    method: "POST",
+    path: `/api/photographs/${item.photograph_id}/vote`,
+  })));
+
+  const failed = page.waitForResponse((response) =>
+    response.url().includes(`${photo(1).photograph_id}/vote`) && response.status() === 500,
+  );
+  firstVote.open();
+  await failed;
+  await page.waitForLoadState("networkidle");
+  await expect(upvote).toHaveClass(/font-bold/);
+});
+
+test("a pending comment cannot appear on the next photograph", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiMocks(page, "authenticated");
+  await serveImages(page);
+  const items = [photo(1), photo(2)];
+  await servePhotoDetails(page, items);
+  const pending = gate();
+  await page.route(`**/api/photographs/${photo(1).photograph_id}/comment`, async (route) => {
+    await pending.wait;
+    await route.fulfill({ json: {
+      success: true,
+      data: {
+        photograph_id: photo(1).photograph_id,
+        photograph_comment_id: "late-comment",
+        photograph_comment_content: "Only on the first photo",
+        photograph_comment_created_at: NOW,
+        photograph_comment_total_upvotes: 0,
+        photograph_comment_total_downvotes: 0,
+        user_id: photo(1).user_id,
+        user_name: "Comment author",
+        vote_state: 2,
+      },
+    } });
+  });
+  await openViewer(page, items);
+  const composer = page.locator(".details-modal textarea");
+  await composer.fill("Only on the first photo");
+  const requested = page.waitForRequest((request) => request.url().endsWith("/comment"));
+  await page.locator(".details-modal form button[type=submit]").click();
+  await requested;
+  await page.locator("[data-photo-close]").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page).toHaveURL(new RegExp(`${photo(2).photograph_id}$`));
+  await expect(composer).toHaveValue("");
+  await composer.fill("Second photo draft");
+  const completed = page.waitForResponse((response) => response.url().endsWith("/comment"));
+  pending.open();
+  await completed;
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator(".details-modal")).not.toContainText("Only on the first photo");
+  await expect(composer).toHaveValue("Second photo draft");
+});
+
+for (const [initialWidth, resizedWidth, pageSize] of [[390, 1440, 12], [1440, 390, 24]] as const) {
+  test(`gallery pagination stays contiguous when resizing from ${initialWidth}px to ${resizedWidth}px`, async ({ page }) => {
+    await page.setViewportSize({ width: initialWidth, height: 400 });
+    await installApiMocks(page, "logged-out");
+    await serveImages(page);
+    const items = Array.from({ length: 48 }, (_, index) => photo(index + 1));
+    const requests: { page: number; pageSize: number }[] = [];
+    await page.route("**/api/photographs/get**", async (route) => {
+      const query = new URL(route.request().url()).searchParams;
+      const requestedPage = Number(query.get("page"));
+      const requestedSize = Number(query.get("page_size"));
+      requests.push({ page: requestedPage, pageSize: requestedSize });
+      const offset = (requestedPage - 1) * requestedSize;
+      await route.fulfill({ json: photoPage(items.slice(offset, offset + requestedSize), requestedPage < 2) });
+    });
+    await page.goto("/photographs");
+    await expect(page.locator(".photo-card")).toHaveCount(pageSize);
+    await page.setViewportSize({ width: resizedWidth, height: 400 });
+    await page.locator("#scroll-sentinel").scrollIntoViewIfNeeded();
+    await expect(page.locator(".photo-card")).toHaveCount(pageSize * 2);
+    expect(requests).toEqual([{ page: 1, pageSize }, { page: 2, pageSize }]);
+    expect(await page.locator(".photo-card img").evaluateAll((images) =>
+      images.map((image) => image.getAttribute("alt")).sort(),
+    )).toEqual(items.slice(0, pageSize * 2).map((item) => item.photograph_comments).sort());
+  });
+}
+
 const stageImage = (page: Page, index: number) =>
   page.locator(`.details-image-container img[src$="/${index}-full.svg"]`);
 
