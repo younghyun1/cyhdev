@@ -45,6 +45,9 @@ const PhotographMap = lazy(loadPhotographMap);
 
 export default function Photographs(props: RouteSectionProps) {
   const isMobile = createMediaQuery("(max-width: 767px)");
+  // Numbered pages require one page size for the lifetime of the loaded list.
+  // Resizing changes the layout without shifting the server's next offset.
+  const pageSize = untrack(isMobile) ? 12 : 24;
   // State
   const [photos, setPhotos] = createSignal<PhotographItem[]>([]);
   const [page, setPage] = createSignal(1);
@@ -245,10 +248,7 @@ export default function Photographs(props: RouteSectionProps) {
     fetchInFlight = true;
     setLoading(true);
     try {
-      const resp = await photographyApi.getPhotographs(
-        page(),
-        isMobile() ? 12 : 24,
-      );
+      const resp = await photographyApi.getPhotographs(page(), pageSize);
       const data: GetPhotographsResponse = resp.data;
 
       if (data.items.length === 0) {
@@ -411,12 +411,20 @@ export default function Photographs(props: RouteSectionProps) {
 
       const handleKeyDown = (e: KeyboardEvent) =>
         untrack(() => {
+          if (e.defaultPrevented) return;
           if (e.key === "Escape") {
             if (selectedPhoto()) closePhoto();
             else if (isSelectionMode()) {
               setIsSelectionMode(false);
               setSelectedForDeletion(new Set<string>());
             }
+          }
+          const target = e.target;
+          if (
+            target instanceof HTMLElement &&
+            (target.isContentEditable || target.closest("input, textarea, select"))
+          ) {
+            return;
           }
           if (e.key === "ArrowLeft") void navigatePhoto("prev");
           if (e.key === "ArrowRight") void navigatePhoto("next");

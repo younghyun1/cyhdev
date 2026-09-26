@@ -17,6 +17,7 @@ import {
   createMemo,
   createSignal,
   createStore,
+  onCleanup,
 } from "solid-js";
 import { Key } from "@solid-primitives/keyed";
 import { useNavigate } from "@solidjs/router";
@@ -48,7 +49,21 @@ interface PhotographSocialProps {
 }
 
 export default function PhotographSocial(props: PhotographSocialProps) {
+  // A photograph owns its drafts, optimistic votes, and pending responses.
+  // Navigation disposes that state without remounting the gallery or dialog.
+  return (
+    <Show when={props.photographId} keyed>
+      {(photographId) => <PhotographSocialSession photographId={photographId} />}
+    </Show>
+  );
+}
+
+function PhotographSocialSession(props: PhotographSocialProps) {
   const navigate = useNavigate();
+  let active = true;
+  onCleanup(() => {
+    active = false;
+  });
 
   // Fetched once per photographId (this GET increments the view count).
   const detail = createMemo(async () => {
@@ -82,6 +97,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         props.photographId,
         after,
       );
+      if (!active) return;
       setComments((prev) =>
         mergeCommentPages(
           [prev, page.data.comments],
@@ -91,10 +107,11 @@ export default function PhotographSocial(props: PhotographSocialProps) {
       );
       setCursor(page.data.next_cursor ?? null);
     } catch (err) {
+      if (!active) return;
       console.error("Loading more comments failed:", err);
       setLoadMoreFailed(true);
     } finally {
-      setLoadingMore(false);
+      if (active) setLoadingMore(false);
     }
   };
 
@@ -102,6 +119,8 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     photo?: OptimisticVote;
     comments: Record<string, OptimisticVote>;
   }>({ comments: {} });
+  const [photoVoting, setPhotoVoting] = createSignal(false);
+  let photoVoteInFlight = false;
 
   const [commentValue, setCommentValue] = createSignal("");
   const [commentBusy, setCommentBusy] = createSignal(false);
@@ -183,6 +202,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
   };
 
   const votePhoto = async (isUpvote: boolean) => {
+    if (photoVoteInFlight) return;
     if (!meId()) {
       navigate("/login");
       return;
@@ -191,6 +211,8 @@ export default function PhotographSocial(props: PhotographSocialProps) {
     const rescinding =
       (isUpvote && current.vs === 0) || (!isUpvote && current.vs === 1);
     const next = applyVote(current, isUpvote);
+    photoVoteInFlight = true;
+    setPhotoVoting(true);
     setOptimistic((s) => {
       s.photo = next;
     });
@@ -204,10 +226,14 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         );
       }
     } catch (err) {
+      if (!active) return;
       console.error("Photo vote failed:", err);
       setOptimistic((s) => {
         s.photo = current;
       });
+    } finally {
+      photoVoteInFlight = false;
+      if (active) setPhotoVoting(false);
     }
   };
 
@@ -241,6 +267,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         );
       }
     } catch (err) {
+      if (!active) return;
       console.error("Comment vote failed:", err);
       setOptimistic((s) => {
         s.comments[id] = current;
@@ -259,12 +286,14 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         { parent_comment_id: null, comment_content: content },
         props.photographId,
       );
+      if (!active) return;
       setComments((prev) => [...prev, created.data]);
       setCommentValue("");
     } catch (err) {
+      if (!active) return;
       console.error("Comment failed:", err);
     } finally {
-      setCommentBusy(false);
+      if (active) setCommentBusy(false);
     }
   };
 
@@ -277,13 +306,15 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         { parent_comment_id: parentId, comment_content: content },
         props.photographId,
       );
+      if (!active) return;
       setComments((prev) => [...prev, created.data]);
       setReplyText(parentId, "");
       setReplyOpen(parentId, false);
     } catch (err) {
+      if (!active) return;
       console.error("Reply failed:", err);
     } finally {
-      setRowBusy(parentId, false);
+      if (active) setRowBusy(parentId, false);
     }
   };
 
@@ -297,6 +328,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         props.photographId,
         commentId,
       );
+      if (!active) return;
       setComments((prev) =>
         prev.map((c) =>
           c.photograph_comment_id === commentId ? updated.data : c,
@@ -304,9 +336,10 @@ export default function PhotographSocial(props: PhotographSocialProps) {
       );
       setEditOpen(commentId, false);
     } catch (err) {
+      if (!active) return;
       console.error("Edit failed:", err);
     } finally {
-      setRowBusy(commentId, false);
+      if (active) setRowBusy(commentId, false);
     }
   };
 
@@ -334,11 +367,13 @@ export default function PhotographSocial(props: PhotographSocialProps) {
         props.photographId,
         commentId,
       );
+      if (!active) return;
       setComments((prev) => markDeleted(prev, commentId));
     } catch (err) {
+      if (!active) return;
       console.error("Delete comment failed:", err);
     } finally {
-      setRowBusy(commentId, false);
+      if (active) setRowBusy(commentId, false);
     }
   };
 
@@ -520,6 +555,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
                   : "text-ink-muted hover:text-ok",
               ]}
               onClick={() => votePhoto(true)}
+              disabled={photoVoting()}
               aria-label={t("blog.vote.upvote")}
             >
               ▲
@@ -535,6 +571,7 @@ export default function PhotographSocial(props: PhotographSocialProps) {
                   : "text-ink-muted hover:text-danger",
               ]}
               onClick={() => votePhoto(false)}
+              disabled={photoVoting()}
               aria-label={t("blog.vote.downvote")}
             >
               ▼
