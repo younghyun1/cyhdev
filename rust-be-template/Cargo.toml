@@ -27,7 +27,7 @@ axum-extra = { version = "0.12.6", features = ["cookie", "attachment", "form"] }
 axum-server = { version = "0.8.0", features = ["tls-rustls", "tokio-rustls"] }
 # Already in the tree through axum-server; named directly to configure its HTTP/1 and
 # HTTP/2 builders with a Tokio timer, which hyper's header-read timeout requires.
-hyper-util = { version = "0.1.20", default-features = false, features = ["server-auto", "tokio"] }
+hyper-util = { version = "0.1.21", default-features = false, features = ["server-auto", "tokio"] }
 tower-http = { version = "0.7.1", features = [
     "compression-gzip",
     "compression-zstd",
@@ -176,7 +176,7 @@ memmap2 = "0.9.11"
 
 # aws
 # Preserve S3 defaults except its legacy rustls feature, which pulls Hyper 0.14/Rustls 0.21.
-aws-sdk-s3 = { version = "1.149.0", default-features = false, features = [
+aws-sdk-s3 = { version = "1.150.0", default-features = false, features = [
     "behavior-version-latest",
     "default-https-client",
     "http-1x",
@@ -208,4 +208,4 @@ zstd = { version = "0.14.0", features = ["fat-lto", "zstdmt", "pkg-config"] }
 
 [target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
 zstd = { version = "0.14.0", features = ["zstdmt"] }
-pq-sys = { version = "0.7.5", default-features = false, features = ["bundled_without_openssl"] }
+pq-sys = { version = "0.7.6", default-features = false, features = ["bundled_without_openssl"] }
