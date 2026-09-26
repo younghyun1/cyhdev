@@ -6,11 +6,11 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [Review correctness fixes, September 26](2026-09-26-review-correctness-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [Review correctness fixes, September 26](2026-09-26-review-correctness-fixes.md)
 - [Performance and security review, September 23](2026-09-23-performance-security-review.md)
 - [Introduction language consistency](2026-09-22-introduction-language.md)
 
