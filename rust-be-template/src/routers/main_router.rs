@@ -46,6 +46,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         ]);
 
     let public_router = Router::new()
+        .merge(crate::features::minecraft::api::map::public_router(&state)?)
         .route("/api/healthcheck/server", get(healthcheck))
         .route("/api/healthcheck/state", get(root_handler))
         .route("/api/healthcheck/fastfetch", get(get_host_fastfetch))
@@ -313,6 +314,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .merge(authorization_admin_router)
         .merge(media_cleanup_admin_router)
         .merge(crate::features::minecraft::api::controls::router(&state)?)
+        .merge(crate::features::minecraft::api::map::admin_router(&state))
         .layer(require_superuser_middleware)
         .layer(auth_middleware);
 

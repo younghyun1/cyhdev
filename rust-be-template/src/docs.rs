@@ -7,6 +7,11 @@ use utoipa::OpenApi;
 #[openapi(
     modifiers(&FrontendResponseEnvelope),
     paths(
+        crate::features::minecraft::api::map::minecraft_map_query,
+        crate::features::minecraft::api::map::minecraft_map_waypoints,
+        crate::features::minecraft::api::map::create_minecraft_map_waypoint,
+        crate::features::minecraft::api::map::update_minecraft_map_waypoint,
+        crate::features::minecraft::api::map::delete_minecraft_map_waypoint,
         crate::features::minecraft::api::controls::minecraft_status,
         crate::features::minecraft::api::controls::minecraft_action,
         server_http::healthcheck,

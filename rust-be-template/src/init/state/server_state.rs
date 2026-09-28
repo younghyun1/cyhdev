@@ -19,6 +19,8 @@ use super::{deployment_environment::DeploymentEnvironment, public_app_origin::Pu
 mod core;
 
 pub struct ServerState {
+    pub(crate) minecraft_waypoint_service:
+        Arc<crate::features::minecraft::service::waypoints::WaypointService>,
     pub(crate) account_service: Arc<AccountService>,
     pub(crate) blog_service: Arc<BlogService>,
     pub(crate) forum_service: Arc<ForumService>,

@@ -32,11 +32,16 @@ const INTEGRATION_SUITES: &[&str] = &[
     "postgres_runtime_bounds",
     "postgres_blog_social",
     "postgres_comment_threads",
+    "postgres_minecraft_waypoints",
 ];
 
 /// Whole-chain rollback cases, skipped by `db-integration` because they must run
 /// serially with the rest of the rollback coverage.
 const ROLLBACK_CASES: &[(&str, &str)] = &[
+    (
+        "postgres_minecraft_waypoints",
+        "waypoint_rollback_preserves_annotations_until_explicitly_removed",
+    ),
     (
         "postgres_account_boundaries",
         "embedded_migration_chain_reverts_and_reapplies",

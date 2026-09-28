@@ -1,5 +1,7 @@
 # Integration tests
 
+`postgres_minecraft_waypoints` covers public readback, database-current administrator authority, denied mutations after demotion, authority leases held through blocked waypoint commits, UUIDv7 generation, concurrent 256-marker capacity, cross-world moves, and PostgreSQL name/slot constraints. Its guarded rollback/reapply case runs serially through `cargo xtask migration-rollback`; the other cases run through `cargo xtask db-integration`.
+
 `postgres_account_owner_deletion` proves that final-owner self-deletion preserves identity, authority, and sessions; deletion succeeds with another active owner; and concurrent deletions or deletion racing with owner demotion preserve one active owner through database locking. It is included in `cargo xtask db-integration`.
 
 `postgres_live_chat_moderation` covers database-current superuser authority, content erasure, idempotent deletion, tombstone pagination, demotion, and deleted-account rejection. It is included in `cargo xtask db-integration`.

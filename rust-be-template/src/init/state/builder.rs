@@ -264,7 +264,17 @@ impl ServerStateBuilder {
             rtc_service,
         )?);
 
+        let minecraft_waypoint_service = Arc::new(
+            crate::features::minecraft::service::waypoints::WaypointService::new(
+                crate::features::minecraft::repository::waypoints::WaypointRepository::new(
+                    pool.clone(),
+                ),
+                Arc::clone(&account_service),
+            ),
+        );
+
         Ok(ServerState {
+            minecraft_waypoint_service,
             account_service,
             blog_service,
             forum_service,
