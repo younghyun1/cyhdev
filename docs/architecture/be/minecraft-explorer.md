@@ -10,6 +10,8 @@ The catalog contains at most sixteen squaremap-enabled worlds and 4096 block ide
 
 Chunk loading uses Paper's asynchronous non-generating API, with one load outstanding and at most one snapshot scheduled per tick. Snapshot analysis occurs on the dedicated worker. No full-world index, continuous pan-triggered scan, or unbounded cache is introduced. Results are area observations rather than claims about the entire dimension.
 
+The browser's terrain inspection reuses survey data and permitted seed predictions before issuing a debounced one-chunk surface query through the same area contract. Its separate observation cache is capped at 64 chunks with a 30-second lifetime. The browser serializes automatic and explicit world reads, retains only the latest hover target, and prioritizes explicit actions. No endpoint, server cache, chunk-generation behavior, or block-type inference is added for hover inspection.
+
 ## Saved structures
 
 Paper's ordinary structure lookup follows reference chunks and can synchronously load them. The explorer instead reads each queried chunk's saved `structures.starts` metadata from the dimension-specific region directory. It combines the bounding boxes of saved structure pieces and never follows references into other chunks. A structure appears when its start chunk falls inside the scanned area; structure metadata reflects the last world save and may remain after players dismantle the structure.
