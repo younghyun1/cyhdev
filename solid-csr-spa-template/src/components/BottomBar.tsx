@@ -67,24 +67,39 @@ const BottomBar: Component = () => {
 
   onSettled(() => {
     const interval = setInterval(() => setClientNow(new Date()), 1000);
+    let pointerActive = false;
+    let focusTimer: ReturnType<typeof setTimeout> | undefined;
     const updateFocus = () =>
-      queueMicrotask(() =>
-        setKeyboardControlFocused(
-          isMobile() && isKeyboardControl(document.activeElement),
-        ),
-      );
+      queueMicrotask(() => {
+        const focused = isMobile() && isKeyboardControl(document.activeElement);
+        // A footer restored between pointerdown and click can cover the intended submit button.
+        if (focused || !pointerActive) setKeyboardControlFocused(focused);
+      });
+    const startPointer = () => { pointerActive = true; };
+    const finishPointer = () => {
+      pointerActive = false;
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(updateFocus, 0);
+    };
     // Returning to the tab or window is when stale counters are most visible.
     const refreshOnReturn = () => {
       if (!document.hidden) void refreshHealthStateIfStale();
     };
     document.addEventListener("focusin", updateFocus);
     document.addEventListener("focusout", updateFocus);
+    document.addEventListener("pointerdown", startPointer, true);
+    document.addEventListener("pointerup", finishPointer, true);
+    document.addEventListener("pointercancel", finishPointer, true);
     document.addEventListener("visibilitychange", refreshOnReturn);
     window.addEventListener("focus", refreshOnReturn);
     return () => {
       clearInterval(interval);
+      clearTimeout(focusTimer);
       document.removeEventListener("focusin", updateFocus);
       document.removeEventListener("focusout", updateFocus);
+      document.removeEventListener("pointerdown", startPointer, true);
+      document.removeEventListener("pointerup", finishPointer, true);
+      document.removeEventListener("pointercancel", finishPointer, true);
       document.removeEventListener("visibilitychange", refreshOnReturn);
       window.removeEventListener("focus", refreshOnReturn);
     };
