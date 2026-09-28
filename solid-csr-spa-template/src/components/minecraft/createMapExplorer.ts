@@ -1,5 +1,6 @@
 import { createSignal, onCleanup, onSettled } from "solid-js";
-import type { MinecraftMapData, MinecraftMapQuery } from "../../generated";
+import type { MinecraftMapData, MinecraftMapQuery, MinecraftPrediction } from "../../generated";
+import { ApiContractError } from "../../generated";
 import { contractApi } from "../../services/account_api";
 import { squaremap, type SquaremapPlayer, type SquaremapSettings, type SquaremapWorld } from "../../services/squaremap";
 import { coordinate, scanOrigin, type MapPoint } from "./mapMath";
@@ -14,6 +15,9 @@ export function createMapExplorer() {
   const [catalog, setCatalog] = createSignal<MinecraftMapData | null>(null);
   const [area, setArea] = createSignal<MinecraftMapData | null>(null);
   const [matches, setMatches] = createSignal<MinecraftMapData | null>(null);
+  const [prediction, setPrediction] = createSignal<MinecraftPrediction | null>(null);
+  const [predictionNotice, setPredictionNotice] = createSignal("");
+  const [predicting, setPredicting] = createSignal(false);
   const [areaRegion, setAreaRegion] = createSignal<ReturnType<typeof scanOrigin> | null>(null);
   const [matchRegion, setMatchRegion] = createSignal<ReturnType<typeof scanOrigin> | null>(null);
   const [areaSlice, setAreaSlice] = createSignal<number | null>(null);
@@ -31,7 +35,14 @@ export function createMapExplorer() {
   const lifetime = new AbortController();
   let worldRequest: AbortController | null = null;
   let queryRequest: AbortController | null = null;
+  let predictionRequest: AbortController | null = null, predictionTimer: number | undefined, predictionEpoch = 0;
   const currentWorld = () => catalog()?.worlds.find(world => world.map_id === loaded()?.world.name);
+  const clearPrediction = (notice = "") => {
+    ++predictionEpoch;
+    predictionRequest?.abort();
+    window.clearTimeout(predictionTimer);
+    setPrediction(null); setPredictionNotice(notice);
+  };
 
   const refreshPlayers = async () => {
     if (playersPending || !active || !visible) return;
@@ -49,6 +60,7 @@ export function createMapExplorer() {
     if (!world) return;
     const revision = ++epoch;
     worldRequest?.abort(); queryRequest?.abort();
+    clearPrediction();
     const request = new AbortController(); worldRequest = request;
     setLoaded(null); setArea(null); setMatches(null); setAreaRegion(null); setMatchRegion(null); setLoading(true); setError("");
     try {
@@ -112,13 +124,42 @@ export function createMapExplorer() {
     const world = currentWorld();
     if (world) void query({ kind: "blocks", world: world.id, ...scanOrigin(point(), 4), block, min_y, max_y });
   };
+  const predict = async (y: number) => {
+    const world = currentWorld();
+    if (!world || queryPending || !active || !visible || !Number.isInteger(y) || y < world.min_y || y > world.max_y) return;
+    clearPrediction();
+    queryPending = true; setBusy(true); setPredicting(true);
+    const revision = predictionEpoch, request = new AbortController(); predictionRequest = request;
+    const origin = scanOrigin(point(), 8);
+    try {
+      const response = await contractApi.minecraftMapPrediction({ body: { world: world.id, min_x: origin.chunk_x * 16, min_z: origin.chunk_z * 16, y } }, { signal: request.signal });
+      if (!active || revision !== predictionEpoch) return;
+      const result = response.data;
+      const remaining = Math.min(15_000, result.expires_at_ms - Date.now());
+      if (result.world !== world.id || result.y !== y || !Number.isFinite(remaining) || remaining <= 0) {
+        setPredictionNotice("Preview expired or did not match this world. Request it again."); return;
+      }
+      setPrediction(result);
+      predictionTimer = window.setTimeout(() => clearPrediction("Preview expired. Request a fresh coverage snapshot to show predictions again."), remaining);
+    } catch (cause: unknown) {
+      if (active && revision === predictionEpoch) setPredictionNotice(cause instanceof ApiContractError && cause.status === 503
+        ? "Prediction is unavailable for this world or generator configuration."
+        : mapFailure(cause));
+    } finally {
+      queryPending = false;
+      if (active) { setBusy(false); setPredicting(false); }
+    }
+  };
   const navigate = (next: MapPoint) => { setPoint(next); setView({ ...next }); };
-  const refreshMap = () => { setRefresh(Date.now()); void refreshPlayers(); };
-  const setVisible = (value: boolean) => { visible = value; };
+  const terrainRefreshing = () => { if (prediction() || predicting()) clearPrediction("Terrain refreshed. Request a fresh prediction preview."); };
+  const refreshMap = () => { terrainRefreshing(); setRefresh(Date.now()); void refreshPlayers(); };
+  const setVisible = (value: boolean) => { visible = value; if (!value) clearPrediction(); };
+  const onVisibility = () => { if (document.visibilityState !== "visible") clearPrediction(); };
   onSettled(() => { void initialize(); });
+  document.addEventListener("visibilitychange", onVisibility);
   const poll = window.setInterval(() => { if (document.visibilityState === "visible") void refreshPlayers(); }, 5000);
-  onCleanup(() => { active = false; ++epoch; lifetime.abort(); worldRequest?.abort(); queryRequest?.abort(); window.clearInterval(poll); });
-  return { worlds, loaded, catalog, area, matches, areaRegion, matchRegion, areaSlice, matchedBlock, players, point, view, busy, loading, error, catalogError, playerError, refresh, currentWorld, selectWorld, initialize, loadCatalog, scan, searchBlocks, navigate, setPoint, refreshMap, setVisible };
+  onCleanup(() => { active = false; ++epoch; ++predictionEpoch; lifetime.abort(); worldRequest?.abort(); queryRequest?.abort(); predictionRequest?.abort(); window.clearTimeout(predictionTimer); window.clearInterval(poll); document.removeEventListener("visibilitychange", onVisibility); });
+  return { worlds, loaded, catalog, area, matches, prediction, predictionNotice, predicting, areaRegion, matchRegion, areaSlice, matchedBlock, players, point, view, busy, loading, error, catalogError, playerError, refresh, currentWorld, selectWorld, initialize, loadCatalog, scan, searchBlocks, predict, clearPrediction, terrainRefreshing, navigate, setPoint, refreshMap, setVisible };
 }
 
 export type MapExplorer = ReturnType<typeof createMapExplorer>;

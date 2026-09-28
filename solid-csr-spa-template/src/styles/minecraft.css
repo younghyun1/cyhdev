@@ -37,6 +37,7 @@
 .minecraft-tool-tabs button span { font-size: 19px; line-height: 20px; }
 .minecraft-tool-scroll { overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; padding: 18px 16px; scrollbar-color: #827b69 #b6b1a4; }
 .minecraft-tool-panel { display: flex; flex-direction: column; gap: 14px; }
+.minecraft-tool-panel + .minecraft-tool-panel { margin-top: 22px; padding-top: 20px; border-top: 2px solid var(--mc-shadow); }
 .minecraft-tool-panel form { display: flex; flex-direction: column; gap: 10px; }
 .minecraft-hint { font-size: 11px; line-height: 1.65; color: var(--mc-muted); }
 .minecraft-coordinate-fields { display: flex; gap: 8px; }
@@ -64,6 +65,17 @@
 .minecraft-key-waypoint { color: #ffcd6e; }
 .minecraft-key-player { color: #a2ee8d; }
 .minecraft-key-match { color: #68e4ef; }
+.minecraft-key-prediction { color: #d7ccb2; }
+.minecraft-atlas-canvas .leaflet-minecraft-predictions-pane { z-index: 350; }
+.minecraft-atlas-canvas .leaflet-minecraft-selection-footprint-pane { z-index: 325; }
+.minecraft-prediction-cell { filter: saturate(0.45); fill-opacity: 0.32; }
+.minecraft-prediction-edge-cell { fill-opacity: 0.16; }
+.minecraft-prediction-boundary, .minecraft-prediction-boundary-casing { fill: none; stroke-linecap: square; stroke-linejoin: miter; }
+.minecraft-prediction-boundary { stroke: #11150f; stroke-width: 1px; stroke-opacity: 1; }
+.minecraft-prediction-boundary-casing { stroke: #f2e5bc; stroke-width: 2px; stroke-opacity: 0.65; }
+.minecraft-prediction-receipt { display: flex; flex-direction: column; gap: 10px; padding: 10px; background: #d8d2c1; border: 1px dashed #716958; }
+.minecraft-prediction-source { font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; color: var(--mc-muted); }
+.minecraft-prediction-legend li span { opacity: 0.6; filter: saturate(0.45); }
 .minecraft-map-notice { padding: 12px 18px; background: var(--mc-paper); color: var(--mc-ink); }
 .minecraft-map-notice button { margin-left: 8px; }
 .minecraft-map-warning, .minecraft-tool-panel [role="alert"] { margin-bottom: 12px; padding: 10px; border: 2px solid #9c642b; background: #f0dcb3; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
