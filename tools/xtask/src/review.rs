@@ -17,6 +17,8 @@ pub(crate) fn run_format_check(root: &Path) -> TaskResult<()> {
                 "rust-be-template",
                 "--package",
                 "xtask",
+                "--package",
+                "minecraft-seed",
                 "--",
                 "--check",
             ])

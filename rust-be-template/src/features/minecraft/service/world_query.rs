@@ -15,13 +15,24 @@ use tokio::{
 
 const MAX_REPLY: usize = 2 * 1024 * 1024;
 pub struct WorldQueryService {
-    path: Option<PathBuf>,
-    gate: Mutex<Instant>,
+    pub(super) path: Option<PathBuf>,
+    pub(super) predictor: Option<PathBuf>,
+    pub(super) prediction_cache: super::prediction_cache::PredictionCache,
+    pub(super) gate: Mutex<Instant>,
 }
 
 impl WorldQueryService {
     pub fn from_environment() -> anyhow::Result<Self> {
-        Self::from_path(std::env::var_os("MINECRAFT_WORLD_SOCKET").map(PathBuf::from))
+        let mut service =
+            Self::from_path(std::env::var_os("MINECRAFT_WORLD_SOCKET").map(PathBuf::from))?;
+        service.predictor = std::env::var_os("MINECRAFT_SEED_WORKER").map(PathBuf::from);
+        if let Some(path) = &service.predictor {
+            anyhow::ensure!(
+                path.is_absolute() && path.is_file(),
+                "MINECRAFT_SEED_WORKER must name an existing absolute executable path"
+            );
+        }
+        Ok(service)
     }
 
     fn from_path(path: Option<PathBuf>) -> anyhow::Result<Self> {
@@ -37,6 +48,8 @@ impl WorldQueryService {
         }
         Ok(Self {
             path,
+            predictor: None,
+            prediction_cache: super::prediction_cache::PredictionCache::new(),
             gate: Mutex::new(Instant::now()),
         })
     }
@@ -56,15 +69,7 @@ impl WorldQueryService {
         *gate = Instant::now() + Duration::from_secs(21);
         let result = tokio::time::timeout(Duration::from_secs(20), async {
             let request = world_wire::request(&query)?;
-            anyhow::ensure!(request.len() <= 4096, "World request too large");
-            let mut stream = UnixStream::connect(path).await?;
-            stream.write_all(&request).await?;
-            let mut bytes = Vec::new();
-            stream
-                .take((MAX_REPLY + 1) as u64)
-                .read_to_end(&mut bytes)
-                .await?;
-            anyhow::ensure!(bytes.len() <= MAX_REPLY, "World response too large");
+            let bytes = exchange(path, &request).await?;
             world_wire::parse(&bytes, &query)
         })
         .await;
@@ -77,6 +82,20 @@ impl WorldQueryService {
             }
         }
     }
+}
+
+/// Share framing bounds between observed terrain and private prediction context reads.
+pub(super) async fn exchange(path: &std::path::Path, request: &[u8]) -> anyhow::Result<Vec<u8>> {
+    anyhow::ensure!(request.len() <= 4096, "World request too large");
+    let mut stream = UnixStream::connect(path).await?;
+    stream.write_all(request).await?;
+    let mut bytes = Vec::new();
+    stream
+        .take((MAX_REPLY + 1) as u64)
+        .read_to_end(&mut bytes)
+        .await?;
+    anyhow::ensure!(bytes.len() <= MAX_REPLY, "World response too large");
+    Ok(bytes)
 }
 
 #[cfg(test)]

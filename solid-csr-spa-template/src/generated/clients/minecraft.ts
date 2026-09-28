@@ -6,6 +6,8 @@ import type {
   MinecraftActionResult,
   MinecraftMapData,
   MinecraftMapQuery,
+  MinecraftPrediction,
+  MinecraftPredictionQuery,
   MinecraftStatus,
   MinecraftWaypoint,
   MinecraftWaypointInput,
@@ -52,6 +54,18 @@ export function createMinecraftClient(transport: ApiTransport) {
       const path = "/api/admin/minecraft/actions";
       const url = path;
       return requestJson<ApiResponse<MinecraftActionResult>>(transport, url, {
+        method: "POST",
+        headers: requestHeaders(options.headers, true),
+        signal: options.signal,
+        body: JSON.stringify(input.body),
+      });
+    },
+    minecraftMapPrediction: async (input: {
+      readonly body: MinecraftPredictionQuery;
+    }, options: ApiRequestOptions = {}) => {
+      const path = "/api/minecraft/map/prediction";
+      const url = path;
+      return requestJson<ApiResponse<MinecraftPrediction>>(transport, url, {
         method: "POST",
         headers: requestHeaders(options.headers, true),
         signal: options.signal,

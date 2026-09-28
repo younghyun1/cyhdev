@@ -94,14 +94,17 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
     && RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     CFLAGS="-march=${RUST_TARGET_CPU} -O3" \
     APP_BUILD_EPOCH="$build_epoch" \
-    cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
+    cargo build --locked --release --package "$APP_NAME" --package minecraft-seed --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind \
     && ldd_output="$(ldd "./target/$RUST_TARGET/release/$APP_NAME")" \
     && printf '%s\n' "$ldd_output" \
     && ! printf '%s\n' "$ldd_output" | grep -q 'not found' \
     && mkdir -p /out \
-    && cp "./target/$RUST_TARGET/release/$APP_NAME" "/out/$APP_NAME"
+    && cp "./target/$RUST_TARGET/release/$APP_NAME" "/out/$APP_NAME" \
+    && cp "./target/$RUST_TARGET/release/minecraft-seed" /out/minecraft-seed \
+    && mkdir -p /out/minecraft-seed-licenses \
+    && cp tools/minecraft-seed/LICENSE tools/minecraft-seed/THIRD_PARTY_NOTICES.md /out/minecraft-seed-licenses/
 
 FROM scratch AS artifact
 COPY --from=host-release /out/ /
@@ -131,8 +134,9 @@ RUN mkdir -p solid-csr-spa-template/dist \
 RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git/db,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
-    cargo build --locked --package "$APP_NAME" && \
-    cp "./target/debug/$APP_NAME" /bin/server
+    cargo build --locked --package "$APP_NAME" --package minecraft-seed && \
+    cp "./target/debug/$APP_NAME" /bin/server && \
+    cp ./target/debug/minecraft-seed /bin/minecraft-seed
 
 # A runnable development-profile layout used by `cargo xtask image-smoke`.
 # Runtime secrets remain injected by the caller; the build only verifies that
@@ -141,8 +145,11 @@ FROM alpine:${ALPINE_DOCKER_TAG} AS smoke
 RUN apk add --no-cache ca-certificates libgcc libpq
 WORKDIR /app
 COPY --from=smoke-build /bin/server /app/server
+COPY --from=smoke-build /bin/minecraft-seed /app/minecraft-seed
+COPY tools/minecraft-seed/LICENSE tools/minecraft-seed/THIRD_PARTY_NOTICES.md /app/minecraft-seed-licenses/
 COPY --chmod=0444 rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /app/
 RUN test -x /app/server \
+    && test -x /app/minecraft-seed \
     && test -s /app/new_bundle_ipv4.db \
     && test -s /app/new_bundle_ipv6.db \
     && (ldd /app/server >/tmp/server-ldd.txt 2>&1 || true) \
@@ -174,11 +181,12 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/registry/,sharing=locked \
     build_epoch="${APP_BUILD_EPOCH:-${SOURCE_DATE_EPOCH:-$(date +%s)}}" \
     && APP_BUILD_EPOCH="$build_epoch" \
-    cargo build --locked --release --package "$APP_NAME" --target "$RUST_TARGET" \
+    cargo build --locked --release --package "$APP_NAME" --package minecraft-seed --target "$RUST_TARGET" \
         -Z build-std=core,alloc,std,panic_unwind \
         -Z build-std-features=backtrace,panic-unwind && \
     upx --lzma --best "./target/$RUST_TARGET/release/$APP_NAME" && \
-    cp "./target/$RUST_TARGET/release/$APP_NAME" /bin/server
+    cp "./target/$RUST_TARGET/release/$APP_NAME" /bin/server && \
+    cp "./target/$RUST_TARGET/release/minecraft-seed" /bin/minecraft-seed
 
 # Empty runtime directories for the scratch image, which has no shell to create
 # them. COPY --from preserves these owners and modes, including the sticky bit.
@@ -202,6 +210,8 @@ COPY --from=runtime-layout /runtime/ /
 # and the Geo-IP bundles, whose modes are set explicitly so a restrictive
 # checkout umask cannot make them unreadable.
 COPY --from=build --chmod=0555 /bin/server /bin/server
+COPY --from=build --chmod=0555 /bin/minecraft-seed /bin/minecraft-seed
+COPY --chmod=0444 tools/minecraft-seed/LICENSE tools/minecraft-seed/THIRD_PARTY_NOTICES.md /bin/minecraft-seed-licenses/
 COPY --from=build --chmod=0444 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --chmod=0444 rust-be-template/new_bundle_ipv4.db rust-be-template/new_bundle_ipv6.db /bin/
 

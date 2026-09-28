@@ -7,6 +7,7 @@ use super::{
     },
     map_error::map_error,
     map_response::MinecraftMapData,
+    prediction_dto::{MinecraftPrediction, MinecraftPredictionQuery},
 };
 use crate::{
     dto::responses::response_data::http_resp,
@@ -28,6 +29,10 @@ pub fn public_router(state: &Arc<ServerState>) -> anyhow::Result<Router<Arc<Serv
     let world = Arc::new(WorldQueryService::from_environment()?);
     Ok(Router::new()
         .route("/api/minecraft/map/query", post(minecraft_map_query))
+        .route(
+            "/api/minecraft/map/prediction",
+            post(minecraft_map_prediction),
+        )
         .route("/api/minecraft/map/waypoints", get(minecraft_map_waypoints))
         .layer(DefaultBodyLimit::max(4096))
         .layer(Extension(world))
@@ -55,6 +60,16 @@ fn admin_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
 }
 
 type Waypoints = Arc<crate::features::minecraft::service::waypoints::WaypointService>;
+
+#[utoipa::path(post, path = "/api/minecraft/map/prediction", tag = "minecraft", request_body = MinecraftPredictionQuery, responses((status = 200, body = MinecraftPrediction), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
+pub async fn minecraft_map_prediction(
+    Extension(service): Extension<Arc<WorldQueryService>>,
+    Json(request): Json<MinecraftPredictionQuery>,
+) -> HandlerResponse<impl IntoResponse> {
+    let start = tokio_now();
+    let data = service.predict(request.into()).await.map_err(map_error)?;
+    Ok(http_resp(MinecraftPrediction::from(data), (), start))
+}
 
 #[utoipa::path(post, path = "/api/minecraft/map/query", tag = "minecraft", request_body = MinecraftMapQuery, responses((status = 200, body = MinecraftMapData), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
 pub async fn minecraft_map_query(
