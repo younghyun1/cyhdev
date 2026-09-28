@@ -1,0 +1,15 @@
+# Minecraft terrain inspection
+
+Status: complete, 2026-09-28. Hovering or selecting terrain shows biome data with explicit observed and predicted provenance and bounded background requests.
+
+Checkout: `main`, implementation commit `d6eb44a`. Scope: Minecraft frontend components, styles, focused tests, and design documentation. Documentation records this implementation separately.
+
+Completed: implemented the native pointer/tap readout, observed and predicted provenance, exact block-search matches, one-chunk reads, a 64-entry cache with 30-second expiry, and a shared query gate with manual priority. The existing area contract and plugin need no change. Inspected desktop and 390-pixel mobile screenshots.
+
+Behavior: the inspection panel reuses survey and permitted prediction data, fetches missing observations after a 500-millisecond stationary hover, and shares the world-query gate with explicit actions. Cache expiry clears stale hover samples without polling; moving or tapping can request fresh data. A tap or coordinate navigation exposes the same readout. Exact block names come from matching block-search results; biome samples cannot identify arbitrary individual blocks.
+
+Corrections: Leaflet snaps marker hitbox events to marker centers and throttles canvas movement without a trailing event, so inspection uses native container mouse coordinates. Leaving the container clears hover; marker transitions do not. Active world reads finish across dimension changes while stale responses are discarded, preserving the backend completion cooldown instead of entering its longer cancellation reservation. Browser fixtures now return samples matching the requested chunk dimensions and missing-chunk counts. The state module uses a distinct basename from the JSX component to avoid ambiguous resolution on case-insensitive filesystems.
+
+Verification: `cargo xtask frontend-check` passes locked dependency installation, TypeScript, zero-warning lint, all 218 tests in 42 files, and the Vite bundle with a 118.6 KiB initial gzip graph. `npm --prefix solid-csr-spa-template run test:e2e:chromium -- e2e/minecraft-hover.spec.ts e2e/minecraft-prediction.spec.ts e2e/minecraft-explorer.spec.ts` passes all 13 cases on the implementation commit. Coverage includes debounce, cache reuse and eviction, request priority, fixed-Y provenance, exact cursor coordinates beside markers, unavailable terrain, dimension changes, expiry, hidden startup, mouseleave, and mobile taps. Desktop and mobile screenshots were inspected; `git diff --check` passes. No pull request exists for `main` to review.
+
+Remaining: no local implementation work. Deployment and live-world validation remain unperformed. Rust, plugin, and database checks were not repeated because their code and contracts are unchanged. WebKit was not rerun; the preceding environment check found missing ICU and Flite runtime libraries. Existing [activation prerequisites](../architecture/be/minecraft-explorer.md#activation-and-verification) still apply.

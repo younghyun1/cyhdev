@@ -10,6 +10,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Completed
 
+- [Minecraft terrain inspection](2026-09-28-minecraft-hover.md)
 - [Minecraft biome predictions](2026-09-28-minecraft-seed-predictions.md)
 - [Minecraft seed-map blending exploration](2026-09-28-minecraft-seed-blending.md)
 - [Minecraft map exploration](2026-09-28-minecraft-explorer.md)
