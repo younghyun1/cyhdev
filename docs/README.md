@@ -40,6 +40,8 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [WebAssembly service](architecture/be/wasm-service.md)
 - [Live-chat moderation](architecture/be/live-chat-moderation.md)
 - [Live-chat realtime limits](architecture/be/live-chat-realtime-limits.md)
+- [Minecraft terrain explorer](architecture/be/minecraft-explorer.md)
+- [Minecraft atlas interface](design/fe/minecraft.md)
 
 ## Active Plans
 

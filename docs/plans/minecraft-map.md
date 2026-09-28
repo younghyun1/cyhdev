@@ -1,5 +1,7 @@
 # Minecraft map
 
+The native terrain explorer superseding the initial iframe-only page is described in the [September 28 implementation plan](2026-09-28-minecraft-explorer.md). The tile service and original sandboxed map remain in use; the deployment and verification notes below record the initial integration.
+
 Add a lazy `/minecraft` page to the Projects navigation. Embed squaremap at `/minecraft/map/` so its scripts and tiles load only while the page is open. Serve the plugin's public web directory directly through Axum using `SQUAREMAP_WEB_DIR`; no additional listener, proxy, or database is needed. Keep the route outside session and request-log middleware because map browsing generates many tile requests.
 
 Use cached PNG tile responses with streaming filesystem fallback and conditional requests. Revalidate assets and tiles because squaremap overwrites stable filenames; never cache live JSON responses. Return missing files as errors rather than the website shell. Restrict the configured root to squaremap's public `web` directory.

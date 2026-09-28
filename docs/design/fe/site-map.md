@@ -30,7 +30,7 @@ flowchart TB
         Photo["/photographs/:photograph_id · Detail modal"]
         ProjectsGroup["Projects menu"]
         Projects["/projects · WASM projects"]
-        Minecraft["/minecraft · Minecraft map page"]
+        Minecraft["/minecraft · Terrain explorer and public waypoints"]
         Geo["/geo-ip-db · IP lookup"]
         EU5["/eu5-locations-db · EU5 Locations DB"]
     end
@@ -134,7 +134,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/photographs` | Public | `pages/photographs.tsx` |
 | `/photographs/:photograph_id` | Public | Same mounted gallery; URL-synced detail modal, null child component |
 | `/projects` | Public | `pages/projects.tsx`; demos open in an iframe modal or separately |
-| `/minecraft` | Public | `pages/minecraft.tsx`; map iframe |
+| `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain explorer, explicit biome/elevation/structure scans, bounded block search, public waypoints with administrator-only editing, and original sandboxed map fallback |
 | `/geo-ip-db` | Public | `pages/geo_ip_info.tsx` |
 | `/eu5-locations-db` | Public | `pages/eu5_locations_db.tsx`; embedded EU5 app |
 | `/login` | Public | `pages/login.tsx`; password and OIDC entry/return UI |

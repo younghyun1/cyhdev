@@ -25,6 +25,8 @@ Inspection of squaremap's web source (upstream `web/src/js/LayerControl.js`) fou
 
 The EU5 host document posts its ready message to `location.origin`, which still names this site in a sandboxed frame, and accepts theme messages whose origin is this site and whose source is its parent. The parent page now accepts the ready signal only when `event.source` is its own frame window and `event.origin` is `"null"`, and it posts the theme with target `"*"` because an opaque origin cannot be named; the payload is only `light` or `dark`. The vendored document needed no change.
 
+The `/minecraft` explorer reads bounded squaremap JSON and PNG tiles using the website's own Leaflet client. It does not execute squaremap scripts or insert plugin HTML in the authenticated origin. Player names, biome names, structure identifiers, and waypoint text reach Leaflet through DOM text nodes. The original map remains available under its existing sandbox, and persistent waypoints use typed website APIs with server-side administrator authorization.
+
 Serving the embedded apps from a separate origin, such as a dedicated subdomain, would be stronger still and would let squaremap keep persistent storage; it needs DNS and certificate changes outside this repository.
 
 ## Verification
