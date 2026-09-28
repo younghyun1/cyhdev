@@ -4,6 +4,8 @@ This private subprocess samples Java 26.3 Overworld biomes using Pumpkin revisio
 
 Build from the workspace root with `cargo build --locked --package minecraft-seed`. This uses the development profile. The package requires Pumpkin's Rust 1.96 minimum and uses the repository's nightly toolchain. The executable is `target/debug/minecraft-seed` unless a Cargo target override changes its location.
 
+The Docker builders set `RUST_MIN_STACK=33554432` because compiling Pumpkin's generated tables overflowed rustc's default stack on the pinned Alpine toolchain. This setting applies to compilation, not the deployed worker.
+
 Send one JSON object followed by a newline to stdin, then close stdin. The seed travels only through this private pipe, never command arguments. Read one JSON response followed by a newline from stdout. A nonzero exit indicates failure; the process intentionally emits no diagnostic input or seed. The supervising backend must bound subprocess concurrency, cap stdout at 2 MiB, enforce a deadline, and kill and reap cancelled or timed-out processes.
 
 ```json
