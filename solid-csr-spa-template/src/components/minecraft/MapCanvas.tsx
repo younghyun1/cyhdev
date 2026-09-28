@@ -1,9 +1,10 @@
 import { createEffect, createSignal, onCleanup, onSettled, untrack } from "solid-js";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { MinecraftMapData, MinecraftWaypoint } from "../../generated";
+import type { MinecraftMapData, MinecraftPrediction, MinecraftWaypoint } from "../../generated";
 import type { SquaremapPlayer, SquaremapSettings } from "../../services/squaremap";
 import { biomeColor, displayName, elevationColor, scanOrigin, WORLD_LIMIT, type MapPoint } from "./mapMath";
+import { predictionBoundary, predictionCells, predictionEdgeCells } from "./predictionMask";
 
 type Props = {
   readonly mapId: string;
@@ -12,6 +13,7 @@ type Props = {
   readonly view: MapPoint;
   readonly area: MinecraftMapData | null;
   readonly matches: MinecraftMapData | null;
+  readonly prediction: MinecraftPrediction | null;
   readonly areaRegion: ReturnType<typeof scanOrigin> | null;
   readonly matchRegion: ReturnType<typeof scanOrigin> | null;
   readonly waypoints: readonly MinecraftWaypoint[];
@@ -25,6 +27,7 @@ type Props = {
   readonly measureStart: MapPoint | null;
   readonly refresh: number;
   readonly onPoint: (point: MapPoint) => void;
+  readonly onTerrainRefresh: () => void;
 };
 
 /** All plugin text enters Leaflet through DOM text nodes, never HTML strings. */
@@ -40,8 +43,9 @@ export default function MapCanvas(props: Props) {
   let tiles: L.TileLayer | undefined;
   let observer: ResizeObserver | undefined;
   let refreshTimer: number | undefined;
+  let predictionRenderer: L.SVG | undefined;
   const [ready, setReady] = createSignal(false);
-  const sampled = L.layerGroup(), markers = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
+  const predicted = L.layerGroup(), sampled = L.layerGroup(), markers = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
   // The parent keys this component by its loaded world, so projection settings are immutable here.
   const settings = untrack(() => props.settings), worldMapId = untrack(() => props.mapId);
   const scale = 2 ** settings.maxZoom;
@@ -68,7 +72,10 @@ export default function MapCanvas(props: Props) {
     map = L.map(element, { crs: L.CRS.Simple, attributionControl: false, preferCanvas: true, minZoom: 0, maxZoom: settings.maxZoom + settings.extraZoom, zoomControl: true });
     map.setView(position(untrack(() => props.view)), settings.defaultZoom);
     tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" }).addTo(map);
-    sampled.addTo(map); grid.addTo(map); markers.addTo(map); selection.addTo(map);
+    map.createPane("minecraft-predictions");
+    map.createPane("minecraft-selection-footprint");
+    predictionRenderer = L.svg({ pane: "minecraft-predictions" });
+    predicted.addTo(map); sampled.addTo(map); grid.addTo(map); markers.addTo(map); selection.addTo(map);
     map.on("click", (event: L.LeafletMouseEvent) => untrack(() => {
       const x = Math.floor(event.latlng.lng * scale), z = Math.floor(-event.latlng.lat * scale);
       if (Math.abs(x) <= WORLD_LIMIT && Math.abs(z) <= WORLD_LIMIT) props.onPoint({ x, z });
@@ -78,6 +85,7 @@ export default function MapCanvas(props: Props) {
     observer?.observe(element);
     refreshTimer = window.setInterval(() => {
       if (document.visibilityState === "visible" && tiles && !tiles.isLoading()) {
+        untrack(() => props.onTerrainRefresh());
         tiles.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${Date.now()}`);
       }
     }, 30_000);
@@ -91,6 +99,23 @@ export default function MapCanvas(props: Props) {
   createEffect(() => [ready(), props.grid] as const, () => untrack(drawGrid));
   createEffect(() => [ready(), props.refresh] as const, ([mounted, refresh]) => {
     if (mounted && refresh > 0 && tiles && !tiles.isLoading()) tiles.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${refresh}`);
+  });
+  createEffect(() => [ready(), props.prediction, props.area, props.matches] as const, ([mounted, prediction, area, matches]) => {
+    if (!mounted || !predictionRenderer) return;
+    predicted.clearLayers();
+    if (!prediction) return;
+    const cells = predictionCells(prediction, [area, matches]);
+    const edgeCells = predictionEdgeCells(cells);
+    for (const cell of cells) {
+      L.rectangle(bounds(cell.x, cell.z, cell.x + prediction.step, cell.z + prediction.step), {
+        renderer: predictionRenderer, pane: "minecraft-predictions", className: `minecraft-prediction-cell${edgeCells.has(`${cell.x},${cell.z}`) ? " minecraft-prediction-edge-cell" : ""}`, stroke: false,
+        fillColor: biomeColor(cell.biome),
+      }).bindTooltip(label(`Predicted ${displayName(cell.biome)} · fixed Y ${prediction.y} · ${cell.x}, ${cell.z}`)).addTo(predicted);
+    }
+    const perimeter = predictionBoundary(cells).map(edge => edge.map(position));
+    if (perimeter.length > 0) for (const className of ["minecraft-prediction-boundary-casing", "minecraft-prediction-boundary"]) {
+      L.polyline(perimeter, { renderer: predictionRenderer, pane: "minecraft-predictions", className, interactive: false }).addTo(predicted);
+    }
   });
   createEffect(() => [ready(), props.area, props.biome, props.biomeLayer, props.elevation] as const, ([mounted, area, biome, showBiomes, elevation]) => {
     if (!mounted) return;
@@ -123,7 +148,7 @@ export default function MapCanvas(props: Props) {
     if (!mounted) return;
     selection.clearLayers();
     const origin = scanOrigin(point, 8);
-    L.rectangle(bounds(origin.chunk_x * 16, origin.chunk_z * 16, (origin.chunk_x + 8) * 16, (origin.chunk_z + 8) * 16), { color: "#ffffff", weight: 1, dashArray: "5 5", fill: false, interactive: false }).addTo(selection);
+    L.rectangle(bounds(origin.chunk_x * 16, origin.chunk_z * 16, (origin.chunk_x + 8) * 16, (origin.chunk_z + 8) * 16), { pane: "minecraft-selection-footprint", color: "#ffffff", weight: 1, dashArray: "5 5", fill: false, interactive: false }).addTo(selection);
     L.circleMarker(position(point), { radius: 6, color: "#ffffff", weight: 2, fill: false, interactive: false }).addTo(selection);
     for (const [region, color, title] of [[areaRegion, "#ffcd6e", "Surveyed area"], [matchRegion, "#68e4ef", "Block search area"]] as const) {
       if (region) L.rectangle(bounds(region.chunk_x * 16, region.chunk_z * 16, (region.chunk_x + region.width) * 16, (region.chunk_z + region.height) * 16), { color, weight: 2, fill: false })

@@ -4,6 +4,7 @@ import MapCanvas from "../components/minecraft/MapCanvas";
 import { MapAnalysis, MapBlockSearch, type LayerControls } from "../components/minecraft/MapAnalysis";
 import MapTravel from "../components/minecraft/MapTravel";
 import MapWaypoints from "../components/minecraft/MapWaypoints";
+import MapPrediction from "../components/minecraft/MapPrediction";
 import { createMapExplorer, type MapExplorer } from "../components/minecraft/createMapExplorer";
 import type { MapPoint } from "../components/minecraft/mapMath";
 import "../styles/minecraft.css";
@@ -45,7 +46,7 @@ function ExplorerWorkspace(props: { readonly explorer: MapExplorer }) {
       <div class="minecraft-tool-scroll">
         <Show when={explorer.catalogError()}><p class="minecraft-map-warning">{explorer.catalogError()} <button type="button" disabled={explorer.busy()} onClick={() => void explorer.loadCatalog()}>Retry analysis</button></p></Show>
         <Switch>
-          <Match when={tab() === "layers"}><MapAnalysis explorer={explorer} layers={layers} /></Match>
+          <Match when={tab() === "layers"}><MapPrediction explorer={explorer} /><MapAnalysis explorer={explorer} layers={layers} /></Match>
           <Match when={tab() === "blocks"}><MapBlockSearch explorer={explorer} /></Match>
           <Match when={tab() === "travel"}><MapTravel explorer={explorer} measuring={measuring()} start={measureStart()} onMeasure={enabled => { setMeasuring(enabled); setMeasureStart(enabled ? { ...explorer.point() } : null); }} /></Match>
         </Switch>
@@ -54,9 +55,9 @@ function ExplorerWorkspace(props: { readonly explorer: MapExplorer }) {
       <div class="minecraft-selection-readout"><span>SELECTED BLOCK</span><strong>X {explorer.point().x} <span>/</span> Z {explorer.point().z}</strong><small>Chunk {Math.floor(explorer.point().x / 16)}, {Math.floor(explorer.point().z / 16)}</small></div>
     </aside>
     <div class="minecraft-atlas-stage">
-      <Show when={explorer.loaded()} keyed>{loaded => <MapCanvas mapId={loaded.world.name} settings={loaded.settings} point={explorer.point()} view={explorer.view()} area={explorer.area()} matches={explorer.matches()} areaRegion={explorer.areaRegion()} matchRegion={explorer.matchRegion()} waypoints={waypoints()} players={explorer.players().filter(player => player.world === loaded.world.name)} biome={biome()} biomeLayer={biomes()} elevation={elevation()} structures={structures()} grid={grid()} measuring={measuring()} measureStart={measureStart()} refresh={explorer.refresh()} onPoint={explorer.setPoint} />}</Show>
+      <Show when={explorer.loaded()} keyed>{loaded => <MapCanvas mapId={loaded.world.name} settings={loaded.settings} point={explorer.point()} view={explorer.view()} area={explorer.area()} matches={explorer.matches()} prediction={explorer.prediction()} areaRegion={explorer.areaRegion()} matchRegion={explorer.matchRegion()} waypoints={waypoints()} players={explorer.players().filter(player => player.world === loaded.world.name)} biome={biome()} biomeLayer={biomes()} elevation={elevation()} structures={structures()} grid={grid()} measuring={measuring()} measureStart={measureStart()} refresh={explorer.refresh()} onPoint={explorer.setPoint} onTerrainRefresh={explorer.terrainRefreshing} />}</Show>
       <div class="minecraft-map-caption"><span>Click terrain to select an area</span><button type="button" onClick={explorer.refreshMap}>Refresh terrain</button></div>
-      <div class="minecraft-map-key"><span class="minecraft-key-waypoint">● Waypoint</span><span class="minecraft-key-player">● Player</span><span class="minecraft-key-match">● Block match</span></div>
+      <div class="minecraft-map-key"><span class="minecraft-key-waypoint">● Waypoint</span><span class="minecraft-key-player">● Player</span><span class="minecraft-key-match">● Block match</span><Show when={explorer.prediction()}><span class="minecraft-key-prediction">▧ Predicted · Y {explorer.prediction()?.y}</span></Show></div>
       <Show when={explorer.playerError()}><p class="minecraft-player-warning">{explorer.playerError()}</p></Show>
     </div>
   </div>;
