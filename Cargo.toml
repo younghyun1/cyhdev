@@ -2,6 +2,7 @@
 members = [
     "rust-be-template",
     "tools/throughput",
+    "tools/minecraft-seed",
     "tools/xtask",
     "wasm_demos/block_breaker",
     "wasm_demos/ray_tracer",

@@ -1,0 +1,18 @@
+[package]
+name = "minecraft-seed"
+version.workspace = true
+edition.workspace = true
+license = "GPL-3.0-only"
+publish = false
+
+[dependencies]
+mimalloc.workspace = true
+# Both packages must use the same reviewed 26.3 generation/data revision.
+pumpkin-world = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "4426d1113a211e6018a2db416e33b6b8a7802614", default-features = false }
+pumpkin-data = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "4426d1113a211e6018a2db416e33b6b8a7802614", default-features = false, features = ["noise_router", "chunk"] }
+serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
+serde_json.workspace = true
+thiserror = "2.0.21"
+
+[lints]
+workspace = true
