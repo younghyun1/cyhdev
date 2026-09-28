@@ -20,6 +20,8 @@ Additional tools are coordinate navigation, a chunk grid, distance measurement, 
 
 Seed predictions could fill unexplored areas behind actual terrain, with distinct visual treatment and provenance. They cannot represent player modifications, and generation version, dimension, datapacks, and world presets must match. No seed prediction is presented as actual world data or enabled without verified version support. This implementation does not require exposing or exporting the world seed.
 
+The subsequent [seed-map blending exploration](2026-09-28-minecraft-seed-blending.md) evaluates maintained 26.3 generator forks, independent biome comparisons, and the coverage metadata needed for correct compositing. It records research findings without enabling a prediction layer.
+
 Primary sources consulted on 2026-09-28: [squaremap API](https://github.com/jpenilla/squaremap#api), [squaremap client at the installed revision](https://github.com/jpenilla/squaremap/tree/ac71dd2/web/src/js), [Paper chunk snapshots](https://jd.papermc.io/paper/26.3/org/bukkit/ChunkSnapshot.html), [Paper generated structures](https://jd.papermc.io/paper/26.3/org/bukkit/Chunk.html#getStructures()), [Leaflet](https://leafletjs.com/reference.html), and [Cubiomes](https://github.com/Cubitect/cubiomes). The bounded actual-world scan design follows the local server integration and Paper API; the predicted-layer separation is a design recommendation.
 
 ## Verification and activation
