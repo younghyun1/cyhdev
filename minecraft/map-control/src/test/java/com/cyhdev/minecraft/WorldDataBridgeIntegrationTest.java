@@ -47,6 +47,7 @@ public final class WorldDataBridgeIntegrationTest {
         check(world != null, "Mapped overworld is required");
         if (world == null) throw new IOException("No mapped overworld");
         check(world.get("map_id").getAsString().equals("minecraft_overworld"), "Exact squaremap identifier");
+        check(!catalog.has("seed") && !world.has("seed"), "Public catalog excludes private seed");
         String area = "{\"kind\":\"area\",\"world\":\"minecraft:overworld\",\"chunk_x\":" + chunkX
             + ",\"chunk_z\":" + chunkZ + ",\"width\":1,\"height\":1,\"y\":null}";
         JsonObject surface = query(worldSocket, area);
@@ -75,6 +76,7 @@ public final class WorldDataBridgeIntegrationTest {
             int y = entry.getAsJsonObject().get("y").getAsInt();
             check(y >= maxY - 2 && y <= maxY, "Block match lies inside inclusive height range");
         }
+        predictions(worldSocket, chunkX, chunkZ, Path.of(args[3]));
         JsonObject unknown = query(worldSocket,
             "{\"kind\":\"area\",\"world\":\"minecraft:overworld\",\"chunk_x\":1000000,\"chunk_z\":1000000,\"width\":1,\"height\":1,\"y\":null}");
         check(unknown.get("scanned_chunks").getAsInt() == 0 && unknown.get("missing_chunks").getAsInt() == 1
@@ -86,6 +88,33 @@ public final class WorldDataBridgeIntegrationTest {
         check(query(worldSocket, "{\"kind\":\"catalog\"}").get("kind").getAsString().equals("catalog"), "Worker recovers after timeout");
         check(exchange(controlSocket, "STATUS\n").equals("OK\n"), "Visibility socket still works");
         System.out.println("WorldDataBridgeIntegrationTest: " + checks + " checks passed");
+    }
+
+    private static void predictions(Path socket, int generatedX, int generatedZ, Path region) throws IOException {
+        String request = "{\"kind\":\"prediction_context\",\"world\":\"minecraft:overworld\",\"chunk_x\":1000000,\"chunk_z\":1000000,\"width\":8,\"height\":8,\"y\":64}";
+        Path missingRegion = region.resolve("r.31250.31250.mca");
+        check(Files.notExists(missingRegion), "Distant fixture region absent before prediction");
+        JsonObject first = query(socket, request);
+        check(first.get("kind").getAsString().equals("prediction_context"), "Private context response");
+        check(first.get("seed").getAsLong() == 1, "Synthetic fixture seed");
+        check(first.get("preset").getAsString().equals(System.getProperty("cyhdev.minecraft.fixturePreset", "default")), "Effective noise preset");
+        check(first.get("world_id").getAsString().matches("[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"), "World UUID");
+        check(first.get("profile_revision").getAsString().matches("[a-f0-9]{64}"), "Opaque profile revision");
+        check(first.getAsJsonArray("coverage").size() == 64, "Exhaustive bounded chunk coverage");
+        for (int i = 0; i < 64; i++) {
+            JsonObject chunk = first.getAsJsonArray("coverage").get(i).getAsJsonObject();
+            check(chunk.get("chunk_x").getAsInt() == 1000000 + i % 8 && chunk.get("chunk_z").getAsInt() == 1000000 + i / 8,
+                "Coverage coordinates");
+            check(chunk.get("state").getAsString().equals("ungenerated"), "No saved or pending chunk");
+        }
+        JsonObject second = query(socket, request);
+        check(first.get("profile_revision").equals(second.get("profile_revision")), "Unchanged profile revision");
+        String generated = request.replace("\"chunk_x\":1000000", "\"chunk_x\":" + generatedX)
+            .replace("\"chunk_z\":1000000", "\"chunk_z\":" + generatedZ).replace("\"width\":8", "\"width\":1").replace("\"height\":8", "\"height\":1");
+        String state = query(socket, generated).getAsJsonArray("coverage").get(0).getAsJsonObject().get("state").getAsString();
+        check(state.equals("generated") || state.equals("unknown"), "Existing chunk never receives predictions");
+        check(query(socket, request.replace("minecraft:overworld", "minecraft:the_nether")).get("error").getAsString().equals("unsupported_prediction"), "Unsupported dimension");
+        check(Files.notExists(missingRegion), "Prediction did not generate distant region");
     }
 
     private static JsonObject query(Path socket, String request) throws IOException {

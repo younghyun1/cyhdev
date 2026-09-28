@@ -40,6 +40,7 @@ final class WorldDataBridge implements AutoCloseable {
     private final Path socketPath;
     private final ScheduledThreadPoolExecutor deadlines;
     private final ServerSocketChannel listener;
+    private final PredictionContext predictions = new PredictionContext();
     private volatile SocketChannel active;
 
     WorldDataBridge(JavaPlugin plugin, Path directory) throws IOException {
@@ -87,7 +88,10 @@ final class WorldDataBridge implements AutoCloseable {
                     write(client, WorldProtocol.encode(execute(request, client, expires)));
                 } catch (Exception error) {
                     if (error instanceof InterruptedException) Thread.currentThread().interrupt();
-                    writeError(client, error instanceof TimeoutException ? "timeout" : "unavailable");
+                    Throwable cause = error;
+                    while (cause.getCause() != null) cause = cause.getCause();
+                    writeError(client, cause instanceof PredictionContext.Unsupported ? "unsupported_prediction"
+                        : error instanceof TimeoutException ? "timeout" : "unavailable");
                 } finally {
                     deadline.cancel(false);
                     active = null;
@@ -101,10 +105,11 @@ final class WorldDataBridge implements AutoCloseable {
     private record Context(World world, int minimumY, int maximumY, Path regionDirectory,
                            Material material, Map<Biome, String> biomes) {}
 
-    private WorldProtocol.Response execute(WorldProtocol.Request request, SocketChannel client, long expires) throws Exception {
+    private WorldProtocol.WireResponse execute(WorldProtocol.Request request, SocketChannel client, long expires) throws Exception {
         long sampledAt = System.currentTimeMillis();
         if (request.kind().equals("catalog")) return sync(() -> catalog(sampledAt), client, expires);
         Context context = sync(() -> prepare(request), client, expires);
+        if (request.kind().equals("prediction_context")) return prediction(request, context, sampledAt, client, expires);
         List<WorldProtocol.Cell> cells = new ArrayList<>();
         LinkedHashSet<WorldProtocol.Structure> structures = new LinkedHashSet<>();
         List<WorldProtocol.Match> matches = new ArrayList<>();
@@ -142,6 +147,26 @@ final class WorldDataBridge implements AutoCloseable {
             }
         }
         return response(request, sampledAt, scanned, missing, truncated, cells, structures, matches);
+    }
+
+    private WorldProtocol.PredictionResponse prediction(WorldProtocol.Request request, Context context, long sampledAt,
+                                                        SocketChannel client, long expires) throws Exception {
+        PredictionContext.Snapshot before = sync(() -> predictions.capture(context.world(), request), client, expires);
+        List<Boolean> absent = new ArrayList<>(request.width() * request.height());
+        for (int dz = 0; dz < request.height(); dz++) {
+            for (int dx = 0; dx < request.width(); dx++) {
+                checkActive(client, expires);
+                boolean missing = false;
+                if (before.states().get(absent.size()).equals("absent")) {
+                    try { missing = SavedChunkCoverage.absent(context.regionDirectory(), request.chunk_x() + dx, request.chunk_z() + dz); }
+                    catch (IOException error) { /* Unreadable or changing storage means unknown coverage. */ }
+                }
+                absent.add(missing);
+            }
+        }
+        PredictionContext.Snapshot after = sync(() -> predictions.capture(context.world(), request), client, expires);
+        return new WorldProtocol.PredictionResponse("prediction_context", request.world(), after.worldId(), sampledAt,
+            after.seed(), after.preset(), after.revision(), PredictionContext.combine(request, before, after, absent));
     }
 
     private static WorldProtocol.Response response(WorldProtocol.Request request, long sampledAt, int scanned, int missing,
