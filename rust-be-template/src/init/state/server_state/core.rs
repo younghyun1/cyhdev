@@ -19,6 +19,12 @@ use crate::init::state::{DeploymentEnvironment, PublicAppOrigin, ServerStateBuil
 use std::sync::Arc;
 
 impl ServerState {
+    pub fn minecraft_waypoint_service(
+        &self,
+    ) -> Arc<crate::features::minecraft::service::waypoints::WaypointService> {
+        Arc::clone(&self.minecraft_waypoint_service)
+    }
+
     pub fn builder() -> ServerStateBuilder {
         ServerStateBuilder::default()
     }

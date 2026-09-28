@@ -18,6 +18,19 @@ macro_rules! operation {
 
 /// Explicit frontend contract boundary. Missing or method-mismatched routes fail generation.
 pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
+    operation!("minecraft", "POST", "/api/minecraft/map/query"),
+    operation!("minecraft", "GET", "/api/minecraft/map/waypoints"),
+    operation!("minecraft", "POST", "/api/admin/minecraft/map/waypoints"),
+    operation!(
+        "minecraft",
+        "PATCH",
+        "/api/admin/minecraft/map/waypoints/{waypoint_id}"
+    ),
+    operation!(
+        "minecraft",
+        "DELETE",
+        "/api/admin/minecraft/map/waypoints/{waypoint_id}"
+    ),
     operation!("minecraft", "GET", "/api/admin/minecraft"),
     operation!("minecraft", "POST", "/api/admin/minecraft/actions"),
     operation!("authorization", "GET", "/api/admin/authorization/users"),
