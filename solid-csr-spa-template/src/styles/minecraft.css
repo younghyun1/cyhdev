@@ -61,6 +61,9 @@
 .minecraft-map-caption { position: absolute; z-index: 500; left: 60px; top: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
 .minecraft-map-caption > span { padding: 6px 9px; color: #f5f0df; background: #151b16d9; border: 1px solid #b8ac7933; font-size: 10px; }
 .minecraft-map-caption button { pointer-events: auto; font-size: 10px; }
+.minecraft-inspection { position: absolute; z-index: 500; left: 12px; bottom: 52px; max-width: min(380px, calc(100% - 24px)); max-height: calc(100% - 130px); overflow: hidden; padding: 9px 12px; border: 2px solid var(--mc-edge); box-shadow: inset 2px 2px 0 var(--mc-highlight), inset -2px -2px 0 var(--mc-shadow); color: var(--mc-ink); background: var(--mc-paper); pointer-events: none; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.minecraft-inspection > strong { display: block; font-size: 12px; font-variant-numeric: tabular-nums; }
+.minecraft-inspection-id { color: var(--mc-muted); font-size: 9px; }
 .minecraft-map-key { position: absolute; bottom: 14px; right: 14px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; padding: 7px 10px; color: #f5f0df; background: #151b16e6; border: 1px solid #b8ac7955; pointer-events: none; font-size: 10px; }
 .minecraft-key-waypoint { color: #ffcd6e; }
 .minecraft-key-player { color: #a2ee8d; }
@@ -121,6 +124,9 @@
   .minecraft-map-caption { top: 8px; right: 8px; }
   .minecraft-map-caption > span { display: none; }
   .minecraft-map-caption button { margin-left: auto; min-height: 36px; }
+  .minecraft-inspection { left: 8px; bottom: 36px; max-width: calc(100% - 16px); max-height: calc(100% - 84px); padding: 5px 8px; font-size: 9px; line-height: 1.5; }
+  .minecraft-inspection > strong { font-size: 10px; }
+  .minecraft-inspection-id { display: none; }
   .minecraft-map-key { bottom: 8px; right: 8px; gap: 8px; padding: 5px 7px; font-size: 8px; }
   .minecraft-player-warning { bottom: 35px; right: 8px; max-width: calc(100% - 16px); }
 }

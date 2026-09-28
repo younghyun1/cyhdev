@@ -4,7 +4,7 @@ import type { MinecraftMapData, MinecraftMapQuery, MinecraftPrediction, Minecraf
 export const mapWorlds = [{ id: "minecraft:overworld", name: "Overworld", map_id: "minecraft_overworld", min_y: -64, max_y: 319 }, { id: "minecraft:the_nether", name: "Nether", map_id: "minecraft_the_nether", min_y: 0, max_y: 255 }];
 export const initialWaypoint: MinecraftWaypoint = { id: "00000000-0000-4000-8000-000000000001", world: "minecraft:overworld", name: "Oakridge base", description: "Storage, beds, and the northern trail", x: 146, y: 72, z: 116 };
 export function emptyMapData(kind: MinecraftMapData["kind"]): MinecraftMapData {
-  return { kind, world: kind === "catalog" ? null : "minecraft:overworld", sampled_at_ms: 1_790_611_200_000, scanned_chunks: 0, missing_chunks: 0, truncated: false, worlds: [], blocks: [], cells: [], structures: [], matches: [] };
+  return { kind, world: kind === "catalog" ? null : "minecraft:overworld", sampled_at_ms: Date.now(), scanned_chunks: 0, missing_chunks: 0, truncated: false, worlds: [], blocks: [], cells: [], structures: [], matches: [] };
 }
 
 export function predictedMapData(query: MinecraftPredictionQuery, now = Date.now()): MinecraftPrediction {
@@ -48,11 +48,13 @@ export async function installMinecraftMapMocks(page: Page) {
     if (body.kind === "blocks") {
       await route.fulfill({ json: { data: { ...emptyMapData("blocks"), world: body.world, scanned_chunks: 12, missing_chunks: 4, truncated: true, matches: [{ x: 132, y: -20, z: 126 }, { x: 132, y: -19, z: 127 }] } } }); return;
     }
-    const cells = Array.from({ length: 1024 }, (_, index) => {
-      const x = body.chunk_x * 16 + index % 32 * 4, z = body.chunk_z * 16 + Math.floor(index / 32) * 4;
+    const chunkCount = body.width * body.height, missing = chunkCount === 64 ? 4 : 0, scanned = chunkCount - missing;
+    const columns = body.width * 4;
+    const cells = Array.from({ length: chunkCount * 16 }, (_, index) => {
+      const x = body.chunk_x * 16 + index % columns * 4, z = body.chunk_z * 16 + Math.floor(index / columns) * 4;
       return { x, z, y: Math.round(68 + Math.sin(x / 25) * 10 + Math.cos(z / 30) * 7), biome: x > 144 ? "minecraft:forest" : z > 134 ? "minecraft:river" : "minecraft:plains" };
-    });
-    await route.fulfill({ json: { data: { ...emptyMapData("area"), world: body.world, scanned_chunks: 60, missing_chunks: 4, cells, structures: [{ kind: "minecraft:village_plains", min_x: 108, min_y: 64, min_z: 90, max_x: 162, max_y: 84, max_z: 133 }] } } });
+    }).filter(cell => (Math.floor(cell.z / 16) - body.chunk_z) * body.width + Math.floor(cell.x / 16) - body.chunk_x < scanned);
+    await route.fulfill({ json: { data: { ...emptyMapData("area"), world: body.world, scanned_chunks: scanned, missing_chunks: missing, cells, structures: chunkCount === 64 ? [{ kind: "minecraft:village_plains", min_x: 108, min_y: 64, min_z: 90, max_x: 162, max_y: 84, max_z: 133 }] : [] } } });
   });
   await page.route("**/api/minecraft/map/waypoints?*", route => route.fulfill({ json: { data: new URL(route.request().url()).searchParams.get("world") === "minecraft:overworld" ? waypoints : [] } }));
   await page.route("**/api/admin/minecraft/map/waypoints{,/*}", async route => {
