@@ -1,5 +1,9 @@
 pub mod management;
 pub mod map_control;
+mod prediction;
+mod prediction_cache;
+mod prediction_process;
+mod prediction_wire;
 pub mod transport;
 pub mod waypoints;
 pub mod world_query;

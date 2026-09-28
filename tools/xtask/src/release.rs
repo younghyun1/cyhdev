@@ -76,6 +76,7 @@ pub(crate) fn run(root: &Path) -> TaskResult<()> {
 
     let artifact = output_directory.join(&options.app_name);
     validate_artifact(&artifact)?;
+    validate_artifact(&output_directory.join("minecraft-seed"))?;
     println!("Optimized backend artifact: {}", artifact.display());
     Ok(())
 }

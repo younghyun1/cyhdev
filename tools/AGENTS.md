@@ -13,7 +13,7 @@ Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns 
 
 ## Verification
 
-Use `cargo test --locked --package xtask` for tooling changes and root `cargo xtask clippy` for the implementation gate. Formatting coverage in `cargo xtask fmt` includes the backend and xtask only; format/check other changed packages explicitly.
+Use `cargo test --locked --package xtask` for tooling changes and root `cargo xtask clippy` for the implementation gate. Formatting coverage in `cargo xtask fmt` includes the backend, xtask, and Minecraft seed worker; format/check other changed packages explicitly.
 
 No release builds: `cargo xtask throughput` always passes `--release`, even for calibration. `final-review` calls it; `wasm-build` uses `wasm-release`; `image` and `build.sh` optimize the backend. Run relevant safe gates individually and report deferred evidence. `cargo xtask image-smoke` selects the non-release Docker `smoke` target but still requires Docker and network access. Do not edit benchmark or release behavior just to make documentation verification pass.
 
