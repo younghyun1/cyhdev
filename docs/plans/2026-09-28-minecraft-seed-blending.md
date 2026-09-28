@@ -8,6 +8,8 @@
 
 ## Recommendation
 
+The subsequent [biome prediction implementation](2026-09-28-minecraft-seed-predictions.md) adopts the pinned Pumpkin adapter, a 512 MiB RAM cache, effective large-biomes detection, and conservative coverage blending. Its independent fixtures identify biome-tree ties and document the preview as approximate; the source-only conclusions below remain the research record.
+
 Seed-map blending is feasible within the current Solid/Leaflet interface. Add a separately labeled prediction layer for unexplored areas, with actual generated terrain taking precedence. For the quickest implementation, extend the existing Paper bridge with its batched exact-version biome resolver for a bounded fixed-Y preview. For a native Rust implementation, test Pumpkin's public biome sampler before extracting or porting generation code. No comparable runtime benchmark establishes the fastest engine for this map. Retain observed block search and surface elevation as actual-world features. Add predicted structures only after independent placement and viability validation.
 
 The maintained `xpple/cubiomes` fork is a useful approximate candidate, but the local experiment found 179 disagreements with saved 26.3 biome data. It must not be described as an exact predictor. Its noise precision differs from the release notes; whether that explains the observed disagreements remains unproven. Matching the version label and passing the fork's regression tests are insufficient compatibility evidence.
