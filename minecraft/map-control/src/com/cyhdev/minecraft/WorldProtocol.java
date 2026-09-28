@@ -47,9 +47,16 @@ final class WorldProtocol {
     record Cell(int x, int z, int y, String biome) {}
     record Structure(String kind, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z) {}
     record Match(int x, int y, int z) {}
+    sealed interface WireResponse permits Response, PredictionResponse {}
     record Response(String kind, String world, long sampled_at_ms, int scanned_chunks, int missing_chunks,
                     boolean truncated, List<WorldInfo> worlds, List<String> blocks, List<Cell> cells,
-                    List<Structure> structures, List<Match> matches) {}
+                    List<Structure> structures, List<Match> matches) implements WireResponse {}
+    record Coverage(int chunk_x, int chunk_z, String state) {}
+    /** This response belongs only on the same-user socket; it must never be forwarded to a browser. */
+    record PredictionResponse(String kind, String world, String world_id, long sampled_at_ms, long seed,
+                              String preset, String profile_revision, List<Coverage> coverage) implements WireResponse {
+        @Override public String toString() { return "PredictionResponse[private profile]"; }
+    }
 
     static boolean identifier(String value) {
         return value != null && value.length() <= 128 && IDENTIFIER.matcher(value).matches();
@@ -87,10 +94,11 @@ final class WorldProtocol {
             if (!fields.equals(Set.of("kind"))) throw new IOException("Unexpected catalog fields");
             return new Request(kind, null, 0, 0, 0, 0, null, null, 0, 0);
         }
-        boolean area = "area".equals(kind);
+        boolean prediction = "prediction_context".equals(kind);
+        boolean area = "area".equals(kind) || prediction;
         if (!area && !"blocks".equals(kind)) throw new IOException("Unknown query kind");
         // Omitting the optional biome slice means sample each column's surface biome.
-        if (area) fields.add("y");
+        if (area && !prediction) fields.add("y");
         if (!fields.equals(area ? AREA_FIELDS : BLOCK_FIELDS)) throw new IOException("Missing query fields");
         String world = strings.get("world");
         String block = strings.get("block");
@@ -103,6 +111,7 @@ final class WorldProtocol {
         if (width < 1 || height < 1 || width > maximum || height > maximum) throw new IOException("Area too large");
         if (!insideBorder(chunkX, width) || !insideBorder(chunkZ, height)) throw new IOException("Outside world border");
         Integer y = numbers.get("y");
+        if (prediction && y == null) throw new IOException("Prediction requires a fixed biome height");
         int minimumY = area ? 0 : numbers.get("min_y");
         int maximumY = area ? 0 : numbers.get("max_y");
         if (y != null && (y < MIN_Y || y > MAX_Y)) throw new IOException("Invalid biome height");
@@ -139,7 +148,7 @@ final class WorldProtocol {
         throw new IOException("Request too large");
     }
 
-    static ByteBuffer encode(Response response) throws IOException {
+    static ByteBuffer encode(WireResponse response) throws IOException {
         byte[] bytes = (JSON.toJson(response) + "\n").getBytes(StandardCharsets.UTF_8);
         if (bytes.length > RESPONSE_BYTES) throw new IOException("Response too large");
         return ByteBuffer.wrap(bytes);

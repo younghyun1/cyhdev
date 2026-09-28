@@ -28,6 +28,10 @@ public final class WorldProtocolTest {
         check(WorldProtocol.parse(area(-8, -8, 8, 8, "-64")).y() == -64, "Underground biome");
         check(WorldProtocol.parse(area(0, 0, 1, 1, "null").replace(",\"y\":null", "")).y() == null, "Omitted slice");
         check(WorldProtocol.parse(blocks(4, 4, -64, 447)).max_y() == 447, "Inclusive 512 block height range");
+        check(WorldProtocol.parse(area(0, 0, 8, 8, "64").replace("\"area\"", "\"prediction_context\"")).y() == 64, "Fixed-height prediction context");
+        reject(area(0, 0, 8, 8, "null").replace("\"area\"", "\"prediction_context\""));
+        reject(area(0, 0, 8, 8, "null").replace("\"area\"", "\"prediction_context\"").replace(",\"y\":null", ""));
+        reject(area(0, 0, 9, 8, "64").replace("\"area\"", "\"prediction_context\""));
     }
 
     private static void rejectsMalformedAndAmbiguousJson() throws IOException {
@@ -96,6 +100,11 @@ public final class WorldProtocolTest {
         boolean rejected = false;
         try { WorldProtocol.encode(oversized); } catch (IOException expected) { rejected = true; }
         check(rejected, "Response size limit");
+        var prediction = new WorldProtocol.PredictionResponse("prediction_context", "minecraft:overworld", "test", 1,
+            Long.MIN_VALUE, "large_biomes", "revision", List.of(new WorldProtocol.Coverage(-1, 0, "unknown")));
+        String privateJson = StandardCharsets.UTF_8.decode(WorldProtocol.encode(prediction)).toString();
+        check(privateJson.contains("\"seed\":-9223372036854775808"), "Private signed seed remains numeric");
+        check(!prediction.toString().contains("-9223372036854775808"), "Diagnostic text does not expose seed");
     }
 
     private static String area(int x, int z, int width, int height, String y) {
