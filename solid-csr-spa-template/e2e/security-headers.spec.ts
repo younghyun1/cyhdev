@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Frame, type Page } from "@playwright/test";
 import { installApiMocks, setUiPreferences } from "./fixtures";
+import { installMinecraftMapMocks } from "./minecraft-fixtures";
 
 // The backend unit test `browser_check_fixture_matches_the_backend_policy` keeps this
 // file identical to the headers the server sends for the preview origin.
@@ -110,6 +111,7 @@ async function prepare(page: Page, path: string): Promise<string[]> {
     /^\/(login|register|find-password|reset-password|verify-email)$/.test(path) ? "logged-out" : "superuser",
   );
   await setUiPreferences(page, "en-US", "light");
+  if (path === "/minecraft") await installMinecraftMapMocks(page);
   await page.route("**/api/forum/notifications**", (route) => route.fulfill({ json: { data: { notifications: [], next_cursor: null } } }));
   await page.route("**/api/live-chat/messages**", (route) => route.fulfill({ json: { data: { items: [], has_more: false, next_before_message_id: null } } }));
   await page.routeWebSocket("**/ws/**", (socket) => socket.onMessage(() => {}));
@@ -149,6 +151,7 @@ function frameAt(page: Page, suffix: string): Frame | undefined {
 test("the map runs in an opaque origin with in-memory storage", async ({ page }) => {
   const consoleErrors = await prepare(page, "/minecraft");
   await page.goto("/minecraft", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Original map", exact: true }).click();
   await expect(page.frameLocator(".minecraft-map").getByRole("heading")).toHaveText("World map");
   const frame = frameAt(page, "/minecraft/map/");
   expect(frame).toBeDefined();
