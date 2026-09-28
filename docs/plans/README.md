@@ -6,6 +6,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
+- [Minecraft map exploration](2026-09-28-minecraft-explorer.md)
 - [Live chat](live-chat.md)
 
 ## Completed
