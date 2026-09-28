@@ -46,10 +46,12 @@ test("actual observations outrank predictions and terrain refresh clears the sna
   await page.getByRole("button", { name: "Preview selected area" }).click();
   await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(976);
   await page.getByRole("button", { name: "Survey selected area" }).click();
+  await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(64);
+  await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(1);
+  await expect(page.getByText(/64 predicted cells/)).toBeVisible();
+  await page.getByRole("button", { name: "Refresh terrain" }).click();
   await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(0);
   await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(0);
-  await expect(page.getByText(/0 predicted cells/)).toBeVisible();
-  await page.getByRole("button", { name: "Refresh terrain" }).click();
   await expect(page.locator(".minecraft-prediction-receipt")).toHaveCount(0);
   await expect(page.getByText("Terrain refreshed. Request a fresh prediction preview.")).toBeVisible();
 });

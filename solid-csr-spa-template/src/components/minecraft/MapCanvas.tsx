@@ -27,6 +27,7 @@ type Props = {
   readonly measureStart: MapPoint | null;
   readonly refresh: number;
   readonly onPoint: (point: MapPoint) => void;
+  readonly onInspect: (point: MapPoint | null) => void;
   readonly onTerrainRefresh: () => void;
 };
 
@@ -52,6 +53,18 @@ export default function MapCanvas(props: Props) {
   const position = (point: MapPoint): L.LatLngTuple => [-point.z / scale, point.x / scale];
   const bounds = (x: number, z: number, endX: number, endZ: number): L.LatLngBoundsExpression => [position({ x, z }), position({ x: endX, z: endZ })];
   const invalidate = () => map?.invalidateSize({ animate: false });
+  const clearInspection = () => untrack(() => props.onInspect(null));
+  const eventPoint = (event: MouseEvent): MapPoint | null => {
+    if (!map) return null;
+    const cursor = map.mouseEventToLatLng(event);
+    const x = Math.floor(cursor.lng * scale), z = Math.floor(-cursor.lat * scale);
+    return Math.abs(x) <= WORLD_LIMIT && Math.abs(z) <= WORLD_LIMIT ? { x, z } : null;
+  };
+  // Leaflet canvas events throttle movement and snap small marker hits to their centers.
+  const inspectCursor = (event: MouseEvent) => untrack(() => {
+    if (event.buttons !== 0 || event.target instanceof Element && event.target.closest(".leaflet-control")) { clearInspection(); return; }
+    props.onInspect(eventPoint(event));
+  });
 
   const drawGrid = () => {
     grid.clearLayers();
@@ -77,9 +90,13 @@ export default function MapCanvas(props: Props) {
     predictionRenderer = L.svg({ pane: "minecraft-predictions" });
     predicted.addTo(map); sampled.addTo(map); grid.addTo(map); markers.addTo(map); selection.addTo(map);
     map.on("click", (event: L.LeafletMouseEvent) => untrack(() => {
-      const x = Math.floor(event.latlng.lng * scale), z = Math.floor(-event.latlng.lat * scale);
-      if (Math.abs(x) <= WORLD_LIMIT && Math.abs(z) <= WORLD_LIMIT) props.onPoint({ x, z });
+      const point = eventPoint(event.originalEvent);
+      if (point) { props.onPoint(point); props.onInspect(point); }
     }));
+    // Leaving or moving the map cancels a stationary inspection; panning itself never scans.
+    element.addEventListener("mousemove", inspectCursor);
+    element.addEventListener("mouseleave", clearInspection);
+    map.on("dragstart zoomstart", clearInspection);
     map.on("moveend", drawGrid);
     observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(invalidate);
     observer?.observe(element);
@@ -91,7 +108,7 @@ export default function MapCanvas(props: Props) {
     }, 30_000);
     setReady(true);
   });
-  onCleanup(() => { window.clearInterval(refreshTimer); observer?.disconnect(); map?.remove(); map = undefined; });
+  onCleanup(() => { window.clearInterval(refreshTimer); element?.removeEventListener("mousemove", inspectCursor); element?.removeEventListener("mouseleave", clearInspection); observer?.disconnect(); map?.remove(); map = undefined; });
 
   createEffect(() => [ready(), props.view] as const, ([mounted, point]) => {
     if (mounted) map?.panTo(position(point), { animate: false });

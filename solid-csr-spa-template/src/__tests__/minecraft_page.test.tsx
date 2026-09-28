@@ -57,6 +57,14 @@ describe("Minecraft explorer", () => {
     await screen.findByRole("button", { name: "Survey selected area" });
   });
 
+  it("defers an initial hidden-tab catalog until the page becomes visible", async () => {
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    render(() => <Minecraft />); await screen.findByTestId("terrain");
+    expect(transport.query).not.toHaveBeenCalled();
+    visibility.mockReturnValue("visible"); fireEvent(document, new Event("visibilitychange"));
+    await waitFor(() => expect(transport.query).toHaveBeenCalledExactlyOnceWith({ body: { kind: "catalog" } }, expect.objectContaining({ signal: expect.any(AbortSignal) })));
+  });
+
   it("scans an explicit bounded area once and reports partial coverage", async () => {
     const scan = deferred<ReturnType<typeof data>>();
     transport.query.mockImplementation(({ body }: { body: { kind: MinecraftMapData["kind"] } }) => body.kind === "catalog" ? Promise.resolve(data("catalog")) : scan.promise);
@@ -66,7 +74,7 @@ describe("Minecraft explorer", () => {
     await Promise.resolve();
     const button = screen.getByRole("button", { name: "Survey selected area" });
     fireEvent.click(button); fireEvent.click(button);
-    await waitFor(() => expect(transport.query).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(transport.query).toHaveBeenCalledTimes(2), { timeout: 2000 });
     expect(transport.query.mock.calls[1]?.[0]).toEqual({ body: { kind: "area", world: "minecraft:overworld", chunk_x: -5, chunk_z: -2, width: 8, height: 8, y: -16 } });
     scan.resolve(data("area", { scanned_chunks: 12, missing_chunks: 52, truncated: true, cells: [{ x: 0, z: 0, y: 64, biome: "minecraft:plains" }] }));
     await screen.findByText(/12 chunks read · 52 unavailable/);
@@ -80,8 +88,10 @@ describe("Minecraft explorer", () => {
     transport.query.mockImplementation(({ body }: { body: { kind: MinecraftMapData["kind"] } }) => body.kind === "catalog" ? Promise.resolve(data("catalog")) : scan.promise);
     render(() => <Minecraft />); await screen.findByTestId("terrain");
     fireEvent.click(screen.getByRole("button", { name: "Survey selected area" }));
+    await waitFor(() => expect(transport.query).toHaveBeenCalledTimes(2), { timeout: 2000 });
     fireEvent.change(screen.getByLabelText("Dimension"), { target: { value: "minecraft_the_nether" } });
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether"));
+    expect((transport.query.mock.calls[1]?.[1] as { signal: AbortSignal }).signal.aborted).toBe(false);
     scan.resolve(data("area", { cells: [{ x: 0, z: 0, y: 64, biome: "minecraft:plains" }] }));
     await screen.findByRole("button", { name: "Survey selected area" });
     expect(screen.getByTestId("terrain").getAttribute("data-cells")).toBe("0");
@@ -134,6 +144,7 @@ describe("Minecraft explorer", () => {
     await screen.findByRole("button", { name: "Predicting…" });
     fireEvent.change(screen.getByLabelText("Dimension"), { target: { value: "minecraft_the_nether" } });
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether"));
+    expect((transport.prediction.mock.calls[0]?.[1] as { signal: AbortSignal }).signal.aborted).toBe(false);
     pending.resolve(prediction());
     await screen.findByRole("button", { name: "Preview selected area" });
     expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0");
