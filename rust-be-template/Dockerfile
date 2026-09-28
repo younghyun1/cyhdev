@@ -72,6 +72,8 @@ RUN npm run build \
 # glibc, Zen 3 tuning, no UPX, and a host-visible Cargo release path.
 FROM rustlang/rust:${RUST_DOCKER_TAG} AS host-release
 ARG APP_NAME
+# Pumpkin's generated biome tree needs more compiler stack than the musl default.
+ENV RUST_MIN_STACK=33554432
 ARG RUST_TARGET=x86_64-unknown-linux-gnu
 ARG RUST_TARGET_CPU=znver3
 # Bind Cargo and rustup to the dated nightly contained by the freshly pulled
@@ -120,6 +122,9 @@ WORKDIR /workspace
 # Install native build dependencies required by the bundled C libraries.
 RUN apk add --no-cache clang lld musl-dev git ca-certificates postgresql-dev upx zstd-static pkgconf make perl \
     && rustup component add rust-src --toolchain "$RUSTUP_TOOLCHAIN"
+
+# Build-time only; this avoids rustc stack overflow compiling Pumpkin's generated tables.
+ENV RUST_MIN_STACK=33554432
 
 # Compile the current backend in the development profile. This stage also
 # consumes the frontend output because the backend embeds that directory.
