@@ -24,6 +24,7 @@ public final class MapControl extends JavaPlugin {
     private volatile SocketChannel active;
     private ScheduledThreadPoolExecutor deadlines;
     private Path socketPath;
+    private WorldDataBridge worldData;
 
     @Override
     public void onEnable() {
@@ -43,6 +44,8 @@ public final class MapControl extends JavaPlugin {
                 return thread;
             });
             deadlines.setRemoveOnCancelPolicy(true);
+            worldData = new WorldDataBridge(this, directory);
+            worldData.start();
             Thread worker = new Thread(this::serve, "cyhdev-map-control");
             worker.setDaemon(true);
             worker.start();
@@ -135,6 +138,7 @@ public final class MapControl extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        close(worldData);
         close(listener);
         close(active);
         if (deadlines != null) deadlines.shutdownNow();
