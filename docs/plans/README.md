@@ -6,12 +6,12 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [Minecraft surface biome prediction](2026-09-28-minecraft-surface-biomes.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [Minecraft surface biome prediction](2026-09-28-minecraft-surface-biomes.md)
 - [Minecraft origin navigation and distance scale](2026-09-28-minecraft-navigation-scale.md)
 - [Minecraft dimensions and compact tiles](2026-09-28-minecraft-dimensions-and-tiles.md)
 - [Continuous Minecraft seed map](2026-09-28-minecraft-continuous-map.md)
