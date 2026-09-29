@@ -1,5 +1,5 @@
 name: CyhdevMapControl
-version: '1.3.0'
+version: '1.4.0'
 main: com.cyhdev.minecraft.MapControl
 api-version: '26.3'
 depend: [squaremap]

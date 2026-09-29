@@ -8,10 +8,12 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
+import net.minecraft.world.level.biome.TheEndBiomeSource;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
@@ -25,6 +27,10 @@ import xyz.jpenilla.squaremap.common.data.MapWorldInternal;
 
 /** Version-locked read-only adapter. Bukkit does not expose effective presets or pending chunk holders. */
 final class PredictionContext {
+    enum Dimension { OVERWORLD, NETHER, END }
+
+    private static final Set<String> END_BIOMES = Set.of("minecraft:the_end", "minecraft:end_highlands",
+        "minecraft:end_midlands", "minecraft:small_end_islands", "minecraft:end_barrens");
     private final byte[] revisionKey = new byte[32];
 
     PredictionContext() { new SecureRandom().nextBytes(revisionKey); }
@@ -43,9 +49,9 @@ final class PredictionContext {
     Snapshot capture(World world, WorldProtocol.Request request) throws Unsupported {
         try {
             if (!Bukkit.getMinecraftVersion().equals("26.3") || !(world instanceof CraftWorld craft)
-                    || !world.key().asString().equals("minecraft:overworld")
-                    || world.getEnvironment() != World.Environment.NORMAL || world.getMinHeight() != -64 || world.getMaxHeight() != 320
                     || world.getGenerator() != null || world.getBiomeProvider() != null) throw new Unsupported();
+            Dimension dimension = dimension(world.key().asString(), world.getEnvironment(), world.getMinHeight(),
+                world.getMaxHeight(), request.kind().equals("seed_profile"));
             var enabledPacks = Bukkit.getServer().getDatapackManager().getEnabledPacks();
             if (enabledPacks.isEmpty() || enabledPacks.size() > PredictionPacks.MAX_PACKS) throw new Unsupported();
             List<String> packNames = new ArrayList<>();
@@ -57,13 +63,8 @@ final class PredictionContext {
             packNames.sort(String::compareTo);
             var level = craft.getHandle();
             var generator = level.getChunkSource().getGenerator();
-            if (!(generator instanceof NoiseBasedChunkGenerator noise)
-                    || !(noise.getBiomeSource() instanceof MultiNoiseBiomeSource biomes)
-                    || !biomes.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) throw new Unsupported();
-            String preset;
-            if (noise.stable(NoiseGeneratorSettings.OVERWORLD)) preset = "default";
-            else if (noise.stable(NoiseGeneratorSettings.LARGE_BIOMES)) preset = "large_biomes";
-            else throw new Unsupported();
+            if (!(generator instanceof NoiseBasedChunkGenerator noise)) throw new Unsupported();
+            String preset = preset(dimension, noise);
             var mapped = SquaremapProvider.get().getWorldIfEnabled(WorldIdentifier.parse(request.world()));
             if (mapped.isEmpty() || !(mapped.get() instanceof MapWorldInternal mapWorld)) throw new Unsupported();
             var limits = mapWorld.visibilityLimit();
@@ -73,9 +74,9 @@ final class PredictionContext {
             long seed = level.getSeed();
             String worldId = world.getUID().toString();
             // The keyed digest prevents the public revision from becoming a seed dictionary oracle.
-            String revision = revision(worldId + "\n" + seed + "\n" + preset + "\n" + Bukkit.getVersion()
+            String revision = revision(request.world() + "\n" + worldId + "\n" + seed + "\n" + preset + "\n" + Bukkit.getVersion()
                 + "\n" + String.join(",", packNames) + "\n" + System.identityHashCode(noise.generatorSettings().value())
-                + "\n" + System.identityHashCode(biomes) + "\n" + System.identityHashCode(level.getChunkSource().randomState())
+                + "\n" + System.identityHashCode(noise.getBiomeSource()) + "\n" + System.identityHashCode(level.getChunkSource().randomState())
                 + "\n" + System.identityHashCode(level.getServer().getResourceManager()) + "\n" + visibility);
             var packs = new PredictionPacks.Selection(level.getServer().getWorldPath(LevelResource.DATAPACK_DIR), List.copyOf(packNames));
             return new Snapshot(request.world(), worldId, seed, preset, revision, world.getWorldPath().resolve("region"), packs, visibility, states);
@@ -83,6 +84,45 @@ final class PredictionContext {
             // An incompatible Paper/squaremap implementation must disable predictions, not guess its state.
             throw new Unsupported();
         }
+    }
+
+    /** The legacy coverage protocol remains Overworld-only; continuous tiles support all vanilla dimensions. */
+    static Dimension dimension(String world, World.Environment environment, int minimum, int maximum,
+                               boolean seedProfile) throws Unsupported {
+        if (world.equals("minecraft:overworld") && environment == World.Environment.NORMAL && minimum == -64 && maximum == 320) {
+            return Dimension.OVERWORLD;
+        }
+        if (seedProfile && minimum == 0 && maximum == 256) {
+            if (world.equals("minecraft:the_nether") && environment == World.Environment.NETHER) return Dimension.NETHER;
+            if (world.equals("minecraft:the_end") && environment == World.Environment.THE_END) return Dimension.END;
+        }
+        throw new Unsupported();
+    }
+
+    private static String preset(Dimension dimension, NoiseBasedChunkGenerator generator) throws Unsupported {
+        var biomes = generator.getBiomeSource();
+        switch (dimension) {
+            case OVERWORLD -> {
+                if (!(biomes instanceof MultiNoiseBiomeSource multi) || !multi.stable(MultiNoiseBiomeSourceParameterLists.OVERWORLD)) {
+                    throw new Unsupported();
+                }
+                if (generator.stable(NoiseGeneratorSettings.OVERWORLD)) return "default";
+                if (generator.stable(NoiseGeneratorSettings.LARGE_BIOMES)) return "large_biomes";
+            }
+            case NETHER -> {
+                if (generator.stable(NoiseGeneratorSettings.NETHER) && biomes instanceof MultiNoiseBiomeSource multi
+                        && multi.stable(MultiNoiseBiomeSourceParameterLists.NETHER)) return "nether";
+            }
+            case END -> {
+                // The End source has no stable-preset method. Its exact built-in class and registered biome set are required.
+                if (generator.stable(NoiseGeneratorSettings.END) && biomes.getClass() == TheEndBiomeSource.class
+                        && biomes.possibleBiomes().stream().map(biome -> biome.unwrapKey()
+                            .map(key -> key.identifier().toString()).orElse("")).collect(java.util.stream.Collectors.toSet()).equals(END_BIOMES)) {
+                    return "end";
+                }
+            }
+        }
+        throw new Unsupported();
     }
 
     /** Only the legacy area query inspects chunk holders; seed profiles never access them. */
@@ -142,7 +182,7 @@ final class PredictionContext {
     }
 
     static void requireSameProfile(Snapshot before, Snapshot after) throws Unsupported {
-        if (!before.worldId().equals(after.worldId()) || !before.revision().equals(after.revision())
+        if (!before.world().equals(after.world()) || !before.worldId().equals(after.worldId()) || !before.revision().equals(after.revision())
                 || before.seed() != after.seed() || !before.preset().equals(after.preset())
                 || !java.util.Objects.equals(before.visibility(), after.visibility())) throw new Unsupported();
     }

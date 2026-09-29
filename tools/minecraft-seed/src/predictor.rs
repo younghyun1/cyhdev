@@ -1,7 +1,6 @@
 //! Persistent seeded state on one CPU worker, with bounded admission and cancellation.
 
 use crate::{Error, PredictionRequest, PredictionResponse, generator};
-use pumpkin_world::generation::noise::router::multi_noise_sampler::MultiNoiseSampler;
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use tokio::sync::oneshot;
 
@@ -64,17 +63,21 @@ fn run(receiver: Receiver<Job>) {
     };
     loop {
         let seed = job.request.seed;
+        let dimension = job.request.dimension;
         let large_biomes = job.request.large_biomes;
-        let router = generator::router(seed, large_biomes);
+        let router = generator::router(seed, dimension, large_biomes);
         // The sampler borrows its router; this nested loop keeps both alive
         // without leaked allocations or self-referential ownership.
-        let mut sampler = MultiNoiseSampler::generate(&router);
+        let mut sampler = generator::Sampler::new(&router, dimension, seed);
         loop {
             let result = generator::sample(&job.request, &mut sampler, || job.reply.is_closed());
             let _ = job.reply.send(result);
             let Some(next) = next(&receiver) else { return };
             job = next;
-            if job.request.seed != seed || job.request.large_biomes != large_biomes {
+            if job.request.seed != seed
+                || job.request.dimension != dimension
+                || job.request.large_biomes != large_biomes
+            {
                 break;
             }
         }

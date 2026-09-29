@@ -1,13 +1,18 @@
 //! Bounded, read-only Java 26.3 biome predictions using pinned Pumpkin code.
 
+mod end_sampler;
 mod generator;
+mod nether_router;
 mod predictor;
 mod request;
 mod wire;
 
+#[cfg(test)]
+mod dimension_tests;
+
 pub use generator::{GENERATOR_REVISION, predict};
 pub use predictor::Predictor;
-pub use request::{Cell, PredictionRequest, PredictionResponse};
+pub use request::{Cell, Dimension, PredictionRequest, PredictionResponse};
 pub use wire::run;
 
 /// Maximum serialized request size, including its final newline.

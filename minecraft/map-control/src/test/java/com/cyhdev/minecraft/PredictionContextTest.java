@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.bukkit.World;
 
 /** Pure header and coverage tests; no running game server or generated terrain is needed. */
 public final class PredictionContextTest {
@@ -12,6 +13,7 @@ public final class PredictionContextTest {
     private PredictionContextTest() {}
 
     public static void main(String[] args) throws Exception {
+        validatesDimensions();
         Path directory = Files.createTempDirectory("map-prediction-coverage-");
         try {
             check(SavedChunkCoverage.absent(directory, 0, 0), "Missing region");
@@ -34,6 +36,24 @@ public final class PredictionContextTest {
             Files.delete(directory);
         }
         System.out.println("PredictionContextTest: " + checks + " checks passed");
+    }
+
+    private static void validatesDimensions() throws IOException {
+        for (boolean seedProfile : List.of(false, true)) {
+            check(PredictionContext.dimension("minecraft:overworld", World.Environment.NORMAL, -64, 320, seedProfile)
+                == PredictionContext.Dimension.OVERWORLD, "Overworld in both protocols");
+        }
+        check(PredictionContext.dimension("minecraft:the_nether", World.Environment.NETHER, 0, 256, true)
+            == PredictionContext.Dimension.NETHER, "Vanilla Nether tiles");
+        check(PredictionContext.dimension("minecraft:the_end", World.Environment.THE_END, 0, 256, true)
+            == PredictionContext.Dimension.END, "Vanilla End tiles");
+        rejects(() -> PredictionContext.dimension("minecraft:the_nether", World.Environment.NETHER, 0, 256, false), "Legacy Nether rejected");
+        rejects(() -> PredictionContext.dimension("minecraft:the_end", World.Environment.THE_END, 0, 256, false), "Legacy End rejected");
+        rejects(() -> PredictionContext.dimension("custom:the_end", World.Environment.THE_END, 0, 256, true), "Custom dimension rejected");
+        rejects(() -> PredictionContext.dimension("minecraft:the_end", World.Environment.NORMAL, 0, 256, true), "Mismatched environment rejected");
+        rejects(() -> PredictionContext.dimension("minecraft:the_nether", World.Environment.NETHER, -64, 256, true), "Modified minimum height rejected");
+        rejects(() -> PredictionContext.dimension("minecraft:the_nether", World.Environment.NETHER, 0, 128, true), "Modified build height rejected");
+        rejects(() -> PredictionContext.dimension("minecraft:overworld", World.Environment.NORMAL, 0, 256, true), "Modified Overworld rejected");
     }
 
     private static void combinesConservatively(Path directory) throws Exception {

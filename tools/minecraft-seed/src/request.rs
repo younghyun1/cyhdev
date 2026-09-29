@@ -7,15 +7,31 @@ use crate::Error;
 const WORLD_BORDER: i64 = 30_000_000;
 const MAX_POINTS: u32 = 4096;
 
-/// One fixed-height Overworld grid; seed input stays inside the worker pipe.
+/// Supported vanilla dimensions; world identity remains the backend's responsibility.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Dimension {
+    /// Vanilla Overworld, including the large-biomes preset.
+    #[default]
+    Overworld,
+    /// Vanilla Nether with its legacy-seeded temperature and vegetation noise.
+    Nether,
+    /// Vanilla End central and outer-island biome distribution.
+    End,
+}
+
+/// One fixed-height dimension grid; seed input stays inside the worker pipe.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PredictionRequest {
     /// Signed Minecraft seed, preserving all 64 bits.
     pub seed: i64,
+    /// Defaults to the Overworld for compatibility with existing pipe requests.
+    #[serde(default)]
+    pub dimension: Dimension,
     /// Selects vanilla's distinct large-biomes noise router.
     pub large_biomes: bool,
-    /// Block height, within the vanilla Overworld build interval.
+    /// Block height: -64..=319 in the Overworld, 0..=255 elsewhere.
     pub y: i32,
     /// First sample's block X coordinate.
     pub min_x: i32,
@@ -33,7 +49,19 @@ impl PredictionRequest {
     /// Rejects oversized grids and overflow before allocating or initializing noise.
     pub(crate) fn validate(&self) -> Result<(), Error> {
         let count = self.width.checked_mul(self.height).ok_or(Error::Bounds)?;
-        if !(1..=MAX_POINTS).contains(&count) || self.step == 0 || !(-64..=319).contains(&self.y) {
+        let min_y = match self.dimension {
+            Dimension::Overworld => -64,
+            Dimension::Nether | Dimension::End => 0,
+        };
+        let max_y = match self.dimension {
+            Dimension::Overworld => 319,
+            Dimension::Nether | Dimension::End => 255,
+        };
+        if !(1..=MAX_POINTS).contains(&count)
+            || self.step == 0
+            || !(min_y..=max_y).contains(&self.y)
+            || (self.dimension != Dimension::Overworld && self.large_biomes)
+        {
             return Err(Error::Bounds);
         }
         for (origin, size) in [(self.min_x, self.width), (self.min_z, self.height)] {
@@ -75,12 +103,13 @@ pub struct PredictionResponse {
 
 #[cfg(test)]
 mod tests {
-    use super::PredictionRequest;
+    use super::{Dimension, PredictionRequest};
 
     /// A small valid request for exercising independent bounds.
     fn request() -> PredictionRequest {
         PredictionRequest {
             seed: 1,
+            dimension: Dimension::Overworld,
             large_biomes: false,
             y: 64,
             min_x: 0,
@@ -125,5 +154,24 @@ mod tests {
         input.width = 1;
         input.step = 0;
         assert!(input.validate().is_err());
+    }
+
+    #[test]
+    fn dimension_bounds_and_preset_are_checked() {
+        for dimension in [Dimension::Nether, Dimension::End] {
+            let mut input = request();
+            input.dimension = dimension;
+            for y in [0, 255] {
+                input.y = y;
+                assert!(input.validate().is_ok());
+            }
+            for y in [-64, -1, 256, 319] {
+                input.y = y;
+                assert!(input.validate().is_err());
+            }
+            input.y = 64;
+            input.large_biomes = true;
+            assert!(input.validate().is_err());
+        }
     }
 }

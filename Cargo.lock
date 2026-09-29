@@ -3594,6 +3594,7 @@ version = "0.1.0"
 dependencies = [
  "mimalloc",
  "pumpkin-data",
+ "pumpkin-util",
  "pumpkin-world",
  "rayon",
  "serde",
@@ -5564,6 +5565,7 @@ dependencies = [
  "num_cpus",
  "nutype",
  "openidconnect",
+ "png",
  "pq-sys",
  "rand 0.10.3",
  "reqwest",
