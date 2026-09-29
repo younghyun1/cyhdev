@@ -12,14 +12,12 @@ use axum::{
 };
 use tower_http::services::ServeDir;
 
-#[path = "squaremap_storage_shim.rs"]
-mod storage_shim;
 #[path = "squaremap_cache.rs"]
 mod tile_cache;
 #[path = "squaremap_cache_http.rs"]
 mod tile_cache_http;
 
-/// Read the public web root once at startup; an absent setting leaves a useful placeholder.
+/// Read the public asset root once at startup; absent assets return an explicit failure.
 pub(super) fn from_environment() -> anyhow::Result<Router> {
     let root = match std::env::var_os("SQUAREMAP_WEB_DIR") {
         Some(value) if !value.is_empty() => {
@@ -43,18 +41,45 @@ fn router(root: Option<PathBuf>) -> Router {
                 .layer(from_fn_with_state(cache, tile_cache_http::serve))
         }
         None => Router::new().fallback(unavailable),
-    };
+    }
+    .route("/", get(retired_map))
+    .route("/index.html", get(retired_map))
+    .layer(from_fn(native_assets_only));
     Router::new()
-        .route(
-            "/minecraft/map",
-            get(|| async { Redirect::permanent("/minecraft/map/") }),
-        )
+        .route("/minecraft/map", get(retired_map))
         .nest("/minecraft/map/", files)
         .layer(from_fn(cache_headers))
-        .layer(from_fn(storage_shim::inject))
 }
 
-/// Keep setup failures readable inside the map frame without serving the SPA recursively.
+/// Old bookmarks lead to the native explorer; the retired JavaScript interface is not served.
+async fn retired_map() -> Redirect {
+    Redirect::permanent("/minecraft")
+}
+
+/// Preserve only the native explorer's public data and raster images.
+async fn native_assets_only(request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    let relative = path.trim_start_matches('/');
+    let canonical = relative.len() <= 512
+        && relative.split('/').all(|part| {
+            !part.is_empty()
+                && !part.starts_with('.')
+                && part
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'))
+        });
+    let asset = canonical
+        && ((relative.starts_with("tiles/")
+            && (relative.ends_with(".png") || relative.ends_with(".json")))
+            || (relative.starts_with("images/") && relative.ends_with(".png")));
+    if matches!(path, "/" | "/index.html") || asset {
+        next.run(request).await
+    } else {
+        StatusCode::NOT_FOUND.into_response()
+    }
+}
+
+/// Keep missing assets explicit without serving the SPA recursively.
 async fn unavailable() -> impl IntoResponse {
     (
         StatusCode::SERVICE_UNAVAILABLE,

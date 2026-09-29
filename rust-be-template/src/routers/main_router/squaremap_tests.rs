@@ -5,13 +5,24 @@ use reqwest::{Client, header};
 
 /// Exercise the mounted router over HTTP, including the enclosing SPA fallback.
 #[tokio::test]
-async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<dyn Error>> {
+async fn redirects_retired_documents_and_serves_only_native_assets() -> Result<(), Box<dyn Error>> {
     let directory = tempfile::tempdir()?;
     let web = directory.path().join("web");
     std::fs::create_dir(&web)?;
     std::fs::write(web.join("index.html"), "<title>Map</title>")?;
     std::fs::write(web.join("style.css"), "body{}")?;
-    std::fs::write(web.join("players.json"), "[]")?;
+    std::fs::write(web.join("app.js"), "alert('retired')")?;
+    std::fs::create_dir(web.join("tiles"))?;
+    std::fs::write(web.join("tiles/players.json"), "[]")?;
+    for directory in ["icon", "health", "armor"] {
+        std::fs::create_dir_all(web.join("images").join(directory))?;
+        let name = if directory == "icon" {
+            "player.png"
+        } else {
+            "0.png"
+        };
+        std::fs::write(web.join("images").join(directory).join(name), b"icon")?;
+    }
     std::fs::write(directory.path().join("secret.txt"), "private")?;
     let app = Router::new()
         .merge(super::router(Some(web)))
@@ -23,48 +34,61 @@ async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<d
         .redirect(reqwest::redirect::Policy::none())
         .build()?;
 
-    let redirect = client.get(format!("{origin}/minecraft/map")).send().await?;
-    assert_eq!(redirect.status(), StatusCode::PERMANENT_REDIRECT);
-    assert_eq!(redirect.headers()[header::LOCATION], "/minecraft/map/");
-    let index = client
-        .get(format!("{origin}/minecraft/map/"))
+    for path in [
+        "/minecraft/map",
+        "/minecraft/map/",
+        "/minecraft/map/index.html",
+    ] {
+        let redirect = client.get(format!("{origin}{path}")).send().await?;
+        assert_eq!(redirect.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(redirect.headers()[header::LOCATION], "/minecraft");
+        assert_eq!(
+            redirect.headers()[header::CACHE_CONTROL],
+            "public, no-cache"
+        );
+        assert_eq!(
+            redirect.headers()[header::X_CONTENT_TYPE_OPTIONS],
+            "nosniff"
+        );
+    }
+    let icon = client
+        .get(format!("{origin}/minecraft/map/images/icon/player.png"))
         .send()
         .await?;
-    assert_eq!(index.status(), StatusCode::OK);
-    assert_eq!(index.headers()[header::CACHE_CONTROL], "public, no-cache");
-    // HTML carries the storage shim, so file validators are withheld and ignored.
-    assert!(!index.headers().contains_key(header::LAST_MODIFIED));
-    assert!(!index.headers().contains_key(header::ETAG));
-    assert_eq!(
-        index.text().await?,
-        super::storage_shim::with_shim("<title>Map</title>")
-    );
-    let unconditional = client
-        .get(format!("{origin}/minecraft/map/index.html"))
-        .header(header::IF_MODIFIED_SINCE, "Wed, 01 Jan 2031 00:00:00 GMT")
-        .send()
-        .await?;
-    assert_eq!(unconditional.status(), StatusCode::OK);
-    assert!(unconditional.text().await?.contains("cyhdev-storage-probe"));
-    let style = client
-        .get(format!("{origin}/minecraft/map/style.css"))
-        .send()
-        .await?;
-    let modified = style.headers()[header::LAST_MODIFIED].clone();
-    assert_eq!(style.text().await?, "body{}");
+    let modified = icon.headers()[header::LAST_MODIFIED].clone();
+    assert_eq!(icon.headers()[header::CONTENT_TYPE], "image/png");
+    assert_eq!(icon.bytes().await?.as_ref(), b"icon");
     let conditional = client
-        .get(format!("{origin}/minecraft/map/style.css"))
+        .get(format!("{origin}/minecraft/map/images/icon/player.png"))
         .header(header::IF_MODIFIED_SINCE, modified)
         .send()
         .await?;
     assert_eq!(conditional.status(), StatusCode::NOT_MODIFIED);
+    for path in ["health/0.png", "armor/0.png"] {
+        let image = client
+            .get(format!("{origin}/minecraft/map/images/{path}"))
+            .send()
+            .await?;
+        assert_eq!(image.status(), StatusCode::OK);
+        assert_eq!(image.headers()[header::CONTENT_TYPE], "image/png");
+        assert_eq!(image.bytes().await?.as_ref(), b"icon");
+    }
     let players = client
-        .get(format!("{origin}/minecraft/map/players.json"))
+        .get(format!("{origin}/minecraft/map/tiles/players.json"))
         .send()
         .await?;
     assert_eq!(players.status(), StatusCode::OK);
     assert_eq!(players.headers()[header::CACHE_CONTROL], "no-store");
-    for path in ["missing.png", "..%2fsecret.txt"] {
+    for path in [
+        "style.css",
+        "app.js",
+        "tiles/other.html",
+        "tiles/other.js",
+        "tiles/missing.png",
+        "..%2fsecret.txt",
+        "images/../secret.txt",
+        "tiles/%2e%2e/secret.txt",
+    ] {
         let response = client
             .get(format!("{origin}/minecraft/map/{path}"))
             .send()
@@ -77,7 +101,8 @@ async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<d
         .head(format!("{origin}/minecraft/map/index.html"))
         .send()
         .await?;
-    assert_eq!(head.status(), StatusCode::OK);
+    assert_eq!(head.status(), StatusCode::PERMANENT_REDIRECT);
+    assert_eq!(head.headers()[header::LOCATION], "/minecraft");
     assert!(head.bytes().await?.is_empty());
     server.abort();
     Ok(())
@@ -86,7 +111,10 @@ async fn serves_files_and_revalidates_without_spa_fallback() -> Result<(), Box<d
 #[tokio::test]
 async fn unconfigured_map_is_explicitly_unavailable() -> Result<(), Box<dyn Error>> {
     let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await?;
-    let url = format!("http://{}/minecraft/map/", listener.local_addr()?);
+    let url = format!(
+        "http://{}/minecraft/map/tiles/settings.json",
+        listener.local_addr()?
+    );
     let server = tokio::spawn(async move { axum::serve(listener, super::router(None)).await });
     let response = Client::new().get(url).send().await?;
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
@@ -120,7 +148,7 @@ async fn tile_cache_validators_ranges_and_updates() -> Result<(), Box<dyn Error>
     assert_eq!(hit.headers()[header::ETAG], etag);
     assert_eq!(hit.bytes().await?.as_ref(), b"tile");
     let conditional = client
-        .get(&url)
+        .get(format!("{url}?refresh=2"))
         .header(header::IF_NONE_MATCH, etag.clone())
         .send()
         .await?;
@@ -148,7 +176,7 @@ async fn tile_cache_validators_ranges_and_updates() -> Result<(), Box<dyn Error>
     tokio::fs::write(&replacement, b"edit").await?;
     tokio::fs::rename(&replacement, &tile_path).await?;
     let updated = client
-        .get(&url)
+        .get(format!("{url}?refresh=3"))
         .header(header::IF_NONE_MATCH, etag.clone())
         .header(header::IF_MODIFIED_SINCE, "Wed, 01 Jan 2031 00:00:00 GMT")
         .send()
