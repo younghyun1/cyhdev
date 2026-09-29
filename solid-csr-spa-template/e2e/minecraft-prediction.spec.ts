@@ -178,11 +178,17 @@ test("frontier has no tile seams, hides while zooming, and stays visible while p
     return first < 0 ? -Infinity : rect.x + Math.floor(first / 4) % node.width * rect.width / node.width;
   });
   await expect.poll(async () => Math.abs(await frontierX() - (box.x + box.width / 2 + 64))).toBeLessThanOrEqual(2);
+  const mapPane = page.locator(".leaflet-map-pane");
+  const mapPaneX = () => mapPane.evaluate(node => node.getBoundingClientRect().x);
+  const beforePan = await mapPaneX();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 - 80, box.y + box.height / 2, { steps: 8 });
   await expect(pane).toHaveCSS("visibility", "visible"); await expect(map).toHaveAttribute("data-zoom", "3");
   await page.mouse.up(); await expect(pane).toHaveCSS("visibility", "visible");
-  await expect.poll(async () => Math.abs(await frontierX() - (box.x + box.width / 2 - 16))).toBeLessThanOrEqual(2);
+  // Leaflet's drag threshold and inertia alter pointer displacement; the frontier
+  // must track the actual map translation without disappearing at the same zoom.
+  await expect.poll(async () => await mapPaneX() - beforePan).toBeLessThan(-40);
+  await expect.poll(async () => Math.abs(await frontierX() - (box.x + box.width / 2 + 64 + await mapPaneX() - beforePan))).toBeLessThanOrEqual(2);
 });
 
 test("failed tiles finish their lifecycle so subsequent zooms can load", async ({ page }) => {
