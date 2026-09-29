@@ -20,6 +20,16 @@ function prediction(): { data: MinecraftPrediction } {
   return { data: { world: "minecraft:overworld", sampled_at_ms: Date.now(), expires_at_ms: Date.now() + 15000, generator_revision: "Pumpkin fixture", preset: "large_biomes", y: 64, min_x: -64, min_z: -64, step: 4,
     coverage: Array.from({ length: 64 }, (_, i) => ({ chunk_x: i % 8 - 4, chunk_z: Math.floor(i / 8) - 4, state: "ungenerated" })), cells: [{ x: 0, z: 0, biome: "minecraft:plains" }] } };
 }
+async function openLayers() {
+  fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  await screen.findByLabelText("Predicted biomes");
+}
+async function observedLayers() {
+  await openLayers();
+  fireEvent.click(screen.getByLabelText("Predicted biomes"));
+  await Promise.resolve();
+}
+const waitForPrediction = () => waitFor(() => expect(transport.prediction).toHaveBeenCalled(), { timeout: 3000 });
 
 describe("Minecraft explorer", () => {
   beforeEach(() => {
@@ -37,21 +47,23 @@ describe("Minecraft explorer", () => {
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-  it("keeps the original map isolated and loads it only on request", async () => {
+  it("keeps dimension selection without the atlas header or legacy iframe", async () => {
     const view = render(() => <Minecraft />);
+    await screen.findByTestId("terrain");
     expect(view.container.querySelector("iframe")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Original map" }));
-    await waitFor(() => expect(view.container.querySelector("iframe")).not.toBeNull());
-    const frame = view.container.querySelector("iframe");
-    expect(frame?.getAttribute("src")).toBe("/minecraft/map/");
-    expect(frame?.getAttribute("sandbox")).toBe("allow-scripts allow-popups allow-popups-to-escape-sandbox");
-    expect(frame?.getAttribute("allow")).toBe("clipboard-write *");
+    expect(screen.getByLabelText("Dimension")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Original map" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "World atlas" })).toBeNull();
+    expect(screen.queryByText(/Predict a fixed Y slice/)).toBeNull();
+    expect(screen.queryByLabelText("Predicted biomes")).toBeNull();
+    expect(screen.getByRole("button", { name: "Layers" }).getAttribute("aria-expanded")).toBe("false");
   });
 
   it("shows terrain without waiting for world analysis", async () => {
     const catalog = deferred<ReturnType<typeof data>>(); transport.query.mockReturnValue(catalog.promise);
     render(() => <Minecraft />);
     await screen.findByTestId("terrain");
+    await openLayers();
     expect((screen.getByRole("button", { name: "Surveying…" }) as HTMLButtonElement).disabled).toBe(true);
     catalog.resolve(data("catalog"));
     await screen.findByRole("button", { name: "Survey selected area" });
@@ -69,6 +81,7 @@ describe("Minecraft explorer", () => {
     const scan = deferred<ReturnType<typeof data>>();
     transport.query.mockImplementation(({ body }: { body: { kind: MinecraftMapData["kind"] } }) => body.kind === "catalog" ? Promise.resolve(data("catalog")) : scan.promise);
     render(() => <Minecraft />); fireEvent.click(await screen.findByTestId("terrain"));
+    await observedLayers();
     await waitFor(() => expect(screen.getByText(/X -1/)).toBeTruthy());
     fireEvent.input(screen.getByLabelText("Biome sampling height"), { target: { value: "-16" } });
     await Promise.resolve();
@@ -87,12 +100,14 @@ describe("Minecraft explorer", () => {
     const scan = deferred<ReturnType<typeof data>>();
     transport.query.mockImplementation(({ body }: { body: { kind: MinecraftMapData["kind"] } }) => body.kind === "catalog" ? Promise.resolve(data("catalog")) : scan.promise);
     render(() => <Minecraft />); await screen.findByTestId("terrain");
+    await observedLayers();
     fireEvent.click(screen.getByRole("button", { name: "Survey selected area" }));
     await waitFor(() => expect(transport.query).toHaveBeenCalledTimes(2), { timeout: 2000 });
     fireEvent.change(screen.getByLabelText("Dimension"), { target: { value: "minecraft_the_nether" } });
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether"));
     expect((transport.query.mock.calls[1]?.[1] as { signal: AbortSignal }).signal.aborted).toBe(false);
     scan.resolve(data("area", { cells: [{ x: 0, z: 0, y: 64, biome: "minecraft:plains" }] }));
+    await openLayers();
     await screen.findByRole("button", { name: "Survey selected area" });
     expect(screen.getByTestId("terrain").getAttribute("data-cells")).toBe("0");
     expect(screen.queryByText(/Sampled/)).toBeNull();
@@ -105,6 +120,7 @@ describe("Minecraft explorer", () => {
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether"));
     fireEvent.click(screen.getByTestId("terrain"));
     await waitFor(() => expect(screen.getByText(/X -1/)).toBeTruthy());
+    await openLayers();
     fireEvent.click(screen.getByRole("button", { name: "Retry analysis" }));
     await screen.findByRole("button", { name: "Survey selected area" });
     expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether");
@@ -125,56 +141,64 @@ describe("Minecraft explorer", () => {
     expect(transport.query.mock.calls[1]?.[0]).toEqual({ body: { kind: "blocks", world: "minecraft:overworld", block: "minecraft:diamond_ore", min_y: -32, max_y: 0, chunk_x: -2, chunk_z: -2, width: 4, height: 4 } });
   });
 
-  it("requests a bounded fixed-Y preview without exposing or overriding the server preset", async () => {
-    render(() => <Minecraft />); fireEvent.click(await screen.findByTestId("terrain"));
-    await waitFor(() => expect(screen.getByText(/X -1/)).toBeTruthy());
-    expect(transport.prediction).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByText("Predicted · Y 64 · Large biomes");
-    expect(transport.prediction.mock.calls[0]?.[0]).toEqual({ body: { world: "minecraft:overworld", min_x: -80, min_z: -32, y: 64 } });
+  it("automatically requests a bounded fixed-Y preview and clears it on terrain refresh", async () => {
+    render(() => <Minecraft />); await screen.findByTestId("terrain");
+    await waitForPrediction();
+    await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("1"));
+    expect(transport.prediction.mock.calls[0]?.[0]).toEqual({ body: { world: "minecraft:overworld", min_x: -64, min_z: -64, y: 64 } });
+    await openLayers();
+    expect(screen.getByText(/Predicted · Y 64 · Large biomes/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Refresh terrain" }));
-    await screen.findByText("Terrain refreshed. Request a fresh prediction preview.");
-    expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0");
+    await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0"));
+    await waitFor(() => expect(transport.prediction).toHaveBeenCalledTimes(2), { timeout: 3000 });
   });
 
   it("discards a prediction finishing after a dimension change", async () => {
     const pending = deferred<ReturnType<typeof prediction>>(); transport.prediction.mockReturnValue(pending.promise);
     render(() => <Minecraft />); await screen.findByTestId("terrain");
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByRole("button", { name: "Predicting…" });
+    await waitForPrediction();
     fireEvent.change(screen.getByLabelText("Dimension"), { target: { value: "minecraft_the_nether" } });
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-world")).toBe("minecraft_the_nether"));
     expect((transport.prediction.mock.calls[0]?.[1] as { signal: AbortSignal }).signal.aborted).toBe(false);
     pending.resolve(prediction());
-    await screen.findByRole("button", { name: "Preview selected area" });
+    await openLayers();
     expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0");
     expect(screen.queryByText(/Large biomes/)).toBeNull();
+  });
+
+  it("ignores an automatic prediction that finishes after predictions are disabled", async () => {
+    const pending = deferred<ReturnType<typeof prediction>>(); transport.prediction.mockReturnValue(pending.promise);
+    render(() => <Minecraft />); await screen.findByTestId("terrain"); await waitForPrediction();
+    await openLayers(); fireEvent.click(screen.getByLabelText("Predicted biomes"));
+    await waitFor(() => expect((screen.getByLabelText("Predicted biomes") as HTMLInputElement).checked).toBe(false));
+    pending.resolve(prediction());
+    await Promise.resolve();
+    await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0"));
+    expect(screen.queryByLabelText("Prediction Y")).toBeNull();
   });
 
   it("keeps expired and unsupported predictions off the map", async () => {
     transport.prediction.mockResolvedValueOnce({ data: { ...prediction().data, expires_at_ms: Date.now() - 1 } }).mockRejectedValueOnce(new ApiContractError(503, '{"message":"Minecraft map observations are unavailable."}'));
     render(() => <Minecraft />); await screen.findByTestId("terrain");
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByText(/Preview expired or did not match/);
+    await openLayers();
+    await screen.findByText(/Preview expired or did not match/, {}, { timeout: 3000 });
     expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0");
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByText("Prediction is unavailable for this world or generator configuration.");
+    fireEvent.click(screen.getByRole("button", { name: "Refresh terrain" }));
+    await screen.findByText("Prediction is unavailable for this world or generator configuration.", {}, { timeout: 3000 });
     expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0");
   });
 
-  it("clears previews when the page is hidden or the original map is opened", async () => {
+  it("clears previews when the page is hidden and allows a fresh preview on return", async () => {
     render(() => <Minecraft />); await screen.findByTestId("terrain");
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByText("Predicted · Y 64 · Large biomes");
+    await waitForPrediction();
+    await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("1"));
     const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
     fireEvent(document, new Event("visibilitychange"));
     await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("0"));
     visibility.mockReturnValue("visible");
-    fireEvent.click(screen.getByRole("button", { name: "Preview selected area" }));
-    await screen.findByText("Predicted · Y 64 · Large biomes");
-    fireEvent.click(screen.getByRole("button", { name: "Original map" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Explorer" }));
-    expect((await screen.findByTestId("terrain")).getAttribute("data-predicted")).toBe("0");
+    fireEvent(document, new Event("visibilitychange"));
+    await waitFor(() => expect(transport.prediction).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByTestId("terrain").getAttribute("data-predicted")).toBe("1"));
   });
 
   it("makes waypoints public while keeping edit controls administrator-only", async () => {

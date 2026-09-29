@@ -34,10 +34,10 @@ export async function installMinecraftMapMocks(page: Page) {
   await page.route("**/minecraft/map/tiles/*/settings.json", route => route.fulfill({ json: { zoom: { max: 3, def: 4, extra: 2 }, spawn: { x: 128, z: 128 } } }));
   await page.route("**/minecraft/map/tiles/players.json", route => route.fulfill({ json: { players: [{ name: "Alex", world: "minecraft_overworld", x: 120, z: 104 }] } }));
   await page.route("**/minecraft/map/tiles/**/*.png*", route => route.fulfill({ contentType: "image/svg+xml", body: terrainTile() }));
-  await page.route("**/api/minecraft/map/prediction", route => {
+  await page.route("**/api/minecraft/map/prediction", async route => {
     const query = route.request().postDataJSON() as MinecraftPredictionQuery;
     predictions.push(query);
-    return route.fulfill({ json: { data: predictedMapData(query) } });
+    return route.fulfill({ json: { data: predictedMapData(query, await page.evaluate(() => Date.now())) } });
   });
   await page.route("**/api/minecraft/map/query", async route => {
     const body = route.request().postDataJSON() as MinecraftMapQuery;

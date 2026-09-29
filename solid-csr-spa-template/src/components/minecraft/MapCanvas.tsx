@@ -3,8 +3,11 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MinecraftMapData, MinecraftPrediction, MinecraftWaypoint } from "../../generated";
 import type { SquaremapPlayer, SquaremapSettings } from "../../services/squaremap";
-import { biomeColor, displayName, elevationColor, scanOrigin, WORLD_LIMIT, type MapPoint } from "./mapMath";
+import { biomeColor, displayName, elevationColor, scanOrigin, selectionRegion, WORLD_LIMIT, type MapPoint } from "./mapMath";
 import { predictionBoundary, predictionCells, predictionEdgeCells } from "./predictionMask";
+import { createTerrainRefresh, type TerrainRefreshState } from "./terrainRefresh";
+
+export type { TerrainRefreshState } from "./terrainRefresh";
 
 type Props = {
   readonly mapId: string;
@@ -29,6 +32,11 @@ type Props = {
   readonly onPoint: (point: MapPoint) => void;
   readonly onInspect: (point: MapPoint | null) => void;
   readonly onTerrainRefresh: () => void;
+  readonly onRefreshState: (state: TerrainRefreshState) => void;
+  readonly onView?: (point: MapPoint) => void;
+  readonly selecting?: boolean;
+  readonly region?: ReturnType<typeof selectionRegion> | null;
+  readonly onSelect?: (region: ReturnType<typeof selectionRegion>) => void;
 };
 
 /** All plugin text enters Leaflet through DOM text nodes, never HTML strings. */
@@ -45,8 +53,11 @@ export default function MapCanvas(props: Props) {
   let observer: ResizeObserver | undefined;
   let refreshTimer: number | undefined;
   let predictionRenderer: L.SVG | undefined;
+  let terrainRefresh: ReturnType<typeof createTerrainRefresh> | undefined;
+  let dragStart: MapPoint | null = null, dragEnd: MapPoint | null = null, dragPointer: number | null = null, suppressClickUntil = 0;
   const [ready, setReady] = createSignal(false);
-  const predicted = L.layerGroup(), sampled = L.layerGroup(), markers = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
+  const predicted = L.layerGroup(), sampled = L.layerGroup(), markers = L.layerGroup(), playersLayer = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
+  const dragged = L.layerGroup();
   // The parent keys this component by its loaded world, so projection settings are immutable here.
   const settings = untrack(() => props.settings), worldMapId = untrack(() => props.mapId);
   const scale = 2 ** settings.maxZoom;
@@ -54,6 +65,11 @@ export default function MapCanvas(props: Props) {
   const bounds = (x: number, z: number, endX: number, endZ: number): L.LatLngBoundsExpression => [position({ x, z }), position({ x: endX, z: endZ })];
   const invalidate = () => map?.invalidateSize({ animate: false });
   const clearInspection = () => untrack(() => props.onInspect(null));
+  const reportView = () => {
+    if (!map) return;
+    const center = map.getCenter();
+    untrack(() => props.onView?.({ x: Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, Math.floor(center.lng * scale))), z: Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, Math.floor(-center.lat * scale))) }));
+  };
   const eventPoint = (event: MouseEvent): MapPoint | null => {
     if (!map) return null;
     const cursor = map.mouseEventToLatLng(event);
@@ -62,9 +78,33 @@ export default function MapCanvas(props: Props) {
   };
   // Leaflet canvas events throttle movement and snap small marker hits to their centers.
   const inspectCursor = (event: MouseEvent) => untrack(() => {
-    if (event.buttons !== 0 || event.target instanceof Element && event.target.closest(".leaflet-control")) { clearInspection(); return; }
+    if (props.selecting || event.buttons !== 0 || event.target instanceof Element && event.target.closest(".leaflet-control")) { clearInspection(); return; }
     props.onInspect(eventPoint(event));
   });
+  const drawDrag = (region: ReturnType<typeof selectionRegion>) => {
+    dragged.clearLayers();
+    L.rectangle(bounds(region.chunk_x * 16, region.chunk_z * 16, (region.chunk_x + region.width) * 16, (region.chunk_z + region.height) * 16), { color: "#ffffff", weight: 2, fillColor: "#ffcd6e", fillOpacity: 0.15, interactive: false }).addTo(dragged);
+  };
+  const beginSelection = (event: PointerEvent) => untrack(() => {
+    if (!props.selecting || !event.isPrimary || event.button !== 0 || event.target instanceof Element && event.target.closest(".leaflet-control")) return;
+    const point = eventPoint(event);
+    if (!point) return;
+    event.preventDefault(); dragStart = point; dragEnd = point; dragPointer = event.pointerId;
+    element?.setPointerCapture(event.pointerId); clearInspection(); drawDrag(selectionRegion(point, point));
+  });
+  const moveSelection = (event: PointerEvent) => {
+    if (dragPointer !== event.pointerId || !dragStart) return;
+    const point = eventPoint(event);
+    if (point) { dragEnd = point; drawDrag(selectionRegion(dragStart, point)); }
+  };
+  const endSelection = (event: PointerEvent) => untrack(() => {
+    if (dragPointer !== event.pointerId || !dragStart || !dragEnd) return;
+    const region = selectionRegion(dragStart, eventPoint(event) ?? dragEnd);
+    dragStart = null; dragEnd = null; dragPointer = null; suppressClickUntil = Date.now() + 150;
+    if (element?.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
+    props.onSelect?.(region);
+  });
+  const cancelSelection = () => { dragStart = null; dragEnd = null; dragPointer = null; dragged.clearLayers(); };
 
   const drawGrid = () => {
     grid.clearLayers();
@@ -84,38 +124,57 @@ export default function MapCanvas(props: Props) {
     if (!element) return;
     map = L.map(element, { crs: L.CRS.Simple, attributionControl: false, preferCanvas: true, minZoom: 0, maxZoom: settings.maxZoom + settings.extraZoom, zoomControl: true });
     map.setView(position(untrack(() => props.view)), settings.defaultZoom);
-    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" }).addTo(map);
+    // Leaflet's own empty-image URL means canceled, so it never completes missing tiles.
+    const missingTile = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')}`;
+    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: missingTile });
+    terrainRefresh = createTerrainRefresh({ loading: () => tiles?.isLoading() ?? false, reload: nonce => { tiles?.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${nonce}`); }, report: state => untrack(() => props.onRefreshState(state)) });
+    tiles.on("load", terrainRefresh.loaded).on("tileerror", terrainRefresh.failed).addTo(map);
     map.createPane("minecraft-predictions");
     map.createPane("minecraft-selection-footprint");
+    map.createPane("minecraft-player-nameplates");
     predictionRenderer = L.svg({ pane: "minecraft-predictions" });
-    predicted.addTo(map); sampled.addTo(map); grid.addTo(map); markers.addTo(map); selection.addTo(map);
+    predicted.addTo(map); sampled.addTo(map); grid.addTo(map); markers.addTo(map); playersLayer.addTo(map); selection.addTo(map); dragged.addTo(map);
     map.on("click", (event: L.LeafletMouseEvent) => untrack(() => {
+      if (props.selecting || Date.now() < suppressClickUntil) return;
       const point = eventPoint(event.originalEvent);
       if (point) { props.onPoint(point); props.onInspect(point); }
     }));
     // Leaving or moving the map cancels a stationary inspection; panning itself never scans.
     element.addEventListener("mousemove", inspectCursor);
     element.addEventListener("mouseleave", clearInspection);
+    element.addEventListener("pointerdown", beginSelection);
+    element.addEventListener("pointermove", moveSelection);
+    element.addEventListener("pointerup", endSelection);
+    element.addEventListener("pointercancel", cancelSelection);
     map.on("dragstart zoomstart", clearInspection);
     map.on("moveend", drawGrid);
+    map.on("moveend", reportView);
     observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(invalidate);
     observer?.observe(element);
     refreshTimer = window.setInterval(() => {
       if (document.visibilityState === "visible" && tiles && !tiles.isLoading()) {
         untrack(() => props.onTerrainRefresh());
-        tiles.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${Date.now()}`);
+        terrainRefresh?.request();
       }
     }, 30_000);
     setReady(true);
+    reportView();
   });
-  onCleanup(() => { window.clearInterval(refreshTimer); element?.removeEventListener("mousemove", inspectCursor); element?.removeEventListener("mouseleave", clearInspection); observer?.disconnect(); map?.remove(); map = undefined; });
+  onCleanup(() => { window.clearInterval(refreshTimer); terrainRefresh?.dispose(); element?.removeEventListener("mousemove", inspectCursor); element?.removeEventListener("mouseleave", clearInspection); element?.removeEventListener("pointerdown", beginSelection); element?.removeEventListener("pointermove", moveSelection); element?.removeEventListener("pointerup", endSelection); element?.removeEventListener("pointercancel", cancelSelection); observer?.disconnect(); map?.remove(); map = undefined; });
+
+  createEffect(() => [ready(), props.selecting, props.region] as const, ([mounted, selecting, region]) => {
+    if (!mounted || !map) return;
+    if (selecting) { map.dragging.disable(); map.touchZoom.disable(); } else { map.dragging.enable(); map.touchZoom.enable(); cancelSelection(); }
+    element?.classList.toggle("minecraft-selecting", selecting === true);
+    if (region) drawDrag(region);
+  });
 
   createEffect(() => [ready(), props.view] as const, ([mounted, point]) => {
     if (mounted) map?.panTo(position(point), { animate: false });
   });
   createEffect(() => [ready(), props.grid] as const, () => untrack(drawGrid));
   createEffect(() => [ready(), props.refresh] as const, ([mounted, refresh]) => {
-    if (mounted && refresh > 0 && tiles && !tiles.isLoading()) tiles.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${refresh}`);
+    if (mounted && refresh > 0) terrainRefresh?.request();
   });
   createEffect(() => [ready(), props.prediction, props.area, props.matches] as const, ([mounted, prediction, area, matches]) => {
     if (!mounted || !predictionRenderer) return;
@@ -147,7 +206,7 @@ export default function MapCanvas(props: Props) {
         .bindTooltip(label(`${displayName(cell.biome)} · surface Y ${cell.y} · ${cell.x}, ${cell.z}`)).addTo(sampled);
     }
   });
-  createEffect(() => [ready(), props.area, props.matches, props.waypoints, props.players, props.structures] as const, ([mounted, area, matches, waypoints, players, structures]) => {
+  createEffect(() => [ready(), props.area, props.matches, props.waypoints, props.structures] as const, ([mounted, area, matches, waypoints, structures]) => {
     if (!mounted) return;
     markers.clearLayers();
     if (structures) for (const structure of area?.structures ?? []) {
@@ -158,14 +217,37 @@ export default function MapCanvas(props: Props) {
       .bindTooltip(label(`Block · ${match.x}, ${match.y}, ${match.z}`)).addTo(markers);
     for (const waypoint of waypoints) L.circleMarker(position(waypoint), { radius: 7, color: "#20130d", weight: 2, fillColor: "#ffcd6e", fillOpacity: 1 })
       .bindTooltip(label(`${waypoint.name} · ${waypoint.x}, ${waypoint.y}, ${waypoint.z}${waypoint.description ? ` · ${waypoint.description}` : ""}`)).addTo(markers);
-    for (const player of players) L.circleMarker(position(player), { radius: 5, color: "#172214", weight: 2, fillColor: "#a2ee8d", fillOpacity: 1 })
-      .bindTooltip(label(player.name)).addTo(markers);
   });
-  createEffect(() => [ready(), props.point, props.measuring, props.measureStart, props.areaRegion, props.matchRegion] as const, ([mounted, point, measuring, start, areaRegion, matchRegion]) => {
+  createEffect(() => [ready(), props.players] as const, ([mounted, players]) => {
+    if (!mounted) return;
+    playersLayer.clearLayers();
+    if (!settings.playerTracker.enabled) return;
+    for (const player of players) {
+      const head = document.createElement("img");
+      head.className = "minecraft-player-head"; head.alt = ""; head.width = 20; head.height = 20;
+      head.referrerPolicy = "no-referrer";
+      const fallback = "/minecraft/map/images/icon/player.png";
+      head.src = settings.playerTracker.heads && player.uuid ? `https://mc-heads.net/avatar/${player.uuid}/16` : fallback;
+      head.addEventListener("error", () => { head.src = fallback; }, { once: true });
+      const marker = L.marker(position(player), { icon: L.divIcon({ html: head, className: "minecraft-player-marker", iconSize: [20, 20], iconAnchor: [10, 10] }), keyboard: false, title: player.name });
+      if (settings.playerTracker.nameplates) {
+        const details = document.createElement("div"); details.className = "minecraft-player-details";
+        const name = label(player.name); name.className = "minecraft-player-name"; details.append(name);
+        for (const [kind, value, enabled] of [["health", player.health, settings.playerTracker.health], ["armor", player.armor, settings.playerTracker.armor]] as const) {
+          if (!enabled || value === null) continue;
+          const stat = document.createElement("img"); stat.className = "minecraft-player-vital"; stat.src = `/minecraft/map/images/${kind}/${value}.png`; stat.alt = `${kind === "health" ? "Health" : "Armor"}: ${value} of 20`; stat.width = 80; stat.height = 8;
+          details.append(stat);
+        }
+        marker.bindTooltip(details, { permanent: true, direction: "right", offset: [12, 0], pane: "minecraft-player-nameplates", className: "minecraft-player-nameplate", opacity: 1 });
+      }
+      marker.addTo(playersLayer);
+    }
+  });
+  createEffect(() => [ready(), props.point, props.measuring, props.measureStart, props.areaRegion, props.matchRegion, props.region] as const, ([mounted, point, measuring, start, areaRegion, matchRegion, region]) => {
     if (!mounted) return;
     selection.clearLayers();
-    const origin = scanOrigin(point, 8);
-    L.rectangle(bounds(origin.chunk_x * 16, origin.chunk_z * 16, (origin.chunk_x + 8) * 16, (origin.chunk_z + 8) * 16), { pane: "minecraft-selection-footprint", color: "#ffffff", weight: 1, dashArray: "5 5", fill: false, interactive: false }).addTo(selection);
+    const origin = region ?? scanOrigin(point, 8);
+    L.rectangle(bounds(origin.chunk_x * 16, origin.chunk_z * 16, (origin.chunk_x + origin.width) * 16, (origin.chunk_z + origin.height) * 16), { pane: "minecraft-selection-footprint", color: "#ffffff", weight: 1, dashArray: "5 5", fill: false, interactive: false }).addTo(selection);
     L.circleMarker(position(point), { radius: 6, color: "#ffffff", weight: 2, fill: false, interactive: false }).addTo(selection);
     for (const [region, color, title] of [[areaRegion, "#ffcd6e", "Surveyed area"], [matchRegion, "#68e4ef", "Block search area"]] as const) {
       if (region) L.rectangle(bounds(region.chunk_x * 16, region.chunk_z * 16, (region.chunk_x + region.width) * 16, (region.chunk_z + region.height) * 16), { color, weight: 2, fill: false })

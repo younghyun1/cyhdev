@@ -14,20 +14,21 @@ type Job = { valid: () => boolean; run: () => Promise<void> };
 
 /** One queued action per priority; pointer reads never disable explicit controls. */
 export function createMapQueryGate(allowed: () => boolean, busy: (value: boolean) => void) {
-  let running: "manual" | "hover" | null = null, manual: Job | null = null, hover: Job | null = null;
+  let running: "manual" | "hover" | "background" | null = null, manual: Job | null = null, hover: Job | null = null, background: Job | null = null;
   let timer: number | undefined, availableAt = 0;
   const pump = () => {
     window.clearTimeout(timer);
     if (running) return;
     if (manual && (!allowed() || !manual.valid())) { manual = null; busy(false); }
     if (hover && (!allowed() || !hover.valid())) hover = null;
-    const job = manual ?? hover;
+    if (background && (!allowed() || !background.valid())) background = null;
+    const job = manual ?? hover ?? background;
     if (!job) return;
     const wait = availableAt - Date.now();
     if (wait > 0) { timer = window.setTimeout(pump, wait); return; }
-    running = manual ? "manual" : "hover";
+    running = manual ? "manual" : hover ? "hover" : "background";
     const priority = running;
-    if (manual) manual = null; else hover = null;
+    if (manual) manual = null; else if (hover) hover = null; else background = null;
     void job.run().finally(() => {
       running = null; availableAt = Date.now() + 1000;
       if (priority === "manual") busy(false);
@@ -40,8 +41,10 @@ export function createMapQueryGate(allowed: () => boolean, busy: (value: boolean
       manual = job; busy(true); pump(); return true;
     },
     hover(job: Job) { if (allowed()) { hover = job; pump(); } },
-    clearHover() { hover = null; if (!manual) window.clearTimeout(timer); },
-    invalidate() { manual = null; hover = null; window.clearTimeout(timer); busy(running === "manual"); },
+    background(job: Job) { if (allowed()) { background = job; pump(); } },
+    clearBackground() { background = null; if (!manual && !hover) window.clearTimeout(timer); },
+    clearHover() { hover = null; if (!manual && !background) window.clearTimeout(timer); },
+    invalidate() { manual = null; hover = null; background = null; window.clearTimeout(timer); busy(running === "manual"); },
   };
 }
 

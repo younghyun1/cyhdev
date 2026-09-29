@@ -12,6 +12,9 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     page.on("console", message => { if (message.text().includes("STRICT_READ_UNTRACKED")) errors.push(message.text()); });
     await page.goto("/minecraft");
     await expect(page.locator(".leaflet-tile-loaded").first()).toBeVisible();
+    await expect(page.getByRole("region", { name: "Map menu" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    await page.getByLabel("Predicted biomes", { exact: true }).uncheck();
     await expect(page.getByRole("button", { name: "Survey selected area" })).toBeEnabled();
     expect(fixture.queries.map(query => query.kind)).toEqual(["catalog"]);
     await page.getByRole("button", { name: "Survey selected area" }).click();
@@ -44,8 +47,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.getByRole("button", { name: "Go to coordinates" }).click();
     await expect(page.locator(".minecraft-portal-coordinate")).toHaveText("X -10 · Z 20");
     await page.getByRole("button", { name: "Measure from here" }).click();
-    await page.locator(".minecraft-atlas-canvas").click({ position: { x: 150, y: 150 } });
-    await expect(page.locator(".minecraft-distance")).not.toContainText("0.0 blocks");
+    await page.getByRole("button", { name: "Close map menu" }).click();
+    await page.locator(".minecraft-atlas-canvas").click({ position: { x: viewport.width / 2, y: 180 } });
+    await page.getByRole("button", { name: "Travel", exact: true }).click();
+    await expect.poll(async () => Number.parseFloat(await page.locator(".minecraft-distance").textContent() ?? "0")).toBeGreaterThan(0);
     await page.getByRole("button", { name: "Places", exact: true }).click();
     await expect(page.getByRole("button", { name: /Oakridge base/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add waypoint" })).toHaveCount(0);

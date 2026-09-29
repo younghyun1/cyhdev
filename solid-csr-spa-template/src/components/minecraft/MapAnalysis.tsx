@@ -29,10 +29,8 @@ export function MapAnalysis(props: { readonly explorer: MapExplorer; readonly la
   const validHeight = () => height() === "" || (coordinate(height()) !== null && Number(height()) >= (props.explorer.currentWorld()?.min_y ?? -64) && Number(height()) <= (props.explorer.currentWorld()?.max_y ?? 319));
   return <section class="minecraft-tool-panel" aria-labelledby="minecraft-survey-title">
     <h2 id="minecraft-survey-title">Survey the landscape</h2>
-    <p class="minecraft-hint">Click the map, then survey the outlined 128 × 128 block area. Only already generated terrain is read.</p>
     <form onSubmit={event => { event.preventDefault(); props.explorer.scan(height() === "" ? null : coordinate(height())); }}>
       <label>Biome sampling height<input type="number" placeholder="Surface" value={height()} min={props.explorer.currentWorld()?.min_y} max={props.explorer.currentWorld()?.max_y} step="1" onInput={event => setHeight(event.currentTarget.value)} /></label>
-      <small>Leave empty for surface biomes; enter Y for cave biomes. Elevation always shows the surface.</small>
       <button class="minecraft-primary-action" type="submit" disabled={props.explorer.busy() || !props.explorer.currentWorld() || !validHeight()}>{props.explorer.busy() ? "Surveying…" : "Survey selected area"}</button>
     </form>
     <fieldset class="minecraft-layer-options"><legend>Map layers</legend>
@@ -41,15 +39,13 @@ export function MapAnalysis(props: { readonly explorer: MapExplorer; readonly la
       <label><input type="checkbox" checked={props.layers.structures()} onChange={event => props.layers.setStructures(event.currentTarget.checked)} /> Structure bounds</label>
       <label><input type="checkbox" checked={props.layers.grid()} onChange={event => props.layers.setGrid(event.currentTarget.checked)} /> Chunk grid</label>
     </fieldset>
-    <p class="minecraft-hint">Zoom in to see chunk boundaries. Elevation colors take priority over biome colors.</p>
     <Show when={props.explorer.area()}>{result => <>
       <ScanReceipt result={result()} />
-      <p class="minecraft-hint">Biome sample: {props.explorer.areaSlice() === null ? "surface" : `Y ${props.explorer.areaSlice()}`}. Gold outline: surveyed area. White outline: next survey.</p>
+      <small>Biome sample: {props.explorer.areaSlice() === null ? "surface" : `Y ${props.explorer.areaSlice()}`}</small>
       <label>Highlight biome<select value={props.layers.biome()} onChange={event => props.layers.setBiome(event.currentTarget.value)}><option value="">All sampled biomes</option><For each={biomes()}>{biome => <option value={biome}>{displayName(biome)}</option>}</For></select></label>
       <Show when={!props.layers.elevation()}><ul class="minecraft-biome-legend"><For each={biomes()}>{biome => <li><span aria-hidden="true" style={{ "background-color": biomeColor(biome) }} />{displayName(biome)}</li>}</For></ul></Show>
       <Show when={props.layers.elevation() && heights().length > 0}><div class="minecraft-height-legend"><span>Y {Math.min(...heights())}</span><span aria-hidden="true" /><span>Y {Math.max(...heights())}</span></div></Show>
       <h3>Structures ({result().structures.length})</h3>
-      <p class="minecraft-hint">Structures that start in the surveyed area, from the last saved metadata. Bounds can remain after a structure is changed or removed.</p>
       <ul class="minecraft-result-list"><For each={result().structures} fallback={<li>No structures returned for this survey.</li>}>{structure => <li><button class="minecraft-place-link" type="button" onClick={() => props.explorer.navigate({ x: Math.floor((structure.min_x + structure.max_x) / 2), z: Math.floor((structure.min_z + structure.max_z) / 2) })}>{displayName(structure.kind)}<small>{structure.min_x}, {structure.min_y}, {structure.min_z}</small></button></li>}</For></ul>
     </>}</Show>
   </section>;
@@ -66,16 +62,14 @@ export function MapBlockSearch(props: { readonly explorer: MapExplorer }) {
   };
   return <section class="minecraft-tool-panel" aria-labelledby="minecraft-block-title">
     <h2 id="minecraft-block-title">Find blocks nearby</h2>
-    <p class="minecraft-hint">Search a 64 × 64 block area around the selected point, in already generated terrain. This includes player-placed blocks.</p>
     <form onSubmit={event => { event.preventDefault(); if (valid()) props.explorer.searchBlocks(block(), Number(minY()), Number(maxY())); }}>
       <label>Block type<input list="minecraft-block-types" value={block()} maxlength={128} onInput={event => setBlock(event.currentTarget.value)} required /></label>
       <datalist id="minecraft-block-types"><For each={props.explorer.catalog()?.blocks ?? []}>{value => <option value={value} />}</For></datalist>
       <div class="minecraft-coordinate-fields"><label>Minimum Y<input type="number" value={minY()} min={props.explorer.currentWorld()?.min_y} max={props.explorer.currentWorld()?.max_y} step="1" required onInput={event => setMinY(event.currentTarget.value)} /></label><label>Maximum Y<input type="number" value={maxY()} min={props.explorer.currentWorld()?.min_y} max={props.explorer.currentWorld()?.max_y} step="1" required onInput={event => setMaxY(event.currentTarget.value)} /></label></div>
-      <small>At most 512 vertical blocks and 512 matches per search. Empty chunks are not generated.</small>
       <button class="minecraft-primary-action" type="submit" disabled={props.explorer.busy() || !valid()}>{props.explorer.busy() ? "Searching…" : "Search selected area"}</button>
     </form>
     <Show when={props.explorer.matches()}>{result => <>
-      <ScanReceipt result={result()} /><p class="minecraft-hint">{displayName(props.explorer.matchedBlock())} · Cyan outline: searched area.</p><h3>Matches ({result().matches.length})</h3>
+      <ScanReceipt result={result()} /><h3>{displayName(props.explorer.matchedBlock())}</h3><h3>Matches ({result().matches.length})</h3>
       <ul class="minecraft-result-list"><For each={result().matches} fallback={<li>No matches returned in the scanned chunks.</li>}>{match => <li><button class="minecraft-place-link" type="button" onClick={() => props.explorer.navigate(match)}>X {match.x} · Y {match.y} · Z {match.z}</button></li>}</For></ul>
     </>}</Show>
   </section>;

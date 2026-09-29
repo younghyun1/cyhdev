@@ -112,6 +112,25 @@ describe("Minecraft pointer inspection", () => {
     await tick(1000); expect(read).toHaveBeenCalledTimes(2);
   });
 
+  it("runs manual then hover before the latest background job without losing the cooldown timer", async () => {
+    const { gate, busy } = setup(); const pending = deferred<void>(); const order: string[] = [];
+    const job = (name: string) => ({ valid: () => true, run: async () => { order.push(name); } });
+    gate.hover({ valid: () => true, run: async () => { order.push("running hover"); await pending.promise; } });
+    gate.background(job("obsolete background"));
+    expect(gate.manual(job("manual"))).toBe(true);
+    gate.hover(job("queued hover"));
+    pending.resolve(); await tick();
+    gate.clearBackground(); gate.background(job("replacement background"));
+    await tick(999); expect(order).toEqual(["running hover"]);
+    await tick(1); expect(order).toEqual(["running hover", "manual"]);
+    expect(busy).toHaveBeenLastCalledWith(false);
+    gate.clearBackground(); gate.background(job("latest background"));
+    await tick(1000); expect(order).toEqual(["running hover", "manual", "queued hover"]);
+    // Clearing an unrelated slot must not cancel the remaining background cooldown.
+    gate.clearHover(); await tick(999); expect(order).toHaveLength(3);
+    await tick(1); expect(order).toEqual(["running hover", "manual", "queued hover", "latest background"]);
+  });
+
   it("discards obsolete world replies and stops hidden or cleared pointer reads", async () => {
     const { controller, context, read, hide } = setup(); const pending = deferred<MinecraftMapData>(); read.mockReturnValueOnce(pending.promise);
     controller.inspect({ x: 1, z: 1 }); await tick(500);

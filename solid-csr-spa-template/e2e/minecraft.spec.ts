@@ -34,7 +34,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     await page.getByRole("button", { name: /^Projects/ }).click();
     await page.getByRole("link", { name: "Minecraft Map" }).click();
     await expect(page).toHaveURL(/\/minecraft$/);
-    await expect(page.getByRole("heading", { name: "World atlas" })).toBeVisible();
+    await expect(page.getByLabel("Dimension", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "World atlas" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Original map", exact: true })).toHaveCount(0);
     await expect(page.getByRole("region", { name: "Interactive Minecraft terrain map" })).toBeVisible();
     expect(requests).toBe(0);
     const bounds = await page.locator(".minecraft-page").boundingBox();
@@ -45,9 +47,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     expect(bounds!.y + bounds!.height).toBeLessThan(viewport.height);
     expect(privateRequests).toBe(0);
     await expect(page.getByLabel("Global message")).toHaveCount(0);
-    await page.getByRole("button", { name: "Original map", exact: true }).click();
-    await expect(page.frameLocator(".minecraft-map").getByRole("heading")).toHaveText("World map");
-    expect(requests).toBe(1);
+    await expect(page.locator("iframe")).toHaveCount(0);
     await page.goto("/admin/operations");
     expect(privateRequests).toBe(0);
     await page.locator('a[href="/admin/minecraft"]:visible').click();
@@ -64,7 +64,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 
     const panel = await page.locator(".minecraft-admin").boundingBox();
     expect(panel!.x).toBeGreaterThanOrEqual(0);
     expect(panel!.x + panel!.width).toBeLessThanOrEqual(viewport.width);
-    expect(requests).toBe(1);
+    expect(requests).toBe(0);
     await page.getByRole("button", { name: "Save world" }).scrollIntoViewIfNeeded();
     await expect(page.getByRole("button", { name: "Save world" })).toBeInViewport();
     await page.screenshot({ path: test.info().outputPath("minecraft-controls.png") });

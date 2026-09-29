@@ -55,7 +55,6 @@ flowchart TB
     end
     subgraph Embedded["Separate browser surfaces · outside SPA routing"]
         Swagger["/swagger-ui/ · API explorer"]
-        Map["/minecraft/map/ · Squaremap"]
         EU5App["/eu5-locations-db/app/index.html · Embedded app"]
         WASM["/api/wasm-modules/{wasm_module_id}/wasm · Uploaded demo"]
     end
@@ -75,7 +74,6 @@ flowchart TB
     Operations --> Authorization & AdminMinecraft
     Site --> Construction & NotFound & CatchAll
     Operations -.-> Swagger
-    Minecraft -.-> Map
     EU5 -.-> EU5App
     Projects -.-> WASM
 ```
@@ -134,7 +132,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/photographs` | Public | `pages/photographs.tsx` |
 | `/photographs/:photograph_id` | Public | Same mounted gallery; URL-synced detail modal, null child component |
 | `/projects` | Public | `pages/projects.tsx`; demos open in an iframe modal or separately |
-| `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain explorer, explicit biome/elevation/structure scans, bounded block search, public waypoints with administrator-only editing, and original sandboxed map fallback |
+| `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain, floating tool menus, drag selection, automatic biome prediction and public waypoints, biome/elevation/structure surveys, bounded block search, and administrator-only waypoint editing |
 | `/geo-ip-db` | Public | `pages/geo_ip_info.tsx` |
 | `/eu5-locations-db` | Public | `pages/eu5_locations_db.tsx`; embedded EU5 app |
 | `/login` | Public | `pages/login.tsx`; password and OIDC entry/return UI |
@@ -155,7 +153,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | Surface | Owner and behavior |
 | --- | --- |
 | `/swagger-ui/` | [Backend Swagger router](../../../rust-be-template/src/routers/swagger.rs); links to `/api-docs/openapi.json`, which is schema data, not a page |
-| `/minecraft/map/` | [Squaremap router](../../../rust-be-template/src/routers/main_router/squaremap.rs); `/minecraft/map` redirects here; serves the configured public map directory or an unavailable response; runs in an opaque-origin CSP sandbox with in-memory storage, framed and direct ([browser security headers](../../architecture/be/browser-security-headers.md)) |
+| `/minecraft/map/` | [Squaremap router](../../../rust-be-template/src/routers/main_router/squaremap.rs); this URL, `/minecraft/map`, and `/minecraft/map/index.html` redirect to `/minecraft`. Only canonical `tiles/` JSON/PNG and `images/` PNG assets remain available; HTML, scripts, and styles are retired ([browser security headers](../../architecture/be/browser-security-headers.md)) |
 | `/eu5-locations-db/app/index.html` | [EU5 host source](../../../vendor/eu5-location-filter/web/index.html), staged by [xtask](../../../tools/xtask/src/eu5_web.rs); availability depends on staged/embedded assets; runs in an opaque-origin CSP sandbox and exchanges only the theme with its parent |
 | `/api/wasm-modules/{wasm_module_id}/wasm` | [Bundle serving](../../../rust-be-template/src/features/wasm/api/serve_bundle.rs); project records provide the link, so demo instances are data-driven rather than fixed SPA routes |
 
