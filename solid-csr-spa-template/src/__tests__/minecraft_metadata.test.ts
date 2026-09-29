@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { coordinate, distance, scanOrigin, selectionRegion, WORLD_LIMIT } from "../components/minecraft/mapMath";
+import { biomeColor, coordinate, displayName, distance, scanOrigin, selectionRegion, supportsSeedWorld, WORLD_LIMIT } from "../components/minecraft/mapMath";
 import { mapId, parsePlayers, parseSettings, parseWorlds } from "../services/squaremap";
 
 describe("Minecraft metadata boundaries", () => {
+  it("supports canonical dimensions and assigns distinct Nether and End biome colors", () => {
+    for (const world of ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"]) expect(supportsSeedWorld(world)).toBe(true);
+    expect(supportsSeedWorld("custom:nether")).toBe(false);
+    const biomes = ["nether_wastes", "soul_sand_valley", "crimson_forest", "warped_forest", "basalt_deltas", "the_end", "end_highlands", "end_midlands", "small_end_islands", "end_barrens"].map(name => `minecraft:${name}`);
+    expect(new Set(biomes.map(biomeColor)).size).toBe(biomes.length);
+    expect(displayName("minecraft:small_end_islands")).toBe("small end islands");
+  });
   it("rejects paths and oversized world lists from plugin metadata", () => {
     for (const value of ["../private", "a/b", "https://evil.test", "a\\b", "..", "a?script=1"]) expect(() => mapId(value)).toThrow();
     expect(() => parseWorlds({ worlds: Array.from({ length: 65 }, () => ({})) })).toThrow();

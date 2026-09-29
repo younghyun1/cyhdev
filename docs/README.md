@@ -41,6 +41,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Live-chat moderation](architecture/be/live-chat-moderation.md)
 - [Live-chat realtime limits](architecture/be/live-chat-realtime-limits.md)
 - [Minecraft terrain explorer](architecture/be/minecraft-explorer.md)
+- [Binary biome tile protocol](architecture/be/minecraft-tile-protocol.md)
 - [Minecraft atlas interface](design/fe/minecraft.md)
 
 ## Active Plans

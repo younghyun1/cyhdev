@@ -2,13 +2,17 @@
 
 use crate::{
     features::minecraft::api::{
-        seed_tile_binary,
+        seed_tile_binary, seed_tile_compression,
         seed_tile_dto::{MinecraftSeedPreset, MinecraftSeedTile},
     },
     routers::middleware::sensitive_response::sensitive_response_headers,
 };
 use axum::{Router, http::header, middleware::from_fn, routing::post};
-use std::{error::Error, io::Read, sync::Arc};
+use std::{
+    error::Error,
+    io::{Read, Write},
+    sync::Arc,
+};
 
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
@@ -70,7 +74,7 @@ fn decoded(bytes: &[u8], encoding: Option<&str>) -> TestResult<Vec<u8>> {
 }
 
 #[tokio::test]
-async fn binary_tiles_negotiate_native_compression_without_losing_private_headers() -> TestResult {
+async fn binary_tiles_negotiate_gzip_only_without_losing_private_headers() -> TestResult {
     let expected = binary()?;
     let bytes = Arc::new(expected.clone());
     let app = Router::new()
@@ -87,7 +91,8 @@ async fn binary_tiles_negotiate_native_compression_without_losing_private_header
                         bytes.as_ref().clone(),
                     )
                 }
-            }),
+            })
+            .layer(seed_tile_compression::layer()),
         )
         .layer(from_fn(sensitive_response_headers))
         .layer(super::layer());
@@ -96,10 +101,13 @@ async fn binary_tiles_negotiate_native_compression_without_losing_private_header
     let client = reqwest::Client::builder().no_gzip().no_zstd().build()?;
     for (accept, encoding) in [
         ("gzip", Some("gzip")),
-        ("zstd", Some("zstd")),
-        ("gzip, zstd", Some("zstd")),
+        ("zstd", None),
+        ("gzip, zstd", Some("gzip")),
         ("gzip;q=1, zstd;q=0.5", Some("gzip")),
+        ("gzip;q=0.5, zstd;q=1", Some("gzip")),
         ("gzip, zstd;q=0", Some("gzip")),
+        ("gzip;q=0, zstd", None),
+        ("gzip;q=0.5, identity;q=1, zstd", None),
         ("identity", None),
     ] {
         let response = client
@@ -148,9 +156,38 @@ async fn binary_tiles_negotiate_native_compression_without_losing_private_header
 }
 
 #[tokio::test]
+async fn unrelated_responses_keep_global_zstd_negotiation() -> TestResult {
+    let expected = binary()?;
+    let bytes = expected.clone();
+    let app = Router::new()
+        .route(
+            "/other",
+            post(move || {
+                let bytes = bytes.clone();
+                async move { ([(header::CONTENT_TYPE, "application/octet-stream")], bytes) }
+            }),
+        )
+        .layer(super::layer());
+    let server = Server::start(app).await?;
+    let response = reqwest::Client::builder()
+        .no_gzip()
+        .no_zstd()
+        .build()?
+        .post(format!("{}/other", server.origin))
+        .header(header::ACCEPT_ENCODING, "gzip, zstd")
+        .send()
+        .await?;
+    assert_eq!(response.headers()[header::CONTENT_ENCODING], "zstd");
+    assert_eq!(decoded(&response.bytes().await?, Some("zstd"))?, expected);
+    Ok(())
+}
+
+#[tokio::test]
 async fn already_encoded_binary_is_not_compressed_again() -> TestResult {
     let expected = binary()?;
-    let encoded = zstd::bulk::compress(&expected, 3)?;
+    let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::new(6));
+    encoder.write_all(&expected)?;
+    let encoded = encoder.finish()?;
     let bytes = Arc::new(encoded.clone());
     let app = Router::new()
         .route(
@@ -161,13 +198,14 @@ async fn already_encoded_binary_is_not_compressed_again() -> TestResult {
                     (
                         [
                             (header::CONTENT_TYPE, seed_tile_binary::CONTENT_TYPE),
-                            (header::CONTENT_ENCODING, "zstd"),
+                            (header::CONTENT_ENCODING, "gzip"),
                             (header::VARY, "Accept-Encoding"),
                         ],
                         bytes.as_ref().clone(),
                     )
                 }
-            }),
+            })
+            .layer(seed_tile_compression::layer()),
         )
         .layer(from_fn(sensitive_response_headers))
         .layer(super::layer());
@@ -180,7 +218,7 @@ async fn already_encoded_binary_is_not_compressed_again() -> TestResult {
         .header(header::ACCEPT_ENCODING, "gzip, zstd")
         .send()
         .await?;
-    assert_eq!(response.headers()[header::CONTENT_ENCODING], "zstd");
+    assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
     assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
     assert_eq!(
         response.headers()[header::CACHE_CONTROL],
@@ -188,6 +226,6 @@ async fn already_encoded_binary_is_not_compressed_again() -> TestResult {
     );
     let wire = response.bytes().await?;
     assert_eq!(wire.as_ref(), encoded);
-    assert_eq!(decoded(&wire, Some("zstd"))?, expected);
+    assert_eq!(decoded(&wire, Some("gzip"))?, expected);
     Ok(())
 }

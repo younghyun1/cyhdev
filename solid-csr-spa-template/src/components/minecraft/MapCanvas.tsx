@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import type { MinecraftMapData, MinecraftWaypoint } from "../../generated";
 import type { SquaremapPlayer, SquaremapSettings } from "../../services/squaremap";
 import { biomeColor, displayName, elevationColor, selectionRegion, WORLD_LIMIT, type scanOrigin, type MapPoint } from "./mapMath";
-import { createSeedTileLayer, createTerrainBoundary } from "./seedTileLayer";
+import { createSeedTileLayer, createTerrainBoundary, minimumMapZoom } from "./seedTileLayer";
 import { type SeedTiles } from "./seedTiles";
 import { createTerrainRefresh, type TerrainRefreshState } from "./terrainRefresh";
 
@@ -69,7 +69,11 @@ export default function MapCanvas(props: Props) {
   const scale = 2 ** settings.maxZoom;
   const position = (point: MapPoint): L.LatLngTuple => [-point.z / scale, point.x / scale];
   const bounds = (x: number, z: number, endX: number, endZ: number): L.LatLngBoundsExpression => [position({ x, z }), position({ x: endX, z: endZ })];
-  const invalidate = () => map?.invalidateSize({ animate: false });
+  const invalidate = () => {
+    if (!map || !element) return;
+    map.setMinZoom(minimumMapZoom(element.clientWidth, element.clientHeight, settings.maxZoom));
+    map.invalidateSize({ animate: false });
+  };
   const clearInspection = () => untrack(() => props.onInspect(null));
   const eventPoint = (event: MouseEvent): MapPoint | null => {
     if (!map) return null;
@@ -123,13 +127,13 @@ export default function MapCanvas(props: Props) {
 
   onSettled(() => {
     if (!element) return;
-    map = L.map(element, { crs: L.CRS.Simple, attributionControl: false, preferCanvas: true, minZoom: 0, maxZoom: settings.maxZoom + settings.extraZoom, zoomControl: true });
+    map = L.map(element, { crs: L.CRS.Simple, attributionControl: false, preferCanvas: true, minZoom: minimumMapZoom(element.clientWidth, element.clientHeight, settings.maxZoom), maxZoom: settings.maxZoom + settings.extraZoom, zoomControl: true });
     map.setView(position(untrack(() => props.view)), settings.defaultZoom);
     const reportZoom = () => { if (element && map) element.dataset.zoom = String(map.getZoom()); };
     map.on("zoomend", reportZoom); reportZoom();
     // Leaflet's own empty-image URL means canceled, so it never completes missing tiles.
     const missingTile = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')}`;
-    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minZoom: 0, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: missingTile });
+    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minZoom: -2, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: missingTile });
     terrainRefresh = createTerrainRefresh({ loading: () => tiles?.isLoading() ?? false, reload: nonce => { tiles?.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${nonce}`); }, report: state => untrack(() => props.onRefreshState(state)) });
     tiles.on("load", terrainRefresh.loaded).on("tileerror", terrainRefresh.failed).addTo(map);
     map.createPane("minecraft-seeds");

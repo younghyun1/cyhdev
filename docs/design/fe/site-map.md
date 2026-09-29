@@ -132,7 +132,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/photographs` | Public | `pages/photographs.tsx` |
 | `/photographs/:photograph_id` | Public | Same mounted gallery; URL-synced detail modal, null child component |
 | `/projects` | Public | `pages/projects.tsx`; demos open in an iframe modal or separately |
-| `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain over continuous seed-map tiles, floating tool menus, drag selection, public waypoints, biome/elevation/structure surveys, bounded block search, and administrator-only waypoint editing |
+| `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain over continuous Overworld/Nether/End seed-map tiles, bounded overview zoom, floating tool menus, drag selection, public waypoints, biome/elevation/structure surveys, bounded block search, and administrator-only waypoint editing |
 | `/geo-ip-db` | Public | `pages/geo_ip_info.tsx` |
 | `/eu5-locations-db` | Public | `pages/eu5_locations_db.tsx`; embedded EU5 app |
 | `/login` | Public | `pages/login.tsx`; password and OIDC entry/return UI |

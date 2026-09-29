@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MinecraftSeedTile, MinecraftSeedTileQuery } from "../generated";
 import { ApiContractError } from "../generated";
 import { createSeedTiles, decodeSeedTile, seedTileOrigin, type SeedTiles } from "../components/minecraft/seedTiles";
-import { alphaBoundary, decodeAlphaEdge } from "../components/minecraft/seedTileLayer";
+import { alphaBoundary, decodeAlphaEdge, minimumMapZoom, nativeTerrainZoom, packedAlphaAt } from "../components/minecraft/seedTileLayer";
 
 const query: MinecraftSeedTileQuery = { world: "minecraft:overworld", tile_x: -1, tile_z: 0, level: 0, y: 64 };
 function reply(q = query, change: Partial<MinecraftSeedTile> = {}): MinecraftSeedTile {
@@ -42,6 +42,17 @@ describe("continuous seed tile cache", () => {
     hold.resolve(reply({ ...query, tile_x: 0 })); await tick();
   });
 
+  it.each(["nether", "end"] as const)("keeps %s dimension samples distinct from cached Overworld biomes", async preset => {
+    const { store, read } = setup(); store.subscribe(query, () => undefined, () => 0); await tick();
+    const next = { ...query, world: preset === "nether" ? "minecraft:the_nether" : "minecraft:the_end", level: 5, tile_x: -244, tile_z: 122 };
+    read.mockImplementation(async q => reply(q, { preset, palette: [preset === "nether" ? "minecraft:warped_forest" : "minecraft:end_highlands"], indices: Array<number>(4096).fill(0) }));
+    store.configure(next.world, next.y, true); store.subscribe(next, () => undefined, () => 0); await tick();
+    expect(store.sample(query.world, { x: -1, z: 1 }, 64)).toBeNull();
+    const origin = seedTileOrigin(next);
+    expect(store.sample(next.world, { x: origin.x + 1, z: origin.z + 1 }, 64)).toMatchObject({ step: 128, sample: origin, name: preset === "nether" ? "minecraft:warped_forest" : "minecraft:end_highlands" });
+    expect(decodeSeedTile(reply({ ...next, level: 13 }, { preset }), { ...next, level: 13 })).toBeNull();
+  });
+
   it("limits requests to four and drops obsolete queued viewport work", async () => {
     const { store, read } = setup(); const held = deferred<MinecraftSeedTile>(); read.mockReturnValue(held.promise);
     const release: (() => void)[] = [];
@@ -53,6 +64,19 @@ describe("continuous seed tile cache", () => {
     expect(read).toHaveBeenCalledTimes(4); expect(store.stats().entries).toBe(0);
   });
 
+  it("retains admission slots for canceled native decoding across rapid context switches", async () => {
+    const { store, read } = setup(), pending: { query: MinecraftSeedTileQuery; response: ReturnType<typeof deferred<MinecraftSeedTile>> }[] = [];
+    read.mockImplementation(q => { const response = deferred<MinecraftSeedTile>(); pending.push({ query: q, response }); return response.promise; });
+    for (let x = 0; x < 4; ++x) store.subscribe({ ...query, tile_x: x }, () => undefined, () => 0);
+    store.configure("minecraft:the_nether", 64, true);
+    for (let x = 0; x < 4; ++x) store.subscribe({ ...query, world: "minecraft:the_nether", tile_x: x }, () => undefined, () => 0);
+    expect(read).toHaveBeenCalledTimes(4); expect(store.stats().running).toBe(4);
+    for (const job of pending.splice(0)) job.response.resolve(reply(job.query));
+    await tick(); expect(read).toHaveBeenCalledTimes(8); expect(store.stats().running).toBe(4);
+    for (const job of pending.splice(0)) job.response.resolve(reply(job.query, { preset: "nether" }));
+    await tick(); expect(store.stats().running).toBe(0);
+  });
+
   it("refreshes before expiry without flashing and clears expired permission on failure", async () => {
     const { store, read } = setup(), draw = vi.fn(); store.subscribe(query, draw, () => 0); await tick();
     read.mockRejectedValue(new Error("Unavailable"));
@@ -61,6 +85,28 @@ describe("continuous seed tile cache", () => {
     expect(store.sample(query.world, { x: -4, z: 0 }, 64)).toBeNull();
     read.mockImplementation(async q => reply(q)); await tick(6000);
     expect(draw.mock.lastCall?.[0]).not.toBeNull();
+  });
+
+  it("invalidates a transport's cached and pending images without exceeding four requests", async () => {
+    const { store, read } = setup(), draw = vi.fn(), cachedClose = vi.fn();
+    read.mockImplementationOnce(async q => ({ ...reply(q), image: { close: cachedClose } as unknown as ImageBitmap }));
+    store.subscribe(query, draw, () => 0); await tick();
+    const pending: { query: MinecraftSeedTileQuery; response: ReturnType<typeof deferred<MinecraftSeedTile & { image?: ImageBitmap }>> }[] = [];
+    read.mockImplementation(q => { const response = deferred<MinecraftSeedTile & { image?: ImageBitmap }>(); pending.push({ query: q, response }); return response.promise; });
+    for (let x = 0; x < 4; ++x) store.subscribe({ ...query, tile_x: x }, () => undefined, () => 1);
+    store.invalidate(); store.invalidate();
+    expect(cachedClose).toHaveBeenCalledOnce(); expect(store.stats()).toMatchObject({ entries: 0, bytes: 0, running: 4 });
+    expect(draw.mock.lastCall?.[0]).toBeNull(); expect(store.sample(query.world, { x: -1, z: 0 }, 64)).toBeNull();
+    expect(read).toHaveBeenCalledTimes(5); expect(read.mock.calls.slice(1).every(([, signal]) => signal.aborted)).toBe(true);
+    const staleClose = vi.fn();
+    for (const job of pending.splice(0)) job.response.resolve({ ...reply(job.query), image: { close: staleClose } as unknown as ImageBitmap });
+    await tick();
+    expect(staleClose).toHaveBeenCalledTimes(4); expect(store.stats()).toMatchObject({ entries: 0, running: 4 });
+    expect(read).toHaveBeenCalledTimes(9);
+    read.mockImplementation(async q => reply(q));
+    for (const job of pending.splice(0)) job.response.resolve(reply(job.query));
+    await tick();
+    expect(store.stats()).toMatchObject({ entries: 5, running: 0 }); expect(draw.mock.lastCall?.[0]).not.toBeNull();
   });
 
   it("expires permission at its exact deadline between polling ticks", async () => {
@@ -106,6 +152,19 @@ describe("continuous seed tile cache", () => {
     expect(store.stats().entries).toBeLessThan(420);
   });
 
+  it("accounts native bitmap memory and closes resources after expiry and stale completion", async () => {
+    const { store, read } = setup(), close = vi.fn(), image = { width: 64, height: 64, close } as unknown as ImageBitmap;
+    read.mockImplementation(async q => ({ ...reply(q), image }));
+    store.subscribe(query, () => undefined, () => 0); await tick();
+    expect(store.stats().bytes).toBeGreaterThan(40_000);
+    read.mockRejectedValue(new Error("Unavailable")); await tick(15_000);
+    expect(close).toHaveBeenCalledOnce(); expect(store.stats().bytes).toBe(0);
+    const late = deferred<MinecraftSeedTile & { image: ImageBitmap }>(), staleClose = vi.fn(); read.mockReturnValueOnce(late.promise);
+    store.refresh(); store.configure("minecraft:the_nether", 64, true);
+    late.resolve({ ...reply(), image: { width: 64, height: 64, close: staleClose } as unknown as ImageBitmap }); await tick();
+    expect(staleClose).toHaveBeenCalledOnce(); expect(store.stats().entries).toBe(0);
+  });
+
   it("rejects a different profile at the same timestamp and clears older tiles for a newer profile", async () => {
     const { store, read } = setup(), first = vi.fn(); store.subscribe(query, first, () => 0); await tick();
     read.mockImplementation(async q => reply(q, { profile_epoch: "b".repeat(64) }));
@@ -119,6 +178,20 @@ describe("continuous seed tile cache", () => {
 });
 
 describe("rendered terrain frontier", () => {
+  it("bounds negative-zoom PNG fan-out for wide viewports and keeps native lookup at zero", () => {
+    expect(minimumMapZoom(1440, 1000, 3)).toBe(-2);
+    expect(minimumMapZoom(3840, 2160, 3)).toBe(-1);
+    expect(minimumMapZoom(7680, 4320, 3)).toBe(0);
+    expect(minimumMapZoom(1440, 1000, 12)).toBe(0);
+    for (const zoom of [-2, -1, 0]) expect(nativeTerrainZoom(zoom, 3)).toBe(0);
+    expect(nativeTerrainZoom(5, 3)).toBe(3);
+  });
+  it("stores packed alpha without changing frontier topology or negative-coordinate lookup", () => {
+    const half = Uint8Array.from([255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0]);
+    const packed = Uint8Array.from([0b00110011, 0b00110011]);
+    expect([...half].map((_, i) => packedAlphaAt(packed, i))).toEqual([...half]);
+    expect(alphaBoundary(packed, () => null, () => true, 4, true)).toEqual(alphaBoundary(half, () => null, () => true, 4));
+  });
   it("does not draw tile seams or unknown-neighbor outlines", () => {
     const opaque = new Uint8Array(16).fill(255);
     expect(alphaBoundary(opaque, () => 255, () => true, 4)).toHaveLength(0);

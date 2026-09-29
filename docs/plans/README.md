@@ -6,6 +6,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
+- [Minecraft dimensions and compact tiles](2026-09-28-minecraft-dimensions-and-tiles.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
