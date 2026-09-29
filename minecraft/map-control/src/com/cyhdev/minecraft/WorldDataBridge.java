@@ -152,6 +152,7 @@ final class WorldDataBridge implements AutoCloseable {
     private WorldProtocol.PredictionResponse prediction(WorldProtocol.Request request, Context context, long sampledAt,
                                                         SocketChannel client, long expires) throws Exception {
         PredictionContext.Snapshot before = sync(() -> predictions.capture(context.world(), request), client, expires);
+        String packsFingerprint = predictionPacks(before, expires);
         List<Boolean> absent = new ArrayList<>(request.width() * request.height());
         for (int dz = 0; dz < request.height(); dz++) {
             for (int dx = 0; dx < request.width(); dx++) {
@@ -165,8 +166,16 @@ final class WorldDataBridge implements AutoCloseable {
             }
         }
         PredictionContext.Snapshot after = sync(() -> predictions.capture(context.world(), request), client, expires);
+        if (!packsFingerprint.equals(predictionPacks(after, expires))) throw new PredictionContext.Unsupported();
+        checkActive(client, expires);
         return new WorldProtocol.PredictionResponse("prediction_context", request.world(), after.worldId(), sampledAt,
-            after.seed(), after.preset(), after.revision(), PredictionContext.combine(request, before, after, absent));
+            after.seed(), after.preset(), predictions.verifiedRevision(after, packsFingerprint),
+            PredictionContext.combine(request, before, after, absent));
+    }
+
+    private static String predictionPacks(PredictionContext.Snapshot snapshot, long expires) throws PredictionContext.Unsupported {
+        try { return PredictionPacks.fingerprint(snapshot.packs(), expires); }
+        catch (IOException error) { throw new PredictionContext.Unsupported(); }
     }
 
     private static WorldProtocol.Response response(WorldProtocol.Request request, long sampledAt, int scanned, int missing,
