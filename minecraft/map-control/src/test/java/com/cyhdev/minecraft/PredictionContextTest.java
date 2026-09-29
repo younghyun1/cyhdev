@@ -48,7 +48,8 @@ public final class PredictionContextTest {
     }
 
     private static PredictionContext.Snapshot snapshot(Path directory, String revision, List<String> states) {
-        return new PredictionContext.Snapshot("minecraft:overworld", "world-id", 1, "large_biomes", revision, directory, states);
+        return new PredictionContext.Snapshot("minecraft:overworld", "world-id", 1, "large_biomes", revision, directory,
+            new PredictionPacks.Selection(directory, List.of("vanilla", "paper")), states);
     }
 
     @FunctionalInterface private interface Checked { void run() throws IOException; }

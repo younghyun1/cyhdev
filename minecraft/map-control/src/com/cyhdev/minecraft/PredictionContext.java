@@ -8,7 +8,6 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
@@ -16,6 +15,7 @@ import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
+import net.minecraft.world.level.storage.LevelResource;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
@@ -25,7 +25,6 @@ import xyz.jpenilla.squaremap.common.data.MapWorldInternal;
 
 /** Version-locked read-only adapter. Bukkit does not expose effective presets or pending chunk holders. */
 final class PredictionContext {
-    private static final Set<String> PACKS = Set.of("vanilla", "paper");
     private final byte[] revisionKey = new byte[32];
 
     PredictionContext() { new SecureRandom().nextBytes(revisionKey); }
@@ -36,7 +35,7 @@ final class PredictionContext {
     }
 
     record Snapshot(String world, String worldId, long seed, String preset, String revision,
-                    Path regionDirectory, List<String> states) {
+                    Path regionDirectory, PredictionPacks.Selection packs, List<String> states) {
         @Override public String toString() { return "PredictionSnapshot[private profile]"; }
     }
 
@@ -48,10 +47,10 @@ final class PredictionContext {
                     || world.getEnvironment() != World.Environment.NORMAL || world.getMinHeight() != -64 || world.getMaxHeight() != 320
                     || world.getGenerator() != null || world.getBiomeProvider() != null) throw new Unsupported();
             var enabledPacks = Bukkit.getServer().getDatapackManager().getEnabledPacks();
-            if (enabledPacks.isEmpty() || enabledPacks.size() > PACKS.size()) throw new Unsupported();
+            if (enabledPacks.isEmpty() || enabledPacks.size() > PredictionPacks.MAX_PACKS) throw new Unsupported();
             List<String> packNames = new ArrayList<>();
             for (var pack : enabledPacks) {
-                if (!PACKS.contains(pack.getName())) throw new Unsupported();
+                if (!PredictionPacks.supportedName(pack.getName())) throw new Unsupported();
                 packNames.add(pack.getName());
             }
             if (!packNames.contains("vanilla")) throw new Unsupported();
@@ -94,12 +93,18 @@ final class PredictionContext {
             // The keyed digest prevents the public revision from becoming a seed dictionary oracle.
             String revision = revision(worldId + "\n" + seed + "\n" + preset + "\n" + Bukkit.getVersion()
                 + "\n" + String.join(",", packNames) + "\n" + System.identityHashCode(noise.generatorSettings().value())
-                + "\n" + System.identityHashCode(biomes) + "\n" + System.identityHashCode(level.getChunkSource().randomState()));
-            return new Snapshot(request.world(), worldId, seed, preset, revision, world.getWorldPath().resolve("region"), List.copyOf(states));
+                + "\n" + System.identityHashCode(biomes) + "\n" + System.identityHashCode(level.getChunkSource().randomState())
+                + "\n" + System.identityHashCode(level.getServer().getResourceManager()));
+            var packs = new PredictionPacks.Selection(level.getServer().getWorldPath(LevelResource.DATAPACK_DIR), List.copyOf(packNames));
+            return new Snapshot(request.world(), worldId, seed, preset, revision, world.getWorldPath().resolve("region"), packs, List.copyOf(states));
         } catch (LinkageError | RuntimeException error) {
             // An incompatible Paper/squaremap implementation must disable predictions, not guess its state.
             throw new Unsupported();
         }
+    }
+
+    String verifiedRevision(Snapshot snapshot, String packsFingerprint) throws Unsupported {
+        return revision(snapshot.revision() + "\n" + packsFingerprint);
     }
 
     private String revision(String input) throws Unsupported {
