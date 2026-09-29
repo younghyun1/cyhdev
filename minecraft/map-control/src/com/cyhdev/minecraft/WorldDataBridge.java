@@ -110,6 +110,7 @@ final class WorldDataBridge implements AutoCloseable {
         if (request.kind().equals("catalog")) return sync(() -> catalog(sampledAt), client, expires);
         Context context = sync(() -> prepare(request), client, expires);
         if (request.kind().equals("prediction_context")) return prediction(request, context, sampledAt, client, expires);
+        if (request.kind().equals("seed_profile")) return seedProfile(request, context, client, expires);
         List<WorldProtocol.Cell> cells = new ArrayList<>();
         LinkedHashSet<WorldProtocol.Structure> structures = new LinkedHashSet<>();
         List<WorldProtocol.Match> matches = new ArrayList<>();
@@ -176,6 +177,21 @@ final class WorldDataBridge implements AutoCloseable {
     private static String predictionPacks(PredictionContext.Snapshot snapshot, long expires) throws PredictionContext.Unsupported {
         try { return PredictionPacks.fingerprint(snapshot.packs(), expires); }
         catch (IOException error) { throw new PredictionContext.Unsupported(); }
+    }
+
+    private WorldProtocol.SeedProfileResponse seedProfile(WorldProtocol.Request request, Context context,
+                                                          SocketChannel client, long expires) throws Exception {
+        PredictionContext.Snapshot before = sync(() -> predictions.capture(context.world(), request), client, expires);
+        String fingerprint = predictionPacks(before, expires);
+        if (!fingerprint.equals(predictionPacks(before, expires))) throw new PredictionContext.Unsupported();
+        // The final policy capture follows disk inspection so its freshness is not extended by slow reads.
+        PredictionContext.Snapshot after = sync(() -> predictions.capture(context.world(), request), client, expires);
+        PredictionContext.requireSameProfile(before, after);
+        checkActive(client, expires);
+        var visibility = after.visibility();
+        if (visibility == null) throw new PredictionContext.Unsupported();
+        return new WorldProtocol.SeedProfileResponse("seed_profile", request.world(), after.worldId(), System.currentTimeMillis(),
+            after.seed(), after.preset(), predictions.verifiedRevision(after, fingerprint), visibility.worldBorder(), visibility.shapes());
     }
 
     private static WorldProtocol.Response response(WorldProtocol.Request request, long sampledAt, int scanned, int missing,
