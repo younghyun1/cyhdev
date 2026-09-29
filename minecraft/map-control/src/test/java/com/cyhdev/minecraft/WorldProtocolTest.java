@@ -32,6 +32,12 @@ public final class WorldProtocolTest {
         reject(area(0, 0, 8, 8, "null").replace("\"area\"", "\"prediction_context\""));
         reject(area(0, 0, 8, 8, "null").replace("\"area\"", "\"prediction_context\"").replace(",\"y\":null", ""));
         reject(area(0, 0, 9, 8, "64").replace("\"area\"", "\"prediction_context\""));
+        var profile = WorldProtocol.parse("{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\"}");
+        check(profile.width() == 0 && profile.height() == 0 && profile.y() == null, "Seed profile requests no chunks or height slice");
+        reject("{\"kind\":\"seed_profile\"}");
+        reject("{\"kind\":\"seed_profile\",\"world\":\"overworld\"}");
+        reject("{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\",\"y\":64}");
+        reject("{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\",\"chunk_x\":0}");
     }
 
     private static void rejectsMalformedAndAmbiguousJson() throws IOException {
@@ -105,6 +111,16 @@ public final class WorldProtocolTest {
         String privateJson = StandardCharsets.UTF_8.decode(WorldProtocol.encode(prediction)).toString();
         check(privateJson.contains("\"seed\":-9223372036854775808"), "Private signed seed remains numeric");
         check(!prediction.toString().contains("-9223372036854775808"), "Diagnostic text does not expose seed");
+        var profile = new WorldProtocol.SeedProfileResponse("seed_profile", "minecraft:overworld", "test", 2,
+            Long.MIN_VALUE, "large_biomes", "revision", new WorldProtocol.Bounds(-10, -20, 10, 20),
+            List.of(new WorldProtocol.RectangleVisibility("rectangle", -1, -2, 1, 2),
+                new WorldProtocol.CircleVisibility("circle", 3, 4, 5)));
+        String profileJson = StandardCharsets.UTF_8.decode(WorldProtocol.encode(profile)).toString();
+        check(profileJson.contains("\"seed\":-9223372036854775808"), "Seed profile preserves signed numeric seed");
+        check(!profile.toString().contains("-9223372036854775808"), "Seed profile diagnostics redact seed");
+        check(profileJson.contains("\"world_border\":{\"min_x\":-10,\"min_z\":-20,\"max_x\":10,\"max_z\":20}"), "Inclusive world border wire shape");
+        check(profileJson.contains("\"kind\":\"rectangle\"") && profileJson.contains("\"kind\":\"circle\"")
+            && !profileJson.contains("coverage"), "Tagged visibility wire shapes without chunk coverage");
     }
 
     private static String area(int x, int z, int width, int height, String y) {

@@ -35,7 +35,7 @@ final class PredictionContext {
     }
 
     record Snapshot(String world, String worldId, long seed, String preset, String revision,
-                    Path regionDirectory, PredictionPacks.Selection packs, List<String> states) {
+                    Path regionDirectory, PredictionPacks.Selection packs, PredictionVisibility.Policy visibility, List<String> states) {
         @Override public String toString() { return "PredictionSnapshot[private profile]"; }
     }
 
@@ -68,43 +68,52 @@ final class PredictionContext {
             if (mapped.isEmpty() || !(mapped.get() instanceof MapWorldInternal mapWorld)) throw new Unsupported();
             var limits = mapWorld.visibilityLimit();
             if (limits.getShapes().size() > 64) throw new Unsupported();
-            var holders = level.moonrise$getChunkTaskScheduler().chunkHolderManager;
-            List<String> states = new ArrayList<>(request.width() * request.height());
-            for (int dz = 0; dz < request.height(); dz++) {
-                for (int dx = 0; dx < request.width(); dx++) {
-                    int x = request.chunk_x() + dx;
-                    int z = request.chunk_z() + dz;
-                    boolean visible = true;
-                    for (int blockZ = z * 16; visible && blockZ < z * 16 + 16; blockZ++) {
-                        for (int blockX = x * 16; blockX < x * 16 + 16; blockX++) {
-                            if (!limits.shouldRenderColumn(blockX, blockZ)
-                                    || !level.getWorldBorder().isWithinBounds(blockX, blockZ)) { visible = false; break; }
-                        }
-                    }
-                    if (!visible) { states.add("excluded"); continue; }
-                    var holder = holders.getChunkHolder(x, z);
-                    if (holder == null) { states.add("absent"); continue; }
-                    var chunk = holder.getCurrentChunk();
-                    states.add(chunk != null && chunk.getPersistedStatus() == ChunkStatus.FULL ? "generated" : "unknown");
-                }
-            }
+            var visibility = request.kind().equals("seed_profile") ? PredictionVisibility.capture(limits.getShapes(), level.getWorldBorder()) : null;
+            List<String> states = visibility == null ? coverage(mapWorld, request) : List.of();
             long seed = level.getSeed();
             String worldId = world.getUID().toString();
             // The keyed digest prevents the public revision from becoming a seed dictionary oracle.
             String revision = revision(worldId + "\n" + seed + "\n" + preset + "\n" + Bukkit.getVersion()
                 + "\n" + String.join(",", packNames) + "\n" + System.identityHashCode(noise.generatorSettings().value())
                 + "\n" + System.identityHashCode(biomes) + "\n" + System.identityHashCode(level.getChunkSource().randomState())
-                + "\n" + System.identityHashCode(level.getServer().getResourceManager()));
+                + "\n" + System.identityHashCode(level.getServer().getResourceManager()) + "\n" + visibility);
             var packs = new PredictionPacks.Selection(level.getServer().getWorldPath(LevelResource.DATAPACK_DIR), List.copyOf(packNames));
-            return new Snapshot(request.world(), worldId, seed, preset, revision, world.getWorldPath().resolve("region"), packs, List.copyOf(states));
+            return new Snapshot(request.world(), worldId, seed, preset, revision, world.getWorldPath().resolve("region"), packs, visibility, states);
         } catch (LinkageError | RuntimeException error) {
             // An incompatible Paper/squaremap implementation must disable predictions, not guess its state.
             throw new Unsupported();
         }
     }
 
+    /** Only the legacy area query inspects chunk holders; seed profiles never access them. */
+    private static List<String> coverage(MapWorldInternal mapWorld, WorldProtocol.Request request) {
+        var level = mapWorld.serverLevel();
+        var limits = mapWorld.visibilityLimit();
+        var holders = level.moonrise$getChunkTaskScheduler().chunkHolderManager;
+        List<String> states = new ArrayList<>(request.width() * request.height());
+        for (int dz = 0; dz < request.height(); dz++) {
+            for (int dx = 0; dx < request.width(); dx++) {
+                int x = request.chunk_x() + dx;
+                int z = request.chunk_z() + dz;
+                boolean visible = true;
+                for (int blockZ = z * 16; visible && blockZ < z * 16 + 16; blockZ++) {
+                    for (int blockX = x * 16; blockX < x * 16 + 16; blockX++) {
+                        if (!limits.shouldRenderColumn(blockX, blockZ)
+                                || !level.getWorldBorder().isWithinBounds(blockX, blockZ)) { visible = false; break; }
+                    }
+                }
+                if (!visible) { states.add("excluded"); continue; }
+                var holder = holders.getChunkHolder(x, z);
+                if (holder == null) { states.add("absent"); continue; }
+                var chunk = holder.getCurrentChunk();
+                states.add(chunk != null && chunk.getPersistedStatus() == ChunkStatus.FULL ? "generated" : "unknown");
+            }
+        }
+        return List.copyOf(states);
+    }
+
     String verifiedRevision(Snapshot snapshot, String packsFingerprint) throws Unsupported {
-        return revision(snapshot.revision() + "\n" + packsFingerprint);
+        return revision(snapshot.revision() + "\n" + packsFingerprint + "\n" + snapshot.visibility());
     }
 
     private String revision(String input) throws Unsupported {
@@ -117,8 +126,7 @@ final class PredictionContext {
 
     static List<WorldProtocol.Coverage> combine(WorldProtocol.Request request, Snapshot before, Snapshot after,
                                                List<Boolean> diskAbsent) throws Unsupported {
-        if (!before.worldId().equals(after.worldId()) || !before.revision().equals(after.revision())
-                || before.seed() != after.seed() || !before.preset().equals(after.preset())) throw new Unsupported();
+        requireSameProfile(before, after);
         List<WorldProtocol.Coverage> result = new ArrayList<>(diskAbsent.size());
         for (int i = 0; i < diskAbsent.size(); i++) {
             String first = before.states().get(i);
@@ -131,5 +139,11 @@ final class PredictionContext {
             result.add(new WorldProtocol.Coverage(request.chunk_x() + i % request.width(), request.chunk_z() + i / request.width(), state));
         }
         return List.copyOf(result);
+    }
+
+    static void requireSameProfile(Snapshot before, Snapshot after) throws Unsupported {
+        if (!before.worldId().equals(after.worldId()) || !before.revision().equals(after.revision())
+                || before.seed() != after.seed() || !before.preset().equals(after.preset())
+                || !java.util.Objects.equals(before.visibility(), after.visibility())) throw new Unsupported();
     }
 }

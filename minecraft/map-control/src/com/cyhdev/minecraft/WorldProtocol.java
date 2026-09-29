@@ -47,7 +47,7 @@ final class WorldProtocol {
     record Cell(int x, int z, int y, String biome) {}
     record Structure(String kind, int min_x, int min_y, int min_z, int max_x, int max_y, int max_z) {}
     record Match(int x, int y, int z) {}
-    sealed interface WireResponse permits Response, PredictionResponse {}
+    sealed interface WireResponse permits Response, PredictionResponse, SeedProfileResponse {}
     record Response(String kind, String world, long sampled_at_ms, int scanned_chunks, int missing_chunks,
                     boolean truncated, List<WorldInfo> worlds, List<String> blocks, List<Cell> cells,
                     List<Structure> structures, List<Match> matches) implements WireResponse {}
@@ -56,6 +56,16 @@ final class WorldProtocol {
     record PredictionResponse(String kind, String world, String world_id, long sampled_at_ms, long seed,
                               String preset, String profile_revision, List<Coverage> coverage) implements WireResponse {
         @Override public String toString() { return "PredictionResponse[private profile]"; }
+    }
+    record Bounds(int min_x, int min_z, int max_x, int max_z) {}
+    sealed interface VisibilityShape permits RectangleVisibility, CircleVisibility {}
+    record RectangleVisibility(String kind, int min_x, int min_z, int max_x, int max_z) implements VisibilityShape {}
+    record CircleVisibility(String kind, int center_x, int center_z, int radius) implements VisibilityShape {}
+    /** Private seed metadata only; visibility is a union intersected with the world border. */
+    record SeedProfileResponse(String kind, String world, String world_id, long sampled_at_ms, long seed,
+                               String preset, String profile_revision, Bounds world_border,
+                               List<VisibilityShape> visibility) implements WireResponse {
+        @Override public String toString() { return "SeedProfileResponse[private profile]"; }
     }
 
     static boolean identifier(String value) {
@@ -93,6 +103,10 @@ final class WorldProtocol {
         if ("catalog".equals(kind)) {
             if (!fields.equals(Set.of("kind"))) throw new IOException("Unexpected catalog fields");
             return new Request(kind, null, 0, 0, 0, 0, null, null, 0, 0);
+        }
+        if ("seed_profile".equals(kind)) {
+            if (!fields.equals(Set.of("kind", "world")) || !identifier(strings.get("world"))) throw new IOException("Invalid seed profile request");
+            return new Request(kind, strings.get("world"), 0, 0, 0, 0, null, null, 0, 0);
         }
         boolean prediction = "prediction_context".equals(kind);
         boolean area = "area".equals(kind) || prediction;
