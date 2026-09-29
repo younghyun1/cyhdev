@@ -1,6 +1,6 @@
 # Minecraft browser-zoom tile coverage
 
-Status: complete, 2026-09-29. Missing prediction tiles at extreme browser zoom are repaired locally and mirrored to the public integration repository.
+Status: complete, 2026-09-29. The initial coverage fix was mirrored to the public integration repository. Its deliberate detail reduction is superseded by [restoring full prediction resolution](2026-09-29-minecraft-prediction-resolution.md).
 
 Checkout: website `main` at implementation commit `11189aa` and overview regression commit `8806665`, seven commits ahead of fetched `origin/main` before this documentation commit. Public integrations are pushed at [`037858a`](https://github.com/younghyun1/cyh_minecraft_plugins/commit/037858ab15fdff25ce4e6f3d6b655b20ee5ea474). The Minecraft service was not touched.
 
