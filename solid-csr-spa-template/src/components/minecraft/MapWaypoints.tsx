@@ -68,7 +68,6 @@ export default function MapWaypoints(props: Props) {
   onCleanup(() => { active = false; controller.abort(); });
   return <section class="minecraft-tool-panel" aria-labelledby="minecraft-waypoint-title" aria-busy={busy() || loading() ? "true" : "false"}>
     <h2 id="minecraft-waypoint-title">Named waypoints</h2>
-    <p class="minecraft-hint">Public places. Administrators can add or edit them.</p>
     <Show when={error()}><p role="alert">{error()}</p></Show>
     <div class="minecraft-button-row"><button type="button" disabled={busy() || loading()} onClick={() => void load()}>Refresh waypoints</button><Show when={isSuperuser() === true}><button type="button" disabled={busy() || loading()} onClick={() => edit()}>Add waypoint</button></Show></div>
     <Show when={loading()}><p>Loading waypoints…</p></Show>

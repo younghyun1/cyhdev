@@ -17,10 +17,6 @@ const here = import.meta.dirname;
 const policy = JSON.parse(
   readFileSync(resolve(here, "security-headers.json"), "utf8"),
 ) as SecurityHeaders;
-const storageShim = readFileSync(
-  resolve(here, "../../rust-be-template/src/routers/main_router/squaremap_storage_shim.js"),
-  "utf8",
-);
 const eu5HostPath = resolve(here, "../../vendor/eu5-location-filter/web/index.html");
 const id = "11111111-1111-4111-8111-111111111111";
 const map = readFileSync(resolve(here, "../../docs/design/fe/site-map.md"), "utf8");
@@ -51,14 +47,12 @@ async function serveWithApplicationPolicy(page: Page): Promise<void> {
   });
 }
 
-/** Stands in for squaremap: its layer control needs localStorage in the sandbox. */
+/** Legacy HTML must never be embedded by the native map. */
 async function serveSandboxedMap(page: Page): Promise<void> {
   await page.route("**/minecraft/map/", (route) => route.fulfill({
     contentType: "text/html",
     headers: { "content-security-policy": policy.mapPolicy, "access-control-allow-origin": "*" },
-    body: `<!doctype html><html><head><script>${storageShim}</script></head><body><h1>World map</h1>`
-      + `<script>localStorage.setItem("hide_players", "true");`
-      + `document.body.dataset.probe = localStorage.getItem("hide_players") + " " + self.origin;</script></body></html>`,
+    body: "<!doctype html><html><body><h1>Retired map interface</h1></body></html>",
   }));
 }
 
@@ -148,22 +142,13 @@ function frameAt(page: Page, suffix: string): Frame | undefined {
   return page.frames().find((frame) => frame.url().endsWith(suffix));
 }
 
-test("the map runs in an opaque origin with in-memory storage", async ({ page }) => {
+test("the native map does not load the retired squaremap document", async ({ page }) => {
   const consoleErrors = await prepare(page, "/minecraft");
   await page.goto("/minecraft", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Original map", exact: true }).click();
-  await expect(page.frameLocator(".minecraft-map").getByRole("heading")).toHaveText("World map");
-  const frame = frameAt(page, "/minecraft/map/");
-  expect(frame).toBeDefined();
-  expect(await frame?.evaluate(() => document.body.dataset.probe)).toBe("true null");
-  // The opaque origin cannot read the parent's storage or cookies.
-  expect(await frame?.evaluate(() => {
-    try {
-      return window.parent.document.title;
-    } catch {
-      return "blocked";
-    }
-  })).toBe("blocked");
+  await expect(page.getByRole("region", { name: "Interactive Minecraft terrain map" })).toBeVisible();
+  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Original map", exact: true })).toHaveCount(0);
+  expect(frameAt(page, "/minecraft/map/")).toBeUndefined();
   expect(consoleErrors).toEqual([]);
 });
 

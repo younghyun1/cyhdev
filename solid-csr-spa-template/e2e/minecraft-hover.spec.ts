@@ -6,13 +6,16 @@ import { emptyMapData, installMinecraftMapMocks } from "./minecraft-fixtures";
 type AreaQuery = Extract<MinecraftMapQuery, { kind: "area" }>;
 const isInspection = (query: MinecraftMapQuery): query is AreaQuery => query.kind === "area" && query.width === 1 && query.height === 1;
 
-async function setup(page: Page) {
+async function setup(page: Page, predictions = false) {
   await page.clock.install();
   await installApiMocks(page, "logged-out");
   await setUiPreferences(page, "en-US", "light");
   const fixture = await installMinecraftMapMocks(page);
   await page.goto("/minecraft");
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(page.getByRole("button", { name: "Survey selected area" })).toBeEnabled();
+  if (!predictions) await page.getByLabel("Predicted biomes", { exact: true }).uncheck();
+  await page.getByRole("button", { name: "Close map menu" }).click();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
   return fixture;
 }
@@ -21,7 +24,8 @@ async function setup(page: Page) {
 async function screenPoint(page: Page, x: number, z: number) {
   const box = await page.locator(".minecraft-atlas-canvas").boundingBox();
   if (!box) throw new Error("Minecraft terrain is missing");
-  return { x: box.x + box.width / 2 + (x - 128 + 0.5) * 2, y: box.y + box.height / 2 + (z - 128 + 0.5) * 2 };
+  // Leaflet rounds its pixel origin; odd viewport sizes put the center at floor(size / 2).
+  return { x: box.x + Math.floor(box.width / 2) + (x - 128 + 0.5) * 2, y: box.y + Math.floor(box.height / 2) + (z - 128 + 0.5) * 2 };
 }
 
 async function hoverBlock(page: Page, x: number, z: number) {
@@ -62,9 +66,11 @@ test("hover inspection debounces movement and reuses a bounded chunk response", 
 
 test("survey data remains inspectable with biome colors disabled", async ({ page }) => {
   const fixture = await setup(page);
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await page.getByRole("button", { name: "Survey selected area" }).click();
   await expect(page.getByText(/60 chunks read · 4 unavailable/)).toBeVisible();
   await page.getByLabel("Biome colors", { exact: true }).uncheck();
+  await page.getByRole("button", { name: "Close map menu" }).click();
   await hoverBlock(page, 134, 130);
   const inspection = page.getByRole("region", { name: "Terrain inspection" });
   await expect(inspection).toContainText(/Observed biome: plains/i);
@@ -74,10 +80,12 @@ test("survey data remains inspectable with biome colors disabled", async ({ page
 });
 
 test("prediction inspection preserves its fixed-Y provenance without a terrain read", async ({ page }) => {
-  const fixture = await setup(page);
+  const fixture = await setup(page, true);
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await page.getByLabel("Prediction Y", { exact: true }).fill("-16");
-  await page.getByRole("button", { name: "Preview selected area" }).click();
-  await expect(page.getByText("Predicted · Y -16 · Large biomes", { exact: true })).toBeVisible();
+  await page.clock.runFor(1700);
+  await expect(page.locator(".minecraft-prediction-receipt")).toContainText("Predicted · Y -16 · Large biomes");
+  await page.getByRole("button", { name: "Close map menu" }).click();
   await hoverBlock(page, 156, 132);
   const inspection = page.getByRole("region", { name: "Terrain inspection" });
   await expect(inspection).toContainText(/Predicted biome: forest/i);
@@ -92,6 +100,7 @@ test("exact searched blocks are identified without labelling nearby blocks", asy
   await page.getByRole("button", { name: "Blocks", exact: true }).click();
   await page.getByRole("button", { name: "Search selected area" }).click();
   await expect(page.getByRole("heading", { name: "Matches (2)" })).toBeVisible();
+  await page.getByRole("button", { name: "Close map menu" }).click();
   await hoverBlock(page, 132, 126);
   const inspection = page.getByRole("region", { name: "Terrain inspection" });
   await expect(inspection).toContainText("Search match: diamond ore");

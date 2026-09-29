@@ -13,6 +13,15 @@ export function scanOrigin(point: MapPoint, width: number) {
   return { chunk_x: Math.max(-1_875_000, Math.min(1_875_000 - width, Math.floor(point.x / 16) - margin)), chunk_z: Math.max(-1_875_000, Math.min(1_875_000 - width, Math.floor(point.z / 16) - margin)), width, height: width };
 }
 
+/** A drag selects complete chunks, capped before any world query is constructed. */
+export function selectionRegion(start: MapPoint, end: MapPoint) {
+  const chunk = (value: number) => Math.max(-1_875_000, Math.min(1_874_999, Math.floor(value / 16)));
+  const x = chunk(start.x), z = chunk(start.z);
+  const endX = Math.max(x - 7, Math.min(x + 7, chunk(end.x)));
+  const endZ = Math.max(z - 7, Math.min(z + 7, chunk(end.z)));
+  return { chunk_x: Math.min(x, endX), chunk_z: Math.min(z, endZ), width: Math.abs(endX - x) + 1, height: Math.abs(endZ - z) + 1 };
+}
+
 export function distance(a: MapPoint, b: MapPoint): number {
   return Math.hypot(b.x - a.x, b.z - a.z);
 }

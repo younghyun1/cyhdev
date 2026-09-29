@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Route } from "@playwright/test";
+import type { MinecraftPredictionQuery } from "../src/generated";
 import { installApiMocks, setUiPreferences } from "./fixtures";
-import { installMinecraftMapMocks } from "./minecraft-fixtures";
+import { installMinecraftMapMocks, predictedMapData } from "./minecraft-fixtures";
 
 for (const width of [1440, 390]) {
-  test(`bounded predictions show provenance and expire at ${width}px`, async ({ page }) => {
+  test(`automatic predictions preserve provenance and recheck expired coverage at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
     await page.clock.install();
     await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
@@ -12,46 +13,62 @@ for (const width of [1440, 390]) {
     page.on("pageerror", error => errors.push(error.message));
     page.on("console", message => { if (message.text().includes("STRICT_READ_UNTRACKED")) errors.push(message.text()); });
     await page.goto("/minecraft");
-    await expect(page.getByRole("button", { name: "Preview selected area" })).toBeEnabled();
-    expect(fixture.predictions).toEqual([]);
+    await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(976);
+    expect(fixture.predictions).toEqual([{ world: "minecraft:overworld", min_x: 64, min_z: 64, y: 64 }]);
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    await expect(page.getByLabel("Predicted biomes", { exact: true })).toBeChecked();
+    await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.getByLabel("Prediction Y", { exact: true }).fill("-16");
-    await page.getByRole("button", { name: "Preview selected area" }).click();
-    await expect(page.getByText("Predicted · Y -16 · Large biomes", { exact: true })).toBeVisible();
+    await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(0);
+    await page.clock.runFor(1700);
+    await expect(page.locator(".minecraft-prediction-receipt")).toContainText("Predicted · Y -16 · Large biomes · 976 cells · approximate");
     await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(976);
     await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(1);
     await expect(page.locator(".minecraft-prediction-boundary")).toHaveCSS("stroke", "rgb(17, 21, 15)");
     await expect(page.locator(".minecraft-prediction-boundary")).toHaveCSS("stroke-width", "1px");
     await expect(page.locator(".minecraft-prediction-boundary-casing")).toHaveCount(1);
     await expect(page.locator(".minecraft-prediction-cell").first()).toHaveCSS("stroke", "none");
-    await expect(page.getByText(/Biome boundaries may differ from generated terrain/)).toBeVisible();
-    expect(fixture.predictions).toEqual([{ world: "minecraft:overworld", min_x: 64, min_z: 64, y: -16 }]);
-    await page.getByText("Predicted · Y -16 · Large biomes", { exact: true }).scrollIntoViewIfNeeded();
+    expect(fixture.predictions.at(-1)).toEqual({ world: "minecraft:overworld", min_x: 64, min_z: 64, y: -16 });
     await page.screenshot({ path: `../target/minecraft-tests/prediction-${width}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await page.locator(".minecraft-atlas-canvas").click({ position: { x: 140, y: 130 } });
-    expect(fixture.predictions).toHaveLength(1);
-    await page.clock.fastForward(16000);
+    let held: Route | undefined;
+    await page.route("**/api/minecraft/map/prediction", route => { held = route; });
+    await page.clock.runFor(16000);
     await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(0);
     await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(0);
-    await expect(page.getByText(/Preview expired\. Request a fresh coverage/)).toBeVisible();
-    expect(fixture.predictions).toHaveLength(1);
+    await expect.poll(() => held !== undefined).toBe(true);
+    if (!held) throw new Error("Expected a fresh prediction coverage request");
+    const query = held.request().postDataJSON() as MinecraftPredictionQuery;
+    expect(query).toEqual({ world: "minecraft:overworld", min_x: 64, min_z: 64, y: -16 });
+    await held.fulfill({ json: { data: predictedMapData(query, await page.evaluate(() => Date.now())) } });
+    await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(976);
+    let disabledRequests = 0;
+    await page.route("**/api/minecraft/map/prediction", async route => { disabledRequests += 1; await route.fallback(); });
+    await page.getByLabel("Predicted biomes", { exact: true }).uncheck();
+    await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(0);
+    await page.clock.runFor(16000);
+    expect(disabledRequests).toBe(0);
     expect(errors).toEqual([]);
   });
 }
 
-test("actual observations outrank predictions and terrain refresh clears the snapshot", async ({ page }) => {
+test("actual observations outrank predictions and refreshing terrain invalidates coverage before rechecking", async ({ page }) => {
+  await page.clock.install();
   await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
-  await installMinecraftMapMocks(page);
+  const fixture = await installMinecraftMapMocks(page);
   await page.goto("/minecraft");
-  await page.getByRole("button", { name: "Preview selected area" }).click();
   await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(976);
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await page.getByRole("button", { name: "Survey selected area" }).click();
   await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(64);
   await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(1);
-  await expect(page.getByText(/64 predicted cells/)).toBeVisible();
+  await expect(page.locator(".minecraft-prediction-receipt")).toContainText("64 cells");
+  await page.clock.pauseAt(new Date(Date.now() + 1000));
   await page.getByRole("button", { name: "Refresh terrain" }).click();
   await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(0);
   await expect(page.locator(".minecraft-prediction-boundary")).toHaveCount(0);
   await expect(page.locator(".minecraft-prediction-receipt")).toHaveCount(0);
-  await expect(page.getByText("Terrain refreshed. Request a fresh prediction preview.")).toBeVisible();
+  await page.clock.runFor(1700);
+  await expect(page.locator(".minecraft-prediction-cell")).toHaveCount(64);
+  expect(fixture.predictions).toHaveLength(2);
 });
