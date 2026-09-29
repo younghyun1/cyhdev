@@ -73,7 +73,7 @@ export function createSeedTileLayer(options: Options) {
 }
 
 /** A 64-pixel overlay reuses the seed store's tile requests and exact biome indices. */
-export function createBiomeHighlightLayer(options: Omit<Options, "changed">, biomes: readonly string[]) {
+export function createBiomeHighlightLayer(options: Omit<Options, "changed">, biomes: readonly string[]): { layer: L.GridLayer; setBiomes: (values: readonly string[]) => void; dispose: () => void } {
   const active = new Map<HTMLCanvasElement, { redraw: () => void; unsubscribe: () => void }>();
   let selected = new Set(biomes);
   class HighlightLayer extends L.GridLayer {
