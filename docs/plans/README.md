@@ -6,12 +6,12 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [Minecraft dimensions and compact tiles](2026-09-28-minecraft-dimensions-and-tiles.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [Minecraft dimensions and compact tiles](2026-09-28-minecraft-dimensions-and-tiles.md)
 - [Continuous Minecraft seed map](2026-09-28-minecraft-continuous-map.md)
 - [Minecraft terrain inspection](2026-09-28-minecraft-hover.md)
 - [Minecraft biome predictions](2026-09-28-minecraft-seed-predictions.md)
