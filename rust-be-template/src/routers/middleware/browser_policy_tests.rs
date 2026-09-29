@@ -174,7 +174,7 @@ fn embedded_apps_get_an_opaque_origin_sandbox_and_public_cors() -> anyhow::Resul
     let csp = headers[header::CONTENT_SECURITY_POLICY]
         .to_str()
         .unwrap_or_default();
-    assert!(csp.starts_with("sandbox allow-scripts"));
+    assert_eq!(csp, "default-src 'none'; sandbox; frame-ancestors 'none'");
     assert!(!csp.contains("allow-same-origin"));
     assert_eq!(headers[header::ACCESS_CONTROL_ALLOW_ORIGIN], "*");
     assert!(!headers.contains_key(header::ACCESS_CONTROL_ALLOW_CREDENTIALS));

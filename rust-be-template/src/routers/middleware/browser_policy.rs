@@ -5,8 +5,8 @@
 //! application shell. Responses that already carry a stricter policy keep it, such as
 //! the sandbox on uploaded WASM demos and `no-referrer` on authentication routes.
 //!
-//! Third-party applications served from this origin (the squaremap web map and the
-//! EU5 browser app) get a response-enforced CSP sandbox without `allow-same-origin`,
+//! The retired squaremap asset namespace and the EU5 browser app receive a
+//! response-enforced CSP sandbox without `allow-same-origin`,
 //! so their scripts run in an opaque origin even on direct navigation and cannot call
 //! the API as the viewer. Their static files carry `Access-Control-Allow-Origin: *`
 //! without credentials, because an opaque-origin document fetches module scripts,
@@ -42,11 +42,11 @@ struct EmbeddedApp {
     policy: &'static str,
 }
 
-/// Sandbox flags mirror each iframe's `sandbox` attribute; both apply together.
+/// The retired map permits no active content; EU5 flags mirror its iframe sandbox.
 const EMBEDDED_APPS: [EmbeddedApp; 2] = [
     EmbeddedApp {
         root: "/minecraft/map",
-        policy: "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; frame-ancestors 'self'",
+        policy: "default-src 'none'; sandbox; frame-ancestors 'none'",
     },
     EmbeddedApp {
         root: "/eu5-locations-db/app",
