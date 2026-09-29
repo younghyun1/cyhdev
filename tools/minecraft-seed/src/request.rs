@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::Error;
 
 const WORLD_BORDER: i64 = 30_000_000;
-const MAX_POINTS: u32 = 1024;
+const MAX_POINTS: u32 = 4096;
 
 /// One fixed-height Overworld grid; seed input stays inside the worker pipe.
 #[derive(Deserialize)]
@@ -69,7 +69,7 @@ pub struct PredictionResponse {
     pub generator_revision: String,
     /// Preset used for the returned grid.
     pub large_biomes: bool,
-    /// No more than 1024 cells.
+    /// No more than 4096 cells.
     pub cells: Vec<Cell>,
 }
 
@@ -96,7 +96,7 @@ mod tests {
     fn rejects_oversized_or_overflowing_grids() {
         let mut input = request();
         assert!(input.validate().is_ok());
-        input.width = 33;
+        input.width = 129;
         assert!(input.validate().is_err());
         input.width = u32::MAX;
         input.height = u32::MAX;

@@ -3595,9 +3595,11 @@ dependencies = [
  "mimalloc",
  "pumpkin-data",
  "pumpkin-world",
+ "rayon",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
@@ -5558,6 +5560,7 @@ dependencies = [
  "memmap2",
  "mimalloc",
  "mime_guess",
+ "minecraft-seed",
  "num_cpus",
  "nutype",
  "openidconnect",

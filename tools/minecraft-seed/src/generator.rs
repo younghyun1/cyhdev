@@ -19,7 +19,7 @@ use crate::{Cell, Error, PredictionRequest, PredictionResponse};
 pub const GENERATOR_REVISION: &str = "pumpkin-4426d1113a211e6018a2db416e33b6b8a7802614-java26.3";
 
 /// Construct a seed-specific router using vanilla default or large-biomes noise.
-fn router(seed: i64, large_biomes: bool) -> ProtoMultiNoiseRouter {
+pub(crate) fn router(seed: i64, large_biomes: bool) -> ProtoMultiNoiseRouter {
     let base = if large_biomes {
         &LARGE_BIOMES_BASE_NOISE_ROUTER.multi_noise
     } else {
@@ -45,6 +45,19 @@ pub fn predict(request: &PredictionRequest) -> Result<PredictionResponse, Error>
     request.validate()?;
     let router = router(request.seed, request.large_biomes);
     let mut sampler = MultiNoiseSampler::generate(&router);
+    sample(request, &mut sampler, || false)
+}
+
+/// Reuse seeded state on its owning CPU thread; cancellation is checked between rows.
+pub(crate) fn sample(
+    request: &PredictionRequest,
+    sampler: &mut MultiNoiseSampler<'_>,
+    cancelled: impl Fn() -> bool,
+) -> Result<PredictionResponse, Error> {
+    request.validate()?;
+    if cancelled() {
+        return Err(Error::Cancelled);
+    }
 
     // Aligned quart grids can use Pumpkin's volume path. Other grids must round
     // each coordinate separately, since a block step need not be a quart step.
@@ -68,6 +81,9 @@ pub fn predict(request: &PredictionRequest) -> Result<PredictionResponse, Error>
 
     let mut cells = Vec::with_capacity((request.width * request.height) as usize);
     for row in 0..request.height {
+        if cancelled() {
+            return Err(Error::Cancelled);
+        }
         for column in 0..request.width {
             let x = i64::from(request.min_x) + i64::from(column) * i64::from(request.step);
             let z = i64::from(request.min_z) + i64::from(row) * i64::from(request.step);

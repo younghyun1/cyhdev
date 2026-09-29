@@ -91,6 +91,8 @@ export * from "./minecraft-prediction-coverage";
 export * from "./minecraft-prediction-coverage-state";
 export * from "./minecraft-prediction-preset";
 export * from "./minecraft-prediction-query";
+export * from "./minecraft-seed-tile";
+export * from "./minecraft-seed-tile-query";
 export * from "./minecraft-status";
 export * from "./minecraft-waypoint";
 export * from "./minecraft-waypoint-input";

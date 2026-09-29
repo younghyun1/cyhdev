@@ -1,10 +1,12 @@
 //! Bounded, read-only Java 26.3 biome predictions using pinned Pumpkin code.
 
 mod generator;
+mod predictor;
 mod request;
 mod wire;
 
 pub use generator::{GENERATOR_REVISION, predict};
+pub use predictor::Predictor;
 pub use request::{Cell, PredictionRequest, PredictionResponse};
 pub use wire::run;
 
@@ -16,6 +18,15 @@ pub const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
 /// Failures expose fixed messages so private seed input is never echoed.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// The bounded worker queue has no free slot.
+    #[error("prediction worker busy")]
+    Busy,
+    /// The owning process could not create or communicate with its CPU worker.
+    #[error("prediction worker unavailable")]
+    Unavailable,
+    /// The caller stopped waiting before sampling completed.
+    #[error("prediction cancelled")]
+    Cancelled,
     /// The request exceeded the framing limit or was incomplete.
     #[error("invalid request frame")]
     Frame,

@@ -1,10 +1,11 @@
 import { createEffect, createSignal, onCleanup, onSettled, untrack } from "solid-js";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { MinecraftMapData, MinecraftPrediction, MinecraftWaypoint } from "../../generated";
+import type { MinecraftMapData, MinecraftWaypoint } from "../../generated";
 import type { SquaremapPlayer, SquaremapSettings } from "../../services/squaremap";
-import { biomeColor, displayName, elevationColor, scanOrigin, selectionRegion, WORLD_LIMIT, type MapPoint } from "./mapMath";
-import { predictionBoundary, predictionCells, predictionEdgeCells } from "./predictionMask";
+import { biomeColor, displayName, elevationColor, selectionRegion, WORLD_LIMIT, type scanOrigin, type MapPoint } from "./mapMath";
+import { createSeedTileLayer, createTerrainBoundary } from "./seedTileLayer";
+import { type SeedTiles } from "./seedTiles";
 import { createTerrainRefresh, type TerrainRefreshState } from "./terrainRefresh";
 
 export type { TerrainRefreshState } from "./terrainRefresh";
@@ -16,7 +17,12 @@ type Props = {
   readonly view: MapPoint;
   readonly area: MinecraftMapData | null;
   readonly matches: MinecraftMapData | null;
-  readonly prediction: MinecraftPrediction | null;
+  readonly seedTiles: SeedTiles;
+  readonly seedWorld: string | null;
+  readonly predictionY: number;
+  readonly predictionsEnabled: boolean;
+  readonly onRenderedLookup: (lookup: (point: MapPoint) => boolean) => void;
+  readonly onInspectionRefresh: () => void;
   readonly areaRegion: ReturnType<typeof scanOrigin> | null;
   readonly matchRegion: ReturnType<typeof scanOrigin> | null;
   readonly waypoints: readonly MinecraftWaypoint[];
@@ -33,7 +39,6 @@ type Props = {
   readonly onInspect: (point: MapPoint | null) => void;
   readonly onTerrainRefresh: () => void;
   readonly onRefreshState: (state: TerrainRefreshState) => void;
-  readonly onView?: (point: MapPoint) => void;
   readonly selecting?: boolean;
   readonly region?: ReturnType<typeof selectionRegion> | null;
   readonly onSelect?: (region: ReturnType<typeof selectionRegion>) => void;
@@ -52,11 +57,12 @@ export default function MapCanvas(props: Props) {
   let tiles: L.TileLayer | undefined;
   let observer: ResizeObserver | undefined;
   let refreshTimer: number | undefined;
-  let predictionRenderer: L.SVG | undefined;
+  let seedLayer: ReturnType<typeof createSeedTileLayer> | undefined;
+  let boundary: ReturnType<typeof createTerrainBoundary> | undefined;
   let terrainRefresh: ReturnType<typeof createTerrainRefresh> | undefined;
   let dragStart: MapPoint | null = null, dragEnd: MapPoint | null = null, dragPointer: number | null = null, suppressClickUntil = 0;
   const [ready, setReady] = createSignal(false);
-  const predicted = L.layerGroup(), sampled = L.layerGroup(), markers = L.layerGroup(), playersLayer = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
+  const sampled = L.layerGroup(), markers = L.layerGroup(), playersLayer = L.layerGroup(), selection = L.layerGroup(), grid = L.layerGroup();
   const dragged = L.layerGroup();
   // The parent keys this component by its loaded world, so projection settings are immutable here.
   const settings = untrack(() => props.settings), worldMapId = untrack(() => props.mapId);
@@ -65,11 +71,6 @@ export default function MapCanvas(props: Props) {
   const bounds = (x: number, z: number, endX: number, endZ: number): L.LatLngBoundsExpression => [position({ x, z }), position({ x: endX, z: endZ })];
   const invalidate = () => map?.invalidateSize({ animate: false });
   const clearInspection = () => untrack(() => props.onInspect(null));
-  const reportView = () => {
-    if (!map) return;
-    const center = map.getCenter();
-    untrack(() => props.onView?.({ x: Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, Math.floor(center.lng * scale))), z: Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, Math.floor(-center.lat * scale))) }));
-  };
   const eventPoint = (event: MouseEvent): MapPoint | null => {
     if (!map) return null;
     const cursor = map.mouseEventToLatLng(event);
@@ -124,16 +125,19 @@ export default function MapCanvas(props: Props) {
     if (!element) return;
     map = L.map(element, { crs: L.CRS.Simple, attributionControl: false, preferCanvas: true, minZoom: 0, maxZoom: settings.maxZoom + settings.extraZoom, zoomControl: true });
     map.setView(position(untrack(() => props.view)), settings.defaultZoom);
+    const reportZoom = () => { if (element && map) element.dataset.zoom = String(map.getZoom()); };
+    map.on("zoomend", reportZoom); reportZoom();
     // Leaflet's own empty-image URL means canceled, so it never completes missing tiles.
     const missingTile = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>')}`;
-    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: missingTile });
+    tiles = L.tileLayer(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png`, { tileSize: 512, minZoom: 0, minNativeZoom: 0, maxNativeZoom: settings.maxZoom, noWrap: true, keepBuffer: 1, errorTileUrl: missingTile });
     terrainRefresh = createTerrainRefresh({ loading: () => tiles?.isLoading() ?? false, reload: nonce => { tiles?.setUrl(`/minecraft/map/tiles/${worldMapId}/{z}/{x}_{y}.png?refresh=${nonce}`); }, report: state => untrack(() => props.onRefreshState(state)) });
     tiles.on("load", terrainRefresh.loaded).on("tileerror", terrainRefresh.failed).addTo(map);
-    map.createPane("minecraft-predictions");
-    map.createPane("minecraft-selection-footprint");
+    map.createPane("minecraft-seeds");
+    map.createPane("minecraft-frontier");
     map.createPane("minecraft-player-nameplates");
-    predictionRenderer = L.svg({ pane: "minecraft-predictions" });
-    predicted.addTo(map); sampled.addTo(map); grid.addTo(map); markers.addTo(map); playersLayer.addTo(map); selection.addTo(map); dragged.addTo(map);
+    boundary = createTerrainBoundary(map, tiles, settings.maxZoom, point => untrack(() => props.seedWorld ? props.seedTiles.sample(props.seedWorld, point, props.predictionY) !== null : false), () => untrack(props.onInspectionRefresh));
+    untrack(() => props.onRenderedLookup(point => boundary?.rendered(point) ?? false));
+    sampled.addTo(map); grid.addTo(map); markers.addTo(map); playersLayer.addTo(map); selection.addTo(map); dragged.addTo(map);
     map.on("click", (event: L.LeafletMouseEvent) => untrack(() => {
       if (props.selecting || Date.now() < suppressClickUntil) return;
       const point = eventPoint(event.originalEvent);
@@ -148,7 +152,6 @@ export default function MapCanvas(props: Props) {
     element.addEventListener("pointercancel", cancelSelection);
     map.on("dragstart zoomstart", clearInspection);
     map.on("moveend", drawGrid);
-    map.on("moveend", reportView);
     observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(invalidate);
     observer?.observe(element);
     refreshTimer = window.setInterval(() => {
@@ -158,9 +161,8 @@ export default function MapCanvas(props: Props) {
       }
     }, 30_000);
     setReady(true);
-    reportView();
   });
-  onCleanup(() => { window.clearInterval(refreshTimer); terrainRefresh?.dispose(); element?.removeEventListener("mousemove", inspectCursor); element?.removeEventListener("mouseleave", clearInspection); element?.removeEventListener("pointerdown", beginSelection); element?.removeEventListener("pointermove", moveSelection); element?.removeEventListener("pointerup", endSelection); element?.removeEventListener("pointercancel", cancelSelection); observer?.disconnect(); map?.remove(); map = undefined; });
+  onCleanup(() => { window.clearInterval(refreshTimer); terrainRefresh?.dispose(); seedLayer?.dispose(); boundary?.dispose(); element?.removeEventListener("mousemove", inspectCursor); element?.removeEventListener("mouseleave", clearInspection); element?.removeEventListener("pointerdown", beginSelection); element?.removeEventListener("pointermove", moveSelection); element?.removeEventListener("pointerup", endSelection); element?.removeEventListener("pointercancel", cancelSelection); observer?.disconnect(); map?.remove(); map = undefined; });
 
   createEffect(() => [ready(), props.selecting, props.region] as const, ([mounted, selecting, region]) => {
     if (!mounted || !map) return;
@@ -176,22 +178,12 @@ export default function MapCanvas(props: Props) {
   createEffect(() => [ready(), props.refresh] as const, ([mounted, refresh]) => {
     if (mounted && refresh > 0) terrainRefresh?.request();
   });
-  createEffect(() => [ready(), props.prediction, props.area, props.matches] as const, ([mounted, prediction, area, matches]) => {
-    if (!mounted || !predictionRenderer) return;
-    predicted.clearLayers();
-    if (!prediction) return;
-    const cells = predictionCells(prediction, [area, matches]);
-    const edgeCells = predictionEdgeCells(cells);
-    for (const cell of cells) {
-      L.rectangle(bounds(cell.x, cell.z, cell.x + prediction.step, cell.z + prediction.step), {
-        renderer: predictionRenderer, pane: "minecraft-predictions", className: `minecraft-prediction-cell${edgeCells.has(`${cell.x},${cell.z}`) ? " minecraft-prediction-edge-cell" : ""}`, stroke: false,
-        fillColor: biomeColor(cell.biome),
-      }).bindTooltip(label(`Predicted ${displayName(cell.biome)} · fixed Y ${prediction.y} · ${cell.x}, ${cell.z}`)).addTo(predicted);
-    }
-    const perimeter = predictionBoundary(cells).map(edge => edge.map(position));
-    if (perimeter.length > 0) for (const className of ["minecraft-prediction-boundary-casing", "minecraft-prediction-boundary"]) {
-      L.polyline(perimeter, { renderer: predictionRenderer, pane: "minecraft-predictions", className, interactive: false }).addTo(predicted);
-    }
+  createEffect(() => [ready(), props.seedWorld, props.predictionsEnabled, props.predictionY] as const, ([mounted, world, enabled, y]) => {
+    seedLayer?.dispose(); seedLayer = undefined;
+    boundary?.setEnabled(enabled && world !== null);
+    if (!mounted || !map || !world || !enabled) return;
+    seedLayer = createSeedTileLayer({ map, maxZoom: settings.maxZoom, store: untrack(() => props.seedTiles), world, y, changed: () => boundary?.refresh() });
+    seedLayer.layer.addTo(map);
   });
   createEffect(() => [ready(), props.area, props.biome, props.biomeLayer, props.elevation] as const, ([mounted, area, biome, showBiomes, elevation]) => {
     if (!mounted) return;
@@ -243,11 +235,9 @@ export default function MapCanvas(props: Props) {
       marker.addTo(playersLayer);
     }
   });
-  createEffect(() => [ready(), props.point, props.measuring, props.measureStart, props.areaRegion, props.matchRegion, props.region] as const, ([mounted, point, measuring, start, areaRegion, matchRegion, region]) => {
+  createEffect(() => [ready(), props.point, props.measuring, props.measureStart, props.areaRegion, props.matchRegion] as const, ([mounted, point, measuring, start, areaRegion, matchRegion]) => {
     if (!mounted) return;
     selection.clearLayers();
-    const origin = region ?? scanOrigin(point, 8);
-    L.rectangle(bounds(origin.chunk_x * 16, origin.chunk_z * 16, (origin.chunk_x + origin.width) * 16, (origin.chunk_z + origin.height) * 16), { pane: "minecraft-selection-footprint", color: "#ffffff", weight: 1, dashArray: "5 5", fill: false, interactive: false }).addTo(selection);
     L.circleMarker(position(point), { radius: 6, color: "#ffffff", weight: 2, fill: false, interactive: false }).addTo(selection);
     for (const [region, color, title] of [[areaRegion, "#ffcd6e", "Surveyed area"], [matchRegion, "#68e4ef", "Block search area"]] as const) {
       if (region) L.rectangle(bounds(region.chunk_x * 16, region.chunk_z * 16, (region.chunk_x + region.width) * 16, (region.chunk_z + region.height) * 16), { color, weight: 2, fill: false })

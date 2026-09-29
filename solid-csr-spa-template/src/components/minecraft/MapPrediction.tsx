@@ -1,15 +1,10 @@
-import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import type { MapExplorer } from "./createMapExplorer";
 import { coordinate } from "./mapMath";
-import { predictionCells } from "./predictionMask";
 
 export default function MapPrediction(props: { readonly explorer: MapExplorer }) {
   const [height, setHeight] = createSignal("64");
   createEffect(() => props.explorer.predictionY(), value => { setHeight(String(value)); });
-  const cells = createMemo(() => {
-    const result = props.explorer.prediction();
-    return result ? predictionCells(result, [props.explorer.area(), props.explorer.matches()]) : [];
-  });
   return <div class="minecraft-prediction-controls">
     <label class="minecraft-toggle"><input type="checkbox" checked={props.explorer.predictionsEnabled()} onChange={event => props.explorer.setPredictionsEnabled(event.currentTarget.checked)} /> Predicted biomes</label>
     <Show when={props.explorer.predictionsEnabled()}>
@@ -20,7 +15,7 @@ export default function MapPrediction(props: { readonly explorer: MapExplorer })
       }} /></label>
       <Show when={props.explorer.predicting()}><small role="status">Loading predictions…</small></Show>
       <Show when={props.explorer.predictionNotice()}><p class="minecraft-map-warning" role="status">{props.explorer.predictionNotice()}</p></Show>
-      <Show when={props.explorer.prediction()}>{result => <small class="minecraft-prediction-receipt">Predicted · Y {result().y} · {result().preset === "large_biomes" ? "Large biomes" : "Default biomes"} · {cells().length} cells · approximate</small>}</Show>
+      <Show when={props.explorer.predictionPreset()}>{preset => <small class="minecraft-prediction-receipt">Predicted · Y {props.explorer.predictionY()} · {preset() === "large_biomes" ? "Large biomes" : "Default biomes"} · approximate</small>}</Show>
     </Show>
   </div>;
 }

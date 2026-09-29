@@ -8,10 +8,12 @@ use super::{
     map_error::map_error,
     map_response::MinecraftMapData,
     prediction_dto::{MinecraftPrediction, MinecraftPredictionQuery},
+    seed_tile_dto::{MinecraftSeedTile, MinecraftSeedTileQuery},
 };
 use crate::{
     dto::responses::response_data::http_resp,
     errors::code_error::{CodeErrorResp, HandlerResponse},
+    features::minecraft::service::seed_tile::SeedTileService,
     features::minecraft::service::world_query::WorldQueryService,
     init::state::ServerState,
     util::time::now::tokio_now,
@@ -27,8 +29,13 @@ use uuid::Uuid;
 
 pub fn public_router(state: &Arc<ServerState>) -> anyhow::Result<Router<Arc<ServerState>>> {
     let world = Arc::new(WorldQueryService::from_environment()?);
+    let seed = Arc::new(SeedTileService::new(Arc::clone(&world))?);
     Ok(Router::new()
         .route("/api/minecraft/map/query", post(minecraft_map_query))
+        .route(
+            "/api/minecraft/map/seed-tile",
+            post(minecraft_map_seed_tile),
+        )
         .route(
             "/api/minecraft/map/prediction",
             post(minecraft_map_prediction),
@@ -36,6 +43,7 @@ pub fn public_router(state: &Arc<ServerState>) -> anyhow::Result<Router<Arc<Serv
         .route("/api/minecraft/map/waypoints", get(minecraft_map_waypoints))
         .layer(DefaultBodyLimit::max(4096))
         .layer(Extension(world))
+        .layer(Extension(seed))
         .layer(Extension(state.minecraft_waypoint_service()))
         .layer(axum::middleware::from_fn(
             crate::routers::middleware::sensitive_response::sensitive_response_headers,
@@ -60,6 +68,16 @@ fn admin_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
 }
 
 type Waypoints = Arc<crate::features::minecraft::service::waypoints::WaypointService>;
+
+#[utoipa::path(post, path = "/api/minecraft/map/seed-tile", tag = "minecraft", request_body = MinecraftSeedTileQuery, responses((status = 200, body = MinecraftSeedTile), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
+pub async fn minecraft_map_seed_tile(
+    Extension(service): Extension<Arc<SeedTileService>>,
+    Json(request): Json<MinecraftSeedTileQuery>,
+) -> HandlerResponse<impl IntoResponse> {
+    let start = tokio_now();
+    let tile = service.tile(request.into()).await.map_err(map_error)?;
+    Ok(http_resp(MinecraftSeedTile::from(tile), (), start))
+}
 
 #[utoipa::path(post, path = "/api/minecraft/map/prediction", tag = "minecraft", request_body = MinecraftPredictionQuery, responses((status = 200, body = MinecraftPrediction), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
 pub async fn minecraft_map_prediction(

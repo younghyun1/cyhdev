@@ -16,6 +16,7 @@ name = "openapi-contracts"
 path = "src/openapi_contracts_main.rs"
 
 [dependencies]
+minecraft-seed = { path = "../tools/minecraft-seed" }
 # web framework
 axum = { version = "0.8.9", features = [
     "http2",

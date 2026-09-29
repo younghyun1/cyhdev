@@ -1,12 +1,12 @@
 import { createSignal } from "solid-js";
-import type { MinecraftMapData, MinecraftPrediction } from "../../generated";
+import type { MinecraftMapData } from "../../generated";
 import { type MapPoint, WORLD_LIMIT } from "./mapMath";
-import { predictionCells } from "./predictionMask";
+import type { SeedSample } from "./seedTiles";
 
 export type MapInspection = {
   point: MapPoint;
   status: "loading" | "ready" | "unavailable";
-  biome: { name: string; source: "observed" | "predicted"; sample: MapPoint; y: number | null; surfaceY: number | null } | null;
+  biome: { name: string; source: "observed" | "predicted"; sample: MapPoint; y: number | null; surfaceY: number | null; step?: number } | null;
   block: { name: string; ys: readonly number[] } | null;
   message: string;
 };
@@ -50,7 +50,7 @@ export function createMapQueryGate(allowed: () => boolean, busy: (value: boolean
 
 type Context = {
   world: string | null; area: MinecraftMapData | null; areaSlice: number | null;
-  matches: MinecraftMapData | null; matchedBlock: string; prediction: MinecraftPrediction | null;
+  matches: MinecraftMapData | null; matchedBlock: string; seed: (point: MapPoint) => SeedSample | null;
 };
 type Options = {
   allowed: () => boolean; context: () => Context;
@@ -110,11 +110,13 @@ export function createMapInspection(options: Options) {
       const cell = data?.world === world ? data.cells.find(cell => Math.floor(point.x / 4) * 4 === cell.x && Math.floor(point.z / 4) * 4 === cell.z) : undefined;
       if (cell) { result.biome = { name: cell.biome, source: "observed", sample: { x: cell.x, z: cell.z }, y, surfaceY: cell.y }; fromCache = data === saved?.data; break; }
     }
-    const prediction = context.prediction;
-    if (!result.biome && prediction?.world === world && prediction.expires_at_ms > Date.now()) {
-      const cell = predictionCells(prediction, [area, matches, ...[...cache.entries()].filter(([key]) => fresh(key)).map(([, entry]) => entry.data)])
-        .find(cell => Math.floor(point.x / 4) * 4 === cell.x && Math.floor(point.z / 4) * 4 === cell.z);
-      if (cell) result.biome = { name: cell.biome, source: "predicted", sample: { x: cell.x, z: cell.z }, y: prediction.y, surfaceY: null };
+    if (!result.biome) {
+      const cell = context.seed(point);
+      const observedChunk = [area, matches, saved?.data].some(data => data?.world === world && [...data.cells, ...data.matches].some(sample => Math.floor(sample.x / 16) === Math.floor(point.x / 16) && Math.floor(sample.z / 16) === Math.floor(point.z / 16)));
+      if (cell && cell.expires > Date.now() && !observedChunk) {
+        result.biome = { name: cell.name, source: "predicted", sample: cell.sample, y: cell.y, surfaceY: null, step: cell.step };
+        expiryTimer = window.setTimeout(refresh, cell.expires - Date.now());
+      }
     }
     if (saved && (fromCache || !result.biome)) expiryTimer = window.setTimeout(() => {
       if (target === point) setInspection({ ...result, status: "unavailable", biome: null, message: "Biome sample expired. Move or tap to refresh." });

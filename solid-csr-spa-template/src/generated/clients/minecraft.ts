@@ -8,6 +8,8 @@ import type {
   MinecraftMapQuery,
   MinecraftPrediction,
   MinecraftPredictionQuery,
+  MinecraftSeedTile,
+  MinecraftSeedTileQuery,
   MinecraftStatus,
   MinecraftWaypoint,
   MinecraftWaypointInput,
@@ -78,6 +80,18 @@ export function createMinecraftClient(transport: ApiTransport) {
       const path = "/api/minecraft/map/query";
       const url = path;
       return requestJson<ApiResponse<MinecraftMapData>>(transport, url, {
+        method: "POST",
+        headers: requestHeaders(options.headers, true),
+        signal: options.signal,
+        body: JSON.stringify(input.body),
+      });
+    },
+    minecraftMapSeedTile: async (input: {
+      readonly body: MinecraftSeedTileQuery;
+    }, options: ApiRequestOptions = {}) => {
+      const path = "/api/minecraft/map/seed-tile";
+      const url = path;
+      return requestJson<ApiResponse<MinecraftSeedTile>>(transport, url, {
         method: "POST",
         headers: requestHeaders(options.headers, true),
         signal: options.signal,

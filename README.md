@@ -4,9 +4,11 @@ This repository contains the backend, web application, maintenance utilities, an
 
 ## License
 
-Original source code and its technical documentation are licensed under the [MIT License](LICENSE), copyright 2025-2026 Young Hyun Chi. You may use, modify, and redistribute the code, including commercially, provided you retain the copyright and permission notices in copies or substantial portions. Visible website credit is appreciated but not required.
+Unless a package declares otherwise, original source code and its technical documentation are licensed under the [MIT License](LICENSE), copyright 2025-2026 Young Hyun Chi. You may use, modify, and redistribute the code, including commercially, provided you retain the copyright and permission notices in copies or substantial portions. Visible website credit is appreciated but not required.
 
 Third-party code, dependencies, and vendored projects retain their own licenses and notices. The code license does not grant rights to photographs, blog posts, personal writing, branding, or user-submitted content; those require separate permission unless explicitly licensed otherwise.
+
+The backend links the GPL-3.0-only `minecraft-seed` package and Pumpkin world-generation code for its continuous seed map. Backend artifacts therefore include GPL-covered code; the root MIT license alone does not describe the combined executable. Distribution layouts preserve the [sampler license](tools/minecraft-seed/LICENSE) and [third-party notices](tools/minecraft-seed/THIRD_PARTY_NOTICES.md), including Pumpkin's separate Minecraft asset notice.
 
 ## Checkout
 

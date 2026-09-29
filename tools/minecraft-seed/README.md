@@ -1,6 +1,8 @@
-# Minecraft biome prediction worker
+# Minecraft biome sampler
 
-This private subprocess samples Java 26.3 Overworld biomes using Pumpkin revision `4426d1113a211e6018a2db416e33b6b8a7802614`. It initializes only the biome noise router. It does not start a Minecraft server, read world files, or generate chunks. Default and large-biomes worlds use their respective noise routers; matching the configured preset is required.
+This Rust library samples Java 26.3 Overworld biomes using Pumpkin revision `4426d1113a211e6018a2db416e33b6b8a7802614`. It initializes only the biome noise router. It does not start a Minecraft server, read world files, or generate chunks. Default and large-biomes worlds use their respective noise routers; matching the configured preset is required.
+
+The continuous map calls `Predictor::new()` once in the web backend and awaits `predict(request)` on its clonable handle. One dedicated CPU worker retains the seeded router and borrowing sampler across requests, rebuilding only when seed or preset changes. Its private single-thread Rayon pool prevents per-core density-buffer pools from multiplying retained memory. Eight queued jobs are permitted; excess admission returns `Error::Busy`. Dropping an awaiting future cancels queued work and active sampling checks cancellation between rows. All handles dropping closes the worker. The standalone executable remains available for compatibility with the old bounded prediction endpoint and offline fixtures.
 
 Build from the workspace root with `cargo build --locked --package minecraft-seed`. This uses the development profile. The package requires Pumpkin's Rust 1.96 minimum and uses the repository's nightly toolchain. The executable is `target/debug/minecraft-seed` unless a Cargo target override changes its location.
 
@@ -16,7 +18,9 @@ Send one JSON object followed by a newline to stdin, then close stdin. The seed 
 {"generator_revision":"pumpkin-4426d1113a211e6018a2db416e33b6b8a7802614-java26.3","large_biomes":false,"cells":[{"x":176,"z":148,"biome":"minecraft:stony_shore"}]}
 ```
 
-Requests are at most 4096 bytes including their newline. `seed` is a signed 64-bit integer. Width and height are positive and their product is at most 1024. Step is positive, all sample X/Z coordinates are within ±30,000,000, and Y is within -64 through 319. Coordinates and step are in blocks. Sampling uses the containing raw quart biome, rounding negative coordinates toward negative infinity. The result is a fixed-Y slice, not the surface biome or a Voronoi-blended rendering. Cells are ordered by Z row, then X column.
+Requests are at most 4096 bytes including their newline. `seed` is a signed 64-bit integer. Width and height are positive and their product is at most 4096. Step is positive, all sample X/Z coordinates are within ±30,000,000, and Y is within -64 through 319. Coordinates and step are in blocks. Sampling uses the containing raw quart biome, rounding negative coordinates toward negative infinity. The result is a fixed-Y slice, not the surface biome or a Voronoi-blended rendering. Cells are ordered by Z row, then X column.
+
+The in-process path uses the same bounds without serializing a pipe request. A 64 by 64 tile fixes the largest density buffer at 16 KiB. Pumpkin's pool retains at most 1,024 such buffers on the owning CPU thread, so the backend reserves sampler and index headroom within the shared 512 MiB prediction budget. The tile cache accounts retained palettes and indices separately from bounded active requests.
 
 The same vanilla biome decision tree serves both presets; large-biomes behavior comes from its distinct noise router. Aligned grids use Pumpkin's volume sampler, while arbitrary block grids sample their individually rounded quart coordinates. Each tree lookup starts without a previous leaf so a coordinate remains stable across overlapping viewports and request order. Vanilla retains the previous nearest leaf when two candidates have equal distance; this preview's deterministic choice can differ from saved biomes at those boundaries. Predictions are approximate and cannot represent player edits, previously generated terrain from older game versions, custom datapacks, or custom generators.
 
