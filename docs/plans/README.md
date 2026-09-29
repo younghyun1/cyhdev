@@ -12,6 +12,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 ## Completed
 
 - [Minecraft biome highlights](2026-09-29-minecraft-biome-highlights.md)
+- [Minecraft prediction resolution](2026-09-29-minecraft-prediction-resolution.md)
 - [Minecraft browser-zoom tile coverage](2026-09-29-minecraft-browser-zoom.md)
 - [Minecraft map control and scale layout](2026-09-28-minecraft-scale-layout.md)
 - [Minecraft surface biome prediction](2026-09-28-minecraft-surface-biomes.md)
