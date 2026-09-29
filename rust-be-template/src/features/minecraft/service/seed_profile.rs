@@ -1,5 +1,6 @@
 //! Private generator identity and bounded visibility geometry from the live plugin.
 
+use crate::features::minecraft::domain::seed_tile::{SeedDimension, SeedPreset};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -12,11 +13,31 @@ enum Kind {
     SeedProfile,
 }
 
-#[derive(Deserialize, Clone, PartialEq, Eq)]
+#[derive(Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum Preset {
     Default,
     LargeBiomes,
+    Nether,
+    End,
+}
+
+impl Preset {
+    pub fn dimension(self) -> SeedDimension {
+        match self {
+            Self::Default | Self::LargeBiomes => SeedDimension::Overworld,
+            Self::Nether => SeedDimension::Nether,
+            Self::End => SeedDimension::End,
+        }
+    }
+    pub fn public(self) -> SeedPreset {
+        match self {
+            Self::Default => SeedPreset::Default,
+            Self::LargeBiomes => SeedPreset::LargeBiomes,
+            Self::Nether => SeedPreset::Nether,
+            Self::End => SeedPreset::End,
+        }
+    }
 }
 
 #[derive(Deserialize, Clone, PartialEq, Eq)]
@@ -164,7 +185,7 @@ impl Profile {
         anyhow::ensure!(
             profile.kind == Kind::SeedProfile
                 && profile.world == world
-                && world == "minecraft:overworld"
+                && profile.preset.dimension().world() == world
                 && !profile.world_id.is_nil()
                 && profile.fresh(now)
                 && (16..=128).contains(&profile.profile_revision.len())

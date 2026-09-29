@@ -1,6 +1,6 @@
 // Generated from rust-be-template OpenAPI. Do not edit by hand.
 
-import type { MinecraftPredictionPreset } from "./minecraft-prediction-preset";
+import type { MinecraftSeedPreset } from "./minecraft-seed-preset";
 
 export type MinecraftSeedTile = {
   readonly expires_at_ms: number;
@@ -11,7 +11,7 @@ export type MinecraftSeedTile = {
   readonly min_x: number;
   readonly min_z: number;
   readonly palette: ReadonlyArray<string>;
-  readonly preset: MinecraftPredictionPreset;
+  readonly preset: MinecraftSeedPreset;
   readonly profile_epoch: string;
   readonly sampled_at_ms: number;
   readonly step: number;

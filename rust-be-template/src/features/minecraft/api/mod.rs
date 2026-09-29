@@ -5,4 +5,8 @@ pub mod map_dto;
 mod map_error;
 pub mod map_response;
 pub mod prediction_dto;
+pub mod seed_tile_binary;
+pub mod seed_tile_colors;
 pub mod seed_tile_dto;
+pub mod seed_tile_png;
+mod seed_tile_render;

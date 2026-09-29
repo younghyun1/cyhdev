@@ -1,9 +1,17 @@
 //! Public tile data contains biome IDs and permission masks, never seed material.
 
-use super::prediction_dto::MinecraftPredictionPreset;
-use crate::features::minecraft::domain::seed_tile::SeedTileQuery;
+use crate::features::minecraft::domain::seed_tile::{SeedPreset, SeedTileQuery};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MinecraftSeedPreset {
+    Default,
+    LargeBiomes,
+    Nether,
+    End,
+}
 
 #[derive(Deserialize, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -39,7 +47,7 @@ pub struct MinecraftSeedTile {
     pub step: u32,
     pub width: u8,
     pub height: u8,
-    pub preset: MinecraftPredictionPreset,
+    pub preset: MinecraftSeedPreset,
     pub generator_revision: String,
     pub profile_epoch: String,
     pub sampled_at_ms: i64,
@@ -50,9 +58,7 @@ pub struct MinecraftSeedTile {
 
 impl From<crate::features::minecraft::domain::seed_tile::SeedTile> for MinecraftSeedTile {
     fn from(tile: crate::features::minecraft::domain::seed_tile::SeedTile) -> Self {
-        use crate::features::minecraft::domain::prediction::{
-            GENERATOR_REVISION, PredictionPreset,
-        };
+        use crate::features::minecraft::domain::prediction::GENERATOR_REVISION;
         Self {
             world: tile.query.world,
             tile_x: tile.query.tile_x,
@@ -65,8 +71,10 @@ impl From<crate::features::minecraft::domain::seed_tile::SeedTile> for Minecraft
             width: 64,
             height: 64,
             preset: match tile.preset {
-                PredictionPreset::Default => MinecraftPredictionPreset::Default,
-                PredictionPreset::LargeBiomes => MinecraftPredictionPreset::LargeBiomes,
+                SeedPreset::Default => MinecraftSeedPreset::Default,
+                SeedPreset::LargeBiomes => MinecraftSeedPreset::LargeBiomes,
+                SeedPreset::Nether => MinecraftSeedPreset::Nether,
+                SeedPreset::End => MinecraftSeedPreset::End,
             },
             generator_revision: GENERATOR_REVISION.to_owned(),
             profile_epoch: tile.profile_epoch,

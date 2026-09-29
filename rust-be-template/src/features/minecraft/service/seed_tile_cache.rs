@@ -11,7 +11,7 @@ pub(super) struct Key {
     world: uuid::Uuid,
     revision: String,
     seed: i64,
-    large: bool,
+    preset: super::seed_profile::Preset,
     pub query: SeedTileQuery,
 }
 
@@ -21,7 +21,7 @@ impl Key {
             world: profile.world_id,
             revision: profile.profile_revision.clone(),
             seed: profile.seed,
-            large: profile.preset == super::seed_profile::Preset::LargeBiomes,
+            preset: profile.preset,
             query: query.clone(),
         }
     }

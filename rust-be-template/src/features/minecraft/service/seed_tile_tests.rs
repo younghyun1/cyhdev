@@ -155,7 +155,7 @@ async fn admission_is_bounded_and_expired_profiles_never_authorize_cached_tiles(
             }),
         )
         .await;
-    *backend.profile.lock().await = Some(Arc::new(ActiveProfile {
+    *backend.profile[0].write().await = Some(Arc::new(ActiveProfile {
         profile: old,
         epoch: "old".into(),
     }));
@@ -204,7 +204,7 @@ async fn world_edge_tiles_crop_generator_samples_and_mask_whole_cells() -> anyho
     let backend = service(std::env::temp_dir().join("unused-seed-profile.sock"))?;
     let now = now_ms()?;
     let active = profile(&wire(now), now)?;
-    *backend.profile.lock().await = Some(Arc::new(ActiveProfile {
+    *backend.profile[0].write().await = Some(Arc::new(ActiveProfile {
         profile: active,
         epoch: "fixture".into(),
     }));

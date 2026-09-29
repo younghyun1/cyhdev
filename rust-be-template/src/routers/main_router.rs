@@ -1,5 +1,6 @@
 use super::main_router_registry::*;
 
+mod compression;
 mod http_policy;
 mod squaremap;
 mod static_assets;
@@ -23,7 +24,7 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
     )?);
     let trusted_origin_middleware =
         from_fn_with_state(Arc::clone(&trusted_origins), require_trusted_origin);
-    let compression_middleware = CompressionLayer::new().zstd(true).gzip(true);
+    let compression_middleware = compression::layer();
 
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::list(

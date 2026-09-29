@@ -5,9 +5,10 @@ use super::{
     seed_tile::{ActiveProfile, now_ms},
     world_query::{WorldQueryService, exchange},
 };
+use crate::features::minecraft::domain::seed_tile::SeedDimension;
 use crate::features::minecraft::error::MapError;
 use std::{sync::Arc, time::Duration};
-use tokio::sync::{Mutex, watch};
+use tokio::sync::{RwLock, watch};
 
 #[derive(Clone, Copy)]
 pub(super) enum Failure {
@@ -30,7 +31,8 @@ pub(super) type Receiver = watch::Receiver<Option<Result<Arc<ActiveProfile>, Fai
 
 pub(super) async fn refresh(
     world: &WorldQueryService,
-    cached: &Mutex<Option<Arc<ActiveProfile>>>,
+    cached: &RwLock<Option<Arc<ActiveProfile>>>,
+    dimension: SeedDimension,
 ) -> Result<Arc<ActiveProfile>, Failure> {
     let path = world.path.as_ref().ok_or(Failure::Disabled)?;
     let mut gate = world.gate.try_lock().map_err(|_| Failure::Busy)?;
@@ -39,14 +41,12 @@ pub(super) async fn refresh(
         return Err(Failure::Busy);
     }
     *gate = now + Duration::from_secs(21);
-    let result = tokio::time::timeout(
-        Duration::from_secs(16),
-        exchange(
-            path,
-            b"{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\"}\n",
-        ),
-    )
-    .await;
+    let request = format!(
+        "{{\"kind\":\"seed_profile\",\"world\":\"{}\"}}\n",
+        dimension.world()
+    );
+    let result =
+        tokio::time::timeout(Duration::from_secs(16), exchange(path, request.as_bytes())).await;
     *gate = tokio::time::Instant::now() + Duration::from_secs(1);
     let bytes = match result {
         Ok(Ok(bytes)) => bytes,
@@ -54,11 +54,11 @@ pub(super) async fn refresh(
     };
     let profile = Profile::parse(
         &bytes,
-        "minecraft:overworld",
+        dimension.world(),
         now_ms().map_err(|_| Failure::Unavailable)?,
     )
     .map_err(|_| Failure::Unavailable)?;
-    let mut cached = cached.lock().await;
+    let mut cached = cached.write().await;
     let epoch = match cached.as_ref() {
         Some(previous) if previous.profile.same(&profile) => previous.epoch.clone(),
         _ => uuid::Uuid::new_v4().to_string(),

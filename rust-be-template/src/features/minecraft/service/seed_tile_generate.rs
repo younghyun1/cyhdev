@@ -46,6 +46,11 @@ pub(super) async fn generate(
     }
     let request = minecraft_seed::PredictionRequest {
         seed: profile.seed,
+        dimension: match profile.preset {
+            Preset::Default | Preset::LargeBiomes => minecraft_seed::Dimension::Overworld,
+            Preset::Nether => minecraft_seed::Dimension::Nether,
+            Preset::End => minecraft_seed::Dimension::End,
+        },
         large_biomes: profile.preset == Preset::LargeBiomes,
         y: query.y,
         min_x: min_x + (first_x * step) as i32,

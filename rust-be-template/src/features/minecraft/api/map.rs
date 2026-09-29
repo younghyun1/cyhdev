@@ -37,6 +37,14 @@ pub fn public_router(state: &Arc<ServerState>) -> anyhow::Result<Router<Arc<Serv
             post(minecraft_map_seed_tile),
         )
         .route(
+            "/api/minecraft/map/seed-tile.bin",
+            post(minecraft_map_seed_tile_binary),
+        )
+        .route(
+            "/api/minecraft/map/seed-tile.png",
+            post(minecraft_map_seed_tile_png),
+        )
+        .route(
             "/api/minecraft/map/prediction",
             post(minecraft_map_prediction),
         )
@@ -68,6 +76,41 @@ fn admin_routes<S: Clone + Send + Sync + 'static>() -> Router<S> {
 }
 
 type Waypoints = Arc<crate::features::minecraft::service::waypoints::WaypointService>;
+
+#[utoipa::path(post, path = "/api/minecraft/map/seed-tile.png", tag = "minecraft", request_body = MinecraftSeedTileQuery, responses((status = 200, description = "64 by 64 PNG with transparent visibility mask and private cyBM metadata chunk", content_type = "image/png"), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
+pub async fn minecraft_map_seed_tile_png(
+    Extension(service): Extension<Arc<SeedTileService>>,
+    Json(request): Json<MinecraftSeedTileQuery>,
+) -> HandlerResponse<impl IntoResponse> {
+    let tile = service.tile(request.into()).await.map_err(map_error)?;
+    let bytes = super::seed_tile_render::png(MinecraftSeedTile::from(tile))
+        .await
+        .map_err(map_error)?;
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            super::seed_tile_png::CONTENT_TYPE,
+        )],
+        bytes,
+    ))
+}
+
+#[utoipa::path(post, path = "/api/minecraft/map/seed-tile.bin", tag = "minecraft", request_body = MinecraftSeedTileQuery, responses((status = 200, description = "CYBM v1 palette tile with bounded bit-packed or run-length indices", content_type = "application/vnd.cyhdev.biome-tile"), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
+pub async fn minecraft_map_seed_tile_binary(
+    Extension(service): Extension<Arc<SeedTileService>>,
+    Json(request): Json<MinecraftSeedTileQuery>,
+) -> HandlerResponse<impl IntoResponse> {
+    let tile = service.tile(request.into()).await.map_err(map_error)?;
+    let bytes =
+        super::seed_tile_binary::encode(&MinecraftSeedTile::from(tile)).map_err(map_error)?;
+    Ok((
+        [(
+            axum::http::header::CONTENT_TYPE,
+            super::seed_tile_binary::CONTENT_TYPE,
+        )],
+        bytes,
+    ))
+}
 
 #[utoipa::path(post, path = "/api/minecraft/map/seed-tile", tag = "minecraft", request_body = MinecraftSeedTileQuery, responses((status = 200, body = MinecraftSeedTile), (status = 400, body = CodeErrorResp), (status = 429, body = CodeErrorResp), (status = 503, body = CodeErrorResp)))]
 pub async fn minecraft_map_seed_tile(
