@@ -1,15 +1,12 @@
 //! Continuous seed tiles with bounded CPU work and separately refreshed permissions.
 
 use super::{
-    seed_profile::{PERMISSION_MS, Preset, Profile},
+    seed_profile::{PERMISSION_MS, Profile},
     seed_tile_cache::{Key, TileCache},
     world_query::WorldQueryService,
 };
 use crate::features::minecraft::{
-    domain::{
-        prediction::PredictionPreset,
-        seed_tile::{SIDE, SeedTile, SeedTileQuery},
-    },
+    domain::seed_tile::{SIDE, SeedDimension, SeedTile, SeedTileQuery},
     error::MapError,
 };
 use std::{
@@ -17,7 +14,7 @@ use std::{
     sync::{Arc, Weak},
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{Mutex, RwLock, Semaphore};
 
 pub(super) struct ActiveProfile {
     pub profile: Profile,
@@ -27,8 +24,8 @@ pub(super) struct ActiveProfile {
 pub struct SeedTileService {
     world: Arc<WorldQueryService>,
     predictor: Option<minecraft_seed::Predictor>,
-    profile: Arc<Mutex<Option<Arc<ActiveProfile>>>>,
-    refresh: Arc<Mutex<Option<super::seed_profile_refresh::Receiver>>>,
+    profile: [Arc<RwLock<Option<Arc<ActiveProfile>>>>; 3],
+    refresh: [Arc<Mutex<Option<super::seed_profile_refresh::Receiver>>>; 3],
     cache: TileCache,
     admission: Semaphore,
     flights: Mutex<HashMap<Key, Weak<Mutex<()>>>>,
@@ -46,8 +43,8 @@ impl SeedTileService {
         Ok(Self {
             world,
             predictor,
-            profile: Arc::new(Mutex::new(None)),
-            refresh: Arc::new(Mutex::new(None)),
+            profile: std::array::from_fn(|_| Arc::new(RwLock::new(None))),
+            refresh: std::array::from_fn(|_| Arc::new(Mutex::new(None))),
             cache: TileCache::new(),
             admission: Semaphore::new(64),
             flights: Mutex::new(HashMap::new()),
@@ -59,9 +56,6 @@ impl SeedTileService {
     /// Only the profile refresh touches Paper; warmed tiles never enter the observation gate.
     pub async fn tile(&self, query: SeedTileQuery) -> Result<SeedTile, MapError> {
         let (min_x, min_z, step) = query.geometry().ok_or(MapError::Invalid)?;
-        if query.world != "minecraft:overworld" {
-            return Err(MapError::Unavailable);
-        }
         let _admission = self.admission.try_acquire().map_err(|_| MapError::Busy)?;
         let initial = self.profile(&query.world).await?;
         let key = Key::new(&initial.profile, &query);
@@ -144,11 +138,7 @@ impl SeedTileService {
             min_x,
             min_z,
             step,
-            preset: if latest.profile.preset == Preset::LargeBiomes {
-                PredictionPreset::LargeBiomes
-            } else {
-                PredictionPreset::Default
-            },
+            preset: latest.profile.preset.public(),
             profile_epoch: latest.epoch.clone(),
             sampled_at_ms: latest.profile.sampled_at_ms,
             expires_at_ms: latest.profile.sampled_at_ms + PERMISSION_MS,
@@ -158,11 +148,13 @@ impl SeedTileService {
     }
 
     async fn profile(&self, world: &str) -> Result<Arc<ActiveProfile>, MapError> {
+        let dimension = SeedDimension::from_world(world).ok_or(MapError::Unavailable)?;
+        let index = dimension.index();
         if self.world.path.is_none() {
             return Err(MapError::Disabled);
         }
         {
-            let cached = self.profile.lock().await;
+            let cached = self.profile[index].read().await;
             if let Some(active) = cached.as_ref()
                 && active.profile.world == world
                 && active.profile.fresh(now_ms()?)
@@ -171,17 +163,24 @@ impl SeedTileService {
             }
         }
         let mut receiver = {
-            let mut refresh = self.refresh.lock().await;
+            let mut refresh = self.refresh[index].lock().await;
+            // Another refresh may have published while this caller waited for its slot.
+            if let Some(active) = self.profile[index].read().await.as_ref()
+                && active.profile.fresh(now_ms()?)
+            {
+                return Ok(Arc::clone(active));
+            }
             match refresh.as_ref() {
                 Some(receiver) => receiver.clone(),
                 None => {
                     let (sender, receiver) = tokio::sync::watch::channel(None);
                     *refresh = Some(receiver.clone());
                     let world = Arc::clone(&self.world);
-                    let cached = Arc::clone(&self.profile);
-                    let refreshing = Arc::clone(&self.refresh);
+                    let cached = Arc::clone(&self.profile[index]);
+                    let refreshing = Arc::clone(&self.refresh[index]);
                     tokio::spawn(async move {
-                        let result = super::seed_profile_refresh::refresh(&world, &cached).await;
+                        let result =
+                            super::seed_profile_refresh::refresh(&world, &cached, dimension).await;
                         let _ = sender.send(Some(result));
                         *refreshing.lock().await = None;
                     });
@@ -215,3 +214,7 @@ mod tests;
 #[cfg(test)]
 #[path = "seed_tile_concurrency_tests.rs"]
 mod concurrency_tests;
+
+#[cfg(test)]
+#[path = "seed_dimension_tests.rs"]
+mod dimension_tests;

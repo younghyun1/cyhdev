@@ -10,7 +10,7 @@ async fn concurrent_tiles_coalesce_and_cached_permissions_hide_unused_palette_en
         std::env::temp_dir().join("unused-concurrent-profile.sock"),
     )?);
     let now = now_ms()?;
-    *backend.profile.lock().await = Some(Arc::new(ActiveProfile {
+    *backend.profile[0].write().await = Some(Arc::new(ActiveProfile {
         profile: profile(&wire(now), now)?,
         epoch: "fixture".into(),
     }));
@@ -65,7 +65,7 @@ async fn concurrent_tiles_coalesce_and_cached_permissions_hide_unused_palette_en
             }),
         )
         .await;
-    *backend.profile.lock().await = Some(Arc::new(ActiveProfile {
+    *backend.profile[0].write().await = Some(Arc::new(ActiveProfile {
         profile: changed,
         epoch: "new-policy".into(),
     }));

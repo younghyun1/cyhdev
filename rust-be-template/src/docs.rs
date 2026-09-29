@@ -10,6 +10,8 @@ use utoipa::OpenApi;
         crate::features::minecraft::api::map::minecraft_map_query,
         crate::features::minecraft::api::map::minecraft_map_prediction,
         crate::features::minecraft::api::map::minecraft_map_seed_tile,
+        crate::features::minecraft::api::map::minecraft_map_seed_tile_binary,
+        crate::features::minecraft::api::map::minecraft_map_seed_tile_png,
         crate::features::minecraft::api::map::minecraft_map_waypoints,
         crate::features::minecraft::api::map::create_minecraft_map_waypoint,
         crate::features::minecraft::api::map::update_minecraft_map_waypoint,

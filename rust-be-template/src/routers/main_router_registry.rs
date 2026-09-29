@@ -97,10 +97,7 @@ pub(super) use axum::{
     middleware::{from_fn, from_fn_with_state},
     routing::{delete, get, patch, post},
 };
-pub(super) use tower_http::{
-    compression::CompressionLayer,
-    cors::{AllowOrigin, CorsLayer},
-};
+pub(super) use tower_http::cors::{AllowOrigin, CorsLayer};
 
 pub(super) use super::middleware::{
     auth::auth_middleware,
