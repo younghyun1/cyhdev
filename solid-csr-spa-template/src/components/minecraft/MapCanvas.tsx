@@ -20,7 +20,7 @@ type Props = {
   readonly matches: MinecraftMapData | null;
   readonly seedTiles: SeedTiles;
   readonly seedWorld: string | null;
-  readonly predictionY: number;
+  readonly predictionY: number | null;
   readonly predictionsEnabled: boolean;
   readonly onRenderedLookup: (lookup: (point: MapPoint) => boolean) => void;
   readonly onInspectionRefresh: () => void;
