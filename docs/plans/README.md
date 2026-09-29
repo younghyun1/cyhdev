@@ -6,6 +6,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
+- [Minecraft biome highlights](2026-09-29-minecraft-biome-highlights.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
