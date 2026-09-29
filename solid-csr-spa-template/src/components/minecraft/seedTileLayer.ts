@@ -4,6 +4,14 @@ import { biomeColor, WORLD_LIMIT, type MapPoint } from "./mapMath";
 import { SEED_MAX_LEVEL, SEED_MAX_TILES, type SeedTiles, type SeedTile } from "./seedTiles";
 
 type Options = { map: L.Map; maxZoom: number; store: SeedTiles; world: string; y: number; changed: () => void };
+export const MAX_TERRAIN_TILES = 256;
+/** Native squaremap tiles stop at zero; bound the extra PNG fan-out at overview zooms. */
+export function minimumMapZoom(width: number, height: number, maxZoom: number): number {
+  let zoom = Math.max(-2, maxZoom - SEED_MAX_LEVEL);
+  while (zoom < 0 && (Math.ceil(width / (512 * 2 ** zoom)) + 3) * (Math.ceil(height / (512 * 2 ** zoom)) + 3) > MAX_TERRAIN_TILES) ++zoom;
+  return zoom;
+}
+export const nativeTerrainZoom = (zoom: number, maxZoom: number) => Math.max(0, Math.min(maxZoom, Math.round(zoom)));
 
 /** Small backing canvases preserve a fixed sample budget while Leaflet handles smooth transforms. */
 export function createSeedTileLayer(options: Options) {
@@ -26,7 +34,8 @@ export function createSeedTileLayer(options: Options) {
       const draw = (tile: SeedTile | null) => {
         context?.clearRect(0, 0, 64, 64);
         canvas.dataset.ready = tile ? "true" : "false";
-        if (context && tile) {
+        if (context && tile?.image) context.drawImage(tile.image, 0, 0);
+        else if (context && tile) {
           const colors = tile.palette.map(biomeColor);
           for (let y = 0; y < 64; ++y) for (let x = 0; x < 64;) {
             const index = tile.indices[y * 64 + x] ?? 65535, color = colors[index];
@@ -47,11 +56,11 @@ export function createSeedTileLayer(options: Options) {
       return canvas;
     }
   }
-  const layer = new SeedLayer({ pane: "minecraft-seeds", tileSize: 256, minZoom: 0, minNativeZoom: Math.max(0, options.maxZoom - SEED_MAX_LEVEL), maxNativeZoom: options.maxZoom, noWrap: true, keepBuffer: 1, updateWhenIdle: false, updateInterval: 150 });
+  const layer = new SeedLayer({ pane: "minecraft-seeds", tileSize: 256, minZoom: options.maxZoom - SEED_MAX_LEVEL, minNativeZoom: options.maxZoom - SEED_MAX_LEVEL, maxNativeZoom: options.maxZoom, noWrap: true, keepBuffer: 1, updateWhenIdle: false, updateInterval: 150 });
   layer.on("tileunload", (event: L.TileEvent) => { releases.get(event.tile)?.(); releases.delete(event.tile); });
   const prefetch = () => {
     for (const release of neighbors) release(); neighbors = [];
-    const zoom = Math.min(options.maxZoom, Math.round(options.map.getZoom())), level = options.maxZoom - zoom;
+    const zoom = Math.max(options.maxZoom - SEED_MAX_LEVEL, Math.min(options.maxZoom, Math.round(options.map.getZoom()))), level = options.maxZoom - zoom;
     const bounds = options.map.getBounds(), min = options.map.project(bounds.getNorthWest(), zoom), max = options.map.project(bounds.getSouthEast(), zoom);
     const left = Math.floor(min.x / 256), top = Math.floor(min.y / 256), right = Math.floor((max.x - 1) / 256), bottom = Math.floor((max.y - 1) / 256), span = 256 * 2 ** level;
     for (let y = top - 1; y <= bottom + 1; ++y) for (let x = left - 1; x <= right + 1; ++x) {
@@ -64,24 +73,26 @@ export function createSeedTileLayer(options: Options) {
 }
 
 type AlphaTile = { coords: L.Coords; alpha: Uint8Array; edges: Uint32Array };
-const ALPHA_SIDE = 256, MAX_ALPHA_TILES = 64, MAX_TILE_EDGES = 4096, MAX_DRAW_EDGES = 8192;
+const ALPHA_SIDE = 256, MAX_TILE_EDGES = 4096, MAX_DRAW_EDGES = 8192;
 const DIRECTIONS = [[-1, 0], [1, 0], [0, -1], [0, 1]] as const;
 export const terrainKey = (x: number, y: number, z: number) => `${z}:${x}:${y}`;
+export const packedAlphaAt = (alpha: Uint8Array, index: number) => ((alpha[Math.floor(index / 8)] ?? 0) & 1 << index % 8) === 0 ? 0 : 255;
 export function decodeAlphaEdge(value: number, side = ALPHA_SIDE) {
   const index = Math.floor(value / 4), direction = DIRECTIONS[value % 4] ?? DIRECTIONS[0];
   return { x: index % side, y: Math.floor(index / side), dx: direction[0], dy: direction[1] };
 }
 
 /** Packed geometry is bounded before allocation; unknown neighbors never create tile seams. */
-export function alphaBoundary(alpha: Uint8Array, neighbor: (x: number, y: number) => number | null, allowed: (x: number, y: number) => boolean, side = ALPHA_SIDE): Uint32Array {
-  if (alpha.every(value => value < 128)) return new Uint32Array();
-  const opaque = alpha.every(value => value >= 128), edges = new Uint32Array(MAX_TILE_EDGES);
+export function alphaBoundary(alpha: Uint8Array, neighbor: (x: number, y: number) => number | null, allowed: (x: number, y: number) => boolean, side = ALPHA_SIDE, packed = false): Uint32Array {
+  if (alpha.every(value => packed ? value === 0 : value < 128)) return new Uint32Array();
+  const opaque = alpha.every(value => packed ? value === 255 : value >= 128), edges = new Uint32Array(MAX_TILE_EDGES);
+  const at = (index: number) => packed ? packedAlphaAt(alpha, index) : alpha[index] ?? 0;
   let count = 0;
   outer: for (let y = 0; y < side; ++y) for (let x = 0; x < side; ++x) {
-    if ((alpha[y * side + x] ?? 0) < 128 || opaque && x > 0 && y > 0 && x < side - 1 && y < side - 1) continue;
+    if (at(y * side + x) < 128 || opaque && x > 0 && y > 0 && x < side - 1 && y < side - 1) continue;
     for (let direction = 0; direction < DIRECTIONS.length; ++direction) {
       const [dx, dy] = DIRECTIONS[direction] ?? DIRECTIONS[0], nx = x + dx, ny = y + dy;
-      const value = nx >= 0 && ny >= 0 && nx < side && ny < side ? alpha[ny * side + nx] : neighbor(nx, ny);
+      const value = nx >= 0 && ny >= 0 && nx < side && ny < side ? at(ny * side + nx) : neighbor(nx, ny);
       if (value !== null && value !== undefined && value < 128 && allowed(nx, ny)) {
         edges[count++] = (y * side + x) * 4 + direction;
         if (count === MAX_TILE_EDGES) break outer;
@@ -106,14 +117,14 @@ export function createTerrainBoundary(map: L.Map, tiles: L.TileLayer, maxZoom: n
       if (!tile) continue;
       tile.edges = alphaBoundary(tile.alpha, (x, y) => {
         const other = alpha.get(terrainKey(tile.coords.x + Math.floor(x / ALPHA_SIDE), tile.coords.y + Math.floor(y / ALPHA_SIDE), tile.coords.z));
-        return other?.alpha[((y + ALPHA_SIDE) % ALPHA_SIDE) * ALPHA_SIDE + (x + ALPHA_SIDE) % ALPHA_SIDE] ?? null;
-      }, () => true);
+        return other ? packedAlphaAt(other.alpha, ((y + ALPHA_SIDE) % ALPHA_SIDE) * ALPHA_SIDE + (x + ALPHA_SIDE) % ALPHA_SIDE) : null;
+      }, () => true, ALPHA_SIDE, true);
     }
   };
   const draw = () => {
     frame = undefined; lines.clearLayers();
     if (!enabled) return;
-    const zoom = Math.max(0, Math.min(maxZoom, Math.round(map.getZoom())));
+    const zoom = nativeTerrainZoom(map.getZoom(), maxZoom);
     let remaining = MAX_DRAW_EDGES;
     for (const tile of alpha.values()) {
       if (tile.coords.z !== zoom || remaining <= 0) continue;
@@ -138,9 +149,9 @@ export function createTerrainBoundary(map: L.Map, tiles: L.TileLayer, maxZoom: n
     if (!context || !(event.tile instanceof HTMLImageElement)) return;
     try {
       context.drawImage(event.tile, 0, 0, ALPHA_SIDE, ALPHA_SIDE);
-      const pixels = context.getImageData(0, 0, ALPHA_SIDE, ALPHA_SIDE).data, mask = new Uint8Array(ALPHA_SIDE * ALPHA_SIDE);
-      for (let i = 0; i < mask.length; ++i) mask[i] = pixels[i * 4 + 3] ?? 0;
-      if (alpha.size >= MAX_ALPHA_TILES && !alpha.has(key)) {
+      const pixels = context.getImageData(0, 0, ALPHA_SIDE, ALPHA_SIDE).data, mask = new Uint8Array(ALPHA_SIDE * ALPHA_SIDE / 8);
+      for (let i = 0; i < ALPHA_SIDE * ALPHA_SIDE; ++i) if ((pixels[i * 4 + 3] ?? 0) >= 128) mask[Math.floor(i / 8)] = (mask[Math.floor(i / 8)] ?? 0) | 1 << i % 8;
+      if (alpha.size >= MAX_TERRAIN_TILES && !alpha.has(key)) {
         const oldest = alpha.keys().next();
         if (!oldest.done) { const removed = alpha.get(oldest.value); alpha.delete(oldest.value); if (removed) rebuild(removed.coords); }
       }
@@ -153,11 +164,11 @@ export function createTerrainBoundary(map: L.Map, tiles: L.TileLayer, maxZoom: n
     refresh,
     setEnabled(value: boolean) { enabled = value; refresh(); },
     rendered(point: MapPoint) {
-      const zoom = Math.max(0, Math.min(maxZoom, Math.round(map.getZoom()))), span = 512 * 2 ** (maxZoom - zoom);
+      const zoom = nativeTerrainZoom(map.getZoom(), maxZoom), span = 512 * 2 ** (maxZoom - zoom);
       const x = Math.floor(point.x / span), y = Math.floor(point.z / span), tile = alpha.get(terrainKey(x, y, zoom));
       if (!tile) return false;
       const px = Math.floor((point.x - x * span) / span * ALPHA_SIDE), py = Math.floor((point.z - y * span) / span * ALPHA_SIDE);
-      return (tile.alpha[py * ALPHA_SIDE + px] ?? 0) >= 128;
+      return packedAlphaAt(tile.alpha, py * ALPHA_SIDE + px) >= 128;
     },
     dispose() { if (frame !== undefined) cancelAnimationFrame(frame); tiles.off("tileload", loaded).off("tileunload", unloaded); map.off("zoomend", refresh); lines.remove(); renderer.remove(); alpha.clear(); },
   };

@@ -5,22 +5,23 @@ import type { MapPoint } from "./mapMath";
 export const SEED_TILE_SIZE = 64, SEED_MAX_LEVEL = 12, SEED_MAX_TILES = 256;
 const CACHE_BYTES = 16 * 1024 * 1024, CACHE_ENTRIES = 1024, MAX_REQUESTS = 4, EMPTY = 65535;
 export type SeedSample = { name: string; sample: MapPoint; y: number; step: number; expires: number };
-export type SeedTile = Omit<MinecraftSeedTile, "indices"> & { readonly indices: Uint16Array; readonly cost: number };
+export type SeedTileResponse = MinecraftSeedTile & { readonly image?: ImageBitmap };
+export type SeedTile = Omit<SeedTileResponse, "indices"> & { readonly indices: Uint16Array; readonly cost: number };
 type Listener = { draw: (tile: SeedTile | null) => void; priority: () => number };
 type Target = { query: MinecraftSeedTileQuery; listeners: Map<symbol, Listener>; retryAt: number; attempts: number; drawn: SeedTile | null };
-type Options = { read: (query: MinecraftSeedTileQuery, signal: AbortSignal) => Promise<MinecraftSeedTile>; changed: (state: { loading: boolean; notice: string; preset: MinecraftSeedTile["preset"] | null }) => void; updated: () => void };
+type Options = { read: (query: MinecraftSeedTileQuery, signal: AbortSignal) => Promise<SeedTileResponse>; changed: (state: { loading: boolean; notice: string; preset: MinecraftSeedTile["preset"] | null }) => void; updated: () => void };
 export const seedTileKey = (query: MinecraftSeedTileQuery) => `${query.world}:${query.y}:${query.level}:${query.tile_x}:${query.tile_z}`;
 export const seedTileOrigin = (query: Pick<MinecraftSeedTileQuery, "level" | "tile_x" | "tile_z">) => ({ x: query.tile_x * (256 * 2 ** query.level), z: query.tile_z * (256 * 2 ** query.level) });
 
 /** Network shapes are checked before palette offsets reach a canvas or hover lookup. */
-export function decodeSeedTile(data: MinecraftSeedTile, query: MinecraftSeedTileQuery, now = Date.now()): SeedTile | null {
+export function decodeSeedTile(data: SeedTileResponse, query: MinecraftSeedTileQuery, now = Date.now()): SeedTile | null {
   const origin = seedTileOrigin(query);
   if (data.world !== query.world || data.tile_x !== query.tile_x || data.tile_z !== query.tile_z || data.level !== query.level || data.y !== query.y
     || data.min_x !== origin.x || data.min_z !== origin.z || data.step !== 4 * 2 ** query.level || data.width !== 64 || data.height !== 64
     || !Number.isInteger(query.level) || query.level < 0 || query.level > SEED_MAX_LEVEL || !Number.isInteger(query.tile_x) || !Number.isInteger(query.tile_z)
     || !Number.isFinite(data.expires_at_ms) || data.expires_at_ms <= now || data.expires_at_ms > now + 15_000
     || !Number.isFinite(data.sampled_at_ms) || data.sampled_at_ms > now + 1000 || data.sampled_at_ms < now - 15_000 || data.sampled_at_ms >= data.expires_at_ms || data.expires_at_ms > data.sampled_at_ms + 15_000
-    || !/^[a-zA-Z0-9_-]{16,128}$/.test(data.profile_epoch) || !["default", "large_biomes"].includes(data.preset)
+    || !/^[a-zA-Z0-9_-]{16,128}$/.test(data.profile_epoch) || !["default", "large_biomes", "nether", "end"].includes(data.preset)
     || data.palette.length > 256 || data.palette.some(name => !/^[a-z0-9_.-]+:[a-z0-9/_.-]+$/.test(name) || name.length > 128) || data.indices.length !== 4096) return null;
   const indices = new Uint16Array(4096);
   for (let i = 0; i < indices.length; ++i) {
@@ -28,7 +29,8 @@ export function decodeSeedTile(data: MinecraftSeedTile, query: MinecraftSeedTile
     if (value !== null && (!Number.isInteger(value) || value === undefined || value < 0 || value >= data.palette.length)) return null;
     indices[i] = value ?? EMPTY;
   }
-  const cost = indices.byteLength + data.palette.reduce((bytes, name) => bytes + name.length * 2 + 32, 0) + 2048;
+  // Reserve two RGBA buffers for native image and GPU storage within the same cache budget.
+  const cost = indices.byteLength + data.palette.reduce((bytes, name) => bytes + name.length * 2 + 32, 0) + 2048 + (data.image ? 64 * 64 * 8 : 0);
   return { ...data, indices, cost };
 }
 
@@ -39,7 +41,7 @@ export function createSeedTiles(options: Options) {
   let expiryTimer: number | undefined;
   let preset: MinecraftSeedTile["preset"] | null = null;
   const report = () => options.changed({ loading: running.size > 0, notice, preset });
-  const drop = (key: string) => { const old = cache.get(key); if (old) { bytes -= old.cost; cache.delete(key); } };
+  const drop = (key: string) => { const old = cache.get(key); if (old) { bytes -= old.cost; old.image?.close(); cache.delete(key); } };
   const notify = (key: string, tile: SeedTile | null) => {
     const target = targets.get(key);
     if (target && target.drawn !== tile) { target.drawn = tile; for (const listener of target.listeners.values()) listener.draw(tile); }
@@ -48,7 +50,8 @@ export function createSeedTiles(options: Options) {
     ++generation;
     window.clearTimeout(expiryTimer); expiryTimer = undefined;
     for (const request of running.values()) request.abort();
-    running.clear(); cache.clear(); bytes = 0; profile = ""; profileTime = 0; preset = null; notice = "";
+    // Aborted native decodes retain their slots until settlement; rapid switches cannot exceed four.
+    for (const tile of cache.values()) tile.image?.close(); cache.clear(); bytes = 0; profile = ""; profileTime = 0; preset = null; notice = "";
     for (const [key, target] of targets) { target.retryAt = 0; target.attempts = 0; notify(key, null); }
     options.updated(); report();
   };
@@ -79,11 +82,11 @@ export function createSeedTiles(options: Options) {
       const deadline = window.setTimeout(() => request.abort(), 10_000);
       running.set(key, request); report();
       void options.read(target.query, request.signal).then(response => {
-        if (disposed || revision !== generation || request.signal.aborted || !targets.has(key)) return;
+        if (disposed || revision !== generation || request.signal.aborted || !targets.has(key)) { response.image?.close(); return; }
         const tile = decodeSeedTile(response, target.query);
-        if (!tile) throw new Error("Invalid or expired seed tile.");
+        if (!tile) { response.image?.close(); throw new Error("Invalid or expired seed tile."); }
         if (profile && tile.profile_epoch !== profile) {
-          if (tile.sampled_at_ms <= profileTime) throw new Error("Seed profile changed.");
+          if (tile.sampled_at_ms <= profileTime) { tile.image?.close(); throw new Error("Seed profile changed."); }
           // Invalidate all older-profile tiles and requests before publishing the replacement.
           clear();
         }
@@ -139,6 +142,7 @@ export function createSeedTiles(options: Options) {
       return null;
     },
     refresh() { for (const target of targets.values()) { target.retryAt = 0; target.attempts = 0; } pump(); },
+    invalidate() { clear(); pump(); },
     dispose() { disposed = true; window.clearInterval(timer); clear(); targets.clear(); },
     stats: () => ({ bytes, entries: cache.size, active: targets.size, running: running.size }),
   };

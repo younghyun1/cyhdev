@@ -38,7 +38,7 @@ pub fn public_router(state: &Arc<ServerState>) -> anyhow::Result<Router<Arc<Serv
         )
         .route(
             "/api/minecraft/map/seed-tile.bin",
-            post(minecraft_map_seed_tile_binary),
+            post(minecraft_map_seed_tile_binary).layer(super::seed_tile_compression::layer()),
         )
         .route(
             "/api/minecraft/map/seed-tile.png",

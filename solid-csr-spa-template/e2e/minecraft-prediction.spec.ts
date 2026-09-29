@@ -39,7 +39,8 @@ for (const width of [1440, 390]) {
     await page.screenshot({ path: `../target/minecraft-tests/continuous-seed-${width}.png` });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByLabel("Dimension", { exact: true }).selectOption("minecraft_the_nether");
-    await expect(page.locator(".minecraft-seed-tile")).toHaveCount(0);
+    await expect(ready.first()).toBeVisible();
+    await expect.poll(() => fixture.predictions.some(query => query.world === "minecraft:the_nether" && query.y === 0)).toBe(true);
     expect(errors).toEqual([]);
   });
 }
@@ -52,7 +53,7 @@ test("permission refresh retains valid imagery and removes it at expiry when ren
   const ready = page.locator('.minecraft-seed-tile[data-ready="true"]');
   await expect(ready.first()).toBeVisible();
   await page.clock.pauseAt(new Date(Date.now() + 1000));
-  await page.route("**/api/minecraft/map/seed-tile", route => route.fulfill({ status: 503, json: { error_code: 89, message: "Unavailable" } }));
+  await page.route("**/api/minecraft/map/seed-tile.{bin,png}", route => route.fulfill({ status: 503, json: { error_code: 89, message: "Unavailable" } }));
   const count = fixture.predictions.length;
   await page.clock.runFor(11000);
   await expect(ready.first()).toBeVisible();
@@ -64,6 +65,63 @@ test("permission refresh retains valid imagery and removes it at expiry when ren
   await page.clock.runFor(20000);
   expect(fixture.predictions.length).toBe(count);
   await expect(page.locator(".minecraft-seed-tile")).toHaveCount(0);
+});
+
+for (const [map, world, biome, preset] of [["minecraft_overworld", "minecraft:overworld", "forest", "Large biomes"], ["minecraft_the_nether", "minecraft:the_nether", "warped forest", "Nether"], ["minecraft_the_end", "minecraft:the_end", "end", "The End"]] as const) {
+  test(`${preset} predicts by default with dimension-specific hover biomes`, async ({ page }) => {
+    await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
+    const fixture = await installMinecraftMapMocks(page);
+    await page.route("**/minecraft/map/tiles/**/*.png*", route => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"/>' }));
+    await page.goto(`/minecraft?world=${map}&x=4096&z=4096`);
+    await expect(page.locator('.minecraft-seed-tile[data-ready="true"]').first()).toBeVisible();
+    await expect.poll(() => fixture.predictions.some(query => query.world === world)).toBe(true);
+    const box = await page.locator(".minecraft-atlas-canvas").boundingBox(); if (!box) throw new Error("Missing terrain canvas");
+    await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2 + 20);
+    const inspection = page.getByRole("region", { name: "Terrain inspection" });
+    await expect(inspection).toContainText("Predicted biome:"); await expect(inspection).toContainText(biome);
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    await expect(page.getByLabel("Predicted biomes", { exact: true })).toBeChecked();
+    await expect(page.locator(".minecraft-prediction-receipt")).toContainText(preset);
+  });
+}
+
+test("negative zoom keeps native terrain, its frontier, and observed hover above coarse predictions", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
+  const fixture = await installMinecraftMapMocks(page);
+  await page.route("**/minecraft/map/tiles/**/*.png*", route => {
+    const parts = /\/(\d+)\/(-?\d+)_(-?\d+)\.png/.exec(route.request().url());
+    if (!parts) return route.fallback();
+    const step = 2 ** (3 - Number(parts[1])), min = Number(parts[2]) * 512 * step;
+    const width = Math.max(0, Math.min(512, (192 - min) / step));
+    return route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="${width}" height="512" fill="#799452"/></svg>` });
+  });
+  await page.goto("/minecraft");
+  const map = page.locator(".minecraft-atlas-canvas");
+  await expect(page.locator('.minecraft-seed-tile[data-ready="true"]').first()).toBeVisible();
+  for (let zoom = 3; zoom >= -2; --zoom) { await page.getByRole("button", { name: "Zoom out" }).click(); await expect(map).toHaveAttribute("data-zoom", String(zoom)); }
+  await expect.poll(() => fixture.predictions.some(query => query.level === 5)).toBe(true);
+  const nativeTiles = page.locator('.leaflet-tile-pane img.leaflet-tile-loaded[src*="/0/"]');
+  await expect(nativeTiles.first()).toBeVisible();
+  await expect.poll(() => nativeTiles.count()).toBeGreaterThan(16);
+  expect(await nativeTiles.count()).toBeLessThanOrEqual(256);
+  await expect.poll(async () => (await nativeTiles.first().boundingBox())?.width).toBe(128);
+  expect(await page.locator(".leaflet-tile-pane img").evaluateAll(nodes => nodes.every(node => /\/tiles\/[^/]+\/\d+\//.test((node as HTMLImageElement).src)))).toBe(true);
+  const frontier = page.locator(".leaflet-minecraft-frontier-pane canvas");
+  await expect.poll(() => frontier.evaluate((node: HTMLCanvasElement) => node.getContext("2d")?.getImageData(0, 0, node.width, node.height).data.some((value, i) => i % 4 === 3 && value > 0))).toBe(true);
+  const box = await map.boundingBox(); if (!box) throw new Error("Missing terrain canvas");
+  await page.mouse.move(box.x + box.width / 2 - 30, box.y + box.height / 2 + 20);
+  await expect(page.getByRole("region", { name: "Terrain inspection" })).toContainText("Observed biome:");
+  await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 20);
+  await expect(page.getByRole("region", { name: "Terrain inspection" })).toContainText("Predicted biome:");
+  await page.mouse.move(1, 1);
+  await page.screenshot({ path: "../target/minecraft-tests/continuous-seed-negative-zoom.png" });
+  await page.getByRole("button", { name: "Travel", exact: true }).click();
+  await page.getByLabel("Go to X", { exact: true }).fill("-2000000"); await page.getByLabel("Go to Z", { exact: true }).fill("2000000");
+  await page.getByRole("button", { name: "Go to coordinates", exact: true }).click();
+  await expect.poll(() => fixture.predictions.some(query => query.level === 5 && query.tile_x < -240 && query.tile_z > 240)).toBe(true);
+  expect(fixture.predictions.every(query => query.level >= 0 && query.level <= 12)).toBe(true);
+  await page.getByRole("button", { name: "Close map menu" }).click();
 });
 
 test("actual terrain remains above seed colors and supplies observed hover data", async ({ page }) => {
@@ -112,7 +170,7 @@ test("failed tiles finish their lifecycle so subsequent zooms can load", async (
   await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
   await installMinecraftMapMocks(page);
   let failing = true;
-  await page.route("**/api/minecraft/map/seed-tile", route => failing ? route.fulfill({ status: 503, json: { error_code: 89 } }) : route.fallback());
+  await page.route("**/api/minecraft/map/seed-tile.{bin,png}", route => failing ? route.fulfill({ status: 503, json: { error_code: 89 } }) : route.fallback());
   await page.goto("/minecraft");
   await expect(page.locator(".minecraft-seed-tile").first()).toBeAttached();
   await page.clock.runFor(13000);
@@ -121,4 +179,31 @@ test("failed tiles finish their lifecycle so subsequent zooms can load", async (
   await page.getByRole("button", { name: "Zoom out" }).click(); await page.clock.runFor(500);
   await page.getByRole("button", { name: "Zoom out" }).click(); await page.clock.runFor(500);
   await expect(page.locator('.minecraft-seed-tile[data-ready="true"]').first()).toBeVisible();
+});
+
+test("Layers switches binary and PNG tiles, clears cached imagery, and remembers the format", async ({ page }) => {
+  await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
+  await installMinecraftMapMocks(page);
+  const requests = { bin: 0, png: 0 };
+  page.on("request", request => { if (request.url().endsWith("seed-tile.bin")) ++requests.bin; if (request.url().endsWith("seed-tile.png")) ++requests.png; });
+  await page.goto("/minecraft");
+  const ready = page.locator('.minecraft-seed-tile[data-ready="true"]');
+  await expect(ready.first()).toBeVisible();
+  expect(requests.bin).toBeGreaterThan(0); expect(requests.png).toBe(0);
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  const format = page.getByRole("combobox", { name: "Tile format", exact: true });
+  await expect(format).toHaveValue("binary");
+  await format.selectOption("png");
+  await expect.poll(() => requests.png).toBeGreaterThan(0);
+  await expect(ready.first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.reload();
+  await expect(ready.first()).toBeVisible();
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
+  await expect(format).toHaveValue("png");
+  const before = requests.bin;
+  await format.selectOption("binary");
+  await expect.poll(() => requests.bin).toBeGreaterThan(before);
+  await expect(ready.first()).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("minecraft-prediction-format"))).toBe("binary");
 });
