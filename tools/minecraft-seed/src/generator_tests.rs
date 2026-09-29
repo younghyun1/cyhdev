@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, error::Error, fs::File, io::Read};
 
 use pumpkin_data::chunk::{BiomeTree, OVERWORLD_BIOME_SOURCE};
 
-use crate::{PredictionRequest, predict};
+use crate::{Dimension, PredictionRequest, predict};
 
 fn biome_distance(tree: &BiomeTree, point: &[i64; 7], wanted: &str, best: &mut i64) {
     match tree {
@@ -33,7 +33,7 @@ fn aligned_grid_matches_scalar_noise() {
     use super::{DensityVolume, MultiNoiseSampler, router};
 
     for large in [false, true] {
-        let router = router(1, large);
+        let router = router(1, Dimension::Overworld, large);
         let mut scalar = MultiNoiseSampler::generate(&router);
         let mut volume = MultiNoiseSampler::generate(&router);
         volume.fill_volume(DensityVolume::new(32, 1, 32, 128, 64, 96, 4, 4, 4));
@@ -48,7 +48,7 @@ fn aligned_grid_matches_scalar_noise() {
 #[test]
 fn saved_shore_boundaries_have_equal_biome_distances() {
     use super::{MultiNoiseSampler, router};
-    let router = router(1, false);
+    let router = router(1, Dimension::Overworld, false);
     let mut sampler = MultiNoiseSampler::generate(&router);
     for (x, y, z) in [(42, -16, 29), (44, 16, 37), (48, -3, 29)] {
         let point = sampler.sample(x, y, z).convert_to_list();
@@ -66,6 +66,7 @@ fn saved_shore_boundaries_have_equal_biome_distances() {
 fn matches_saved_paper_shore_boundary() -> Result<(), Box<dyn Error>> {
     let request = PredictionRequest {
         seed: 1,
+        dimension: Dimension::Overworld,
         large_biomes: false,
         y: 64,
         min_x: 176,
@@ -84,6 +85,7 @@ fn overlapping_grids_and_scalar_queries_are_stable() -> Result<(), Box<dyn Error
     for large_biomes in [false, true] {
         let mut request = PredictionRequest {
             seed: 1,
+            dimension: Dimension::Overworld,
             large_biomes,
             y: 64,
             min_x: 128,
@@ -124,6 +126,7 @@ fn large_biomes_matches_saved_negative_coordinate_boundaries() -> Result<(), Box
     for (x, z, expected) in [(940, -1296, "river"), (868, -1228, "beach")] {
         let mut request = PredictionRequest {
             seed: 1,
+            dimension: Dimension::Overworld,
             large_biomes: true,
             y: -64,
             min_x: x,
@@ -157,7 +160,7 @@ fn compares_external_vanilla_fixture() -> Result<(), Box<dyn Error>> {
     let mut samples = 0;
     let mut mismatches = 0;
     let mut tied_mismatches = 0;
-    let router = super::router(1, large);
+    let router = super::router(1, Dimension::Overworld, large);
     let mut sampler = super::MultiNoiseSampler::generate(&router);
     let mut examples = Vec::new();
     let mut slices = BTreeMap::<(i32, i32, i32), BTreeMap<(i32, i32), &str>>::new();
@@ -207,6 +210,7 @@ fn compares_external_vanilla_fixture() -> Result<(), Box<dyn Error>> {
             .ok_or("empty slice")?;
         let actual = predict(&PredictionRequest {
             seed: 1,
+            dimension: Dimension::Overworld,
             large_biomes: large,
             y: y * 4,
             min_x: min_x * 4,

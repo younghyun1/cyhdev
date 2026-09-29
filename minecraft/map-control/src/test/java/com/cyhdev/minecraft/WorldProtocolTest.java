@@ -34,6 +34,9 @@ public final class WorldProtocolTest {
         reject(area(0, 0, 9, 8, "64").replace("\"area\"", "\"prediction_context\""));
         var profile = WorldProtocol.parse("{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\"}");
         check(profile.width() == 0 && profile.height() == 0 && profile.y() == null, "Seed profile requests no chunks or height slice");
+        for (String world : List.of("minecraft:the_nether", "minecraft:the_end")) {
+            check(WorldProtocol.parse("{\"kind\":\"seed_profile\",\"world\":\"" + world + "\"}").world().equals(world), "Dimension profile world preserved");
+        }
         reject("{\"kind\":\"seed_profile\"}");
         reject("{\"kind\":\"seed_profile\",\"world\":\"overworld\"}");
         reject("{\"kind\":\"seed_profile\",\"world\":\"minecraft:overworld\",\"y\":64}");
@@ -121,6 +124,15 @@ public final class WorldProtocolTest {
         check(profileJson.contains("\"world_border\":{\"min_x\":-10,\"min_z\":-20,\"max_x\":10,\"max_z\":20}"), "Inclusive world border wire shape");
         check(profileJson.contains("\"kind\":\"rectangle\"") && profileJson.contains("\"kind\":\"circle\"")
             && !profileJson.contains("coverage"), "Tagged visibility wire shapes without chunk coverage");
+        for (String preset : List.of("nether", "end")) {
+            String world = "minecraft:the_" + preset;
+            var dimension = new WorldProtocol.SeedProfileResponse("seed_profile", world, "test", 2, Long.MIN_VALUE,
+                preset, "revision", profile.world_border(), profile.visibility());
+            String dimensionJson = StandardCharsets.UTF_8.decode(WorldProtocol.encode(dimension)).toString();
+            check(dimensionJson.contains("\"preset\":\"" + preset + "\"") && dimensionJson.contains("\"world\":\"" + world + "\""),
+                "Dimension preset matches world on private protocol");
+            check(!dimension.toString().contains("-9223372036854775808"), "Dimension profile diagnostics redact seed");
+        }
     }
 
     private static String area(int x, int z, int width, int height, String y) {

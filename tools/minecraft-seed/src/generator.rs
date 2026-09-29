@@ -1,8 +1,10 @@
 //! Initialize only the biome router, without a server, chunks or world storage.
 
 use pumpkin_data::{
-    chunk::OVERWORLD_BIOME_SOURCE,
-    noise_router::{LARGE_BIOMES_BASE_NOISE_ROUTER, OVERWORLD_BASE_NOISE_ROUTER},
+    chunk::{NETHER_BIOME_SOURCE, OVERWORLD_BIOME_SOURCE},
+    noise_router::{
+        END_BASE_NOISE_ROUTER, LARGE_BIOMES_BASE_NOISE_ROUTER, OVERWORLD_BASE_NOISE_ROUTER,
+    },
 };
 use pumpkin_world::generation::{
     GlobalRandomConfig,
@@ -13,19 +15,39 @@ use pumpkin_world::generation::{
     },
 };
 
-use crate::{Cell, Error, PredictionRequest, PredictionResponse};
+use crate::{
+    Cell, Dimension, Error, PredictionRequest, PredictionResponse, end_sampler::EndSampler,
+};
 
 /// Exact source and generated-data revision used by this executable.
 pub const GENERATOR_REVISION: &str = "pumpkin-4426d1113a211e6018a2db416e33b6b8a7802614-java26.3";
 
-/// Construct a seed-specific router using vanilla default or large-biomes noise.
-pub(crate) fn router(seed: i64, large_biomes: bool) -> ProtoMultiNoiseRouter {
-    let base = if large_biomes {
-        &LARGE_BIOMES_BASE_NOISE_ROUTER.multi_noise
-    } else {
-        &OVERWORLD_BASE_NOISE_ROUTER.multi_noise
+pub(crate) enum Sampler<'a> {
+    MultiNoise(MultiNoiseSampler<'a>),
+    End(EndSampler),
+}
+
+impl<'a> Sampler<'a> {
+    /// Keep dimension-specific state bounded and owned by the persistent worker.
+    pub(crate) fn new(router: &'a ProtoMultiNoiseRouter, dimension: Dimension, seed: i64) -> Self {
+        match dimension {
+            Dimension::End => Self::End(EndSampler::new(seed)),
+            Dimension::Overworld | Dimension::Nether => {
+                Self::MultiNoise(MultiNoiseSampler::generate(router))
+            }
+        }
+    }
+}
+
+/// Construct only the selected dimension's seed-specific biome noise router.
+pub(crate) fn router(seed: i64, dimension: Dimension, large_biomes: bool) -> ProtoMultiNoiseRouter {
+    let base = match (dimension, large_biomes) {
+        (Dimension::Overworld, true) => &LARGE_BIOMES_BASE_NOISE_ROUTER.multi_noise,
+        (Dimension::Overworld, false) => &OVERWORLD_BASE_NOISE_ROUTER.multi_noise,
+        (Dimension::Nether, _) => &crate::nether_router::NETHER_MULTI_NOISE,
+        (Dimension::End, _) => &END_BASE_NOISE_ROUTER.multi_noise,
     };
-    let random = GlobalRandomConfig::new(seed as u64, false);
+    let random = GlobalRandomConfig::new(seed as u64, dimension != Dimension::Overworld);
     ProtoMultiNoiseRouter {
         full_component_stack: ProtoNoiseRouters::generate_proto_stack(
             base.full_component_stack,
@@ -43,15 +65,15 @@ pub(crate) fn router(seed: i64, large_biomes: bool) -> ProtoMultiNoiseRouter {
 /// Predict a bounded fixed-height grid, including the true large-biomes preset.
 pub fn predict(request: &PredictionRequest) -> Result<PredictionResponse, Error> {
     request.validate()?;
-    let router = router(request.seed, request.large_biomes);
-    let mut sampler = MultiNoiseSampler::generate(&router);
+    let router = router(request.seed, request.dimension, request.large_biomes);
+    let mut sampler = Sampler::new(&router, request.dimension, request.seed);
     sample(request, &mut sampler, || false)
 }
 
 /// Reuse seeded state on its owning CPU thread; cancellation is checked between rows.
 pub(crate) fn sample(
     request: &PredictionRequest,
-    sampler: &mut MultiNoiseSampler<'_>,
+    sampler: &mut Sampler<'_>,
     cancelled: impl Fn() -> bool,
 ) -> Result<PredictionResponse, Error> {
     request.validate()?;
@@ -61,7 +83,8 @@ pub(crate) fn sample(
 
     // Aligned quart grids can use Pumpkin's volume path. Other grids must round
     // each coordinate separately, since a block step need not be a quart step.
-    if request.step.is_multiple_of(4)
+    if let Sampler::MultiNoise(sampler) = sampler
+        && request.step.is_multiple_of(4)
         && request.min_x % 4 == 0
         && request.min_z % 4 == 0
         && let Ok(step) = i32::try_from(request.step)
@@ -89,10 +112,19 @@ pub(crate) fn sample(
             let z = i64::from(request.min_z) + i64::from(row) * i64::from(request.step);
             let x = i32::try_from(x).map_err(|_| Error::Bounds)?;
             let z = i32::try_from(z).map_err(|_| Error::Bounds)?;
-            let point = sampler.sample(x >> 2, request.y >> 2, z >> 2);
-            // Vanilla preserves the prior leaf on equal-distance ties. A map
-            // sample must stay stable when the viewport or request order changes.
-            let biome = OVERWORLD_BIOME_SOURCE.get(&point.convert_to_list(), &mut None);
+            let biome = match sampler {
+                Sampler::End(sampler) => sampler.biome(x, z),
+                Sampler::MultiNoise(sampler) => {
+                    let point = sampler.sample(x >> 2, request.y >> 2, z >> 2);
+                    let source = match request.dimension {
+                        Dimension::Nether => &NETHER_BIOME_SOURCE,
+                        Dimension::Overworld | Dimension::End => &OVERWORLD_BIOME_SOURCE,
+                    };
+                    // Clearing the previous leaf keeps equal-distance ties stable
+                    // across overlapping viewports and request order.
+                    source.get(&point.convert_to_list(), &mut None)
+                }
+            };
             cells.push(Cell {
                 x,
                 z,

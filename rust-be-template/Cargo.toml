@@ -139,6 +139,7 @@ lettre = { version = "0.11.23", default-features = false, features = [
 bigdecimal = { version = "0.4.11", features = ["serde"] }
 
 # image processing
+png = "0.18.1"
 # Only decoders for the upload allowlist in util/media/image_upload.rs, plus the
 # AVIF encoder. rayon keeps the encoder multi-threaded under its explicit cap.
 image = { version = "0.25.10", default-features = false, features = [
