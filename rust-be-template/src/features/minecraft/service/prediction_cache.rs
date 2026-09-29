@@ -6,9 +6,8 @@ use scc::HashCache;
 use std::{collections::BTreeSet, mem::size_of, sync::Arc};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-pub(super) const MAX_BYTES: usize = 512 * 1024 * 1024;
-// Reserve bucket/resizing headroom separately from payloads and per-entry ownership.
-const INDEX_RESERVE: usize = 64 * 1024 * 1024;
+#[cfg(test)]
+use super::prediction_budget::MAX_BYTES;
 const MAX_ENTRIES: usize = 65_536;
 const ENTRY_OVERHEAD: usize = 1024;
 const MAX_RECLAIM: usize = 64;
@@ -52,9 +51,13 @@ pub(super) struct PredictionCache {
 
 impl PredictionCache {
     pub fn new() -> Self {
-        Self::with_budget(MAX_BYTES - INDEX_RESERVE)
+        Self {
+            entries: HashCache::with_capacity(0, MAX_ENTRIES),
+            budget: super::prediction_budget::shared(),
+        }
     }
 
+    #[cfg(test)]
     fn with_budget(bytes: usize) -> Self {
         Self {
             entries: HashCache::with_capacity(0, MAX_ENTRIES),

@@ -27,6 +27,16 @@ export function distance(a: MapPoint, b: MapPoint): number {
 }
 
 export function biomeColor(biome: string): string {
+  if (biome.includes("ocean") || biome.endsWith(":river")) return "#537fba";
+  if (/snow|frozen|ice|grove/.test(biome)) return "#d6e4e1";
+  if (/desert|beach/.test(biome)) return "#d4c28a";
+  if (/badlands/.test(biome)) return "#b77852";
+  if (/swamp/.test(biome)) return "#647c59";
+  if (/jungle/.test(biome)) return "#3e7848";
+  if (/forest|taiga/.test(biome)) return "#62945b";
+  if (/plains|meadow/.test(biome)) return "#9aaf70";
+  if (/savanna/.test(biome)) return "#b6ad67";
+  if (/peak|stony|mountain/.test(biome)) return "#989f95";
   let hash = 0;
   for (const character of biome) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
   return `hsl(${hash % 360} 62% 55%)`;

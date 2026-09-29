@@ -11,6 +11,7 @@ async function setup(page: Page, predictions = false) {
   await installApiMocks(page, "logged-out");
   await setUiPreferences(page, "en-US", "light");
   const fixture = await installMinecraftMapMocks(page);
+  if (predictions) await page.route("**/minecraft/map/tiles/**/*.png*", route => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"/>' }));
   await page.goto("/minecraft");
   await page.getByRole("button", { name: "Layers", exact: true }).click();
   await expect(page.getByRole("button", { name: "Survey selected area" })).toBeEnabled();

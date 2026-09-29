@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import type { MinecraftMapData, MinecraftMapQuery, MinecraftPrediction, MinecraftPredictionQuery, MinecraftWaypoint } from "../src/generated";
+import type { MinecraftMapData, MinecraftMapQuery, MinecraftSeedTile, MinecraftSeedTileQuery, MinecraftWaypoint } from "../src/generated";
 
 export const mapWorlds = [{ id: "minecraft:overworld", name: "Overworld", map_id: "minecraft_overworld", min_y: -64, max_y: 319 }, { id: "minecraft:the_nether", name: "Nether", map_id: "minecraft_the_nether", min_y: 0, max_y: 255 }];
 export const initialWaypoint: MinecraftWaypoint = { id: "00000000-0000-4000-8000-000000000001", world: "minecraft:overworld", name: "Oakridge base", description: "Storage, beds, and the northern trail", x: 146, y: 72, z: 116 };
@@ -7,12 +7,9 @@ export function emptyMapData(kind: MinecraftMapData["kind"]): MinecraftMapData {
   return { kind, world: kind === "catalog" ? null : "minecraft:overworld", sampled_at_ms: Date.now(), scanned_chunks: 0, missing_chunks: 0, truncated: false, worlds: [], blocks: [], cells: [], structures: [], matches: [] };
 }
 
-export function predictedMapData(query: MinecraftPredictionQuery, now = Date.now()): MinecraftPrediction {
-  const min_x = Math.floor(query.min_x / 16) * 16, min_z = Math.floor(query.min_z / 16) * 16;
-  const coverage: MinecraftPrediction["coverage"] = Array.from({ length: 64 }, (_, index) => ({ chunk_x: min_x / 16 + index % 8, chunk_z: min_z / 16 + Math.floor(index / 8), state: index === 0 ? "generated" : index === 1 ? "unknown" : index === 2 ? "excluded" : "ungenerated" }));
-  const cells = Array.from({ length: 1024 }, (_, index) => ({ x: min_x + index % 32 * 4, z: min_z + Math.floor(index / 32) * 4, biome: index % 32 > 16 ? "minecraft:forest" : "minecraft:plains" }))
-    .filter(cell => coverage[Math.floor((cell.z - min_z) / 16) * 8 + Math.floor((cell.x - min_x) / 16)]?.state === "ungenerated");
-  return { world: query.world, min_x, min_z, y: query.y, step: 4, preset: "large_biomes", sampled_at_ms: now, expires_at_ms: now + 15000, generator_revision: "Pumpkin 26.3 / fixture-revision", cells, coverage };
+export function seedMapData(query: MinecraftSeedTileQuery, now = Date.now()): MinecraftSeedTile {
+  const step = 4 * 2 ** query.level, min_x = query.tile_x * 256 * 2 ** query.level, min_z = query.tile_z * 256 * 2 ** query.level;
+  return { ...query, min_x, min_z, step, width: 64, height: 64, preset: "large_biomes", profile_epoch: "a".repeat(64), sampled_at_ms: now, expires_at_ms: now + 15000, generator_revision: "Pumpkin 26.3 / fixture-revision", palette: ["minecraft:plains", "minecraft:forest"], indices: Array.from({ length: 4096 }, (_, i) => min_x + i % 64 * step > 144 ? 1 : 0) };
 }
 
 /** Procedural pixel terrain keeps screenshot fixtures deterministic and network-free. */
@@ -27,17 +24,17 @@ function terrainTile(): string {
 
 export async function installMinecraftMapMocks(page: Page) {
   const queries: MinecraftMapQuery[] = [];
-  const predictions: MinecraftPredictionQuery[] = [];
+  const predictions: MinecraftSeedTileQuery[] = [];
   const writes: { method: string; body: unknown }[] = [];
   let waypoints = [initialWaypoint];
   await page.route("**/minecraft/map/tiles/settings.json", route => route.fulfill({ json: { worlds: [{ name: "minecraft_overworld", display_name: "Overworld", type: "normal" }, { name: "minecraft_the_nether", display_name: "The Nether", type: "nether" }] } }));
   await page.route("**/minecraft/map/tiles/*/settings.json", route => route.fulfill({ json: { zoom: { max: 3, def: 4, extra: 2 }, spawn: { x: 128, z: 128 } } }));
   await page.route("**/minecraft/map/tiles/players.json", route => route.fulfill({ json: { players: [{ name: "Alex", world: "minecraft_overworld", x: 120, z: 104 }] } }));
   await page.route("**/minecraft/map/tiles/**/*.png*", route => route.fulfill({ contentType: "image/svg+xml", body: terrainTile() }));
-  await page.route("**/api/minecraft/map/prediction", async route => {
-    const query = route.request().postDataJSON() as MinecraftPredictionQuery;
+  await page.route("**/api/minecraft/map/seed-tile", async route => {
+    const query = route.request().postDataJSON() as MinecraftSeedTileQuery;
     predictions.push(query);
-    return route.fulfill({ json: { data: predictedMapData(query, await page.evaluate(() => Date.now())) } });
+    return route.fulfill({ json: { data: seedMapData(query, await page.evaluate(() => Date.now())) } });
   });
   await page.route("**/api/minecraft/map/query", async route => {
     const body = route.request().postDataJSON() as MinecraftMapQuery;

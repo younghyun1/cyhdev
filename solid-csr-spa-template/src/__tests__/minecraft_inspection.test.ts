@@ -1,6 +1,7 @@
 import { createRoot, flush } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MinecraftMapData, MinecraftPrediction } from "../generated";
+import type { MinecraftMapData } from "../generated";
+import type { SeedSample } from "../components/minecraft/seedTiles";
 import { createMapInspection, createMapQueryGate, validInspectionChunk } from "../components/minecraft/mapInspectionState";
 
 const WORLD = "minecraft:overworld";
@@ -8,17 +9,14 @@ function chunk(x = 0, z = 0, changes: Partial<MinecraftMapData> = {}): Minecraft
   return { kind: "area", world: WORLD, sampled_at_ms: 1, scanned_chunks: 1, missing_chunks: 0, truncated: false, structures: [], matches: [], worlds: [], blocks: [],
     cells: Array.from({ length: 16 }, (_, i) => ({ x: x * 16 + i % 4 * 4, z: z * 16 + Math.floor(i / 4) * 4, y: 72, biome: "minecraft:forest" })), ...changes };
 }
-function preview(): MinecraftPrediction {
-  return { world: WORLD, sampled_at_ms: Date.now(), expires_at_ms: Date.now() + 15_000, preset: "default", generator_revision: "fixture", min_x: 0, min_z: 0, step: 4, y: 64,
-    cells: [{ x: 0, z: 0, biome: "minecraft:plains" }], coverage: Array.from({ length: 64 }, (_, i) => ({ chunk_x: i % 8, chunk_z: Math.floor(i / 8), state: "ungenerated" })) };
-}
+function preview(): SeedSample { return { name: "minecraft:plains", sample: { x: 0, z: 0 }, y: 64, step: 4, expires: Date.now() + 15000 }; }
 function deferred<T>() {
   let resolve: (value: T) => void = () => { throw new Error("Promise not initialized"); };
   const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve };
 }
 const disposals: (() => void)[] = [];
 function setup(useGate = true) {
-  const context = { world: WORLD, area: null as MinecraftMapData | null, areaSlice: null as number | null, matches: null as MinecraftMapData | null, matchedBlock: "", prediction: null as MinecraftPrediction | null };
+  const context = { world: WORLD, area: null as MinecraftMapData | null, areaSlice: null as number | null, matches: null as MinecraftMapData | null, matchedBlock: "", prediction: null as SeedSample | null, seed: (): SeedSample | null => context.prediction };
   let allowed = true;
   const busy = vi.fn();
   const gate = createMapQueryGate(() => allowed, busy);
@@ -62,11 +60,11 @@ describe("Minecraft pointer inspection", () => {
   it("uses only unexpired prediction cells permitted by the coverage mask", async () => {
     const { controller, context, read } = setup(); context.prediction = preview();
     controller.inspect({ x: 1, z: 1 }); await tick(500);
-    expect(controller.inspection()?.biome).toEqual({ name: "minecraft:plains", source: "predicted", y: 64, surfaceY: null, sample: { x: 0, z: 0 } });
+    expect(controller.inspection()?.biome).toEqual({ name: "minecraft:plains", source: "predicted", y: 64, surfaceY: null, step: 4, sample: { x: 0, z: 0 } });
     expect(read).not.toHaveBeenCalled();
-    context.prediction = { ...preview(), coverage: preview().coverage.map(cell => ({ ...cell, state: "unknown" })) };
+    context.prediction = null;
     controller.refresh(); await tick(500); expect(read).toHaveBeenCalledTimes(1);
-    controller.invalidate(); context.prediction = { ...preview(), expires_at_ms: Date.now() - 1 };
+    controller.invalidate(); context.prediction = { ...preview(), expires: Date.now() - 1 };
     controller.inspect({ x: 1, z: 1 }); await tick(1000); expect(read).toHaveBeenCalledTimes(2);
   });
 

@@ -20,6 +20,7 @@ macro_rules! operation {
 pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("minecraft", "POST", "/api/minecraft/map/query"),
     operation!("minecraft", "POST", "/api/minecraft/map/prediction"),
+    operation!("minecraft", "POST", "/api/minecraft/map/seed-tile"),
     operation!("minecraft", "GET", "/api/minecraft/map/waypoints"),
     operation!("minecraft", "POST", "/api/admin/minecraft/map/waypoints"),
     operation!(
