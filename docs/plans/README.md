@@ -11,6 +11,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Completed
 
+- [PGO and BOLT harness](2026-09-29-pgo-bolt.md)
 - [Minecraft biome highlights](2026-09-29-minecraft-biome-highlights.md)
 - [Minecraft prediction resolution](2026-09-29-minecraft-prediction-resolution.md)
 - [Minecraft browser-zoom tile coverage](2026-09-29-minecraft-browser-zoom.md)
