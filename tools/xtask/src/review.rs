@@ -68,10 +68,11 @@ pub(crate) fn run_frontend_checks(root: &Path) -> TaskResult<()> {
             .args(["ci", "--no-audit", "--no-fund"])
             .current_dir(&frontend),
     )?;
-    let checks: [(&str, &[&str]); 4] = [
+    let checks: [(&str, &[&str]); 5] = [
         ("typecheck", &["run", "typecheck"]),
         ("lint", &["run", "lint", "--", "--max-warnings", "0"]),
         ("unit tests", &["run", "test"]),
+        ("optimization driver", &["run", "optimization:check"]),
         ("build", &["run", "build"]),
     ];
     let mut failures = Vec::new();

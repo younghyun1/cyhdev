@@ -10,6 +10,7 @@ mod evidence_manifest;
 mod evidence_runtime;
 #[cfg(test)]
 mod main_tests;
+mod optimization;
 mod psql_connection;
 mod release;
 mod review;
@@ -91,6 +92,7 @@ fn run() -> TaskResult<()> {
         "image-smoke" => review::run_image_smoke(&root),
         "migration-rollback" => database_review::run_migration_rollback(&root),
         "openapi" => review::run_openapi_drift_check(&root),
+        "optimize" => optimization::campaign::run(&root, &forwarded),
         "secret-scan" => review::run_secret_scan(&root),
         "test" | "unit" => review::run_unit_tests(&root),
         "throughput" => run_throughput_harness(&root, &forwarded),
@@ -262,6 +264,9 @@ fn run_wasm_clippy(root: &Path) -> TaskResult<()> {
 }
 
 fn print_help() {
+    println!(
+        "Optimization: cargo xtask optimize inventory OUTPUT_DIR | plan CONFIG.json | run CONFIG.json"
+    );
     println!(
         "Commands:\n  backend             Run the backend\n  build               Build the optimized host-side backend artifact\n  build-dev           Build native workspace packages in the development profile\n  clippy              Run the implementation stage gate\n  db-integration      Run ignored PostgreSQL integration cases\n  eu5-web-stage       Stage the EU5 browser package for frontend development\n  evidence            Validate W3/W8 registrations and evidence\n  final-review        Run every deferred review gate and aggregate failures\n  fmt                 Check Rust formatting\n  frontend            Run the frontend development server\n  frontend-build      Install locked frontend dependencies and build assets\n  frontend-check      Run frontend type, lint, and unit checks\n  image               Build the optimized deployment image from locked inputs\n  image-smoke         Build the non-release Docker smoke target\n  migration-rollback  Revert and reapply every embedded migration\n  openapi              Check generated frontend contracts for drift\n  secret-scan          Scan the current tree and all Git refs with redacted reports\n  test, unit           Run native unit and non-database tests\n  throughput          Replay the recorded workload and enforce thresholds\n  wasm-build          Build WebAssembly packages for release\n  wasm-clippy         Check the WebAssembly packages for their target"
     );

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "cyhdev-pgo-bolt-001",
+  "target_cpu": "znver3",
+  "runtime_directory": "/absolute/path/to/disposable-cyhdev-runtime",
+  "campaign": "target/optimization-inputs/campaign.json",
+  "training_command": ["npm", "--prefix", "solid-csr-spa-template", "exec", "--", "playwright", "test", "--config", "playwright.optimization.config.ts"],
+  "benchmark_command": ["npm", "--prefix", "solid-csr-spa-template", "exec", "--", "playwright", "test", "--config", "playwright.optimization.config.ts"],
+  "timeout_seconds": 3600,
+  "maximum_latency_ratio": 1.05,
+  "minimum_throughput_ratio": 0.98
+}

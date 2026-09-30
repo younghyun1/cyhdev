@@ -8,6 +8,8 @@ registration	command:frontend-check	tools/xtask/src/main.rs	"frontend-check" => 
 registration	command:image-smoke	tools/xtask/src/main.rs	"image-smoke" => review::run_image_smoke(&root)
 registration	command:migration-rollback	tools/xtask/src/main.rs	"migration-rollback" => database_review::run_migration_rollback(&root)
 registration	command:openapi	tools/xtask/src/main.rs	"openapi" => review::run_openapi_drift_check(&root)
+registration	command:optimize	tools/xtask/src/main.rs	"optimize" => optimization::campaign::run(&root, &forwarded)
+source	optimization-coverage	tools/optimization/coverage.json	1	1048576
 registration	command:secret-scan	tools/xtask/src/main.rs	"secret-scan" => review::run_secret_scan(&root)
 registration	command:unit	tools/xtask/src/main.rs	"test" | "unit" => review::run_unit_tests(&root)
 registration	command:evidence	tools/xtask/src/main.rs	"evidence" => evidence_manifest::run(&root)

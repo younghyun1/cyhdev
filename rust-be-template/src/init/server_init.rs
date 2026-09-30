@@ -40,6 +40,11 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
         .map_err(|e| anyhow::anyhow!("Failed to parse HOST_PORT as u16: {}", e))?;
 
     let host_socket_addr: SocketAddr = SocketAddr::new(host_ip, host_port);
+    let redirect_port = super::http_redirect::port_from_environment()?;
+    anyhow::ensure!(
+        redirect_port != host_port,
+        "HTTP_REDIRECT_PORT must differ from HOST_PORT"
+    );
 
     info!(host_socket_addr = %host_socket_addr, "Loaded host configuration.");
 
@@ -157,7 +162,7 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
     let redirect_task = {
         let (handle, limiter) = (redirect_handle.clone(), limiter.clone());
         let ports = Ports {
-            http: 80,
+            http: redirect_port,
             https: host_port,
         };
         tokio::spawn(async move {

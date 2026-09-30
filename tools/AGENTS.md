@@ -2,6 +2,8 @@
 
 Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns command dispatch and native/WASM separation; `review.rs` owns deferred checks; `release.rs` owns optimized builds; `eu5_web.rs` owns EU5 staging. Read these files when changing root Cargo configuration, Docker builds, CI, or `build.sh` as well.
 
+`xtask/src/optimization/` owns the optional GNU PGO+BOLT campaign. `tools/optimization/README.md` owns its fixture, coverage and acceptance contract. `optimize inventory` uses a development-profile exporter and `optimize plan` only prints stages; `optimize run` invokes optimized profiles and must not run during ordinary implementation. The live Playwright campaign is separate from mocked UI regressions and requires explicit disposable runtime inputs. `frontend-check` includes its synthetic `optimization:check` gate.
+
 ## Contracts
 
 - Commands resolve paths from the workspace root and use locked dependency inputs. Preserve argument forwarding, exit status, contextual errors, and root-relative invocation.

@@ -15,6 +15,7 @@
     "lint:fix": "eslint src/ --fix",
     "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
     "test:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
+    "optimization:check": "tsc --noEmit --project tsconfig.optimization.json && eslint e2e/optimization playwright.optimization.config.ts vitest.optimization.config.ts --max-warnings 0 && vitest run --config vitest.optimization.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:performance": "playwright test --config=playwright.performance.config.ts",
