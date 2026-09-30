@@ -1,11 +1,13 @@
 import { type Browser, type BrowserContext } from "@playwright/test";
 import { requestStep } from "./steps";
 import type { Actor, Campaign } from "./model";
+import { isolateAssets } from "./assets";
 
 /** Server sessions are in memory, so every server start needs actual fixture logins. */
 export async function actorContext(browser: Browser, campaign: Campaign, actor: Actor): Promise<BrowserContext> {
   const context = await browser.newContext({ ignoreHTTPSErrors: true, permissions: ["camera", "microphone"] });
   try {
+    await isolateAssets(context,campaign);
     const login = campaign.actors[actor].login;
     if (actor !== "anonymous") {
       if (!login || !await requestStep(context, campaign, login, campaign.parameters)) throw new Error("Fixture login failed");

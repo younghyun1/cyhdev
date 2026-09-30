@@ -18,7 +18,7 @@
       "actor": "admin",
       "steps": [
         {"kind": "request", "method": "GET", "route": "/api/blog/posts", "path": "/api/blog/posts", "status": 200, "json_pointer": "/success", "equals": true},
-        {"kind": "request", "method": "GET", "route": "/api/blog/search", "path": "/api/blog/search?query=fixture", "status": 200, "json_pointer": "/success", "equals": true}
+        {"kind": "request", "method": "GET", "route": "/api/blog/search", "path": "/api/blog/search?q=fixture", "status": 200, "json_pointer": "/success", "equals": true}
       ]
     }
   ],

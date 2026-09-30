@@ -6,7 +6,6 @@ use std::{
 };
 
 use axum_server::{Handle, accept::NoDelayAcceptor, tls_rustls::RustlsConfig};
-use lettre::{AsyncSmtpTransport, Tokio1Executor, transport::smtp::authentication::Credentials};
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
@@ -101,11 +100,7 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
 
     let email_config = EmailConfig::from_env()
         .map_err(|e| anyhow::anyhow!("Failed to load email configs from .env: {}", e))?;
-    let email_creds: Credentials = email_config.to_creds();
-    let email_client: AsyncSmtpTransport<Tokio1Executor> =
-        AsyncSmtpTransport::<Tokio1Executor>::relay(&email_config.get_url())?
-            .credentials(email_creds)
-            .build();
+    let email_client = super::smtp_transport::build(&email_config)?;
 
     info!(smtp_relay = %email_config.get_url(), "Email client configured");
 

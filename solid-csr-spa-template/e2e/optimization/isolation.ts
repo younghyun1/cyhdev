@@ -11,6 +11,8 @@ export function validateEnvironment(env: NodeJS.ProcessEnv, runtime: string): vo
     throw new Error("DB_URL must select a loopback cyhdev_optimization_* fixture database without overrides");
   if (env.DB_HOST?.startsWith("/")) throw new Error("DB_HOST socket override would bypass the disposable DB_URL guard");
   if (!loopback.has(env.AWS_SES_SMTP_URL ?? "")) throw new Error("SMTP must terminate in a loopback fixture sink");
+  if(env.OIDC_CLIENT_SECRET && !env.OIDC_CLIENT_SECRET.startsWith("optimization-fixture-")) throw new Error("OIDC must use synthetic client credentials");
+  if(env.RTC_TURN_URL) throw new Error("RTC training cannot address an external TURN service");
   for (const name of ["AWS_ENDPOINT_URL", "OIDC_ISSUER_URL"]) {
     const url = new URL(env[name] ?? "invalid:");
     if (!loopback.has(url.hostname) || !["http:", "https:"].includes(url.protocol) || url.username || url.password)
@@ -20,7 +22,7 @@ export function validateEnvironment(env: NodeJS.ProcessEnv, runtime: string): vo
     throw new Error("S3 endpoint overrides must agree with the fixture endpoint");
   for (const name of ["AWS_IMAGE_UPLOAD_KEY", "AWS_IMAGE_UPLOAD_SECRET_KEY", "AWS_SES_SMTP_USERNAME", "AWS_SES_SMTP_ACCESS_KEY"])
     if (!env[name]?.startsWith("optimization-fixture-")) throw new Error(`${name} must use explicitly synthetic credentials`);
-  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR", "SEARCH_INDEX_PATH"])
+  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR", "SEARCH_INDEX_PATH","LOCAL_SMTP_CA_PEM"])
     if (env[name]) {
       const path = resolve(env[name]!);
       if (!path.startsWith(`${resolve(runtime)}${sep}`)) throw new Error(`${name} must remain under the disposable runtime directory`);
@@ -28,7 +30,7 @@ export function validateEnvironment(env: NodeJS.ProcessEnv, runtime: string): vo
 }
 export function validateFixturePaths(env: NodeJS.ProcessEnv, runtime: string): void {
   const root = realpathSync(runtime);
-  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR"])
+  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR","LOCAL_SMTP_CA_PEM"])
     if (env[name] && !realpathSync(env[name]!).startsWith(`${root}${sep}`))
       throw new Error(`${name} resolves outside the disposable runtime directory`);
 }

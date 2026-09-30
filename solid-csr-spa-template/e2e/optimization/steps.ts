@@ -1,10 +1,12 @@
 import { readFileSync, statSync } from "node:fs";
 import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { isDeepStrictEqual } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 import { hook } from "./lifecycle";
 import { interpolate, localUrl, pointer, required, type Campaign, type Json, type RequestStep, type Step } from "./model";
 
 const RESPONSE_LIMIT = 16 * 1024 * 1024;
+let nextPasswordLogin = 0;
 export function operationMatches(template: string, path: string): boolean {
   const expected = template.split("/");
   const actual = new URL(path, "https://127.0.0.1").pathname.split("/");
@@ -18,7 +20,13 @@ function expandJson(value: Json, variables: Record<string, string>): Json {
   return value;
 }
 /** Dispose each response immediately so long campaigns do not retain response buffers. */
-export async function requestStep(context: BrowserContext, campaign: Campaign, step: RequestStep, variables: Record<string, string>): Promise<boolean> {
+export async function requestStep(context: BrowserContext, campaign: Campaign, step: RequestStep, variables: Record<string, string>, observe?: (value: unknown) => void): Promise<boolean> {
+  if (step.method === "POST" && step.route === "/api/auth/login") {
+    // Every actor shares one loopback source address; respect the real login admission window.
+    const slot=Math.max(Date.now(),nextPasswordLogin);
+    nextPasswordLogin=slot+6500;
+    await delay(slot-Date.now());
+  }
   const path = interpolate(step.path, variables);
   if (!operationMatches(step.route, path)) throw new Error("Request path does not match its declared API route");
   const multipart: Record<string, string | { name: string; mimeType: string; buffer: Buffer }> = {};
@@ -35,17 +43,19 @@ export async function requestStep(context: BrowserContext, campaign: Campaign, s
   }
   const response = await context.request.fetch(localUrl(campaign.base_url, path), {
     method: step.method, timeout: 15000, maxRedirects: 0,
-    headers: Object.fromEntries(Object.entries(step.headers ?? {}).map(([key, value]) => [key, interpolate(value, variables)])),
+    headers: { Origin: new URL(campaign.base_url).origin,
+      ...Object.fromEntries(Object.entries(step.headers ?? {}).map(([key, value]) => [key, interpolate(value, variables)])) },
     ...(step.body !== undefined ? { data: expandJson(step.body, variables) } : {}),
     ...(step.multipart ? { multipart } : {}),
   });
   try {
-    if (response.status() !== step.status) throw new Error(`Unexpected status for ${step.method} ${step.route}`);
+    if (response.status() !== step.status) throw new Error(`Unexpected status ${response.status()} (expected ${step.status}) for ${step.method} ${step.route}`);
     const body = await response.body();
     if (body.length > RESPONSE_LIMIT || body.length < (step.minimum_bytes ?? 0)) throw new Error("Response violated body size assertion");
-    if (step.content_type && !response.headers()["content-type"]?.startsWith(step.content_type)) throw new Error("Response content type mismatch");
+    if (step.content_type && !response.headers()["content-type"]?.startsWith(step.content_type)) throw new Error(`Response content type ${response.headers()["content-type"]} differs from ${step.content_type} for ${step.method} ${step.route}`);
     if (step.json_pointer !== undefined || step.capture || (body.length > 0 && response.headers()["content-type"]?.includes("json"))) {
       const json: unknown = JSON.parse(body.toString("utf8"));
+      observe?.(json);
       if (step.json_pointer !== undefined && !isDeepStrictEqual(pointer(json, step.json_pointer), expandJson(step.equals ?? null, variables)))
         throw new Error(`Semantic response assertion failed for ${step.method} ${step.route}`);
       if (step.status < 400 && typeof json === "object" && json && "success" in json && json.success === false)
@@ -98,5 +108,8 @@ export async function execute(
     if (!succeeded) throw new Error("WebSocket did not produce its expected protocol replies");
   } else if (step.kind === "command") {
     await hook(step.argv.map((value) => interpolate(value, variables)), required("CYHDEV_OPT_RUNTIME"));
+  } else if (step.kind === "fixture_scenario") {
+    const { runScenario } = await import("./scenarios/catalog");
+    await runScenario(step.name, { context, page, campaign, variables, operations });
   }
 }
