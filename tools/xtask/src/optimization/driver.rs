@@ -2,7 +2,7 @@
 
 use std::process::Command;
 
-use super::{coverage, files, measurement, process, state::State};
+use super::{artifacts, coverage, files, measurement, process, state::State};
 use crate::{TaskError, TaskResult};
 
 impl State {
@@ -69,6 +69,19 @@ impl State {
             &self.directory.join(binary),
             &self.config.campaign,
         )?;
+        if stage == "instrumented"
+            && !artifacts::profiles(&self.directory, "pgo")?
+                .iter()
+                .any(|path| {
+                    path.rsplit('/')
+                        .next()
+                        .is_some_and(|name| name.starts_with("default_"))
+                })
+        {
+            return Err(TaskError(
+                "prediction worker did not flush its compiled-default PGO profile".into(),
+            ));
+        }
         self.check_inputs()
     }
 

@@ -47,8 +47,9 @@ host=$(rustc -Vv | sed -n 's/^host: //p')
 profdata="$(rustc --print sysroot)/lib/rustlib/$host/bin/llvm-profdata"
 test -x "$profdata"
 "$profdata" --version >> /optimize/toolchain.txt
-llvm-bolt-19 --version >> /optimize/toolchain.txt
-sha256sum "$(command -v llvm-bolt-19)" "$profdata" >> /optimize/toolchain.txt
+/usr/lib/llvm-19/bin/llvm-bolt --version >> /optimize/toolchain.txt
+test -s /usr/lib/llvm-19/lib/libbolt_rt_instr.a
+sha256sum /usr/lib/llvm-19/bin/llvm-bolt "$profdata" /usr/lib/llvm-19/lib/libbolt_rt_instr.a >> /optimize/toolchain.txt
 dpkg-query -W > /optimize/packages.txt
 "#;
 
@@ -87,20 +88,11 @@ pub(super) fn compile(
     cpu: &str,
     epoch: &str,
 ) -> TaskResult<()> {
-    let mut flags =
-        format!("-Ctarget-cpu={cpu} -Cforce-frame-pointers=yes -Clink-arg=-Wl,--emit-relocs");
-    match stage {
-        "baseline" => {}
-        "instrumented" => flags.push_str(" -Cprofile-generate=/optimize/raw/pgo"),
-        "pgo" => flags.push_str(
-            " -Cprofile-use=/optimize/pgo.profdata -Cllvm-args=-pgo-warn-missing-function",
-        ),
-        _ => return Err(TaskError("unknown compilation stage".into())),
-    }
+    let flags = encoded_flags(run, stage, cpu)?;
     // All variants share CPU, linker, standard-library, LTO and panic settings.
     run_command(base(image, run)?.args([
         "env",
-        &format!("RUSTFLAGS={flags}"),
+        &format!("CARGO_ENCODED_RUSTFLAGS={flags}"),
         &format!("CFLAGS=-march={cpu} -O3"),
         "CARGO_PROFILE_RELEASE_STRIP=false",
         "CARGO_INCREMENTAL=0",
@@ -135,6 +127,31 @@ pub(super) fn compile(
         )?;
     }
     super::artifacts::verify_elf(image, run, &format!("{stage}-rust-be-template"), false)
+}
+
+/// The prediction subprocess clears its environment, so its embedded default
+/// must name the native run directory. Cargo's encoded argv preserves spaces.
+pub(super) fn encoded_flags(run: &Path, stage: &str, cpu: &str) -> TaskResult<String> {
+    let mut flags = vec![
+        format!("-Ctarget-cpu={cpu}"),
+        "-Cforce-frame-pointers=yes".into(),
+        "-Clink-arg=-Wl,--emit-relocs".into(),
+    ];
+    match stage {
+        "baseline" => {}
+        "instrumented" => flags.push(format!("-Cprofile-generate={}/raw/pgo", run.display())),
+        "pgo" => flags.extend([
+            "-Cprofile-use=/optimize/pgo.profdata".into(),
+            "-Cllvm-args=-pgo-warn-missing-function".into(),
+        ]),
+        _ => return Err(TaskError("unknown compilation stage".into())),
+    }
+    if flags.iter().any(|flag| flag.contains('\u{1f}')) {
+        return Err(TaskError(
+            "optimization paths cannot contain the argv separator".into(),
+        ));
+    }
+    Ok(flags.join("\u{1f}"))
 }
 
 pub(super) fn merge_pgo(image: &str, run: &Path, profiles: &[String]) -> TaskResult<()> {
