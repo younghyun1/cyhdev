@@ -26,6 +26,8 @@ test("comprehensive live optimization campaign", async ({ browser, request }) =>
   const child = await start(campaign, request);
   let complete = false;
   try {
+    // Release readiness connections before a native load test uses the per-IP connection budget.
+    await request.dispose();
     if (campaign.fixture_parameters) {
       const path = resolve(required("CYHDEV_OPT_RUNTIME"), campaign.fixture_parameters);
       if (!path.startsWith(`${resolve(required("CYHDEV_OPT_RUNTIME"))}/`)) throw new Error("Fixture parameters escaped runtime");
@@ -34,7 +36,7 @@ test("comprehensive live optimization campaign", async ({ browser, request }) =>
       if (campaign.benchmark?.environment.fixture_snapshot_sha256 !== fixture.snapshot_sha256) throw new Error("Fixture snapshot identity changed");
       if (fixture.inputs_sha256 && campaign.benchmark?.environment.fixture_inputs_sha256 !== fixture.inputs_sha256) throw new Error("Fixture input identity changed");
     }
-    if (process.env.CYHDEV_OPT_MODE === "benchmark") { await benchmark(browser, campaign); }
+    if (process.env.CYHDEV_OPT_MODE === "benchmark") { await benchmark(browser, campaign, child.pid); }
     else { await train(browser); }
     complete = true;
   } finally {

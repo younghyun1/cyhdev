@@ -82,7 +82,7 @@ pub fn write(runtime: &Path) -> anyhow::Result<()> {
         "reset_command":[std::env::current_exe()?,"reset",runtime],"parameters":fixture["parameters"],
         "actors":{"anonymous":{},"member":login("fixture-member@example.test"),"admin":login("fixture-admin@example.test")},"pages":cases,"workflows":workflows,
         "benchmark":{"environment":{"fixture_snapshot_sha256":fixture["snapshot_sha256"],"fixture_inputs_sha256":fixture["inputs_sha256"],"run_conditions":"native Ryzen 9800X3D; disposable PostgreSQL and loopback providers; client-inclusive HTTPS"},
-            "samples":9,"warmup_requests":500,"requests_per_sample":3000,"concurrency":8,"actor":"anonymous","cases":benchmark}});
+            "engine":"oha","worker_threads":4,"samples":9,"warmup_requests":10000,"requests_per_sample":100000,"concurrency":32,"actor":"anonymous","cases":benchmark}});
     let output = root.join("target/optimization-inputs");
     fs::write(
         output.join("campaign.json"),

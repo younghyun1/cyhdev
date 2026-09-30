@@ -100,6 +100,29 @@ pub(super) fn preflight(root: &Path, campaign: &Path, surface: &Path) -> TaskRes
                 .into(),
         ));
     }
+    if campaign["benchmark"]["engine"].as_str() == Some("oha") {
+        let executable = match std::env::var_os("CYHDEV_OHA") {
+            Some(path) => std::path::PathBuf::from(path),
+            None => {
+                return Err(TaskError(
+                    "native benchmarks require CYHDEV_OHA before building".into(),
+                ));
+            }
+        };
+        if !executable.is_absolute() || !executable.is_file() {
+            return Err(TaskError(
+                "CYHDEV_OHA must name an existing absolute executable".into(),
+            ));
+        }
+        for tool in ["/usr/bin/time", "/usr/bin/getconf"] {
+            if !Path::new(tool).is_file() {
+                return Err(TaskError(format!(
+                    "native benchmark prerequisite is missing: {tool}"
+                )));
+            }
+        }
+        run_command(Command::new(&executable).arg("--version"))?;
+    }
     let workflows = match campaign.get("workflows").and_then(Value::as_array) {
         Some(flows) => flows,
         None => return Err(TaskError("campaign has no workflows".into())),

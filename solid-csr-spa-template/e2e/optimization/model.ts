@@ -23,6 +23,7 @@ export interface Workflow { name: string; actor: Actor; steps: Step[]; repetitio
 export interface Benchmark {
   environment: Record<string, Json>; samples: number; warmup_requests: number;
   requests_per_sample: number; concurrency: number; actor: Actor; cases: RequestStep[];
+  engine?: "playwright" | "oha"; worker_threads?: number;
 }
 export interface Campaign {
   schema_version: number; base_url: string; port: number; redirect_port: number; minecraft_management_port: number; reset_command: string[];
@@ -122,12 +123,17 @@ export function validate(campaign: Campaign): void {
   }
   if (campaign.benchmark) {
     const b = campaign.benchmark;
-    for (const [value, minimum, maximum] of [[b.samples, 5, 100], [b.warmup_requests, 1, 10000], [b.requests_per_sample, 100, 100000], [b.concurrency, 1, 16]])
+    const native = b.engine === "oha";
+    if (b.engine !== undefined && b.engine !== "playwright" && !native) throw new Error("Unknown benchmark engine");
+    for (const [value, minimum, maximum] of [[b.samples, 5, 100], [b.warmup_requests, 1, 10000], [b.requests_per_sample, 100, native ? 1000000 : 100000], [b.concurrency, 1, native ? 64 : 16]])
       if (value === undefined || minimum === undefined || maximum === undefined || !Number.isInteger(value) || value < minimum || value > maximum)
         throw new Error("Invalid bounded benchmark count");
-    if (b.requests_per_sample * b.samples > 1000000 || !campaign.actors[b.actor] || !b.environment || b.cases.length === 0 || b.cases.length > 1024)
+    if (b.requests_per_sample * b.samples > (native ? 10000000 : 1000000) || !campaign.actors[b.actor] || !b.environment || b.cases.length === 0 || b.cases.length > 1024)
       throw new Error("Invalid benchmark workload");
     for (const step of b.cases) validateStep(step);
+    if (native && (b.actor !== "anonymous" || !Number.isInteger(b.worker_threads ?? 4) || (b.worker_threads ?? 4) < 1 || (b.worker_threads ?? 4) > 16
+      || b.cases.some((step) => step.method !== "GET" || step.status !== 200 || step.body !== undefined || step.multipart !== undefined || step.capture !== undefined || step.headers !== undefined)))
+      throw new Error("Native benchmarks require bounded worker counts and anonymous successful GET requests without per-request state");
   }
 }
 function validateStep(step: Step): void {
