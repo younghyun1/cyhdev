@@ -121,8 +121,9 @@ RUN apt-get update \
         binutils bolt-19 ca-certificates clang git gzip libpq-dev libzstd-dev lld make perl pkg-config zstd \
     && rm -rf /var/lib/apt/lists/* \
     && rustup component add rust-src llvm-tools-preview --toolchain "$RUSTUP_TOOLCHAIN" \
-    && test -x /usr/bin/llvm-bolt-19 \
-    && test -x /usr/bin/merge-fdata-19
+    && test -x /usr/lib/llvm-19/bin/llvm-bolt \
+    && test -x /usr/bin/merge-fdata-19 \
+    && test -s /usr/lib/llvm-19/lib/libbolt_rt_instr.a
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 ARG APP_BUILD_EPOCH

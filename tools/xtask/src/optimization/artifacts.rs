@@ -8,6 +8,8 @@ use crate::{TaskError, TaskResult, run_command};
 
 use super::{container, files, process};
 
+pub(super) const BOLT_EXECUTABLE: &str = "/usr/lib/llvm-19/bin/llvm-bolt";
+
 pub(super) fn verify_elf(image: &str, run: &Path, name: &str, bolt: bool) -> TaskResult<()> {
     let binary = format!("/optimize/{name}");
     let header = process::output(container::base(image, run)?.args(["readelf", "-h", &binary]))?;
@@ -93,9 +95,10 @@ pub(super) fn profiles(run: &Path, kind: &str) -> TaskResult<Vec<String>> {
 
 pub(super) fn instrument_bolt(image: &str, run: &Path) -> TaskResult<()> {
     run_command(container::base(image, run)?.args([
-        "llvm-bolt-19",
+        BOLT_EXECUTABLE,
         "/optimize/pgo-rust-be-template",
         "-instrument",
+        "-runtime-instrumentation-lib=libbolt_rt_instr.a",
         "-o",
         "/optimize/bolt-instrumented-rust-be-template",
         &format!(
@@ -122,7 +125,7 @@ pub(super) fn optimize_bolt(image: &str, run: &Path, profiles: &[String]) -> Tas
             .stdout(combined),
     )?;
     run_command(container::base(image, run)?.args([
-        "llvm-bolt-19",
+        BOLT_EXECUTABLE,
         "/optimize/pgo-rust-be-template",
         "-o",
         "/optimize/bolt-unstripped",
