@@ -2,7 +2,7 @@
 
 `cargo xtask optimize` extends the existing GNU/Linux host build. It preserves the pinned Docker builder, embedded compressed frontend and EU5 assets, Zen 3 tuning, locked dependencies, rebuilt standard library, panic strategy, seed companion, and sampler licenses. The musl/UPX image and `build.sh` retain their existing behavior. This produces a candidate artifact; it does not install it or control a deployed service.
 
-The [September 30 measurements](../../docs/plans/2026-09-30-pgo-bolt-results.md) retain all three produced binaries, comprehensive coverage, primary rejection and rotated diagnostic repeats. The measured differences did not establish a meaningful capacity gain.
+The [September 30 measurements](../../docs/plans/2026-09-30-pgo-bolt-results.md) retain all three produced binaries, comprehensive coverage, corrected native comparisons and the historical client-limited rejection. Native mixed throughput improved by 17.9% with PGO and 20.1% with PGO+BOLT on four assigned server cores; small health responses exceeded 300,000 requests/s. The native runner includes headroom checks and records the workload-specific tail limits.
 
 ## Commands
 
