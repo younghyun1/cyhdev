@@ -8,4 +8,5 @@ pub mod http_redirect;
 pub mod http_server;
 pub mod server_init;
 pub mod shutdown;
+mod smtp_transport;
 pub mod state; // Server state

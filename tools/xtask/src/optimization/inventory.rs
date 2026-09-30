@@ -112,6 +112,15 @@ pub(super) fn preflight(root: &Path, campaign: &Path, surface: &Path) -> TaskRes
         }
         if let Some(steps) = flow.get("steps").and_then(Value::as_array) {
             for step in steps {
+                if step.get("kind").and_then(Value::as_str) == Some("fixture_scenario")
+                    && let Some(declared) = step.get("operations").and_then(Value::as_array)
+                {
+                    for operation in declared {
+                        if let Some(operation) = operation.as_str() {
+                            operations.insert(operation.to_owned());
+                        }
+                    }
+                }
                 if step.get("kind").and_then(Value::as_str) == Some("request")
                     && step
                         .get("status")

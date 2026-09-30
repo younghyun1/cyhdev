@@ -17,7 +17,8 @@ export interface BrowserStep {
 }
 export interface SocketStep { kind: "websocket"; path: string; send: Json[]; expect: string[] }
 export interface CommandStep { kind: "command"; argv: string[] }
-export type Step = RequestStep | BrowserStep | SocketStep | CommandStep;
+export interface FixtureScenarioStep { kind: "fixture_scenario"; name: string; operations: string[] }
+export type Step = RequestStep | BrowserStep | SocketStep | CommandStep | FixtureScenarioStep;
 export interface Workflow { name: string; actor: Actor; steps: Step[]; repetitions?: number }
 export interface Benchmark {
   environment: Record<string, Json>; samples: number; warmup_requests: number;
@@ -27,6 +28,7 @@ export interface Campaign {
   schema_version: number; base_url: string; port: number; redirect_port: number; minecraft_management_port: number; reset_command: string[];
   parameters: Record<string, string>; actors: Record<Actor, ActorConfig>; pages: Record<string, PageCase>;
   workflows: Workflow[]; benchmark?: Benchmark;
+  fixture_parameters?: string;
 }
 
 export function readJson<T>(path: string, limit = 1024 * 1024): T {
@@ -141,5 +143,8 @@ function validateStep(step: Step): void {
       throw new Error("WebSocket steps require bounded messages and expected replies");
   } else if (step.kind === "command") {
     if (!Array.isArray(step.argv) || step.argv.length === 0 || step.argv.length > 64) throw new Error("Invalid command step");
+  } else if (step.kind === "fixture_scenario") {
+    if (!step.name || step.operations.length > 128 || step.operations.some((operation) => !/^(GET|POST|PATCH|DELETE) \/api\//.test(operation)))
+      throw new Error("Invalid built-in fixture scenario");
   } else { throw new Error("Unknown workflow step"); }
 }

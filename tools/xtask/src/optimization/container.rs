@@ -104,6 +104,7 @@ pub(super) fn compile(
         &format!("CFLAGS=-march={cpu} -O3"),
         "CARGO_PROFILE_RELEASE_STRIP=false",
         "CARGO_INCREMENTAL=0",
+        "CARGO_BUILD_JOBS=2",
         &format!("APP_BUILD_EPOCH={epoch}"),
         "cargo",
         "build",
