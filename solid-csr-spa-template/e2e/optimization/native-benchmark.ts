@@ -18,11 +18,19 @@ function cpuTicks(pid: number): number {
 }
 async function execute(argv: string[]): Promise<void> {
   await new Promise<void>((resolvePromise, reject) => {
-    const child = spawn("/usr/bin/time", argv, { stdio: "ignore", shell: false, detached: true, env: { ...process.env, LC_ALL: "C" } });
+    // Inherit the driver's process group so outer timeout cleanup also reaches the native client.
+    const child = spawn("/usr/bin/time", argv, { stdio: "ignore", shell: false, env: { ...process.env, LC_ALL: "C" } });
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      if (child.pid) { try { process.kill(-child.pid, "SIGKILL"); } catch { /* The owned process group may already have exited. */ } }
+      if (child.pid) {
+        // GNU time waits for one owned client; kill it before the wrapper on the local deadline.
+        try {
+          const children = readFileSync(`/proc/${child.pid}/task/${child.pid}/children`, "utf8").trim();
+          for (const pid of children.split(/\s+/).filter(Boolean)) process.kill(Number(pid), "SIGKILL");
+        } catch { /* The owned wrapper or client may already have exited. */ }
+        child.kill("SIGKILL");
+      }
     }, 120000);
     child.once("error", () => { clearTimeout(timer); reject(new Error("Native load generator failed to start")); });
     child.once("close", (code) => {
