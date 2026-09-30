@@ -24,6 +24,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 ## Architecture
 
 - [Backend feature boundaries](architecture/be/feature-boundaries.md)
+- [PGO and BOLT build and training runbook](../tools/optimization/README.md)
 - [Browser session security](architecture/be/browser-session-security.md)
 - [Browser security headers and embedded applications](architecture/be/browser-security-headers.md)
 - [HTTP and database runtime bounds](architecture/be/http-runtime-bounds.md)

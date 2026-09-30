@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "pages": ["/", "/about", "/about-blog", "/find-password", "/reset-password", "/verify-email", "/blog", "/blog/new", "/blog/:post_id/edit", "/blog/:post_id", "/forum", "/forum/new", "/forum/notifications", "/forum/:topic_id", "/visitor-board", "/live-chat", "/users/:userName", "/photographs", "/photographs/:photograph_id", "/projects", "/minecraft", "/geo-ip-db", "/eu5-locations-db", "/backend-stats", "/login", "/register", "/edit-profile", "/admin/minecraft", "/admin/authorization", "/admin/operations", "/under-construction", "/404", "*404"],
+  "scenarios": [
+    "accounts.signup-verification", "accounts.login-logout", "accounts.password-reset", "accounts.profile-and-pictures", "accounts.deletion-retention",
+    "oidc.login-link-unlink", "authorization.roles-permissions-audit", "authorization.denied-and-session-refresh",
+    "blog.crud-publishing-search", "blog.comments-votes-shares", "forum.topics-replies-revisions", "forum.moderation-subscriptions-notifications",
+    "photographs.upload-batch-processing", "photographs.filters-details-metadata", "photographs.comments-votes-deletion", "wasm.upload-edit-serve-delete",
+    "geo.lookup-and-visitor-board", "reference.countries-subdivisions-languages", "i18n.locales-refresh", "operations.retention-cleanup-purge",
+    "host.health-stats-websocket", "chat.history-send-moderation", "rtc.signaling-call-media",
+    "minecraft.dimensions-tiles-visibility", "minecraft.hover-surveys-blocks", "minecraft.waypoint-crud", "minecraft.server-controls-fixture",
+    "browser.navigation-auth-guards", "browser.compression-cache-errors", "browser.eu5-and-wasm-embeds", "runtime.startup-shutdown-background-jobs"
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"], "noUnusedLocals": true },
+  "include": ["e2e/optimization/**/*.ts", "playwright.optimization.config.ts", "vitest.optimization.config.ts"]
+}

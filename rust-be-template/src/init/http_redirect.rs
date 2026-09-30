@@ -26,6 +26,24 @@ pub struct Ports {
     pub https: u16,
 }
 
+/// Allow disposable runtimes to use an unprivileged redirect listener.
+pub(super) fn port_from_environment() -> anyhow::Result<u16> {
+    match std::env::var("HTTP_REDIRECT_PORT") {
+        Ok(value) => parse_port(&value),
+        Err(std::env::VarError::NotPresent) => Ok(80),
+        Err(error) => Err(anyhow::anyhow!("HTTP_REDIRECT_PORT is invalid: {error}")),
+    }
+}
+
+fn parse_port(value: &str) -> anyhow::Result<u16> {
+    match value.parse::<u16>() {
+        Ok(port) if port != 0 => Ok(port),
+        _ => Err(anyhow::anyhow!(
+            "HTTP_REDIRECT_PORT must be an integer between 1 and 65535"
+        )),
+    }
+}
+
 /// Serves redirects until `handle` requests shutdown.
 pub async fn redirect_http_to_https(
     host_ip: IpAddr,
@@ -92,4 +110,22 @@ fn make_https(host: &str, uri: Uri, https_port: u16) -> anyhow::Result<Uri> {
     );
 
     Uri::from_parts(parts).map_err(|e| anyhow::anyhow!("Failed to construct HTTPS URI: {}", e))
+}
+
+#[cfg(test)]
+mod port_tests {
+    #[test]
+    fn accepts_default_and_disposable_listener_ports() -> anyhow::Result<()> {
+        assert_eq!(super::parse_port("80")?, 80);
+        assert_eq!(super::parse_port("18444")?, 18444);
+        assert_eq!(super::parse_port("65535")?, 65535);
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_zero_overflow_and_malformed_ports() {
+        for value in ["0", "65536", "-1", "", "not-a-port"] {
+            assert!(super::parse_port(value).is_err());
+        }
+    }
 }

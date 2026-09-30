@@ -46,7 +46,7 @@ Use Clippy as the implementation stage gate; run relevant deferred checks once t
 
 CI runs the Clippy gate and a separate Validation workflow. Validation covers formatting, native unit tests, HTTP contract drift, frontend checks, Chromium, and disposable PostgreSQL integration/rollback; it does not validate optimized artifacts or live services.
 
-No release builds during this work. Do not run `build.sh`, `cargo xtask build`, `image`, `wasm-build`, `throughput`, or `final-review`: these invoke optimized profiles, including the throughput step hidden inside final-review. Run applicable non-release gates individually. The `:dev` image tag does not mean a development-profile build.
+No release builds during this work. Do not run `build.sh`, `cargo xtask build`, `image`, `wasm-build`, `throughput`, `optimize run`, or `final-review`: these invoke optimized profiles, including the throughput step hidden inside final-review. `optimize inventory` generates development-profile route metadata; `optimize plan` only prints stages. Run applicable non-release gates individually. The `:dev` image tag does not mean a development-profile build.
 
 ## Durable constraints
 

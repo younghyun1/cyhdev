@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "base_url": "https://127.0.0.1:18443",
+  "port": 18443,
+  "redirect_port": 18444,
+  "minecraft_management_port": 18555,
+  "reset_command": ["/absolute/path/to/disposable-fixture-reset-rust-binary"],
+  "parameters": {"post_id": "REPLACE_WITH_FIXTURE_ID", "topic_id": "REPLACE_WITH_FIXTURE_ID", "photograph_id": "REPLACE_WITH_FIXTURE_ID", "userName": "fixture-user"},
+  "actors": {
+    "anonymous": {},
+    "member": {"login": {"kind": "request", "method": "POST", "route": "/api/auth/login", "path": "/api/auth/login", "status": 200, "body": {"user_email": "fixture-member@example.test", "user_password": "${CYHDEV_OPT_MEMBER_PASSWORD}"}, "json_pointer": "/success", "equals": true}},
+    "admin": {"login": {"kind": "request", "method": "POST", "route": "/api/auth/login", "path": "/api/auth/login", "status": 200, "body": {"user_email": "fixture-admin@example.test", "user_password": "${CYHDEV_OPT_ADMIN_PASSWORD}"}, "json_pointer": "/success", "equals": true}}
+  },
+  "pages": {},
+  "workflows": [
+    {
+      "name": "blog.crud-publishing-search",
+      "actor": "admin",
+      "steps": [
+        {"kind": "request", "method": "GET", "route": "/api/blog/posts", "path": "/api/blog/posts", "status": 200, "json_pointer": "/success", "equals": true},
+        {"kind": "request", "method": "GET", "route": "/api/blog/search", "path": "/api/blog/search?query=fixture", "status": 200, "json_pointer": "/success", "equals": true}
+      ]
+    }
+  ],
+  "benchmark": {
+    "environment": {"fixture_snapshot_sha256": "REPLACE_WITH_VERIFIED_SYNTHETIC_DATASET_DIGEST", "power_profile": "performance", "run_conditions": "idle dedicated native Zen 3 host"},
+    "samples": 5, "warmup_requests": 200, "requests_per_sample": 1000, "concurrency": 8, "actor": "anonymous",
+    "cases": [
+      {"kind": "request", "method": "GET", "route": "/api/healthcheck/server", "path": "/api/healthcheck/server", "status": 200, "minimum_bytes": 16, "content_type": "application/json"},
+      {"kind": "request", "method": "GET", "route": "/api/blog/posts", "path": "/api/blog/posts", "status": 200, "json_pointer": "/success", "equals": true}
+    ]
+  }
+}

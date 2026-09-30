@@ -111,6 +111,27 @@ RUN --mount=type=cache,target=/workspace/target/,sharing=locked \
 FROM scratch AS artifact
 COPY --from=host-release /out/ /
 
+# Separate from host-release: preserve symbols/relocations until BOLT finishes.
+# PGO merging uses llvm-profdata from this exact Rust compiler, not Debian LLVM.
+FROM rustlang/rust:${RUST_DOCKER_TAG} AS optimization-builder
+ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}" RUST_MIN_STACK=33554432
+WORKDIR /workspace
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        binutils bolt-19 ca-certificates clang git gzip libpq-dev libzstd-dev lld make perl pkg-config zstd \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup component add rust-src llvm-tools-preview --toolchain "$RUSTUP_TOOLCHAIN" \
+    && test -x /usr/bin/llvm-bolt-19 \
+    && test -x /usr/bin/merge-fdata-19
+COPY . ./
+COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
+ARG APP_BUILD_EPOCH
+ENV APP_BUILD_EPOCH="${APP_BUILD_EPOCH}"
+# Fetch once so baseline, training and profile-use compilation can run offline.
+# build-std uses a separate lockfile in the compiler's bundled library sources.
+RUN cargo fetch --locked \
+    && cargo fetch --locked --manifest-path "$(rustc --print sysroot)/lib/rustlib/src/rust/library/Cargo.toml"
+
 # The reviewed digest above keeps compiler fingerprints stable across local
 # builds. Updating the tag or digest is an explicit toolchain upgrade.
 FROM rustlang/rust:${RUST_ALPINE_DOCKER_TAG} AS rust-base
