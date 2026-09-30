@@ -20,6 +20,8 @@ export async function start(campaign: Campaign, request: APIRequestContext): Pro
   const runtime = required("CYHDEV_OPT_RUNTIME");
   const binary = required("CYHDEV_BINARY");
   if (!isAbsolute(runtime) || !isAbsolute(binary)) throw new Error("Runtime and binary paths must be absolute");
+  const cpuSet = process.env.CYHDEV_OPT_SERVER_CPU_SET;
+  if (cpuSet && !/^\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/.test(cpuSet)) throw new Error("Invalid disposable server CPU set");
   validateEnvironment(process.env, runtime);
   for (const port of [campaign.port, campaign.redirect_port]) await new Promise<void>((resolve, reject) => {
     const probe = createServer();
@@ -31,7 +33,7 @@ export async function start(campaign: Campaign, request: APIRequestContext): Pro
   const run = required("CYHDEV_OPT_RUN");
   mkdirSync(`${run}/runtime-logs`, { recursive: true, mode: 0o700 });
   const log = openSync(`${run}/runtime-logs/${required("CYHDEV_OPT_STAGE")}.log`, "a", 0o600);
-  const child = spawn(binary, [], {
+  const child = spawn(cpuSet ? "taskset" : binary, cpuSet ? ["--cpu-list", cpuSet, binary] : [], {
     cwd: runtime, stdio: ["ignore", log, log], shell: false,
     env: { ...process.env, IS_AWS_ECS: "true", HOST_IP: "127.0.0.1", HOST_PORT: String(campaign.port),
       CURR_ENV: "local", HTTP_REDIRECT_PORT: String(campaign.redirect_port),
