@@ -6,12 +6,13 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [PGO and BOLT harness](2026-09-29-pgo-bolt.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [PGO and BOLT harness](2026-09-29-pgo-bolt.md)
+- [PGO and BOLT binary measurements](2026-09-30-pgo-bolt-results.md)
 - [Minecraft biome highlights](2026-09-29-minecraft-biome-highlights.md)
 - [Minecraft prediction resolution](2026-09-29-minecraft-prediction-resolution.md)
 - [Minecraft browser-zoom tile coverage](2026-09-29-minecraft-browser-zoom.md)
