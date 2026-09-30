@@ -130,7 +130,9 @@ ENV APP_BUILD_EPOCH="${APP_BUILD_EPOCH}"
 # Fetch once so baseline, training and profile-use compilation can run offline.
 # build-std uses a separate lockfile in the compiler's bundled library sources.
 RUN cargo fetch --locked \
-    && cargo fetch --locked --manifest-path "$(rustc --print sysroot)/lib/rustlib/src/rust/library/Cargo.toml"
+    && cargo fetch --locked --manifest-path "$(rustc --print sysroot)/lib/rustlib/src/rust/library/Cargo.toml" \
+    # Some crate archives contain owner-only source modes; compilation uses the host UID.
+    && chmod -R a+rX "$CARGO_HOME/registry" "$CARGO_HOME/git" "$(rustc --print sysroot)/lib/rustlib/src"
 
 # The reviewed digest above keeps compiler fingerprints stable across local
 # builds. Updating the tag or digest is an explicit toolchain upgrade.
