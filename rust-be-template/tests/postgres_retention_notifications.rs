@@ -162,7 +162,7 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         let attempts = sender.attempts().await;
         require(
-            attempts.len() == 3 && attempts.first() == attempts.get(1),
+            attempts.len() == 3 && <[_]>::first(&attempts) == attempts.get(1),
             "retry did not reuse the durable notification identity",
         )?;
 
@@ -213,10 +213,8 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .repository
             .claim_due_retention_notifications(due)
             .await?;
-        let first_notification = first
-            .notifications
-            .first()
-            .ok_or(AccountError::AccountChanged)?;
+        let first_notification =
+            <[_]>::first(&first.notifications).ok_or(AccountError::AccountChanged)?;
         require(
             first.claim_token.get_version_num() == 7
                 && first.notifications.len() == 1
@@ -227,10 +225,8 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .repository
             .claim_due_retention_notifications(due + Duration::minutes(11))
             .await?;
-        let reclaimed_notification = reclaimed
-            .notifications
-            .first()
-            .ok_or(AccountError::AccountChanged)?;
+        let reclaimed_notification =
+            <[_]>::first(&reclaimed.notifications).ok_or(AccountError::AccountChanged)?;
         require(
             reclaimed.notifications.len() == 1
                 && reclaimed_notification.notification_id == first_notification.notification_id
