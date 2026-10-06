@@ -25,7 +25,7 @@ chrono = { version = "0.4.45", features = ["serde"] }
 dotenvy = "0.15.7"
 mimalloc = { version = "0.1.52", default-features = false }
 serde_json = { version = "1.0.151", features = ["preserve_order"] }
-tokio = { version = "1.53.1", default-features = false }
+tokio = { version = "1.53.2", default-features = false }
 tracing = { version = "0.1.44", features = ["std"] }
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["fmt", "json"] }

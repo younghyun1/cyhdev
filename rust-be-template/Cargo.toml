@@ -97,7 +97,7 @@ flate2 = "1.1.10"
 chrono.workspace = true
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 scc = "3.8.8"
-uuid = { version = "1.26.1", features = [
+uuid = { version = "1.27.0", features = [
     "v4",
     "v7",
     "serde",
@@ -178,7 +178,7 @@ memmap2 = "0.9.11"
 
 # aws
 # Preserve S3 defaults except its legacy rustls feature, which pulls Hyper 0.14/Rustls 0.21.
-aws-sdk-s3 = { version = "1.150.0", default-features = false, features = [
+aws-sdk-s3 = { version = "1.152.0", default-features = false, features = [
     "behavior-version-latest",
     "default-https-client",
     "http-1x",
@@ -203,7 +203,7 @@ chrono.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
-libc = { version = "0.2.189", features = [] }
+libc = { version = "0.2.190", features = [] }
 
 [target.'cfg(all(target_os = "linux", target_env = "gnu"))'.dependencies]
 zstd = { version = "0.14.0", features = ["fat-lto", "zstdmt", "pkg-config"] }
