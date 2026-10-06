@@ -14,7 +14,7 @@ pub const DEFAULT_AUDIT_PAGE_SIZE: u16 = 50;
         len_char_max = 160,
         predicate = title_fits_bytes
     ),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct ForumTitle(String);
 
@@ -25,7 +25,7 @@ pub struct ForumTitle(String);
         len_char_max = 20000,
         predicate = body_fits_bytes
     ),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct ForumBody(String);
 
@@ -36,7 +36,7 @@ pub struct ForumBody(String);
         len_char_max = 500,
         predicate = reason_fits_bytes
     ),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct ForumModerationReason(String);
 
@@ -47,7 +47,7 @@ pub struct ForumModerationReason(String);
         len_char_max = 128,
         predicate = valid_search
     ),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct ForumSearch(String);
 
@@ -84,6 +84,29 @@ fn text_is_postgres_safe(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn string_parsing_preserves_forum_sanitization_and_rejections() {
+        assert!(
+            matches!("  valid title  ".parse::<ForumTitle>(), Ok(value) if value.as_ref() == "valid title")
+        );
+        assert!(
+            matches!("  valid body  ".parse::<ForumBody>(), Ok(value) if value.as_ref() == "valid body")
+        );
+        assert!(
+            matches!("  valid reason  ".parse::<ForumModerationReason>(), Ok(value) if value.as_ref() == "valid reason")
+        );
+        assert!(
+            matches!("  valid query  ".parse::<ForumSearch>(), Ok(value) if value.as_ref() == "valid query")
+        );
+        for value in ["   ", "invalid\0text"] {
+            assert!(value.parse::<ForumTitle>().is_err());
+            assert!(value.parse::<ForumBody>().is_err());
+            assert!(value.parse::<ForumModerationReason>().is_err());
+            assert!(value.parse::<ForumSearch>().is_err());
+        }
+        assert!("short".parse::<ForumModerationReason>().is_err());
+    }
 
     #[test]
     fn character_and_byte_limits_agree_with_database_checks() {
