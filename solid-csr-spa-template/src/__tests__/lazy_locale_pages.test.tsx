@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
-import { Loading } from "solid-js";
+import { Loading, flush } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { UiLocale } from "../i18n/keys";
 import { UI_LOCALES } from "../i18n/locales";
@@ -12,6 +12,7 @@ import { setLocaleSignal } from "../state/i18n";
 afterEach(() => {
   cleanup();
   setLocaleSignal("en-US");
+  flush();
   vi.restoreAllMocks();
 });
 
@@ -36,6 +37,7 @@ describe("lazy locale pages", () => {
     const { calls, loaders } = loadersWith();
     const Page = createLocalePage(loaders);
     setLocaleSignal("fr-FR");
+    flush();
     render(() => (
       <Loading>
         <Page />
@@ -45,6 +47,8 @@ describe("lazy locale pages", () => {
     expect(calls).toEqual(["fr-FR"]);
 
     setLocaleSignal("ja-JP");
+
+    flush();
     await waitFor(() => expect(screen.getByText("page ja-JP")).not.toBeNull());
     expect(calls).toEqual(["fr-FR", "ja-JP"]);
   });
@@ -56,6 +60,7 @@ describe("lazy locale pages", () => {
     });
     const Page = createLocalePage(loaders);
     setLocaleSignal("ko-KR");
+    flush();
     render(() => (
       <Loading>
         <Page />
