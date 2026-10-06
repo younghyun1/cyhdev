@@ -2,6 +2,8 @@
 
 This workspace Rust binary supplies synthetic PostgreSQL accounts/content/retention data, a bounded S3 object store, TLS/auth SMTP mailbox, signed OIDC provider with PKCE and client authentication, same-user Minecraft terrain sockets, squaremap files, and authenticated management acknowledgements. It does not contact a Minecraft server. Every recipient uses `example.test`; generated credentials and seed material are synthetic.
 
+For an automatically managed campaign, run `./build_pgo_and_bolt.sh` from a clean committed workspace. It prepares a fresh private runtime, isolated PostgreSQL 18 container, inventory, and unique config, supervises the providers, runs the optimization campaign, and removes its owned processes/container afterward. See the [optimization runbook](../optimization/README.md) for prerequisites, resource limits, and retained failure diagnostics. The following instructions apply to manually managed fixtures.
+
 Use the dedicated PostgreSQL listener at `127.0.0.1:35432` with user `optimization_fixture`, a password beginning with `optimization-fixture-`, and a database named `cyhdev_optimization_*`. No socket/query overrides or other database listener is admitted. The database role needs create/drop database privileges in this disposable instance. PostgreSQL client tools, OpenSSL, the checked-in public Geo-IP bundles, locked frontend dependencies, and Chromium must be available.
 
 Run from the workspace root:
@@ -18,6 +20,8 @@ target/debug/optimization-fixtures serve /tmp/cyh-opt-example
 ```
 
 Keep `serve` running in its own terminal while executing the [optimization campaign](../optimization/README.md). Preparation requires a fresh runtime receipt and fresh snapshot database; it never overwrites an existing snapshot. The generated environment contains synthetic credentials and private TLS/OIDC keys. Certificates expire after two days, so prepare new inputs for a later campaign. The generator writes ignored `target/optimization-inputs/campaign.json` and `config.json`; generate the source inventory first and choose a fresh campaign name before each optimized run.
+
+`campaign RUNTIME OUTPUT_DIR NAME CPU` writes the config/workload beside an inventory in a supplied absolute directory under `target/optimization-inputs`; the managed wrapper uses this form for unique campaigns. The two-argument form retains the manual default directory and name.
 
 The reset hook hashes the golden PostgreSQL dump, verifies asset/key/Geo-IP identities, recreates only the admitted runtime database from the snapshot, checks clone equality, and resets search/object/mail/provider state. Database seeding is transactional. The dump is capped at 128 MiB; files are capped at 512 MiB. Object storage admits at most 256 objects and 128 MiB; mail admits at most 64 bounded messages. Terrain and management connections admit four concurrent clients with bounded messages and deadlines. Missing or invalid visibility state fails closed. SIGINT/SIGTERM stops the fixture listeners and removes their own Unix socket paths.
 

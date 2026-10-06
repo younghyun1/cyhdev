@@ -116,7 +116,7 @@ fn wrapper_preserves_root_arguments_freshness_request_and_exit_status()
     )?;
     fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))?;
     for (passed, expected) in [
-        (vec![], vec!["target/optimization-inputs/config.json"]),
+        (vec![], vec![]),
         (
             vec!["inputs with spaces/config.json"],
             vec!["inputs with spaces/config.json"],
@@ -138,10 +138,10 @@ fn wrapper_preserves_root_arguments_freshness_request_and_exit_status()
         assert_eq!(lines.next(), root.to_str());
         assert_eq!(lines.next(), Some("1"));
         assert_eq!(
-            lines.take(3).collect::<Vec<_>>(),
-            ["xtask", "optimize", "run"]
+            lines.take(2).collect::<Vec<_>>(),
+            ["xtask", "build-pgo-and-bolt"]
         );
-        assert_eq!(stdout.lines().skip(5).collect::<Vec<_>>(), expected);
+        assert_eq!(stdout.lines().skip(4).collect::<Vec<_>>(), expected);
     }
     Ok(())
 }

@@ -1,4 +1,9 @@
 mod artifacts;
+pub(crate) mod bootstrap;
+mod bootstrap_inputs;
+mod bootstrap_resources;
+#[cfg(test)]
+mod bootstrap_tests;
 #[cfg(test)]
 mod builder_tests;
 pub(crate) mod campaign;
