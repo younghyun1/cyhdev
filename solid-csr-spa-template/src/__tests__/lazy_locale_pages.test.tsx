@@ -47,7 +47,6 @@ describe("lazy locale pages", () => {
     expect(calls).toEqual(["fr-FR"]);
 
     setLocaleSignal("ja-JP");
-
     flush();
     await waitFor(() => expect(screen.getByText("page ja-JP")).not.toBeNull());
     expect(calls).toEqual(["fr-FR", "ja-JP"]);

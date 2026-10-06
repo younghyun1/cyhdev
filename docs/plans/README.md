@@ -6,12 +6,12 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [Frontend dependency upgrade](2026-10-05-frontend-dependency-upgrade.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [Frontend dependency upgrade](2026-10-05-frontend-dependency-upgrade.md)
 - [PGO and BOLT harness](2026-09-29-pgo-bolt.md)
 - [PGO and BOLT binary measurements](2026-09-30-pgo-bolt-results.md)
 - [Minecraft biome highlights](2026-09-29-minecraft-biome-highlights.md)
