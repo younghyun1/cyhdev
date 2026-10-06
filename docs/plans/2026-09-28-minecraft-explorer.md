@@ -2,9 +2,13 @@
 
 - Status: complete, 2026-09-28, for local implementation and verification.
 - Checkout: `main`, implementation through `e4a7fdb`; this completion record accompanies the documentation commit. Started clean and equal to fetched `origin/main` at `02fb3cb6b1250287f34f7a35e95e12bfeeb80858`. Local commits have not been pushed.
-- Completed: bounded actual-world biome, elevation, block, and saved-structure queries; public named waypoints with administrator-only writes; native Solid/Leaflet terrain explorer with Minecraft-style controls, navigation, ruler, chunk grid, and portal coordinates. Original squaremap remains available in its existing sandbox. Fixed a mobile footer focus transition that could intercept form submission.
+- Completed: bounded actual-world biome, elevation, block, and saved-structure queries; public named waypoints with administrator-only writes; native Solid/Leaflet terrain explorer with Minecraft-style controls, navigation, ruler and portal coordinates. Original squaremap remains available in its existing sandbox. Fixed a mobile footer focus transition that could intercept form submission.
 - Verification: Java compilation and fixtures, isolated Paper integration, Rust Clippy/format/unit/OpenAPI, frontend types/lint/unit/build, and disposable PostgreSQL integration/rollback pass. See the evidence table below for browser results and limitations. Both disposable servers were stopped cleanly.
 - Remaining: no scoped implementation work remains. Production activation is a separate deployment step; start with the plugin README and activation notes below when authorized. No live plugin installation, database migration, service restart, or world mutation occurred. WebKit verification requires the missing host libraries noted below.
+
+## Chunk-grid removal
+
+The chunk-grid renderer, movement redraw listener, layer state, component prop, and Layers toggle were removed on 2026-10-05. Predictions and observed-terrain inspection retain their existing rendering and authorization behavior. `cargo xtask frontend-check` passed: typecheck, zero-warning lint, 304 unit tests, 14 optimization checks, and the frontend bundle. `npm --prefix solid-csr-spa-template run test:e2e:chromium -- minecraft-prediction.spec.ts minecraft-explorer.spec.ts` passed all 17 browser tests, including panning, zoom, permission expiry, hover provenance, surveys, and waypoints. No Rust or Java behavior changed, so their checks were not rerun. No implementation work remains; deployment is separate.
 
 ## Design
 
@@ -14,7 +18,7 @@ The Paper plugin exposes a separate same-user Unix world-query socket and preser
 
 The Rust API validates input and plugin output, bounds framing and deadlines, and serializes query work with a cooldown. Public waypoints live in the existing PostgreSQL database with strict constraints, bounded reads, and an enforced per-world count. Administrator writes use the established session, trusted-origin, and current-authority checks. All browser HTTP contracts are generated from OpenAPI.
 
-Additional tools are coordinate navigation, a chunk grid, distance measurement, and Overworld/Nether coordinate conversion. Structure and block results describe the sampled generated area, not an unbounded whole-world index.
+Additional tools are coordinate navigation, distance measurement, and Overworld/Nether coordinate conversion. Structure and block results describe the sampled generated area, not an unbounded whole-world index.
 
 ## Seed prediction
 
