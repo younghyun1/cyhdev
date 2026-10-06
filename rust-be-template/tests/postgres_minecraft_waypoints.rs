@@ -162,7 +162,7 @@ fn capacity_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         let full = repository.list("minecraft:overworld").await?;
         require(full.len() == 256, "world capacity was exceeded")?;
-        let Some(first) = full.as_slice().first() else {
+        let Some(first) = <[_]>::first(&full) else {
             return require(false, "full world was empty");
         };
         repository.delete(first.id).await?;
