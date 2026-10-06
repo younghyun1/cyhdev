@@ -85,17 +85,7 @@ fn build_tools(root: &Path, inputs: &Inputs) -> TaskResult<std::path::PathBuf> {
     let receipt = inputs.directory.join("fixture-build.jsonl");
     let log = fs::File::create(&receipt)
         .map_err(|error| TaskError(format!("cannot create fixture build receipt: {error}")))?;
-    stage(
-        bootstrap_inputs::command("cargo", root)
-            .args([
-                "build",
-                "--locked",
-                "--package",
-                "optimization-fixtures",
-                "--message-format=json-render-diagnostics",
-            ])
-            .stdout(log),
-    )?;
+    stage(fixture_build_command(root).stdout(log))?;
     // Fixture generation records its executable path as the reset hook.
     // Use Cargo's artifact JSON rather than assuming a conventional target layout.
     let metadata = fs::metadata(&receipt)
@@ -106,6 +96,19 @@ fn build_tools(root: &Path, inputs: &Inputs) -> TaskResult<std::path::PathBuf> {
     let output = fs::read_to_string(&receipt)
         .map_err(|error| TaskError(format!("cannot read fixture build receipt: {error}")))?;
     artifact(&output)
+}
+
+pub(super) fn fixture_build_command(root: &Path) -> Command {
+    let mut command = bootstrap_inputs::command("cargo", root);
+    command.args([
+        "build",
+        "--locked",
+        "--release",
+        "--package",
+        "optimization-fixtures",
+        "--message-format=json-render-diagnostics",
+    ]);
+    command
 }
 
 pub(super) fn artifact(output: &str) -> TaskResult<std::path::PathBuf> {

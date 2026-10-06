@@ -8,7 +8,7 @@ use crate::{TaskError, TaskResult, run_command};
 use serde_json::{Value, json};
 use std::{fs, path::Path, process::Command};
 
-/// Generate development-profile metadata without running a server or fixture hook.
+/// Generate release-profile metadata without running a server or fixture hook.
 pub(super) fn generate(root: &Path, directory: &Path) -> TaskResult<()> {
     if directory.join("campaign.template.json").exists() || directory.join("surface.json").exists()
     {
@@ -71,21 +71,26 @@ pub(super) fn generate(root: &Path, directory: &Path) -> TaskResult<()> {
 }
 
 pub(super) fn export(root: &Path, path: &Path) -> TaskResult<()> {
-    run_command(
-        Command::new("cargo")
-            .args([
-                "run",
-                "--locked",
-                "--package",
-                "rust-be-template",
-                "--bin",
-                "openapi-contracts",
-                "--",
-                "training-surface",
-            ])
-            .arg(path)
-            .current_dir(root),
-    )
+    run_command(&mut export_command(root, path))
+}
+
+pub(super) fn export_command(root: &Path, path: &Path) -> Command {
+    let mut command = Command::new("cargo");
+    command
+        .args([
+            "run",
+            "--locked",
+            "--release",
+            "--package",
+            "rust-be-template",
+            "--bin",
+            "openapi-contracts",
+            "--",
+            "training-surface",
+        ])
+        .arg(path)
+        .current_dir(root);
+    command
 }
 
 /// Reject incomplete fixture definitions before optimized compilation.
