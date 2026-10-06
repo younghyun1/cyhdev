@@ -1,6 +1,6 @@
 # cyhdev PGO and BOLT campaign
 
-`cargo xtask optimize` extends the existing GNU/Linux host build. It preserves the pinned Docker builder, embedded compressed frontend and EU5 assets, Zen 3 tuning, locked dependencies, rebuilt standard library, panic strategy, seed companion, and sampler licenses. The musl/UPX image and `build.sh` retain their existing behavior. This produces a candidate artifact; it does not install it or control a deployed service.
+`cargo xtask optimize` extends the existing GNU/Linux host build. It preserves the pinned Docker base, embedded compressed frontend and EU5 assets, Zen 3 tuning, locked dependencies, rebuilt standard library, panic strategy, seed companion, and sampler licenses. The root wrapper selects the latest nightly compiler; direct campaign invocations retain the base image's compiler unless requested otherwise. The musl/UPX image and `build.sh` retain their existing behavior. This produces a candidate artifact; it does not install it or control a deployed service.
 
 The [September 30 measurements](../../docs/plans/2026-09-30-pgo-bolt-results.md) retain all three produced binaries, comprehensive coverage, corrected native comparisons and the historical client-limited rejection. Native mixed throughput improved by 17.9% with PGO and 20.1% with PGO+BOLT on four assigned server cores; small health responses exceeded 300,000 requests/s. The native runner includes headroom checks and records the workload-specific tail limits.
 
@@ -22,6 +22,19 @@ After reviewing the disposable environment and completing the campaign, commit a
 ```bash
 cargo xtask optimize run target/optimization-inputs/config.json
 ```
+
+The root [build_pgo_and_bolt.sh](../../build_pgo_and_bolt.sh) delegates to this same campaign with latest-nightly selection enabled. It defaults to the fixture tool's config path and accepts an alternative config:
+
+```bash
+./build_pgo_and_bolt.sh
+./build_pgo_and_bolt.sh target/optimization-inputs/config.json
+```
+
+Each wrapper invocation fetches the official nightly manifest with a bounded HTTPS lookup, bypasses intermediary freshness caches, and resolves an explicit `nightly-YYYY-MM-DD` toolchain before preparing the builder. That date is a Docker build argument: unchanged nightlies retain compiler/dependency and asset layer caches; new dates invalidate compiler-dependent layers. The GNU base and frontend/EU5 compilers remain pinned. Missing current components or a failed lookup abort instead of selecting an older compiler. All compilation, profile merging, and BOLT stages reuse one immutable image ID. The lookup requires `curl` on the runner. Set `CYHDEV_OPT_LATEST_NIGHTLY=1` for the same behavior when invoking `cargo xtask optimize run` directly.
+
+The campaign supplies `CARGO_ENCODED_RUSTFLAGS` explicitly: `-Ctarget-cpu=<target_cpu>`, `-Cforce-frame-pointers=yes`, and `-Clink-arg=-Wl,--emit-relocs`, plus stage-specific profile-generate/profile-use flags and `-Cllvm-args=-pgo-warn-missing-function`. Native C code receives `-march=<target_cpu> -O3`. The release profile retains opt-level 3, full LTO, one codegen unit, disabled incremental compilation, and unwind support. `build-std=core,alloc,std,panic_unwind` and `build-std-features=backtrace,panic-unwind` apply to every Rust variant. Symbols are stripped only after BOLT. Build configuration and fixtures select the CPU; the wrapper does not replace flags with caller-inherited `RUSTFLAGS`.
+
+Docker layer reuse does not reuse training profiles or earlier campaign build trees. Each invocation still needs a fresh campaign name, clean committed checkout, complete disposable fixtures, and passing coverage/performance gates before exporting an accepted artifact.
 
 `plan` prints the stages without building. `run` requires a clean commit and pinned clean EU5 submodule, rejects unfinished or incomplete campaign definitions before building, creates an exclusive run directory, and repeats identity checks throughout. Failed runs keep diagnostics and artifacts for inspection; use a new name to retry. Profiles are never imported from an earlier run. Changing source, configuration, or campaign during a run aborts acceptance.
 
