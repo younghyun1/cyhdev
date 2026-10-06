@@ -266,7 +266,7 @@ fn run_wasm_clippy(root: &Path) -> TaskResult<()> {
 
 fn print_help() {
     println!(
-        "PGO+BOLT: cargo xtask build-pgo-and-bolt [CONFIG.json] (fresh managed fixtures by default)"
+        "PGO+BOLT: ./build_pgo_and_bolt.sh [CONFIG.json] (release harness; fresh managed fixtures by default)"
     );
     println!(
         "Optimization: cargo xtask optimize inventory OUTPUT_DIR | plan CONFIG.json | run CONFIG.json"

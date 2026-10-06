@@ -9,14 +9,14 @@ Use the dedicated PostgreSQL listener at `127.0.0.1:35432` with user `optimizati
 Run from the workspace root:
 
 ```bash
-cargo build --locked --package optimization-fixtures
+cargo build --locked --release --package optimization-fixtures
 mkdir -m 700 /tmp/cyh-opt-example
 export CYHDEV_OPT_DISPOSABLE=1
 export DB_URL=postgres://optimization_fixture:optimization-fixture-example@127.0.0.1:35432/cyhdev_optimization_example
-target/debug/optimization-fixtures prepare /tmp/cyh-opt-example
-target/debug/optimization-fixtures campaign /tmp/cyh-opt-example
+target/release/optimization-fixtures prepare /tmp/cyh-opt-example
+target/release/optimization-fixtures campaign /tmp/cyh-opt-example
 source /tmp/cyh-opt-example/environment.sh
-target/debug/optimization-fixtures serve /tmp/cyh-opt-example
+target/release/optimization-fixtures serve /tmp/cyh-opt-example
 ```
 
 Keep `serve` running in its own terminal while executing the [optimization campaign](../optimization/README.md). Preparation requires a fresh runtime receipt and fresh snapshot database; it never overwrites an existing snapshot. The generated environment contains synthetic credentials and private TLS/OIDC keys. Certificates expire after two days, so prepare new inputs for a later campaign. The generator writes ignored `target/optimization-inputs/campaign.json` and `config.json`; generate the source inventory first and choose a fresh campaign name before each optimized run.

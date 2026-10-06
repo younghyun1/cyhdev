@@ -138,10 +138,47 @@ fn wrapper_preserves_root_arguments_freshness_request_and_exit_status()
         assert_eq!(lines.next(), root.to_str());
         assert_eq!(lines.next(), Some("1"));
         assert_eq!(
-            lines.take(2).collect::<Vec<_>>(),
-            ["xtask", "build-pgo-and-bolt"]
+            lines.take(8).collect::<Vec<_>>(),
+            [
+                "run",
+                "--quiet",
+                "--locked",
+                "--release",
+                "--package",
+                "xtask",
+                "--",
+                "build-pgo-and-bolt"
+            ]
         );
-        assert_eq!(stdout.lines().skip(4).collect::<Vec<_>>(), expected);
+        assert_eq!(stdout.lines().skip(10).collect::<Vec<_>>(), expected);
     }
     Ok(())
+}
+
+#[test]
+fn operator_helpers_use_release_with_locked_inputs_and_root_relative_paths() {
+    let root = Path::new("/repository with spaces");
+    let output = root.join("target/optimization-inputs/surface.json");
+    let fixture = super::bootstrap::fixture_build_command(root);
+    let exporter = super::inventory::export_command(root, &output);
+    for command in [&fixture, &exporter] {
+        let args = arguments(command);
+        assert!(args.contains(&std::ffi::OsStr::new("--release")));
+        assert!(args.contains(&std::ffi::OsStr::new("--locked")));
+        assert_eq!(command.get_current_dir(), Some(root));
+    }
+    assert!(
+        arguments(&fixture)
+            .windows(2)
+            .any(|pair| pair == ["--package", "optimization-fixtures"])
+    );
+    assert!(
+        arguments(&exporter)
+            .windows(2)
+            .any(|pair| pair == ["--bin", "openapi-contracts"])
+    );
+    assert_eq!(
+        arguments(&exporter).last().copied(),
+        Some(output.as_os_str())
+    );
 }

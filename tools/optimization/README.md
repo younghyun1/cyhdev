@@ -6,13 +6,13 @@ The [September 30 measurements](../../docs/plans/2026-09-30-pgo-bolt-results.md)
 
 ## Commands
 
-Run these from the repository root. Inventory generation compiles the OpenAPI exporter in the development profile and checks its agreement with source route registrations. It does not contact a database, launch the application, or run fixture hooks.
+Run these operator commands from the repository root. The harness and inventory exporter use the release profile. Inventory generation checks agreement with source route registrations; it does not contact a database, launch the application, or run fixture hooks.
 
 ```bash
-cargo xtask optimize inventory target/optimization-inputs
+cargo run --locked --release --package xtask -- optimize inventory target/optimization-inputs
 cp target/optimization-inputs/campaign.template.json target/optimization-inputs/campaign.json
 cp tools/optimization/config.example.json target/optimization-inputs/config.json
-cargo xtask optimize plan target/optimization-inputs/config.json
+cargo run --locked --release --package xtask -- optimize plan target/optimization-inputs/config.json
 ```
 
 The generated template currently contains 112 HTTP operations, 33 browser route states, and 31 scenario slots. The workspace [disposable fixture tool](../optimization-fixtures/README.md) prepares synthetic dependencies and generates a complete workload using the actual API contracts. Use that tool instead of the two template-copy commands when running the maintained campaign. The generic template remains deliberately incomplete for alternative fixtures: replace every placeholder, supply valid entity identifiers, order role-specific workflows, and write semantic success assertions. The default `/success` assertion does not apply to raw JSON, redirects, binary assets, or empty responses. Run `inventory` into a fresh directory after adding routes; it refuses to overwrite an existing template.
@@ -20,7 +20,7 @@ The generated template currently contains 112 HTTP operations, 33 browser route 
 After reviewing the disposable environment and completing the campaign, commit all source changes and choose a fresh campaign name. The following command performs optimized builds and executes the supplied binaries. It is an operator command; ordinary development checks and CI do not invoke it.
 
 ```bash
-cargo xtask optimize run target/optimization-inputs/config.json
+cargo run --locked --release --package xtask -- optimize run target/optimization-inputs/config.json
 ```
 
 The root [build_pgo_and_bolt.sh](../../build_pgo_and_bolt.sh) runs this same campaign with latest-nightly selection enabled. Without arguments it creates fresh managed fixtures; an explicit config selects operator-managed fixtures:
@@ -30,7 +30,7 @@ The root [build_pgo_and_bolt.sh](../../build_pgo_and_bolt.sh) runs this same cam
 ./build_pgo_and_bolt.sh target/optimization-inputs/config.json
 ```
 
-The managed default checks for a clean committed checkout, native Linux x86-64, local Docker, PostgreSQL 18 client tools (`pg_dump`, `createdb`, `dropdb`, `pg_isready`), OpenSSL, Node/npm, curl, oha, and checked-in public Geo-IP bundles. It installs locked frontend dependencies and Playwright Chromium when missing. It refuses occupied loopback ports 35432, 34901, 3465, 18555, 18443, and 18444. It builds the fixture tool in development mode, generates a fresh inventory/config under `target/optimization-inputs/<campaign-name>/`, and creates a mode-0700 runtime under `/tmp/cyh-opt-<unique-id>`; previous generated configs and runtimes are never default inputs. `TARGET_CPU` selects CPU tuning, defaulting to `znver3`; `CYHDEV_OHA` can select an installed absolute executable path.
+The managed default checks for a clean committed checkout, native Linux x86-64, local Docker, PostgreSQL 18 client tools (`pg_dump`, `createdb`, `dropdb`, `pg_isready`), OpenSSL, Node/npm, curl, oha, and checked-in public Geo-IP bundles. It installs locked frontend dependencies and Playwright Chromium when missing. It refuses occupied loopback ports 35432, 34901, 3465, 18555, 18443, and 18444. The wrapper builds xtask, the fixture tool, and the inventory exporter with `--release`; Cargo reuses matching release artifacts across invocations. It generates a fresh inventory/config under `target/optimization-inputs/<campaign-name>/` and creates a mode-0700 runtime under `/tmp/cyh-opt-<unique-id>`; previous generated configs and runtimes are never default inputs. `TARGET_CPU` selects CPU tuning, defaulting to `znver3`; `CYHDEV_OHA` can select an installed absolute executable path.
 
 PostgreSQL 18 runs in a uniquely named disposable container bound only to `127.0.0.1:35432`, with no persistent volume. Its data tmpfs and container memory each have a 1 GiB limit, shared memory has a 128 MiB limit, and WAL targets 64-256 MiB. The hard storage limit bounds the synthetic snapshot and active database; insufficient capacity aborts the campaign. The wrapper supervises its fixture processes and removes only its container by the recorded container ID, including on failure or interruption. Successful runs remove the private runtime; failures retain private diagnostics there. Existing services are never stopped. Explicit configs retain the manual setup and cleanup requirements below.
 
