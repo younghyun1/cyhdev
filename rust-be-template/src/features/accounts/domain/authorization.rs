@@ -12,7 +12,7 @@ pub const MAX_AUTHORIZATION_CATALOG_ROWS: i64 = 256;
 #[nutype(
     sanitize(trim),
     validate(len_char_min = 8, len_char_max = 500),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct AuthorizationReason(String);
 
@@ -22,14 +22,14 @@ pub struct AuthorizationReason(String);
         len_char_max = 64,
         predicate = is_valid_permission_name
     ),
-    derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct PermissionName(String);
 
 #[nutype(
     sanitize(trim),
     validate(not_empty, len_char_max = 100),
-    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom)
+    derive(Debug, Clone, PartialEq, Eq, AsRef, Display, TryFrom, FromStr)
 )]
 pub struct AuthorizationSearch(String);
 
@@ -159,8 +159,27 @@ fn is_valid_permission_name(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AuthorizationPageSize, AuthorizationReason, DEFAULT_AUTHORIZATION_PAGE_SIZE, PermissionName,
+        AuthorizationPageSize, AuthorizationReason, AuthorizationSearch,
+        DEFAULT_AUTHORIZATION_PAGE_SIZE, PermissionName,
     };
+
+    #[test]
+    fn string_parsing_preserves_authorization_validation() {
+        assert!(
+            matches!("  grant support access  ".parse::<AuthorizationReason>(), Ok(value) if value.as_ref() == "grant support access")
+        );
+        assert!("short".parse::<AuthorizationReason>().is_err());
+        assert!(
+            "authorization.roles_manage"
+                .parse::<PermissionName>()
+                .is_ok()
+        );
+        assert!("Authorization.roles".parse::<PermissionName>().is_err());
+        assert!(
+            matches!("  support  ".parse::<AuthorizationSearch>(), Ok(value) if value.as_ref() == "support")
+        );
+        assert!("   ".parse::<AuthorizationSearch>().is_err());
+    }
 
     #[test]
     fn permission_names_require_lowercase_namespaced_segments() {
