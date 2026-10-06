@@ -63,6 +63,7 @@ fn run() -> TaskResult<()> {
     match command.as_str() {
         "backend" => run_backend(&root, &forwarded),
         "build" => release::run(&root),
+        "build-pgo-and-bolt" => optimization::bootstrap::run(&root, &forwarded),
         "build-dev" => run_native_build(&root),
         "clippy" => {
             run_native_clippy(&root)?;
@@ -264,6 +265,9 @@ fn run_wasm_clippy(root: &Path) -> TaskResult<()> {
 }
 
 fn print_help() {
+    println!(
+        "PGO+BOLT: cargo xtask build-pgo-and-bolt [CONFIG.json] (fresh managed fixtures by default)"
+    );
     println!(
         "Optimization: cargo xtask optimize inventory OUTPUT_DIR | plan CONFIG.json | run CONFIG.json"
     );

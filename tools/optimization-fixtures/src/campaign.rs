@@ -3,17 +3,38 @@ use serde_json::{Value, json};
 use std::{collections::BTreeMap, fs, path::Path};
 
 pub fn write(runtime: &Path) -> anyhow::Result<()> {
+    let output = std::env::current_dir()?.join("target/optimization-inputs");
+    write_to(runtime, &output, "cyhdev-pgo-bolt-001", "znver3")
+}
+
+/// Managed builds use fresh inventory/config paths without overwriting previous campaigns.
+pub fn write_to(runtime: &Path, output: &Path, name: &str, cpu: &str) -> anyhow::Result<()> {
     let root = std::env::current_dir()?;
     anyhow::ensure!(
         root.join("tools/optimization/coverage.json").is_file(),
         "run campaign generation from the workspace root"
     );
+    for value in [name, cpu] {
+        anyhow::ensure!(
+            !value.is_empty()
+                && value.len() <= 64
+                && value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_')),
+            "invalid campaign name or CPU"
+        );
+    }
+    anyhow::ensure!(
+        output.is_absolute()
+            && output
+                .canonicalize()?
+                .starts_with(root.join("target/optimization-inputs")),
+        "campaign output must be under target/optimization-inputs"
+    );
     let fixture: Value = serde_json::from_slice(&fs::read(runtime.join("fixture.json"))?)?;
     let policy: Value =
         serde_json::from_slice(&fs::read(root.join("tools/optimization/coverage.json"))?)?;
-    let surface: Value = serde_json::from_slice(&fs::read(
-        root.join("target/optimization-inputs/surface.json"),
-    )?)?;
+    let surface: Value = serde_json::from_slice(&fs::read(output.join("surface.json"))?)?;
     let pages = policy["pages"]
         .as_array()
         .ok_or_else(|| anyhow::anyhow!("missing pages"))?;
@@ -81,14 +102,13 @@ pub fn write(runtime: &Path) -> anyhow::Result<()> {
         "minecraft_management_port":crate::files::MANAGEMENT_PORT,"fixture_parameters":"fixture.json",
         "reset_command":[std::env::current_exe()?,"reset",runtime],"parameters":fixture["parameters"],
         "actors":{"anonymous":{},"member":login("fixture-member@example.test"),"admin":login("fixture-admin@example.test")},"pages":cases,"workflows":workflows,
-        "benchmark":{"environment":{"fixture_snapshot_sha256":fixture["snapshot_sha256"],"fixture_inputs_sha256":fixture["inputs_sha256"],"run_conditions":"native Ryzen 9800X3D; disposable PostgreSQL and loopback providers; client-inclusive HTTPS"},
+        "benchmark":{"environment":{"fixture_snapshot_sha256":fixture["snapshot_sha256"],"fixture_inputs_sha256":fixture["inputs_sha256"],"run_conditions":"native Linux x86-64; disposable PostgreSQL and loopback providers; client-inclusive HTTPS"},
             "engine":"oha","worker_threads":4,"samples":9,"warmup_requests":10000,"requests_per_sample":100000,"concurrency":32,"actor":"anonymous","cases":benchmark}});
-    let output = root.join("target/optimization-inputs");
     fs::write(
         output.join("campaign.json"),
         serde_json::to_vec_pretty(&campaign)?,
     )?;
-    let config = json!({"schema_version":1,"name":"cyhdev-pgo-bolt-001","target_cpu":"znver3","runtime_directory":runtime,
+    let config = json!({"schema_version":1,"name":name,"target_cpu":cpu,"runtime_directory":runtime,
         "campaign":output.join("campaign.json"),"training_command":["npm","--prefix","solid-csr-spa-template","exec","--","playwright","test","--config","solid-csr-spa-template/playwright.optimization.config.ts"],
         "benchmark_command":["npm","--prefix","solid-csr-spa-template","exec","--","playwright","test","--config","solid-csr-spa-template/playwright.optimization.config.ts"],
         "timeout_seconds":7200,"maximum_latency_ratio":1.05,"minimum_throughput_ratio":0.98});

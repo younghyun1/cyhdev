@@ -21,8 +21,8 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|_| anyhow::anyhow!("TLS provider was already initialized"))?;
     let arguments: Vec<String> = std::env::args().skip(1).collect();
     anyhow::ensure!(
-        arguments.len() == 2,
-        "usage: optimization-fixtures <prepare|reset|serve|campaign> RUNTIME"
+        arguments.len() == 2 || (arguments.len() == 5 && arguments[0] == "campaign"),
+        "usage: optimization-fixtures <prepare|reset|serve|campaign> RUNTIME; campaign also accepts OUTPUT_DIR NAME CPU"
     );
     let runtime = PathBuf::from(&arguments[1]);
     files::validate_runtime(&runtime)?;
@@ -32,7 +32,18 @@ async fn main() -> anyhow::Result<()> {
             database::prepare(&runtime).await?;
         }
         "reset" => database::reset(&runtime).await?,
-        "campaign" => campaign::write(&runtime)?,
+        "campaign" => {
+            if arguments.len() == 5 {
+                campaign::write_to(
+                    &runtime,
+                    &PathBuf::from(&arguments[2]),
+                    &arguments[3],
+                    &arguments[4],
+                )?;
+            } else {
+                campaign::write(&runtime)?;
+            }
+        }
         "serve" => {
             tokio::select! {
                 result = async { tokio::try_join!(web::serve(runtime.clone()), smtp::serve(runtime.clone()), minecraft::serve(runtime.clone())) } => { result?; },

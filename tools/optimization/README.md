@@ -23,18 +23,22 @@ After reviewing the disposable environment and completing the campaign, commit a
 cargo xtask optimize run target/optimization-inputs/config.json
 ```
 
-The root [build_pgo_and_bolt.sh](../../build_pgo_and_bolt.sh) delegates to this same campaign with latest-nightly selection enabled. It defaults to the fixture tool's config path and accepts an alternative config:
+The root [build_pgo_and_bolt.sh](../../build_pgo_and_bolt.sh) runs this same campaign with latest-nightly selection enabled. Without arguments it creates fresh managed fixtures; an explicit config selects operator-managed fixtures:
 
 ```bash
 ./build_pgo_and_bolt.sh
 ./build_pgo_and_bolt.sh target/optimization-inputs/config.json
 ```
 
+The managed default checks for a clean committed checkout, native Linux x86-64, local Docker, PostgreSQL 18 client tools (`pg_dump`, `createdb`, `dropdb`, `pg_isready`), OpenSSL, Node/npm, curl, oha, and checked-in public Geo-IP bundles. It installs locked frontend dependencies and Playwright Chromium when missing. It refuses occupied loopback ports 35432, 34901, 3465, 18555, 18443, and 18444. It builds the fixture tool in development mode, generates a fresh inventory/config under `target/optimization-inputs/<campaign-name>/`, and creates a mode-0700 runtime under `/tmp/cyh-opt-<unique-id>`; previous generated configs and runtimes are never default inputs. `TARGET_CPU` selects CPU tuning, defaulting to `znver3`; `CYHDEV_OHA` can select an installed absolute executable path.
+
+PostgreSQL 18 runs in a uniquely named disposable container bound only to `127.0.0.1:35432`, with no persistent volume. Its data tmpfs and container memory each have a 1 GiB limit, shared memory has a 128 MiB limit, and WAL targets 64-256 MiB. The hard storage limit bounds the synthetic snapshot and active database; insufficient capacity aborts the campaign. The wrapper supervises its fixture processes and removes only its container by the recorded container ID, including on failure or interruption. Successful runs remove the private runtime; failures retain private diagnostics there. Existing services are never stopped. Explicit configs retain the manual setup and cleanup requirements below.
+
 Each wrapper invocation fetches the official nightly manifest with a bounded HTTPS lookup, bypasses intermediary freshness caches, and resolves an explicit `nightly-YYYY-MM-DD` toolchain before preparing the builder. That date is a Docker build argument: unchanged nightlies retain compiler/dependency and asset layer caches; new dates invalidate compiler-dependent layers. The GNU base and frontend/EU5 compilers remain pinned. Missing current components or a failed lookup abort instead of selecting an older compiler. All compilation, profile merging, and BOLT stages reuse one immutable image ID. The lookup requires `curl` on the runner. Set `CYHDEV_OPT_LATEST_NIGHTLY=1` for the same behavior when invoking `cargo xtask optimize run` directly.
 
 The campaign supplies `CARGO_ENCODED_RUSTFLAGS` explicitly: `-Ctarget-cpu=<target_cpu>`, `-Cforce-frame-pointers=yes`, and `-Clink-arg=-Wl,--emit-relocs`, plus stage-specific profile-generate/profile-use flags and `-Cllvm-args=-pgo-warn-missing-function`. Native C code receives `-march=<target_cpu> -O3`. The release profile retains opt-level 3, full LTO, one codegen unit, disabled incremental compilation, and unwind support. `build-std=core,alloc,std,panic_unwind` and `build-std-features=backtrace,panic-unwind` apply to every Rust variant. Symbols are stripped only after BOLT. Build configuration and fixtures select the CPU; the wrapper does not replace flags with caller-inherited `RUSTFLAGS`.
 
-Docker layer reuse does not reuse training profiles or earlier campaign build trees. Each invocation still needs a fresh campaign name, clean committed checkout, complete disposable fixtures, and passing coverage/performance gates before exporting an accepted artifact.
+Docker layer reuse does not reuse training profiles or earlier campaign build trees. The managed default creates a fresh campaign name and complete disposable fixtures; explicit configs require the operator to prepare them. Both paths require a clean committed checkout and passing coverage/performance gates before exporting an accepted artifact.
 
 `plan` prints the stages without building. `run` requires a clean commit and pinned clean EU5 submodule, rejects unfinished or incomplete campaign definitions before building, creates an exclusive run directory, and repeats identity checks throughout. Failed runs keep diagnostics and artifacts for inspection; use a new name to retry. Profiles are never imported from an earlier run. Changing source, configuration, or campaign during a run aborts acceptance.
 

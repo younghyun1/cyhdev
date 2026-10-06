@@ -44,7 +44,14 @@ impl Config {
         {
             return Err(TaskError("invalid timeout or comparison budget".into()));
         }
-        config.runtime_directory = resolve(root, &config.runtime_directory)?;
+        config.runtime_directory = match resolve(root, &config.runtime_directory) {
+            Ok(runtime) => runtime,
+            Err(error) => {
+                return Err(TaskError(format!(
+                    "configured fixture runtime is unavailable: {error}; run ./build_pgo_and_bolt.sh without a config to prepare fresh fixtures, or recreate the manually managed runtime"
+                )));
+            }
+        };
         config.campaign = resolve(root, &config.campaign)?;
         if !config.runtime_directory.is_dir() || !config.campaign.is_file() {
             return Err(TaskError(
