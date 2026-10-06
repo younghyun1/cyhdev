@@ -114,16 +114,19 @@ COPY --from=host-release /out/ /
 # Separate from host-release: preserve symbols/relocations until BOLT finishes.
 # PGO merging uses llvm-profdata from this exact Rust compiler, not Debian LLVM.
 FROM rustlang/rust:${RUST_DOCKER_TAG} AS optimization-builder
-ENV RUSTUP_TOOLCHAIN="${RUST_VERSION}" RUST_MIN_STACK=33554432
+ENV RUST_MIN_STACK=33554432
 WORKDIR /workspace
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         binutils bolt-19 ca-certificates clang git gzip libpq-dev libzstd-dev lld make perl pkg-config zstd \
     && rm -rf /var/lib/apt/lists/* \
-    && rustup component add rust-src llvm-tools-preview --toolchain "$RUSTUP_TOOLCHAIN" \
     && test -x /usr/lib/llvm-19/bin/llvm-bolt \
     && test -x /usr/bin/merge-fdata-19 \
     && test -s /usr/lib/llvm-19/lib/libbolt_rt_instr.a
+# A new nightly invalidates Rust layers while retaining the native tool packages.
+ARG OPTIMIZATION_RUST_TOOLCHAIN=${RUST_VERSION}
+ENV RUSTUP_TOOLCHAIN="${OPTIMIZATION_RUST_TOOLCHAIN}"
+RUN rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rust-src --component llvm-tools-preview
 COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 ARG APP_BUILD_EPOCH

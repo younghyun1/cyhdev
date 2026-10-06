@@ -4,31 +4,19 @@ use std::{path::Path, process::Command};
 
 use crate::{TaskError, TaskResult, run_command};
 
-use super::process;
+use super::{nightly, process};
 
 pub(super) const TARGET: &str = "x86_64-unknown-linux-gnu";
 
 pub(super) fn prepare(root: &Path, run: &Path, epoch: &str, name: &str) -> TaskResult<String> {
     let tag = format!("cyhdev-optimization:{name}");
-    run_command(
-        Command::new("docker")
-            .args([
-                "build",
-                "--pull",
-                "--platform",
-                "linux/amd64",
-                "--file",
-                "rust-be-template/Dockerfile",
-                "--target",
-                "optimization-builder",
-                "--tag",
-                &tag,
-                "--build-arg",
-                &format!("APP_BUILD_EPOCH={epoch}"),
-                ".",
-            ])
-            .current_dir(root),
-    )?;
+    let toolchain = nightly::requested()?;
+    run_command(&mut builder_command(
+        root,
+        epoch,
+        &tag,
+        toolchain.as_deref(),
+    ))?;
     let image = process::output(
         Command::new("docker").args(["image", "inspect", "--format", "{{.Id}}", &tag]),
     )?;
@@ -39,6 +27,41 @@ pub(super) fn prepare(root: &Path, run: &Path, epoch: &str, name: &str) -> TaskR
     }
     run_command(base(&image, run)?.args(["sh", "-eu", "-c", TOOLCHAIN_RECEIPT]))?;
     Ok(image)
+}
+
+/// Only the resolved compiler date varies; matching inputs retain Docker's cache.
+pub(super) fn builder_command(
+    root: &Path,
+    epoch: &str,
+    tag: &str,
+    toolchain: Option<&str>,
+) -> Command {
+    let mut command = Command::new("docker");
+    command
+        .args([
+            "build",
+            "--pull",
+            "--platform",
+            "linux/amd64",
+            "--file",
+            "rust-be-template/Dockerfile",
+            "--target",
+            "optimization-builder",
+            "--tag",
+            tag,
+            "--build-arg",
+            &format!("APP_BUILD_EPOCH={epoch}"),
+        ])
+        .env("DOCKER_BUILDKIT", "1")
+        .current_dir(root);
+    if let Some(toolchain) = toolchain {
+        command.args([
+            "--build-arg",
+            &format!("OPTIMIZATION_RUST_TOOLCHAIN={toolchain}"),
+        ]);
+    }
+    command.arg(".");
+    command
 }
 
 const TOOLCHAIN_RECEIPT: &str = r#"

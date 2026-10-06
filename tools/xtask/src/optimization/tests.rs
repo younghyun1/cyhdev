@@ -234,7 +234,7 @@ fn profile_symlinks_cannot_escape_the_campaign() -> Result<(), Box<dyn std::erro
 fn optimization_builder_preserves_the_unstripped_host_contract() {
     let dockerfile = include_str!("../../../../rust-be-template/Dockerfile");
     assert!(dockerfile.contains("AS optimization-builder"));
-    assert!(dockerfile.contains("rustup component add rust-src llvm-tools-preview"));
+    assert!(dockerfile.contains("--component rust-src --component llvm-tools-preview"));
     assert!(dockerfile.contains("cargo fetch --locked --manifest-path"));
     let config = include_str!("../../../../tools/optimization/config.example.json");
     assert!(serde_json::from_str::<config::Config>(config).is_ok());
