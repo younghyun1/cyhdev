@@ -2,6 +2,8 @@
 
 The backend OpenAPI document is the source of truth for every HTTP request, response, path, query, and shared schema consumed by the frontend. The contract gate derives the complete registered HTTP method/path set from `routers/main_router.rs` and compares it with `ApiDoc` before selecting the browser subset, so a route or annotation cannot drift silently; WebSocket routes remain intentionally outside OpenAPI. The explicit browser surface is `FRONTEND_OPERATIONS` in `rust-be-template/src/openapi_codegen/surface.rs`, which controls only which documented operations receive generated clients.
 
+The `GlobalRequestAdmission` OpenAPI modifier documents HTTP 429 with `CodeErrorResp` and `Retry-After` for every operation outside the Minecraft namespaces, matching the outer request limiter. Existing feature-specific 429 contracts are preserved. Health-state database latency describes a fresh per-request query rather than a cached measurement.
+
 From the repository root, run `cargo run --locked --package rust-be-template --bin openapi-contracts -- generate` after changing a frontend-consumed `#[utoipa::path]` contract. It writes `solid-csr-spa-template/src/generated/api-client.ts`, `api-types.ts`, `runtime.ts`, small clients under `clients`, and one module per reachable schema under `types`. Files and exports are ordered deterministically, unchanged files are not rewritten, and stale generated TypeScript is removed.
 
 Run `npm run contracts:check`, or `cargo run --locked --package xtask -- openapi` from the repository root, to compare the complete generated tree in memory with the checked-in tree. Missing, changed, and stale files fail the drift check. Do not edit generated files directly.

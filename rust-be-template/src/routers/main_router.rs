@@ -12,7 +12,10 @@ const BATCH_REQUEST_SIZE: usize = 1024 * 1024 * 1024; // 1GB (route-scoped to ba
 const AUTH_REQUEST_SIZE: usize = 8 * 1024;
 const FORUM_REQUEST_SIZE: usize = 128 * 1024;
 
-pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
+pub fn build_router(
+    state: Arc<ServerState>,
+    limiter: Arc<crate::util::request_rate_limit::RequestRateLimiter>,
+) -> anyhow::Result<axum::Router> {
     let sessions = state.session_service();
     let auth_middleware = from_fn_with_state(Arc::clone(&sessions), auth_middleware);
     let require_superuser_middleware = from_fn(require_superuser_middleware);
@@ -49,7 +52,10 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
     let public_router = Router::new()
         .merge(crate::features::minecraft::api::map::public_router(&state)?)
         .route("/api/healthcheck/server", get(healthcheck))
-        .route("/api/healthcheck/state", get(root_handler))
+        .route(
+            "/api/healthcheck/state",
+            get(root_handler).layer(from_fn(sensitive_response_headers)),
+        )
         .route("/api/healthcheck/fastfetch", get(get_host_fastfetch))
         .route("/ws/host-stats", get(ws_host_stats_handler))
         .route("/ws/live-chat", get(live_chat_ws_handler))
@@ -344,5 +350,10 @@ pub fn build_router(state: Arc<ServerState>) -> anyhow::Result<axum::Router> {
         .merge(squaremap::from_environment()?)
         .fallback_service(get(static_asset_handler));
 
-    http_policy::apply(router.layer(compression_middleware), &state)
+    http_policy::apply(
+        router.layer(compression_middleware),
+        &state,
+        limiter,
+        &trusted_origins,
+    )
 }

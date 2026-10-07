@@ -1,12 +1,15 @@
 //! Plain-HTTP listener that only redirects to the HTTPS origin.
 //!
-//! It shares the HTTPS listener's connection limiter and hyper time bounds, so port 80
-//! cannot be used to hold connections the TLS listener would refuse.
+//! It shares the HTTPS listener's connection and request budgets and hyper time
+//! bounds, so port 80 cannot provide a second budget for abusive clients.
 
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::Arc,
+};
 
 use axum::{
-    handler::HandlerWithoutStateExt,
+    Router,
     http::{StatusCode, Uri, uri::Authority},
     response::Redirect,
 };
@@ -17,7 +20,10 @@ use crate::{
         connection_acceptor::LimitedAcceptor,
         http_server::{ProtocolTimeouts, configure_protocols},
     },
-    util::{connection_limit::ConnectionLimiter, extract::Host},
+    routers::middleware::request_rate_limit,
+    util::{
+        connection_limit::ConnectionLimiter, extract::Host, request_rate_limit::RequestRateLimiter,
+    },
 };
 
 #[derive(Clone, Copy)]
@@ -50,6 +56,7 @@ pub async fn redirect_http_to_https(
     ports: Ports,
     handle: Handle<SocketAddr>,
     limiter: ConnectionLimiter,
+    request_limiter: Arc<RequestRateLimiter>,
 ) -> anyhow::Result<()> {
     let redirect = move |Host(host): Host, uri: Uri| async move {
         match make_https(&host, uri, ports.https) {
@@ -61,6 +68,7 @@ pub async fn redirect_http_to_https(
         }
     };
 
+    let router = request_rate_limit::apply(Router::new().fallback(redirect), request_limiter);
     let addr = SocketAddr::new(host_ip, ports.http);
     let mut server = axum_server::bind(addr)
         .acceptor(LimitedAcceptor::new(DefaultAcceptor::new(), limiter))
@@ -68,7 +76,7 @@ pub async fn redirect_http_to_https(
     configure_protocols(server.http_builder(), ProtocolTimeouts::PRODUCTION);
     tracing::debug!(local_addr = %addr, "Listening for HTTP redirect traffic");
     server
-        .serve(redirect.into_make_service())
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .map_err(|e| anyhow::anyhow!("Failed to serve redirection: {}", e))
 }

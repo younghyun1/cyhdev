@@ -193,3 +193,4 @@ pub(crate) use crate::features::{
     wasm::api::delete_module::DeleteWasmModuleResponse,
 };
 pub(crate) use crate::openapi_envelope::FrontendResponseEnvelope;
+pub(crate) use crate::openapi_rate_limit::GlobalRequestAdmission;

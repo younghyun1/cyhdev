@@ -10,8 +10,10 @@ use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
 use crate::{
-    init::config::EmailConfig, jobs::job_funcs::init_scheduler::task_init,
-    routers::main_router::build_router, util::connection_limit::ConnectionLimiter,
+    init::config::EmailConfig,
+    jobs::job_funcs::init_scheduler::task_init,
+    routers::main_router::build_router,
+    util::{connection_limit::ConnectionLimiter, request_rate_limit::RequestRateLimiter},
 };
 
 use super::{
@@ -137,7 +139,8 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
         .await
         .map_err(anyhow::Error::from)?;
 
-    let router = build_router(Arc::clone(&state))?;
+    let request_limiter = Arc::new(RequestRateLimiter::new());
+    let router = build_router(Arc::clone(&state), Arc::clone(&request_limiter))?;
 
     info!(
         event = "server_state_initialized",
@@ -161,7 +164,9 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
             https: host_port,
         };
         tokio::spawn(async move {
-            if let Err(e) = redirect_http_to_https(host_ip, ports, handle, limiter).await {
+            if let Err(e) =
+                redirect_http_to_https(host_ip, ports, handle, limiter, request_limiter).await
+            {
                 error!(error = %e, "HTTP->HTTPS redirect listener exited with error");
             }
         })

@@ -12,9 +12,7 @@ use crate::features::server_status::{
     domain::system_info::SystemInfo,
     repository::server_status_repository::ServerStatusRepository,
     service::{
-        database_status::{
-            DATABASE_STATUS_TTL, DatabaseStatus, DatabaseStatusCache, major_version,
-        },
+        database_status::{DatabaseStatus, DatabaseStatusProbe, major_version},
         fastfetch::FastFetchCache,
         system_info_state::SystemInfoState,
     },
@@ -54,7 +52,7 @@ pub struct ServerStatusService {
     repository: Arc<ServerStatusRepository>,
     system: SystemInfoState,
     fastfetch: FastFetchCache,
-    database_status: DatabaseStatusCache,
+    database_status: DatabaseStatusProbe,
     app_name_version: Arc<str>,
     started_at: tokio::time::Instant,
     responses_handled: AtomicU64,
@@ -76,7 +74,7 @@ impl ServerStatusService {
             repository,
             system: SystemInfoState::new(),
             fastfetch: FastFetchCache::new(),
-            database_status: DatabaseStatusCache::new(DATABASE_STATUS_TTL),
+            database_status: DatabaseStatusProbe::new(),
             app_name_version: app_name_version.into(),
             started_at,
             responses_handled: AtomicU64::new(0),
@@ -116,12 +114,12 @@ impl ServerStatusService {
         self.fastfetch.initialize().await;
     }
 
-    /// Database fields come from a cache refreshed at most every [`DATABASE_STATUS_TTL`].
+    /// Measures a fresh database query round trip for each admitted request.
     pub async fn state(&self, runtime: RuntimeStatus) -> anyhow::Result<ServerStateStatus> {
         let repository = Arc::clone(&self.repository);
         let database = self
             .database_status
-            .get_or_refresh(|| async move {
+            .measure(|| async move {
                 let (version_num, latency) = repository.database_version_num().await?;
                 let major_version = major_version(version_num).ok_or_else(|| {
                     anyhow::anyhow!("unexpected server_version_num {version_num}")
