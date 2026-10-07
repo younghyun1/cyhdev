@@ -13,6 +13,7 @@ pub mod init;
 pub mod jobs;
 pub mod openapi_codegen;
 pub mod openapi_envelope;
+pub mod openapi_rate_limit;
 pub mod persistence;
 pub mod routers;
 pub mod schema;

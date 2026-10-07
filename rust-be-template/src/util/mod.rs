@@ -6,6 +6,7 @@ pub mod extract;
 pub mod image;
 pub mod init_logger;
 pub mod media;
+pub mod request_rate_limit;
 pub mod s3;
 pub mod string;
 pub mod time;

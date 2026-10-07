@@ -5,7 +5,7 @@ use utoipa::OpenApi;
 /// Central OpenAPI document for Swagger UI.
 #[derive(OpenApi)]
 #[openapi(
-    modifiers(&FrontendResponseEnvelope),
+    modifiers(&FrontendResponseEnvelope, &GlobalRequestAdmission),
     paths(
         crate::features::minecraft::api::map::minecraft_map_query,
         crate::features::minecraft::api::map::minecraft_map_prediction,

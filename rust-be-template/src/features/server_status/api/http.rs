@@ -21,7 +21,7 @@ pub struct RootHandlerResponse {
     users_logged_in: usize,
     /// PostgreSQL major version, such as `18`.
     db_version: String,
-    /// Status query round trip, refreshed at most every five seconds.
+    /// Fresh status query round trip measured for this request.
     db_latency: String,
 }
 

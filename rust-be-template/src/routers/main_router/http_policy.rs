@@ -16,18 +16,27 @@ use crate::{
             inline_script_hashes,
         },
         request_deadline::enforce_request_deadline,
+        request_rate_limit,
+        trusted_origin::TrustedOrigins,
     },
-    util::s3::AWS_S3_BUCKET_NAME,
+    util::{request_rate_limit::RequestRateLimiter, s3::AWS_S3_BUCKET_NAME},
 };
 
 /// Wraps the complete router so every route, including fallbacks, gets the policies.
 ///
-/// Security headers are outermost so deadline responses carry them too.
-pub(super) fn apply(router: Router, state: &ServerState) -> anyhow::Result<Router> {
+/// Security headers are outermost so deadline and admission responses carry them too.
+pub(super) fn apply(
+    router: Router,
+    state: &ServerState,
+    limiter: Arc<RequestRateLimiter>,
+    origins: &TrustedOrigins,
+) -> anyhow::Result<Router> {
     let policy = Arc::new(BrowserSecurityPolicy::new(&browser_policy_config(state))?);
-    Ok(router
-        .layer(from_fn(enforce_request_deadline))
-        .layer(from_fn_with_state(policy, apply_browser_security_headers)))
+    Ok(
+        request_rate_limit::apply_with_origins(router, limiter, origins.header_values())
+            .layer(from_fn(enforce_request_deadline))
+            .layer(from_fn_with_state(policy, apply_browser_security_headers)),
+    )
 }
 
 fn browser_policy_config(state: &ServerState) -> BrowserPolicyConfig {

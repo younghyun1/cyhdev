@@ -6,6 +6,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
+- [Global request limits and fresh database latency](2026-10-07-global-request-limits.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 

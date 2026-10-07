@@ -4,6 +4,13 @@ use tracing::Level;
 use super::CodeError;
 
 impl CodeError {
+    pub const REQUEST_THROTTLED: CodeError = CodeError {
+        success: false,
+        error_code: 111,
+        http_status_code: StatusCode::TOO_MANY_REQUESTS,
+        message: "Too many requests. Try again later.",
+        log_level: Level::WARN,
+    };
     pub const POOL_ERROR: CodeError = CodeError {
         success: false,
         error_code: 0,
