@@ -1,6 +1,6 @@
 # Frontend
 
-The application uses Solid 2 prereleases, not Solid 1 or React semantics. `package.json` and `package-lock.json` are authoritative for versions; the migration document contains older pins. Preserve the coordinated exact Solid, web, router, and compiler pins and `.npmrc` compatibility settings unless dependency work is explicitly scoped.
+The application uses Solid 2 prereleases, not Solid 1 or React semantics. `package.json` and `package-lock.json` are authoritative for versions; the migration document contains older pins. Preserve the coordinated exact Solid, web, router, and compiler pins unless dependency work is explicitly scoped. Use normal npm peer resolution; the current dependency graph supports its prerelease peers directly.
 
 ## Entry points and conventions
 
