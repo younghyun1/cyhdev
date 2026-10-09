@@ -1,11 +1,11 @@
 ## SolidJS 2.0 release candidate
 
-This project runs on the SolidJS 2.0 release candidate (`solid-js@2.0.0-rc.x` + `@solidjs/web`), with the matching prerelease ecosystem: `@solidjs/router@2.0.0-next`, `vite-plugin-solid@3.0.0-next`, `@solid-primitives/keyed@3.0.0-next`, `@solidjs/testing-library@1.0.0-beta`. Expect churn until 2.0 stable; pin exact versions when bumping.
+This project runs on the SolidJS 2.0 release candidate (`solid-js@2.0.0-rc.x` + `@solidjs/web`), with the matching prerelease ecosystem: `@solidjs/router@2.0.0-next`, `@solidjs/vite-plugin@3.0.0-next`, `@solid-primitives/keyed@3.0.0-next`, `@solidjs/testing-library@1.0.0-beta`. Expect churn until 2.0 stable; pin exact versions when bumping. Current packages support normal npm peer validation.
 
 Prerelease workarounds to revisit at 2.0 stable:
-- `.npmrc` sets `legacy-peer-deps`: strict `>=2.0.0` peer ranges reject prerelease versions.
+
 - `@solid-primitives/utils` is a direct dependency only because `@solid-primitives/keyed`'s next build forgets to declare it.
-- `eslint-plugin-solid` 0.16 supports Solid 2, but its `solid/imports` rule still maps `JSX` to `solid-js`; the RC exports that type from `@solidjs/web`, so the rule remains disabled.
+- `eslint-plugin-solid` supports Solid 2, but its `solid/imports` rule still maps `JSX` to `solid-js`; the RC exports that type from `@solidjs/web`, so the rule remains disabled.
 - TypeScript 7 supplies `tsc` through the `@typescript/native` npm alias; the root `typescript` alias exposes the TypeScript 6 API and `tsc6` for tools such as `typescript-eslint` that still require programmatic compiler access.
 - `src/components/LineChart.tsx` replaces `solid-chartjs`, which pins solid-js 1.x.
 

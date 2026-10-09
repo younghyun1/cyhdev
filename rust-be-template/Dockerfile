@@ -47,9 +47,9 @@ RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-locatio
 FROM node:${NODE_DOCKER_TAG} AS frontend-source
 WORKDIR /workspace/solid-csr-spa-template
 RUN apk add --no-cache gzip zstd
-COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json solid-csr-spa-template/.npmrc ./
+COPY solid-csr-spa-template/package.json solid-csr-spa-template/package-lock.json ./
 RUN --mount=type=cache,id=cyhdev-npm-cache,target=/root/.npm,sharing=locked \
-    npm ci --legacy-peer-deps --no-audit --no-fund
+    npm ci --strict-peer-deps --no-audit --no-fund
 COPY solid-csr-spa-template/ ./
 # Browser locale chunks import these public catalogs from the backend-owned source.
 COPY rust-be-template/i18n/ui/ /workspace/rust-be-template/i18n/ui/
