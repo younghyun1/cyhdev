@@ -1,6 +1,6 @@
 //! Bounded per-client HTTP request budgets with the historical global rate policy.
 //!
-//! One request replenishes every 63 milliseconds, with a burst of 1,024. Only
+//! The default replenishes every 63 milliseconds, with a burst of 1,024. Only
 //! fully replenished clients may leave the table, so filling it cannot reset an
 //! attacker's debt. IPv6 addresses share their subscriber's /64 budget.
 
@@ -23,6 +23,46 @@ pub const REQUEST_BURST_SIZE: u32 = 1_024;
 pub const MAX_REQUEST_RATE_CLIENTS: usize = 16_384;
 const SWEEP_INTERVAL: Duration = Duration::from_secs(1);
 
+/// Finite replenishment policy; retained client state is independent of its quota.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RequestRatePolicy {
+    refill_interval: Duration,
+    burst_size: u32,
+}
+
+impl RequestRatePolicy {
+    /// Public service policy, unchanged by optimization fixture configuration.
+    pub const HISTORICAL: Self = Self {
+        refill_interval: REQUEST_REFILL_INTERVAL,
+        burst_size: REQUEST_BURST_SIZE,
+    };
+
+    /// Bounds alternate policies without allowing zero-cost or unlimited requests.
+    pub(crate) fn bounded(refill_interval: Duration, burst_size: u32) -> anyhow::Result<Self> {
+        if !(Duration::from_micros(1)..=REQUEST_REFILL_INTERVAL).contains(&refill_interval)
+            || !(1..=16_384).contains(&burst_size)
+        {
+            return Err(anyhow::anyhow!(
+                "request admission policy exceeds its finite bounds"
+            ));
+        }
+        Ok(Self {
+            refill_interval,
+            burst_size,
+        })
+    }
+
+    /// Replenishment interval reported in sanitized startup diagnostics.
+    pub(crate) const fn refill_interval(self) -> Duration {
+        self.refill_interval
+    }
+
+    /// Finite burst reported in sanitized startup diagnostics.
+    pub(crate) const fn burst_size(self) -> u32 {
+        self.burst_size
+    }
+}
+
 /// Retry hint and whether a novel client was rejected by table capacity.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RequestRateRejection {
@@ -36,20 +76,27 @@ pub struct RequestRateLimiter {
     active_slots: AtomicUsize,
     max_clients: usize,
     next_sweep: Mutex<Option<Instant>>,
+    policy: RequestRatePolicy,
 }
 
 impl RequestRateLimiter {
     /// Creates a limiter with the fixed production capacity and historical policy.
     pub fn new() -> Self {
-        Self::with_capacity(MAX_REQUEST_RATE_CLIENTS)
+        Self::with_policy(RequestRatePolicy::HISTORICAL)
     }
 
-    fn with_capacity(max_clients: usize) -> Self {
+    /// Applies a startup-validated policy while preserving the fixed client-table cap.
+    pub(crate) fn with_policy(policy: RequestRatePolicy) -> Self {
+        Self::with_capacity(MAX_REQUEST_RATE_CLIENTS, policy)
+    }
+
+    fn with_capacity(max_clients: usize, policy: RequestRatePolicy) -> Self {
         Self {
             clients: scc::HashMap::with_capacity(max_clients),
             active_slots: AtomicUsize::new(0),
             max_clients,
             next_sweep: Mutex::new(None),
+            policy,
         }
     }
 
@@ -67,7 +114,7 @@ impl RequestRateLimiter {
         let mut swept = false;
         loop {
             match self.clients.entry_async(client).await {
-                Entry::Occupied(mut entry) => return charge(entry.get_mut(), now),
+                Entry::Occupied(mut entry) => return charge(entry.get_mut(), now, self.policy),
                 Entry::Vacant(entry) => {
                     let reservation = match self.try_reserve() {
                         Some(reservation) => reservation,
@@ -83,7 +130,7 @@ impl RequestRateLimiter {
                         }
                     };
                     let mut replenished_at = now;
-                    let result = charge(&mut replenished_at, now);
+                    let result = charge(&mut replenished_at, now, self.policy);
                     if result.is_ok() {
                         entry.insert_entry(replenished_at);
                         reservation.retain();
@@ -157,9 +204,13 @@ impl Drop for SlotReservation<'_> {
     }
 }
 
-fn charge(replenished_at: &mut Instant, now: Instant) -> Result<(), RequestRateRejection> {
+fn charge(
+    replenished_at: &mut Instant,
+    now: Instant,
+    policy: RequestRatePolicy,
+) -> Result<(), RequestRateRejection> {
     // GCRA retains only the time when all accumulated request debt is repaid.
-    let tolerance = REQUEST_REFILL_INTERVAL * (REQUEST_BURST_SIZE - 1);
+    let tolerance = policy.refill_interval * (policy.burst_size - 1);
     let latest_admission = match now.checked_add(tolerance) {
         Some(latest_admission) => latest_admission,
         None => return Err(saturated()),
@@ -172,7 +223,7 @@ fn charge(replenished_at: &mut Instant, now: Instant) -> Result<(), RequestRateR
     }
     match (*replenished_at)
         .max(now)
-        .checked_add(REQUEST_REFILL_INTERVAL)
+        .checked_add(policy.refill_interval)
     {
         Some(next) => {
             *replenished_at = next;
@@ -192,3 +243,7 @@ fn saturated() -> RequestRateRejection {
 #[cfg(test)]
 #[path = "request_rate_limit_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "request_rate_policy_tests.rs"]
+mod policy_tests;

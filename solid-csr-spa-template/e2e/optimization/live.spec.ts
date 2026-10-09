@@ -8,6 +8,7 @@ import { digest, interpolate, localUrl, readJson, required, validate, type Actor
 import { execute, operationMatches } from "./steps";
 import { actorContext } from "./sessions";
 import { isolateAssets } from "./assets";
+import { assertPageResponse } from "./navigation";
 
 const policy = readJson<{ pages: string[]; scenarios: string[] }>(resolve(import.meta.dirname, "../../../tools/optimization/coverage.json"));
 const campaign = readJson<Campaign>(required("CYHDEV_OPT_CAMPAIGN"));
@@ -82,7 +83,7 @@ async function train(browser: Browser): Promise<void> {
         if (route.pattern === "*404" ? inventory.some(({ pattern }) => pattern !== "*404" && matches(pattern)) : !matches(route.pattern))
           throw new Error(`Page fixture path does not match ${route.pattern}`);
         const response = await page.goto(localUrl(campaign.base_url, path), { waitUntil: "domcontentloaded" });
-        if (!response?.ok()) throw new Error(`Page response failed for ${route.pattern}`);
+        assertPageResponse(route.pattern, response);
         // Redirecting to sign-in is not a successful visit to a protected page.
         expect(new URL(page.url()).pathname).toBe(new URL(path, campaign.base_url).pathname);
         await expect(page.locator(fixture.selector)).toBeVisible();

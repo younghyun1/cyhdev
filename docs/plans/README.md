@@ -6,6 +6,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
+- [Optimization request admission](2026-10-09-optimization-request-admission.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 

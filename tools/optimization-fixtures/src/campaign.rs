@@ -56,37 +56,12 @@ pub fn write_to(runtime: &Path, output: &Path, name: &str, cpu: &str) -> anyhow:
         }
         cases.insert(pattern.to_owned(), case);
     }
-    let mut workflows = Vec::new();
-    // API operation declarations are preflight inventory; successful calls are counted separately at runtime.
-    for scenario in scenarios {
-        let name = scenario
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("invalid scenario"))?;
-        let declared: Vec<&Value> = operations
-            .iter()
-            .filter(|operation| operation.as_str().is_some_and(|op| owner(op) == name))
-            .collect();
-        workflows.push(json!({"name":name,"actor":actor(name),"steps":[{"kind":"fixture_scenario","name":name,"operations":declared}]}));
-    }
+    let mut workflows = workflow_cases(scenarios, operations)?;
     let login = |email: &str| {
         json!({"login":{"kind":"request","method":"POST","route":"/api/auth/login","path":"/api/auth/login","status":200,
         "body":{"user_email":email,"user_password":"OptimizationFixture123"},"json_pointer":"/success","equals":true}})
     };
-    let benchmark_routes = [
-        "/api/blog/posts",
-        "/api/blog/posts/${post_id}",
-        "/api/blog/search?q=fixture",
-        "/api/forum/topics",
-        "/api/photographs/get",
-        "/api/dropdown/country",
-        "/api/dropdown/language",
-        "/api/i18n/ui-text?locale=en-US",
-        "/api/healthcheck/state",
-        "/api/visitor-board",
-    ];
-    let benchmark:Vec<Value>=benchmark_routes.into_iter().map(|path|json!({"kind":"request","method":"GET",
-        "route":if path.contains("${post_id}"){"/api/blog/posts/{post_id}"}else{path.split('?').next().unwrap_or(path)},
-        "path":path,"status":200,"json_pointer":"/success","equals":true})).collect();
+    let benchmark = benchmark_cases();
     if let Some(flow) = workflows
         .iter_mut()
         .find(|flow| flow["name"] == "runtime.startup-shutdown-background-jobs")
@@ -118,6 +93,62 @@ pub fn write_to(runtime: &Path, output: &Path, name: &str, cpu: &str) -> anyhow:
     )?;
     crate::environment::write(runtime)?;
     Ok(())
+}
+
+/// API declarations are preflight inventory; successful calls are counted at runtime.
+fn workflow_cases(scenarios: &[Value], operations: &[Value]) -> anyhow::Result<Vec<Value>> {
+    let mut workflows = Vec::with_capacity(scenarios.len());
+    for scenario in scenarios {
+        let name = match scenario.as_str() {
+            Some(name) => name,
+            None => anyhow::bail!("invalid scenario"),
+        };
+        let declared: Vec<&Value> = operations
+            .iter()
+            .filter(|operation| operation.as_str().is_some_and(|op| owner(op) == name))
+            .collect();
+        workflows.push(json!({"name":name,"actor":actor(name),"steps":[{"kind":"fixture_scenario","name":name,"operations":declared}]}));
+    }
+    Ok(workflows)
+}
+
+/// Capacity traffic excludes the four-slot fresh database probe; its scenario still checks it.
+fn benchmark_cases() -> Vec<Value> {
+    [
+        "/api/blog/posts",
+        "/api/blog/posts/${post_id}",
+        "/api/blog/search?q=fixture",
+        "/api/forum/topics",
+        "/api/photographs/get",
+        "/api/dropdown/country",
+        "/api/dropdown/language",
+        "/api/i18n/ui-text?locale=en-US",
+        "/api/healthcheck/server",
+        "/api/visitor-board",
+    ]
+    .into_iter()
+    .map(|path| {
+        let route = if path.contains("${post_id}") {
+            "/api/blog/posts/{post_id}"
+        } else {
+            match path.split_once('?') {
+                Some((route, _)) => route,
+                None => path,
+            }
+        };
+        let mut request =
+            json!({"kind":"request","method":"GET","route":route,"path":path,"status":200});
+        if route == "/api/healthcheck/server" {
+            // Server health returns raw build metadata without a success envelope.
+            request["minimum_bytes"] = json!(16);
+            request["content_type"] = json!("application/json");
+        } else {
+            request["json_pointer"] = json!("/success");
+            request["equals"] = json!(true);
+        }
+        request
+    })
+    .collect()
 }
 
 fn actor(name: &str) -> &str {
@@ -174,6 +205,10 @@ fn page_assertion(pattern: &str) -> (&str, &str) {
         _ => ("main h1", "anonymous"),
     }
 }
+
+#[cfg(test)]
+#[path = "campaign_tests.rs"]
+mod tests;
 
 fn owner(operation: &str) -> &str {
     let path = operation.split_once(' ').map_or("", |(_, path)| path);

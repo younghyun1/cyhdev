@@ -36,6 +36,8 @@ Minecraft continuous seed tiles and legacy previews share one 512 MiB process-lo
 
 Request-local `HashMap`, `HashSet`, and `Vec` values are bounded by validated request/page/batch limits and are not runtime caches. Bounded Tokio channels, the Diesel pool, and the live-chat broadcast ring are concurrency controls rather than retained key-value caches; their capacities remain explicit at their construction sites.
 
+Explicit disposable optimization runs may select the fixed [request policy](../../../tools/optimization/request-limits.json) only after startup validates local deployment, numeric loopback bind/origin/database, the fixture database namespace and marker, and no trusted proxies. Its 16,384-request burst and microsecond refill change admission timing, not storage: the 16,384-key cap and one `(IpAddr, Instant)` entry per key remain unchanged. Tests bound this payload to 64 bytes per entry, at most 1 MiB across the table, excluding unchanged index/allocator overhead; one policy value is stored per limiter. Public defaults remain 1,024 requests and 63 ms. The [optimization runbook](../../../tools/optimization/README.md) records policy identity and measurement constraints.
+
 ## Deployment invariant
 
 Session authority is intentionally process-local. Running multiple backend processes would create independent login state and is unsupported; process restart is the global session-revocation mechanism. This trades restart persistence for an O(1), database-free authenticated request path.

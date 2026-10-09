@@ -6,6 +6,7 @@ import { requestStep } from "./steps";
 import { required, type Campaign } from "./model";
 import { actorContext } from "./sessions";
 import { nativeBenchmark } from "./native-benchmark";
+import { requestLimitPolicy } from "./request-policy";
 
 /** Measure the same explicitly weighted workload with TLS and reused connections. */
 export async function benchmark(browser: Browser, campaign: Campaign, serverPid?: number): Promise<void> {
@@ -47,6 +48,7 @@ export async function benchmark(browser: Browser, campaign: Campaign, serverPid?
           p95_ms: durations[Math.ceil(durations.length * 0.95) - 1], p99_ms: durations[Math.ceil(durations.length * 0.99) - 1], failures: 0 });
       }
       const environment = { declared: config.environment, cpu: cpus().map(({ model }) => ({ model })),
+        request_limits: requestLimitPolicy(),
         kernel: release(), memory: totalmem(), node: process.version, concurrency: config.concurrency,
         topology: "playwright-https-loopback-reused-connections", measurement: "explicit-parent-v2", base_url: campaign.base_url };
       const sha256 = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
