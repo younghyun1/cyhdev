@@ -7,7 +7,7 @@ use std::{
 
 use tokio::sync::Barrier;
 
-use super::{REQUEST_BURST_SIZE, REQUEST_REFILL_INTERVAL, RequestRateLimiter};
+use super::{REQUEST_BURST_SIZE, REQUEST_REFILL_INTERVAL, RequestRateLimiter, RequestRatePolicy};
 
 type TestResult = Result<(), Box<dyn Error>>;
 
@@ -98,7 +98,7 @@ async fn mapped_ipv4_uses_the_native_ipv4_budget() -> TestResult {
 
 #[tokio::test]
 async fn capacity_pressure_never_evicts_or_resets_existing_client_debt() {
-    let limiter = RequestRateLimiter::with_capacity(2);
+    let limiter = RequestRateLimiter::with_capacity(2, RequestRatePolicy::HISTORICAL);
     let now = Instant::now();
     exhaust(&limiter, client(1), now).await;
     exhaust(&limiter, client(2), now).await;
@@ -121,7 +121,7 @@ async fn capacity_pressure_never_evicts_or_resets_existing_client_debt() {
 
 #[tokio::test]
 async fn capacity_recovers_only_when_request_debt_is_fully_replenished() {
-    let limiter = RequestRateLimiter::with_capacity(1);
+    let limiter = RequestRateLimiter::with_capacity(1, RequestRatePolicy::HISTORICAL);
     let now = Instant::now();
     exhaust(&limiter, client(1), now).await;
     let recovery = now + REQUEST_REFILL_INTERVAL * REQUEST_BURST_SIZE;
@@ -141,7 +141,10 @@ async fn capacity_recovers_only_when_request_debt_is_fully_replenished() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn concurrent_distinct_client_admission_respects_the_reserved_capacity() -> TestResult {
-    let limiter = Arc::new(RequestRateLimiter::with_capacity(8));
+    let limiter = Arc::new(RequestRateLimiter::with_capacity(
+        8,
+        RequestRatePolicy::HISTORICAL,
+    ));
     let barrier = Arc::new(Barrier::new(64));
     let now = Instant::now();
     let mut jobs = Vec::new();
@@ -167,7 +170,10 @@ async fn concurrent_distinct_client_admission_respects_the_reserved_capacity() -
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn concurrent_requests_for_one_client_share_one_reserved_slot() -> TestResult {
-    let limiter = Arc::new(RequestRateLimiter::with_capacity(1));
+    let limiter = Arc::new(RequestRateLimiter::with_capacity(
+        1,
+        RequestRatePolicy::HISTORICAL,
+    ));
     let barrier = Arc::new(Barrier::new(2_048));
     let now = Instant::now();
     let mut jobs = Vec::new();
@@ -194,7 +200,7 @@ async fn concurrent_requests_for_one_client_share_one_reserved_slot() -> TestRes
 
 #[test]
 fn abandoned_reservations_return_the_capacity_slot() {
-    let limiter = RequestRateLimiter::with_capacity(1);
+    let limiter = RequestRateLimiter::with_capacity(1, RequestRatePolicy::HISTORICAL);
     let reservation = limiter.try_reserve();
     assert!(reservation.is_some());
     assert!(limiter.try_reserve().is_none());

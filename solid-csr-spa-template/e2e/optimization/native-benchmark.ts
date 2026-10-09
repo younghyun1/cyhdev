@@ -7,6 +7,7 @@ import type { BrowserContext } from "@playwright/test";
 import { digest, interpolate, localUrl, readJson, required, type Campaign } from "./model";
 import { requestStep } from "./steps";
 import { nativeSample } from "./native-result";
+import { requestLimitPolicy } from "./request-policy";
 
 const sha256 = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 function cpuTicks(pid: number): number {
@@ -62,6 +63,7 @@ export async function nativeBenchmark(context: BrowserContext, campaign: Campaig
   await context.close();
   const workerThreads = config.worker_threads ?? 4;
   const environment = { declared: config.environment, cpu: cpus().map(({ model }) => ({ model })), kernel: release(), memory: totalmem(),
+    request_limits: requestLimitPolicy(),
     topology: "native-oha-https-http1.1-pooled-loopback", executable_sha256: executableDigest, version, worker_threads: workerThreads,
     concurrency: config.concurrency, requests_per_sample: config.requests_per_sample, warmup_requests: config.warmup_requests,
     client_cpu_set: readFileSync("/proc/self/status", "utf8").match(/^Cpus_allowed_list:\s*(.+)$/m)?.[1],

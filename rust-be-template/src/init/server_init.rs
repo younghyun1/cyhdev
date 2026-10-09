@@ -46,6 +46,14 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
         redirect_port != host_port,
         "HTTP_REDIRECT_PORT must differ from HOST_PORT"
     );
+    let request_policy = super::request_rate_limit::from_environment(host_ip)?;
+    info!(
+        event = "http_request_limits_configured",
+        refill_interval_micros = request_policy.refill_interval().as_micros(),
+        burst_size = request_policy.burst_size(),
+        max_client_networks = crate::util::request_rate_limit::MAX_REQUEST_RATE_CLIENTS,
+        "HTTP request limits configured"
+    );
 
     info!(host_socket_addr = %host_socket_addr, "Loaded host configuration.");
 
@@ -139,7 +147,7 @@ pub async fn server_init_proc(start: tokio::time::Instant) -> anyhow::Result<()>
         .await
         .map_err(anyhow::Error::from)?;
 
-    let request_limiter = Arc::new(RequestRateLimiter::new());
+    let request_limiter = Arc::new(RequestRateLimiter::with_policy(request_policy));
     let router = build_router(Arc::clone(&state), Arc::clone(&request_limiter))?;
 
     info!(

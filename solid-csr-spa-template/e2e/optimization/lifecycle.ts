@@ -6,6 +6,7 @@ import { createServer } from "node:net";
 import type { APIRequestContext } from "@playwright/test";
 import { required, type Campaign } from "./model";
 import { validateEnvironment, validateFixturePaths } from "./isolation";
+import { requestLimitPolicy } from "./request-policy";
 
 /** Hooks manage only disposable fixtures; argv is never evaluated by a shell. */
 export async function hook(argv: string[], cwd: string): Promise<void> {
@@ -40,6 +41,7 @@ export async function start(campaign: Campaign, request: APIRequestContext): Pro
       MINECRAFT_MANAGEMENT_PORT: String(campaign.minecraft_management_port),
       MINECRAFT_MANAGEMENT_SECRET: "optimizationfixture012345678901234567890",
       PUBLIC_APP_ORIGIN: campaign.base_url,
+      CYHDEV_OPT_REQUEST_LIMITS: requestLimitPolicy().profile,
       AWS_EC2_METADATA_DISABLED: "true", MINECRAFT_SEED_WORKER: required("CYHDEV_SEED_BINARY") },
   });
   closeSync(log);

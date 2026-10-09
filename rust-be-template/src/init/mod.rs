@@ -6,6 +6,7 @@ pub mod db_migrations;
 pub mod db_pool;
 pub mod http_redirect;
 pub mod http_server;
+mod request_rate_limit;
 pub mod server_init;
 pub mod shutdown;
 mod smtp_transport;
