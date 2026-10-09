@@ -6,12 +6,12 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Current Plans
 
-- [Optimization request admission](2026-10-09-optimization-request-admission.md)
 - [Minecraft live integration fixes](2026-09-28-minecraft-live-fixes.md)
 - [Live chat](live-chat.md)
 
 ## Completed
 
+- [Optimization request admission](2026-10-09-optimization-request-admission.md)
 - [Frontend dependency upgrade, October 9](2026-10-09-frontend-dependency-upgrade.md)
 - [Global request limits and fresh database latency](2026-10-07-global-request-limits.md)
 - [PGO and BOLT build wrapper](2026-10-05-pgo-bolt-build-wrapper.md)
