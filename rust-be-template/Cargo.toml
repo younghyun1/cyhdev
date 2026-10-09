@@ -46,7 +46,7 @@ utoipa-swagger-ui = { version = "10.0.1", features = ["axum", "vendored"] }
 # rayon = "1.10.0"
 
 # ORM
-diesel = { version = "2.3.13", features = [
+diesel = { version = "2.3.14", features = [
     "postgres",
     "chrono",
     "serde_json",
@@ -118,7 +118,7 @@ rand = "0.10"
 rustls = { version = "0.23.45", features = [] }
 sha2 = "0.11.0"
 time = "0.3.55"
-zeroize = { version = "1.9.0", features = ["derive"] }
+zeroize = { version = "1.9.1", features = ["derive"] }
 
 # memory allocator
 mimalloc.workspace = true
@@ -158,7 +158,7 @@ tempfile = "3.27.0"
 
 # markdown
 # Only the library renderer is used; CLI and syntax-highlighter defaults add unused parsers.
-comrak = { version = "0.55.0", default-features = false, features = ["emojis", "shortcodes"] }
+comrak = { version = "0.56.0", default-features = false, features = ["emojis", "shortcodes"] }
 ansi-to-html = "0.2.4"
 
 # full-text search
@@ -169,7 +169,7 @@ reqwest = { version = "0.13.5", features = ["gzip", "query"] }
 openidconnect = { version = "4.0.1", default-features = false }
 
 # embed assets into binary
-rust-embed = "8.12.0"
+rust-embed = "8.13.0"
 mime_guess = "2.0.5"
 
 # internment
