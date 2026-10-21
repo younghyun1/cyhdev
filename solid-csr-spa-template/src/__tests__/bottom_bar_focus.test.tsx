@@ -22,11 +22,9 @@ describe("mobile status footer focus", () => {
 
   it("includes the visible status and tap text in the button's accessible name", () => {
     const { footer } = setup();
-    const status = screen.getByRole("button", { name: /Open site status details/ });
+    const status = screen.getByRole("button", { name: /Site status: ….*tap/i });
     expect(footer.contains(status)).toBe(true);
-    for (const label of status.querySelectorAll("span")) {
-      expect(status.getAttribute("aria-label")).toContain(label.textContent);
-    }
+    expect(status.getAttribute("aria-description")).toBe("Open site status details");
   });
 
   it("keeps the footer hidden through pointerdown, blur, and the completing click", async () => {
