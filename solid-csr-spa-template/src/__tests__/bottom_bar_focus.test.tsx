@@ -20,6 +20,15 @@ describe("mobile status footer focus", () => {
     return { footer, input: screen.getByLabelText("Example field"), button: screen.getByRole("button", { name: "Submit example" }), submit };
   };
 
+  it("includes the visible status and tap text in the button's accessible name", () => {
+    const { footer } = setup();
+    const status = screen.getByRole("button", { name: /Open site status details/ });
+    expect(footer.contains(status)).toBe(true);
+    for (const label of status.querySelectorAll("span")) {
+      expect(status.getAttribute("aria-label")).toContain(label.textContent);
+    }
+  });
+
   it("keeps the footer hidden through pointerdown, blur, and the completing click", async () => {
     const { footer, input, button, submit } = setup();
     input.focus(); await waitFor(() => expect(footer.getAttribute("aria-hidden")).toBe("true"));

@@ -201,7 +201,7 @@ const BottomBar: Component = () => {
           <button
             type="button"
             class="site-status-mobile w-full flex items-center justify-between gap-2 text-ink-muted leading-tight"
-            aria-label={t("bottom_bar.open_details")}
+            aria-label={`${mobileSummary()} ${t("bottom_bar.tap")}. ${t("bottom_bar.open_details")}`}
             onClick={() => setDetailsOpen(true)}
           >
             <span class="truncate">{mobileSummary()}</span>
