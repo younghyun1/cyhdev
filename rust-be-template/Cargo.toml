@@ -97,7 +97,7 @@ flate2 = "1.1.10"
 chrono.workspace = true
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 scc = "3.8.8"
-uuid = { version = "1.28.0", features = [
+uuid = { version = "1.29.0", features = [
     "v4",
     "v7",
     "serde",
@@ -116,7 +116,7 @@ base64 = "0.23.1"
 getrandom = "0.4.3"
 rand = "0.10"
 rustls = { version = "0.23.46", features = [] }
-sha2 = "0.11.0"
+sha2 = "0.11.1"
 time = "0.3.55"
 zeroize = { version = "1.9.1", features = ["derive"] }
 
@@ -158,7 +158,7 @@ tempfile = "3.27.0"
 
 # markdown
 # Only the library renderer is used; CLI and syntax-highlighter defaults add unused parsers.
-comrak = { version = "0.57.0", default-features = false, features = ["emojis", "shortcodes"] }
+comrak = { version = "0.59.0", default-features = false, features = ["emojis", "shortcodes"] }
 ansi-to-html = "0.2.4"
 
 # full-text search
@@ -174,11 +174,11 @@ mime_guess = "2.0.5"
 
 # internment
 internment = "0.8.6"
-memmap2 = "0.9.11"
+memmap2 = "0.9.12"
 
 # aws
 # Preserve S3 defaults except its legacy rustls feature, which pulls Hyper 0.14/Rustls 0.21.
-aws-sdk-s3 = { version = "1.153.0", default-features = false, features = [
+aws-sdk-s3 = { version = "1.157.0", default-features = false, features = [
     "behavior-version-latest",
     "default-https-client",
     "http-1x",
@@ -210,4 +210,4 @@ zstd = { version = "0.14.3", features = ["fat-lto", "zstdmt", "pkg-config"] }
 
 [target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
 zstd = { version = "0.14.3", features = ["zstdmt"] }
-pq-sys = { version = "0.7.6", default-features = false, features = ["bundled_without_openssl"] }
+pq-sys = { version = "0.7.8", default-features = false, features = ["bundled_without_openssl"] }
