@@ -18,6 +18,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [September 26 correctness fixes and verification](plans/2026-09-26-review-correctness-fixes.md)
 - [RTC, security, statistics, and localization verification](plans/2026-09-21-parallel-followups.md)
 - [About page localization](plans/2026-09-22-about-localization.md)
+- [November 2 site refresh: About subpages, motion, palette, dependencies](plans/2026-11-02-site-refresh.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.
