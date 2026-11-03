@@ -7,7 +7,10 @@ import { alphaBoundary, decodeAlphaEdge, minimumMapZoom, nativeTerrainZoom, pack
 const query: MinecraftSeedTileQuery = { world: "minecraft:overworld", tile_x: -1, tile_z: 0, level: 0, y: 64 };
 function reply(q = query, change: Partial<MinecraftSeedTile> = {}): MinecraftSeedTile {
   const origin = seedTileOrigin(q);
-  return { ...q, min_x: origin.x, min_z: origin.z, width: 64, height: 64, step: 4 * 2 ** q.level, palette: ["minecraft:plains", "minecraft:forest"], indices: Array.from({ length: 4096 }, (_, i) => i % 2), preset: "large_biomes", profile_epoch: "a".repeat(64), generator_revision: "fixture", sampled_at_ms: Date.now(), expires_at_ms: Date.now() + 15000, ...change };
+  // One clock read: separate reads can straddle a millisecond and make the
+  // expiry exceed the decoder's sampled-plus-15-second bound.
+  const now = Date.now();
+  return { ...q, min_x: origin.x, min_z: origin.z, width: 64, height: 64, step: 4 * 2 ** q.level, palette: ["minecraft:plains", "minecraft:forest"], indices: Array.from({ length: 4096 }, (_, i) => i % 2), preset: "large_biomes", profile_epoch: "a".repeat(64), generator_revision: "fixture", sampled_at_ms: now, expires_at_ms: now + 15000, ...change };
 }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 const stores: SeedTiles[] = [];
