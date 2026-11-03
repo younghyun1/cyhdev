@@ -21,7 +21,7 @@ zeroize = "1.9.1"
 axum = { version = "0.8.9", features = ["ws"] }
 rustls = "0.23.46"
 tokio-rustls = "0.26.6"
-openidconnect = { version = "4.0.1", default-features = false }
+openidconnect = { version = "4.1.0", default-features = false }
 base64 = "0.23.1"
 sha2 = "0.11.1"
 futures-util = { version = "0.3.34", features = ["sink"] }

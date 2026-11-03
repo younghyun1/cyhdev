@@ -176,7 +176,6 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
     }).addTo(map);
 
     const provider = new OpenStreetMapProvider();
-    // @ts-expect-error GeoSearchControl constructor types do not match runtime usage.
     const searchControl = new GeoSearchControl({
       provider,
       style: "bar",
