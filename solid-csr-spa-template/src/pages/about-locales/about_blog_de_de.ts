@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "Clippy für native und WebAssembly-Ziele als Prüfschritt während der Implementierung.",
-                "Ein Validierungs-Workflow für Formatierung, native Unit-Tests, Abweichungen vom OpenAPI-Vertrag sowie Typprüfung, Linting, Unit-Tests und Build des Frontends.",
+                "Lokale cargo xtask-Prüfungen für Formatierung, native Unit-Tests, Abweichungen vom OpenAPI-Vertrag sowie Typprüfung, Linting, Unit-Tests und Build des Frontends.",
                 "Playwright auf Chromium und WebKit mit axe-Barrierefreiheitsprüfungen und mobilen Reflow-Prüfungen bis hinunter zu 320 CSS-Pixeln.",
                 "Integrations- und Migrations-Rollback-Tests gegen eine Wegwerf-PostgreSQL-Instanz sowie ein lokaler Secret-Scan mit gitleaks.",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "Handler tragen OpenAPI-Annotationen, die TypeScript-Clients des Frontends werden daraus generiert, und die CI schlägt fehl, wenn die generierten Dateien abweichen.",
+                "Handler tragen OpenAPI-Annotationen, die TypeScript-Clients des Frontends werden daraus generiert, und cargo xtask openapi schlägt fehl, wenn die generierten Dateien abweichen.",
                 "Das Vite-Manifest ist zusammen mit den Assets eingebettet. Nur im Manifest aufgeführte Dateien mit Fingerprint erhalten eine einjährige `immutable`-Cache-Richtlinie; HTML wird immer revalidiert.",
                 "Fehlende Asset-Pfade liefern 404 mit `no-store` statt der Anwendungsshell, sodass eine veraltete Seite kein HTML unter einer Skript-URL zwischenspeichern kann.",
               ],

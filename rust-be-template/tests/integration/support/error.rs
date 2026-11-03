@@ -28,7 +28,7 @@ pub enum HarnessError {
     },
     #[error("PostgreSQL 18 is required; server_version_num is {version}")]
     UnsupportedPostgresVersion { version: i64 },
-    #[error("remote PostgreSQL server {address} is forbidden without an explicit CI override")]
+    #[error("remote PostgreSQL server {address} is forbidden; use a loopback test database")]
     RemoteDatabaseForbidden { address: String },
     #[error("PostgreSQL returned an invalid server address: {address}")]
     InvalidServerAddress { address: String },

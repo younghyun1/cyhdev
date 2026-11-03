@@ -5,7 +5,6 @@ use std::{env, net::IpAddr, process::Command};
 use crate::{TaskError, TaskResult, psql_connection::PsqlConnection};
 
 const DISPOSABLE_MAINTENANCE_DATABASE: &str = "cyhdev_test_maintenance";
-const REMOTE_OVERRIDE_ENV: &str = "TEST_DATABASE_ALLOW_REMOTE_CI";
 
 pub(crate) fn validate() -> TaskResult<()> {
     let database_url = match env::var("TEST_DATABASE_URL") {
@@ -104,16 +103,10 @@ fn validate_server_address(server_address: &str) -> TaskResult<()> {
         .parse::<IpAddr>()
         .map_err(|_| TaskError("PostgreSQL returned an invalid server address".to_owned()))?;
     if address.is_loopback() {
-        return Ok(());
-    }
-    let override_enabled = matches!(env::var(REMOTE_OVERRIDE_ENV), Ok(value) if value == "1");
-    let ci_enabled =
-        matches!(env::var("CI"), Ok(value) if value == "1" || value.eq_ignore_ascii_case("true"));
-    if override_enabled && ci_enabled {
         Ok(())
     } else {
         Err(TaskError(format!(
-            "remote PostgreSQL server {address} is forbidden; CI must set CI=true and {REMOTE_OVERRIDE_ENV}=1 explicitly"
+            "remote PostgreSQL server {address} is forbidden; use a loopback test database"
         )))
     }
 }

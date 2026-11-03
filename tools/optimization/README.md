@@ -119,7 +119,7 @@ cargo xtask openapi
 npm --prefix solid-csr-spa-template run optimization:check
 ```
 
-`cargo xtask frontend-check` and the existing Validation workflow include `optimization:check`. These tests use synthetic inputs and cover inventory, route matching, JSON pointers, isolation, missing coverage, identity mismatches, malformed reports, profile integrity, and regression decisions. They do not execute optimized binaries or certify fixture/provider/server runtime compatibility. The normal Playwright suite excludes this live campaign.
+`cargo xtask frontend-check` includes `optimization:check`. These tests use synthetic inputs and cover inventory, route matching, JSON pointers, isolation, missing coverage, identity mismatches, malformed reports, profile integrity, and regression decisions. They do not execute optimized binaries or certify fixture/provider/server runtime compatibility. The normal Playwright suite excludes this live campaign.
 
 ## Source consultation
 

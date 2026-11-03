@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "Clippy sur les cibles natives et WebAssembly comme contrôle d’implémentation.",
-                "Un workflow de validation couvrant le formatage, les tests unitaires natifs, la dérive du contrat OpenAPI, ainsi que la vérification de types, le lint, les tests unitaires et le build du frontend.",
+                "Des contrôles locaux via cargo xtask couvrant le formatage, les tests unitaires natifs, la dérive du contrat OpenAPI, ainsi que la vérification de types, le lint, les tests unitaires et le build du frontend.",
                 "Playwright sur Chromium et WebKit, avec des contrôles d’accessibilité axe et des vérifications de reflow mobile jusqu’à 320 pixels CSS.",
                 "Des tests d’intégration et de retour arrière des migrations sur une instance PostgreSQL jetable, ainsi qu’une recherche locale de secrets avec gitleaks.",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "Les gestionnaires portent des annotations OpenAPI, les clients TypeScript du frontend en sont générés, et la CI échoue lorsque les fichiers générés divergent.",
+                "Les gestionnaires portent des annotations OpenAPI, les clients TypeScript du frontend en sont générés, et cargo xtask openapi échoue lorsque les fichiers générés divergent.",
                 "Le manifeste de Vite est intégré avec les ressources. Seuls les fichiers listés dans le manifeste et dotés d’une empreinte reçoivent une politique de cache `immutable` d’un an ; le HTML est toujours revalidé.",
                 "Les chemins de ressources manquants renvoient une 404 avec `no-store` plutôt que le squelette de l’application, si bien qu’une page obsolète ne peut pas mettre en cache du HTML sous l’URL d’un script.",
               ],

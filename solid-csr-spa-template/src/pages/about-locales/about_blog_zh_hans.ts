@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "以针对原生和 WebAssembly 目标的 Clippy 检查作为实现阶段的关卡。",
-                "验证工作流涵盖格式检查、原生单元测试、OpenAPI 契约漂移，以及前端的类型检查、lint、单元测试和构建。",
+                "通过 cargo xtask 在本地执行格式检查、原生单元测试、OpenAPI 契约漂移检查，以及前端的类型检查、lint、单元测试和构建。",
                 "在 Chromium 和 WebKit 上运行 Playwright，包括 axe 无障碍检查，以及最窄至 320 CSS 像素的移动端重排检查。",
                 "针对一次性 PostgreSQL 实例运行集成测试和迁移回滚测试，并在本地运行 gitleaks 密钥扫描。",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "处理器带有 OpenAPI 注解，前端的 TypeScript 客户端由此生成；生成文件一旦漂移，CI 就会失败。",
+                "处理器带有 OpenAPI 注解，前端的 TypeScript 客户端由此生成；生成文件一旦漂移，cargo xtask openapi 就会失败。",
                 "Vite 的清单与静态资源一同嵌入。只有清单中列出且带指纹的文件才会获得一年期的 `immutable` 缓存策略；HTML 始终重新验证。",
                 "不存在的资源路径返回带 `no-store` 的 404，而不是应用外壳，因此过期页面无法以脚本 URL 缓存 HTML。",
               ],

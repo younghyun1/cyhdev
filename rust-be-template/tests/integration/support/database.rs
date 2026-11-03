@@ -28,7 +28,6 @@ pub use super::error::{BoxError, HarnessError, TestResult};
 const DATABASE_ENV: &str = "TEST_DATABASE_URL";
 const DATABASE_PREFIX: &str = "cyhdev_it_";
 const DISPOSABLE_MAINTENANCE_DATABASE: &str = "cyhdev_test_maintenance";
-const REMOTE_OVERRIDE_ENV: &str = "TEST_DATABASE_ALLOW_REMOTE_CI";
 static DATABASE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 pub type DatabaseTestFuture<'a> = Pin<Box<dyn Future<Output = TestResult> + Send + 'a>>;
@@ -163,11 +162,6 @@ async fn validate_maintenance_server(maintenance_url: String) -> Result<(), Harn
             HarnessError::InvalidServerAddress { address: server_address.clone() }
         })?;
         if address.is_loopback() {
-            return Ok(());
-        }
-        let override_enabled = matches!(env::var(REMOTE_OVERRIDE_ENV), Ok(value) if value == "1");
-        let ci_enabled = matches!(env::var("CI"), Ok(value) if value == "1" || value.eq_ignore_ascii_case("true"));
-        if override_enabled && ci_enabled {
             Ok(())
         } else {
             Err(HarnessError::RemoteDatabaseForbidden { address: address.to_string() })

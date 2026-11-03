@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "以針對原生與 WebAssembly 目標的 Clippy 檢查作為實作階段的關卡。",
-                "驗證工作流程涵蓋格式檢查、原生單元測試、OpenAPI 契約漂移，以及前端的型別檢查、lint、單元測試與建置。",
+                "透過 cargo xtask 在本機執行格式檢查、原生單元測試、OpenAPI 契約漂移檢查，以及前端的型別檢查、lint、單元測試與建置。",
                 "在 Chromium 與 WebKit 上執行 Playwright，包括 axe 無障礙檢查，以及最窄至 320 CSS 像素的行動版重排檢查。",
                 "針對拋棄式 PostgreSQL 執行個體執行整合測試與遷移回滾測試，並在本機執行 gitleaks 機密掃描。",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "處理常式附有 OpenAPI 註解，前端的 TypeScript 用戶端由此產生；產生的檔案一旦漂移，CI 就會失敗。",
+                "處理常式附有 OpenAPI 註解，前端的 TypeScript 用戶端由此產生；產生的檔案一旦漂移，cargo xtask openapi 就會失敗。",
                 "Vite 的資訊清單與靜態資源一同內嵌。只有列於資訊清單且附指紋的檔案才會套用一年期的 `immutable` 快取政策；HTML 一律重新驗證。",
                 "不存在的資源路徑會回傳附 `no-store` 的 404，而非應用程式外殼，因此過期頁面無法以指令碼 URL 快取 HTML。",
               ],

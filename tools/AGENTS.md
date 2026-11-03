@@ -1,6 +1,6 @@
 # Workspace tooling
 
-Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns command dispatch and native/WASM separation; `review.rs` owns deferred checks; `release.rs` owns optimized builds; `eu5_web.rs` owns EU5 staging. Read these files when changing root Cargo configuration, Docker builds, CI, or `build.sh` as well.
+Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns command dispatch and native/WASM separation; `review.rs` owns deferred checks; `release.rs` owns optimized builds; `eu5_web.rs` owns EU5 staging. Read these files when changing root Cargo configuration, Docker builds, or `build.sh` as well.
 
 `xtask/src/optimization/` owns the optional GNU PGO+BOLT campaign. `tools/optimization/README.md` owns its fixture, coverage and acceptance contract. The operator wrapper builds the harness, fixture tool, and inventory exporter with `--release`; `optimize inventory` also invokes a release-profile exporter, so it must not run during ordinary implementation. `optimize plan` only prints stages; `optimize run` invokes optimized profiles and must not run during ordinary implementation. The live Playwright campaign is separate from mocked UI regressions and requires explicit disposable runtime inputs. `frontend-check` includes its synthetic `optimization:check` gate.
 
@@ -9,7 +9,7 @@ Use workspace Rust binaries for standalone automation. `xtask/src/main.rs` owns 
 - Commands resolve paths from the workspace root and use locked dependency inputs. Preserve argument forwarding, exit status, contextual errors, and root-relative invocation.
 - Register changed commands consistently in dispatch, help, tests, and `final-review/evidence.manifest` where applicable. `xtask/src/evidence_manifest.rs` validates that manifest; evidence receipts belong under ignored `target/`.
 - `xtask/src/test_database.rs` guards disposable database selection. Preserve these guards and redaction in `xtask/src/secret_scan/`. Secret scans cover the working tree and all Git refs; do not broaden fixture allowlists to conceal findings.
-- Root `.github/workflows/clippy.yml` runs the implementation gate only. `.github/workflows/validation.yml` separately runs formatting, native unit tests, HTTP contract drift, locked frontend checks, Chromium regressions, and PostgreSQL 18 integration/rollback against a disposable service. Neither workflow provides release, WebKit, Docker runtime, secret-scan, or hardware-specific throughput proof.
+- There is no CI. Every gate runs locally through `cargo xtask`; do not add hosted workflows.
 - `cargo xtask evidence` checks current registrations, source evidence, and passing JSON runtime reports; it does not establish the checkout identity of reports supplied separately. `final-review` removes prior runtime receipts before invoking their producers. The unit suite validates checked-in registrations and source paths without requiring ignored runtime reports.
 - `throughput/README.md` owns benchmark topology, calibration, environment digest, and threshold policy. Never replace failed thresholds with a debug-profile benchmark or invent hardware-independent limits.
 

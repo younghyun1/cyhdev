@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "Clippy en los destinos nativos y WebAssembly como control de implementación.",
-                "Un flujo de validación que cubre el formato, las pruebas unitarias nativas, la deriva del contrato OpenAPI y, en el frontend, la comprobación de tipos, el lint, las pruebas unitarias y la compilación.",
+                "Comprobaciones locales con cargo xtask del formato, las pruebas unitarias nativas, la deriva del contrato OpenAPI y, en el frontend, la comprobación de tipos, el lint, las pruebas unitarias y la compilación.",
                 "Playwright en Chromium y WebKit con comprobaciones de accesibilidad de axe y de reajuste en móvil hasta 320 píxeles CSS.",
                 "Pruebas de integración y de reversión de migraciones contra una instancia desechable de PostgreSQL, además de un análisis local de secretos con gitleaks.",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "Los controladores llevan anotaciones OpenAPI, los clientes TypeScript del frontend se generan a partir de ellas y la CI falla cuando los archivos generados se desvían.",
+                "Los controladores llevan anotaciones OpenAPI, los clientes TypeScript del frontend se generan a partir de ellas y cargo xtask openapi falla cuando los archivos generados se desvían.",
                 "El manifiesto de Vite se integra junto con los recursos. Solo los archivos con huella incluidos en el manifiesto reciben una política de caché `immutable` de un año; el HTML siempre se revalida.",
                 "Las rutas de recursos inexistentes devuelven 404 con `no-store` en lugar de la estructura de la aplicación, de modo que una página obsoleta no puede almacenar en caché HTML bajo la URL de un script.",
               ],

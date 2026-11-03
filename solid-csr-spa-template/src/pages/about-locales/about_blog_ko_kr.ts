@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "구현 단계의 관문으로 네이티브 및 WebAssembly 대상에 Clippy를 실행합니다.",
-                "서식, 네이티브 단위 테스트, OpenAPI 계약 드리프트, 프런트엔드 타입 검사, 린트, 단위 테스트, 빌드를 확인하는 검증 워크플로를 실행합니다.",
+                "서식, 네이티브 단위 테스트, OpenAPI 계약 드리프트, 프런트엔드 타입 검사, 린트, 단위 테스트, 빌드를 cargo xtask로 로컬에서 확인합니다.",
                 "Chromium과 WebKit에서 Playwright를 실행하며, axe 접근성 검사와 320 CSS 픽셀까지의 모바일 리플로 검사를 포함합니다.",
                 "일회용 PostgreSQL 인스턴스를 대상으로 통합 테스트와 마이그레이션 롤백 테스트를 수행하고, 로컬에서 gitleaks 비밀 정보 스캔을 실행합니다.",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "핸들러에는 OpenAPI 어노테이션이 있고, 프런트엔드의 TypeScript 클라이언트는 이를 바탕으로 생성되며, 생성된 파일이 어긋나면 CI가 실패합니다.",
+                "핸들러에는 OpenAPI 어노테이션이 있고, 프런트엔드의 TypeScript 클라이언트는 이를 바탕으로 생성되며, 생성된 파일이 어긋나면 cargo xtask openapi가 실패합니다.",
                 "Vite 매니페스트는 에셋과 함께 내장됩니다. 매니페스트에 등록되고 핑거프린트가 붙은 파일만 1년짜리 `immutable` 캐시 정책을 받으며, HTML은 항상 재검증합니다.",
                 "존재하지 않는 에셋 경로는 애플리케이션 셸 대신 `no-store`와 함께 404를 반환하므로, 오래된 페이지가 스크립트 URL 아래에 HTML을 캐시할 수 없습니다.",
               ],

@@ -140,7 +140,7 @@ const content: AboutBlogContent = {
               kind: "list",
               items: [
                 "Clippy on native and WebAssembly targets as the implementation gate.",
-                "A validation workflow covering formatting, native unit tests, OpenAPI contract drift, and the frontend typecheck, lint, unit tests, and build.",
+                "Local cargo xtask checks for formatting, native unit tests, OpenAPI contract drift, and the frontend typecheck, lint, unit tests, and build.",
                 "Playwright on Chromium and WebKit with axe accessibility checks and mobile reflow checks down to 320 CSS pixels.",
                 "Integration and migration rollback tests against a disposable PostgreSQL instance, plus a local gitleaks secret scan.",
               ],
@@ -305,7 +305,7 @@ const content: AboutBlogContent = {
             {
               kind: "list",
               items: [
-                "Handlers carry OpenAPI annotations, the frontend's TypeScript clients are generated from them, and CI fails when the generated files drift.",
+                "Handlers carry OpenAPI annotations, the frontend's TypeScript clients are generated from them, and cargo xtask openapi fails when the generated files drift.",
                 "Vite's manifest is embedded with the assets. Only manifest-listed, fingerprinted files receive a one-year `immutable` cache policy; HTML always revalidates.",
                 "Missing asset paths return 404 with `no-store` rather than the application shell, so a stale page cannot cache HTML under a script URL.",
               ],

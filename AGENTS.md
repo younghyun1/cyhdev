@@ -17,7 +17,7 @@ For page discovery, navigation, and access boundaries, start with the [complete 
 | --- | --- | --- |
 | Backend behavior, HTTP, auth, jobs | `rust-be-template/src/features/`, `src/routers/main_router.rs`, `src/init/state/` | [Backend](rust-be-template/AGENTS.md) |
 | Pages, state, CSS, browser protocols | `solid-csr-spa-template/src/routes.ts`, `src/app.tsx`, `src/services/` | [Frontend](solid-csr-spa-template/AGENTS.md) |
-| Commands, CI, Docker, verification | `tools/xtask/src/main.rs`, `.github/workflows/`, `rust-be-template/Dockerfile` | [Tools](tools/AGENTS.md); also read it for root build changes |
+| Commands, Docker, verification | `tools/xtask/src/main.rs`, `rust-be-template/Dockerfile` | [Tools](tools/AGENTS.md); also read it for root build changes |
 | Browser Rust demos | `wasm_demos/block_breaker/`, `wasm_demos/ray_tracer/` | [WASM](wasm_demos/AGENTS.md) |
 | Squaremap visibility plugin | `minecraft/map-control/README.md` | [Minecraft](minecraft/AGENTS.md) |
 | EU5 browser app integration | `tools/xtask/src/eu5_web.rs`, `.gitmodules` | [Vendor](vendor/AGENTS.md) |
@@ -44,7 +44,7 @@ Run these from the repository root. `Cargo.lock`, `rust-toolchain.toml`, `solid-
 
 Use Clippy as the implementation stage gate; run relevant deferred checks once the change is ready for final review. Browser E2E tests are separate from `frontend-check`. Documentation-only changes need path, command, scope, and `git diff --check` validation, not application builds. Report checks skipped and their reason; never describe an unrun gate as passing.
 
-CI runs the Clippy gate and a separate Validation workflow. Validation covers formatting, native unit tests, HTTP contract drift, frontend checks, Chromium, and disposable PostgreSQL integration/rollback; it does not validate optimized artifacts or live services.
+There is no CI; every gate runs locally through these commands, and none of them validates optimized artifacts or live services.
 
 No release builds during this work. Do not run `build.sh`, `build_pgo_and_bolt.sh`, `cargo xtask build`, `image`, `wasm-build`, `throughput`, `optimize inventory`, `optimize run`, or `final-review`: these invoke optimized profiles, including the throughput step hidden inside final-review and the inventory exporter. The PGO/BOLT operator wrapper builds its harness and helpers in release mode; `cargo xtask optimize plan` only prints stages. Run applicable non-release gates individually. The `:dev` image tag does not mean a development-profile build.
 
