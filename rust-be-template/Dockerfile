@@ -131,10 +131,41 @@ COPY . ./
 COPY --from=frontend /workspace/solid-csr-spa-template/dist/ solid-csr-spa-template/dist/
 ARG APP_BUILD_EPOCH
 ENV APP_BUILD_EPOCH="${APP_BUILD_EPOCH}"
+# Pumpkin's data crate needs Minecraft's vanilla datapack, which its build script
+# downloads from Mojang inside the server jar when the checkout lacks it. The
+# campaign compiles offline, so the datapack is extracted into Pumpkin's checkout
+# here instead, from a jar pinned by digest. A Pumpkin upgrade that names another
+# Minecraft version fails this step until these values are updated: the SHA-1
+# that names the jar comes from Mojang's version manifest, and the SHA-256 from
+# the downloaded jar once its SHA-1 matches.
+ARG MINECRAFT_SERVER_VERSION=26.3
+ARG MINECRAFT_SERVER_JAR_SHA1=33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c
+ARG MINECRAFT_SERVER_JAR_SHA256=d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64
 # Fetch once so baseline, training and profile-use compilation can run offline.
 # build-std uses a separate lockfile in the compiler's bundled library sources.
 RUN cargo fetch --locked \
     && cargo fetch --locked --manifest-path "$(rustc --print sysroot)/lib/rustlib/src/rust/library/Cargo.toml" \
+    && for build_script in "$CARGO_HOME"/git/checkouts/pumpkin-*/*/crates/pumpkin-data/build.rs; do \
+        [ -f "$build_script" ] || continue; \
+        assets="${build_script%/crates/pumpkin-data/build.rs}/assets"; \
+        required="$(sed -n 's/^const MC_VERSION: &str = "\(.*\)";$/\1/p' "$build_script")"; \
+        if [ "$required" != "$MINECRAFT_SERVER_VERSION" ]; then \
+            echo "Pumpkin needs Minecraft ${required:-<unknown>} data; update the MINECRAFT_SERVER_* arguments" >&2; \
+            exit 1; \
+        fi; \
+        if [ ! -s /tmp/minecraft-server.jar ]; then \
+            curl --fail --silent --show-error --proto '=https' --tlsv1.2 --output /tmp/minecraft-server.jar \
+                "https://piston-data.mojang.com/v1/objects/${MINECRAFT_SERVER_JAR_SHA1}/server.jar" \
+            && echo "${MINECRAFT_SERVER_JAR_SHA256}  /tmp/minecraft-server.jar" | sha256sum --check --strict - \
+            || exit 1; \
+        fi; \
+        unzip -p /tmp/minecraft-server.jar "META-INF/versions/${required}/server-${required}.jar" > /tmp/minecraft-server-inner.jar \
+        && unzip -q -o /tmp/minecraft-server-inner.jar 'data/*' -d "$assets/datapack" \
+        && test -d "$assets/datapack/data/minecraft" \
+        && { [ -d "$assets/datapack/data/c" ] || cp -R "$assets/conventional_tags/data/c" "$assets/datapack/data/c"; } \
+        || exit 1; \
+    done \
+    && rm -f /tmp/minecraft-server.jar /tmp/minecraft-server-inner.jar \
     # Some crate archives contain owner-only source modes; compilation uses the host UID.
     && chmod -R a+rX "$CARGO_HOME/registry" "$CARGO_HOME/git" "$(rustc --print sysroot)/lib/rustlib/src"
 
