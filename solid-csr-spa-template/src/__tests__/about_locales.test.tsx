@@ -1,5 +1,9 @@
 import { cleanup, render, screen, waitFor } from "@solidjs/testing-library";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const routeParams = vi.hoisted(() => ({}) as { page?: string });
+vi.mock("@solidjs/router", () => ({ useParams: () => routeParams }));
+
 import About from "../pages/about";
 import AboutBlog from "../pages/about_blog";
 import { setLocaleSignal } from "../state/i18n";
@@ -23,6 +27,7 @@ const headings: ReadonlyArray<{
 afterEach(() => {
   cleanup();
   setLocaleSignal("en-US");
+  delete routeParams.page;
 });
 
 describe("About page localization", () => {
@@ -47,4 +52,20 @@ describe("About page localization", () => {
       );
     }
   }, 60_000);
+
+  it.each([
+    { Page: About, page: "experience", heading: "Experience", section: "Software engineering" },
+    { Page: About, page: "background", heading: "Background", section: "Research" },
+    { Page: AboutBlog, page: "performance", heading: "Performance", section: "Results" },
+  ])("renders the $page subpage from the route parameter", async ({ Page, page, heading, section }) => {
+    routeParams.page = page;
+    render(() => <Page />);
+    await waitFor(
+      () => {
+        expect(screen.getByRole("heading", { level: 1 }).textContent?.trim()).toBe(heading);
+        expect(screen.getByRole("heading", { level: 2, name: new RegExp(section) })).not.toBeNull();
+      },
+      { timeout: 10_000 },
+    );
+  }, 30_000);
 });

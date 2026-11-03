@@ -1,7 +1,18 @@
 import { createMemo, For, Loading, Show } from "solid-js";
+import HeroField from "../components/home/HeroField";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
+
+/** Recent engineering write-ups surfaced on the home page. */
+const SHOWCASE = [
+  { id: "pgo", href: "/about-blog/performance" },
+  { id: "nodelay", href: "/about-blog/performance#transport" },
+  { id: "sfu", href: "/about-blog/subsystems#live-chat" },
+  { id: "minecraft", href: "/minecraft" },
+  { id: "geoip", href: "/about-blog/subsystems#geo-ip" },
+  { id: "eu5", href: "/eu5-locations-db" },
+] as const;
 
 export default function Home() {
   const posts = createMemo(() =>
@@ -15,10 +26,13 @@ export default function Home() {
     return res.data.items ?? [];
   };
 
+  let hero: HTMLElement | undefined;
+
   return (
     <main class={`${pageStyles.page} font-sans`}>
       {/* Top Navigation / Compact Hero */}
-      <header class="border-b border-line">
+      <header class="home-hero border-b border-line" ref={(element) => (hero = element)}>
+        <HeroField pointerTarget={() => hero} />
         <div class="home-hero-inner max-w-7xl mx-auto px-6 py-8 md:py-10">
           <div class="flex flex-col md:flex-row md:items-start justify-between gap-6">
             {/* Identity Block */}
@@ -92,6 +106,40 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      <section class="home-showcase" aria-labelledby="home-showcase-title">
+        <div class="max-w-7xl mx-auto px-6 pt-10">
+          <div class="home-section-header flex items-end justify-between mb-6 pb-2 border-b border-dashed border-line">
+            <h2
+              id="home-showcase-title"
+              class="text-2xl font-bold uppercase font-mono tracking-tight flex items-center gap-2"
+            >
+              <span class="w-3 h-3 bg-accent" /> {t("home.showcase.title")}
+            </h2>
+            <a href="/about-blog" class={`${pageStyles.link} font-mono text-sm`}>
+              {t("home.showcase.view_all")}
+            </a>
+          </div>
+          <ul class="home-showcase-grid">
+            <For each={SHOWCASE}>
+              {(item) => (
+                <li class="home-showcase-card">
+                  <p class="home-showcase-kicker">{t(`home.showcase.${item.id}.kicker`)}</p>
+                  <h3 class="home-showcase-title">
+                    <a href={item.href} class="home-showcase-link">
+                      {t(`home.showcase.${item.id}.title`)}
+                      <span class="home-showcase-arrow" aria-hidden="true">
+                        →
+                      </span>
+                    </a>
+                  </h3>
+                  <p class="home-showcase-text">{t(`home.showcase.${item.id}.text`)}</p>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
+      </section>
 
       {/* Main Content Grid */}
       <div class="grow">

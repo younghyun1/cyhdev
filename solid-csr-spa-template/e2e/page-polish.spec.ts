@@ -115,15 +115,58 @@ test("visitor counts render as plain text", async ({ page }) => {
   await expect(popup).toContainText(/Visitations from here: \d+/);
 });
 
-test("Korean About page translates volunteer work and interests", async ({ page }) => {
+test("Korean About background page translates volunteer work and interests", async ({ page }) => {
   await installApiMocks(page, "logged-out");
   await setUiPreferences(page, "ko-KR", "light");
-  await page.goto("/about");
+  await page.goto("/about/background");
   await expect(page.locator("html")).toHaveAttribute("lang", "ko-KR");
   await expect(page.locator(".about-page")).toHaveAttribute("lang", "ko-KR");
-  await expect(page.getByRole("heading", { name: "5. 봉사 활동 및 관심사" })).toBeVisible();
-  await expect(page.getByText("지역 커뮤니티 센터에서 영어를 가르쳤습니다.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "소프트웨어 밖의 활동" })).toBeVisible();
+  await expect(page.getByText(/지역 커뮤니티 센터에서 영어를 가르쳤고/)).toBeVisible();
   await expect(page.locator(".about-page")).not.toContainText(/West Papua|human rights|Sakartvelo/);
+});
+
+test("About subpages share section tabs and pager links", async ({ page }) => {
+  await installApiMocks(page, "logged-out");
+  await setUiPreferences(page, "en-US", "light");
+  await page.goto("/about");
+  const tabs = page.getByRole("navigation", { name: "About pages" }).first();
+  await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+  await tabs.getByRole("link", { name: "Experience" }).click();
+  await expect(page).toHaveURL(/\/about\/experience$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Experience" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: "Soundpatrol" })).toBeVisible();
+  await page.getByRole("link", { name: /Next.*Projects/ }).click();
+  await expect(page).toHaveURL(/\/about\/projects$/);
+  for (const forbidden of [/finance/i, /salary/i, /family/i, /immigration/i, /\+1 719/]) {
+    await expect(page.locator(".about-page")).not.toContainText(forbidden);
+  }
+});
+
+test("command palette navigates by keyboard and switches the accent", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await installApiMocks(page, "logged-out");
+  await setUiPreferences(page, "en-US", "light");
+  await page.goto("/");
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Command palette" });
+  await expect(dialog).toBeVisible();
+  const input = dialog.getByRole("combobox");
+  await expect(input).toBeFocused();
+  await input.fill("perf");
+  await expect(dialog.getByRole("option").first()).toContainText("Performance");
+  await input.press("Enter");
+  await expect(page).toHaveURL(/\/about-blog\/performance$/);
+  await expect(dialog).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Search pages and actions" }).click();
+  await dialog.getByRole("combobox").fill("cobalt");
+  await dialog.getByRole("combobox").press("Enter");
+  await expect(page.locator("html")).toHaveAttribute("data-accent", "cobalt");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-accent", "cobalt");
 });
 
 for (const width of [320, 1440]) {

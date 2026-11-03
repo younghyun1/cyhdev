@@ -12,11 +12,27 @@ export const routes = defineRoutes([
   },
   {
     path: "/about",
-    component: lazy(() => import("./pages/about")),
+    children: [
+      { path: "/", component: lazy(() => import("./pages/about")) },
+      {
+        path: "/:page",
+        matchFilters: { page: ["experience", "projects", "background"] },
+        component: lazy(() => import("./pages/about")),
+      },
+    ],
   },
   {
     path: "/about-blog",
-    component: lazy(() => import("./pages/about_blog")),
+    children: [
+      { path: "/", component: lazy(() => import("./pages/about_blog")) },
+      {
+        path: "/:page",
+        matchFilters: {
+          page: ["infrastructure", "backend", "frontend", "subsystems", "performance"],
+        },
+        component: lazy(() => import("./pages/about_blog")),
+      },
+    ],
   },
   {
     path: "/find-password",

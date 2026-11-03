@@ -1,11 +1,11 @@
 import type { JSX } from "@solidjs/web";
-import { theme, toggleTheme } from "../state/theme";
+import { theme, toggleThemeFrom } from "../state/theme";
 import { t } from "../state/i18n";
 
 /**
- * Sun/moon theme switch. One instance replaces the previously duplicated
- * emoji buttons in TopBar; icons crossfade/rotate over 200ms and the actual
- * class/meta updates happen in state/theme.ts.
+ * Sun/moon theme switch. Icons crossfade/rotate over 200ms; the class/meta
+ * updates and the circular View Transition reveal happen in state/theme.ts,
+ * centered on this button so keyboard activation animates from it as well.
  */
 export default function ThemeToggle(): JSX.Element {
   return (
@@ -13,7 +13,10 @@ export default function ThemeToggle(): JSX.Element {
       type="button"
       class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-line bg-surface text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors duration-90"
       aria-label={t("top_bar.aria.toggle_theme")}
-      onClick={toggleTheme}
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        toggleThemeFrom({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+      }}
     >
       <span class="relative block h-4 w-4" aria-hidden="true">
         {/* sun */}

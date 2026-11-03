@@ -13,7 +13,9 @@ flowchart TB
         Home["/ · Home"]
         AboutGroup["About menu"]
         About["/about · About"]
+        AboutSub["/about/:page · Experience, projects, background"]
         AboutBlog["/about-blog · About this site"]
+        AboutBlogSub["/about-blog/:page · Infrastructure, backend, frontend, subsystems, performance"]
         Stats["/backend-stats · Backend statistics"]
         Blog["/blog · Posts"]
         Post["/blog/:post_id · Post detail"]
@@ -60,6 +62,8 @@ flowchart TB
     end
     Site --> Home & AboutGroup & Blog & Community & Photos & ProjectsGroup
     AboutGroup --> About & AboutBlog & Stats
+    About --> AboutSub
+    AboutBlog --> AboutBlogSub
     Blog --> Post & PostNew
     Post --> PostEdit
     Community --> Forum & Chat & Visitors
@@ -110,13 +114,15 @@ flowchart TD
 
 ## Complete SPA route inventory
 
-Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-spa-template/src/routes.ts). There are 33 route states: 24 public, five signed-in, three superuser, and one unmatched-path fallback. The gallery's index child and parent represent the same `/photographs` URL. Source paths below are relative to [src/](../../../solid-csr-spa-template/src/).
+Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-spa-template/src/routes.ts). There are 35 route states: 26 public, five signed-in, three superuser, and one unmatched-path fallback. The two About parameter routes accept only the listed page names through `matchFilters`; any other value falls through to the 404 route. The gallery's index child and parent represent the same `/photographs` URL. Source paths below are relative to [src/](../../../solid-csr-spa-template/src/).
 
 | URL pattern | Route access | Page source / behavior |
 | --- | --- | --- |
 | `/` | Public | `pages/home.tsx` |
-| `/about` | Public | `pages/about.tsx` |
-| `/about-blog` | Public | `pages/about_blog.tsx` |
+| `/about` | Public | `pages/about.tsx`; overview from the active locale's typed content module |
+| `/about/:page` | Public | Same component; `experience`, `projects`, or `background` |
+| `/about-blog` | Public | `pages/about_blog.tsx`; overview and repository source map |
+| `/about-blog/:page` | Public | Same component; `infrastructure`, `backend`, `frontend`, `subsystems`, or `performance` |
 | `/backend-stats` | Public | `pages/backend_stats.tsx` |
 | `/blog` | Public | `pages/posts/List.tsx` |
 | `/blog/new` | Signed in | `pages/posts/New.tsx` |
@@ -157,7 +163,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/eu5-locations-db/app/index.html` | [EU5 host source](../../../vendor/eu5-location-filter/web/index.html), staged by [xtask](../../../tools/xtask/src/eu5_web.rs); availability depends on staged/embedded assets; runs in an opaque-origin CSP sandbox and exchanges only the theme with its parent |
 | `/api/wasm-modules/{wasm_module_id}/wasm` | [Bundle serving](../../../rust-be-template/src/features/wasm/api/serve_bundle.rs); project records provide the link, so demo instances are data-driven rather than fixed SPA routes |
 
-`/admin/operations#retention-notifications`, `#media-cleanup`, `#i18n-sync`, and `#hard-purge` are sections within the operations page. Forum reply fragments, blog search parameters, photograph overlays, project upload/edit dialogs, and call controls are page states, not additional routes. The OIDC callback at `/api/auth/oidc/callback` is a backend protocol endpoint, not a separate frontend page. Local WASM demo host files belong to development/demo artifacts, not extra registered website routes.
+`/admin/operations#retention-notifications`, `#media-cleanup`, `#i18n-sync`, and `#hard-purge` are sections within the operations page. About section fragments such as `/about-blog/performance#transport` and generated `#post-…` heading fragments on blog posts are in-page anchors. The command palette (Ctrl+K or Command+K, the header search button, or the mobile drawer) is a dialog over the current page that navigates to public routes and About subpages; it adds no route. Forum reply fragments, blog search parameters, photograph overlays, project upload/edit dialogs, and call controls are page states, not additional routes. The OIDC callback at `/api/auth/oidc/callback` is a backend protocol endpoint, not a separate frontend page. Local WASM demo host files belong to development/demo artifacts, not extra registered website routes.
 
 ## Maintaining this map
 

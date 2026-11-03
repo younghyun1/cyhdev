@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "pages": ["/", "/about", "/about-blog", "/find-password", "/reset-password", "/verify-email", "/blog", "/blog/new", "/blog/:post_id/edit", "/blog/:post_id", "/forum", "/forum/new", "/forum/notifications", "/forum/:topic_id", "/visitor-board", "/live-chat", "/users/:userName", "/photographs", "/photographs/:photograph_id", "/projects", "/minecraft", "/geo-ip-db", "/eu5-locations-db", "/backend-stats", "/login", "/register", "/edit-profile", "/admin/minecraft", "/admin/authorization", "/admin/operations", "/under-construction", "/404", "*404"],
+  "pages": ["/", "/about", "/about/:page", "/about-blog", "/about-blog/:page", "/find-password", "/reset-password", "/verify-email", "/blog", "/blog/new", "/blog/:post_id/edit", "/blog/:post_id", "/forum", "/forum/new", "/forum/notifications", "/forum/:topic_id", "/visitor-board", "/live-chat", "/users/:userName", "/photographs", "/photographs/:photograph_id", "/projects", "/minecraft", "/geo-ip-db", "/eu5-locations-db", "/backend-stats", "/login", "/register", "/edit-profile", "/admin/minecraft", "/admin/authorization", "/admin/operations", "/under-construction", "/404", "*404"],
   "scenarios": [
     "accounts.signup-verification", "accounts.login-logout", "accounts.password-reset", "accounts.profile-and-pictures", "accounts.deletion-retention",
     "oidc.login-link-unlink", "authorization.roles-permissions-audit", "authorization.denied-and-session-refresh",

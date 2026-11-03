@@ -7,6 +7,7 @@ import {
 } from "solid-js";
 import TopBar from "./components/TopBar";
 import BottomBar from "./components/BottomBar";
+import CommandPaletteHost from "./components/CommandPaletteHost";
 import { theme, applyTheme } from "./state/theme";
 import { authApi } from "./services/all_api";
 import { fetchServerBuildInfo } from "./services/api";
@@ -117,6 +118,7 @@ const App: ParentComponent = (props) => {
 
           <BottomBar />
         </div>
+        <CommandPaletteHost />
       </RtcProvider>
     </LiveChatSocketProvider>
   );

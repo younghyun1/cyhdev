@@ -1,3 +1,35 @@
+/* Glass header: translucent paper with a backdrop blur, a top specular
+   highlight, and a faint accent seam. Users who ask for reduced transparency
+   get the opaque paper ground instead. */
+.site-header-glass {
+  background: var(--glass);
+  border-bottom: 1px solid var(--line);
+  box-shadow:
+    inset 0 1px 0 var(--glass-highlight),
+    0 10px 30px -22px rgb(0 0 0 / 0.45);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  backdrop-filter: blur(18px) saturate(1.6);
+}
+
+.site-header-glass::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 5%, var(--accent-glow) 50%, transparent 95%);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-header-glass {
+    background: var(--paper);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* Keep long translated navigation and the exact site title out of account controls. */
 @media (min-width: 768px) {
   .site-main {
@@ -50,3 +82,106 @@
     margin-left: -0.75rem;
   }
 }
+
+/* Command palette trigger: icon only on narrow desktops, then the shortcut,
+   then the label as space allows. Mobile reaches the palette from the drawer. */
+.cmdk-trigger {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 90ms ease, border-color 90ms ease, background-color 90ms ease;
+}
+
+.cmdk-trigger:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.cmdk-trigger-label,
+.cmdk-trigger-kbd {
+  display: none;
+}
+
+.cmdk-trigger-kbd {
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 0.2rem;
+  background: var(--surface-2);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .cmdk-trigger {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .cmdk-trigger-kbd {
+    display: inline;
+  }
+}
+
+@media (min-width: 1600px) {
+  .cmdk-trigger-label {
+    display: inline;
+  }
+}
+
+/* Accent swatches (mobile drawer). Each swatch shows its own preset color in
+   the current mode rather than the active accent. */
+.accent-picker {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.accent-swatch {
+  --swatch: #b45309;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: var(--swatch);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  cursor: pointer;
+}
+
+.accent-swatch input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.accent-swatch:has(input:checked) {
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--swatch);
+}
+
+.accent-swatch:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+.accent-swatch[data-swatch="lagoon"] { --swatch: #0f766e; }
+.accent-swatch[data-swatch="cobalt"] { --swatch: #1d4ed8; }
+.accent-swatch[data-swatch="orchid"] { --swatch: #7e22ce; }
+.accent-swatch[data-swatch="graphite"] { --swatch: #4a443c; }
+.dark .accent-swatch { --swatch: #fbbf24; }
+.dark .accent-swatch[data-swatch="lagoon"] { --swatch: #2dd4bf; }
+.dark .accent-swatch[data-swatch="cobalt"] { --swatch: #60a5fa; }
+.dark .accent-swatch[data-swatch="orchid"] { --swatch: #c084fc; }
+.dark .accent-swatch[data-swatch="graphite"] { --swatch: #d6d0c6; }

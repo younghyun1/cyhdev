@@ -51,3 +51,49 @@ export function toggleTheme() {
   flush();
   persistTheme(next);
 }
+
+/**
+ * Toggles the theme behind a View Transition that reveals the new palette as
+ * a circle growing from `origin`, normally the toggle's center. Browsers
+ * without the API, and visitors who prefer reduced motion, get the plain
+ * toggle. The DOM update happens synchronously inside the transition
+ * callback so the browser captures the correct before and after states.
+ */
+export function toggleThemeFrom(origin: { x: number; y: number }): void {
+  const reduceMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  if (typeof document.startViewTransition !== "function" || reduceMotion) {
+    toggleTheme();
+    return;
+  }
+  const next = theme() === "dark" ? "light" : "dark";
+  const transition = document.startViewTransition(() => {
+    setTheme(next);
+    flush();
+    persistTheme(next);
+    applyTheme(next);
+  });
+  const radius = Math.hypot(
+    Math.max(origin.x, window.innerWidth - origin.x),
+    Math.max(origin.y, window.innerHeight - origin.y),
+  );
+  transition.ready
+    .then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${origin.x}px ${origin.y}px)`,
+            `circle(${radius}px at ${origin.x}px ${origin.y}px)`,
+          ],
+        },
+        {
+          duration: 520,
+          easing: "cubic-bezier(0.2, 0.7, 0.2, 1)",
+          pseudoElement: "::view-transition-new(root)",
+        },
+      );
+    })
+    .catch(() => {
+      // A skipped transition still applied the theme in its callback.
+    });
+}

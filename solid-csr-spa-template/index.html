@@ -30,6 +30,16 @@
         document.documentElement.classList.add(t);
         var m = document.querySelector('meta[name="theme-color"]');
         if (m) m.setAttribute("content", t === "dark" ? "#000000" : "#f6f1e8");
+        // Accent preset; must mirror ACCENTS in src/state/accent.ts.
+        var a = null;
+        try {
+          a = localStorage.getItem("accent");
+        } catch (e) {
+          /* storage unavailable */
+        }
+        if (a === "lagoon" || a === "cobalt" || a === "orchid" || a === "graphite") {
+          document.documentElement.setAttribute("data-accent", a);
+        }
       })();
     </script>
   </head>

@@ -51,8 +51,13 @@ pub fn write_to(runtime: &Path, output: &Path, name: &str, cpu: &str) -> anyhow:
             .ok_or_else(|| anyhow::anyhow!("invalid page"))?;
         let (selector, actor) = page_assertion(pattern);
         let mut case = json!({"selector":selector,"actor":actor});
-        if pattern == "*404" {
-            case["path"] = json!("/optimization-missing-page");
+        match pattern {
+            "*404" => case["path"] = json!("/optimization-missing-page"),
+            // Static About subpages have no seeded entity; one fixed page per
+            // parameter route exercises the shared content renderer.
+            "/about/:page" => case["path"] = json!("/about/experience"),
+            "/about-blog/:page" => case["path"] = json!("/about-blog/performance"),
+            _ => {}
         }
         cases.insert(pattern.to_owned(), case);
     }

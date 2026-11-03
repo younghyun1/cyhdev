@@ -2,6 +2,7 @@ import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
 import { Show } from "solid-js";
 import { useLocation } from "@solidjs/router";
+import { openCommandPalette } from "../state/command_palette";
 
 export default function NotFound() {
   const location = useLocation();
@@ -9,9 +10,14 @@ export default function NotFound() {
   return (
     <main class={pageStyles.page}>
       <div
-        class={`${pageStyles.pageInnerNarrow} flex items-center justify-center min-h-[70vh]`}
+        class={`${pageStyles.pageInnerNarrow} not-found-stage flex items-center justify-center min-h-[70vh]`}
       >
-        <div class={`${pageStyles.cardPadded} w-full`}>
+        <Show when={!construction()}>
+          <span class="not-found-glyph" data-text="404" aria-hidden="true">
+            404
+          </span>
+        </Show>
+        <div class={`${pageStyles.cardPadded} relative w-full`}>
           <div class="flex items-start gap-4">
             <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-accent-soft text-accent ring-1 ring-accent/30">
               <span class="text-xl" aria-hidden="true">
@@ -61,6 +67,13 @@ export default function NotFound() {
               class={pageStyles.buttonSecondary}
             >
               {t("common.go_back")}
+            </button>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              class={pageStyles.buttonSecondary}
+            >
+              {t("command_palette.open")}
             </button>
           </div>
         </div>

@@ -5,6 +5,8 @@ import LanguageSelect from "./LanguageSelect";
 import { MobileDialog } from "./MobileDialog";
 import SystemStatusDetails from "./SystemStatusDetails";
 import ThemeToggle from "./ThemeToggle";
+import AccentPicker from "./AccentPicker";
+import { openCommandPalette } from "../state/command_palette";
 
 type MobileDrawerProps = {
   readonly onClose: () => void;
@@ -51,9 +53,23 @@ const MobileDrawer: ParentComponent<MobileDrawerProps> = (props) => (
         <ul class="mobile-drawer-navigation">{props.children}</ul>
       </nav>
       <section class="mobile-drawer-section">
+        <button
+          type="button"
+          class="mobile-drawer-action"
+          onClick={() => {
+            props.onClose();
+            openCommandPalette();
+          }}
+        >
+          {t("command_palette.open")}
+        </button>
         <div class="mobile-drawer-control-row">
           <span>{t("top_bar.aria.toggle_theme")}</span>
           <ThemeToggle />
+        </div>
+        <div class="mobile-drawer-control-row">
+          <span>{t("accent.label")}</span>
+          <AccentPicker name="drawer-accent" />
         </div>
         <div class="mobile-drawer-control-row">
           <span>{t("top_bar.language.label")}</span>

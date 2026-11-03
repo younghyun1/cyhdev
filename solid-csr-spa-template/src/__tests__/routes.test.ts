@@ -19,6 +19,10 @@ describe("application routes", () => {
   it.each([
     ["/", ""],
     ["/about", "/about"],
+    ["/about/experience", "/about/:page"],
+    ["/about/background", "/about/:page"],
+    ["/about-blog", "/about-blog"],
+    ["/about-blog/performance", "/about-blog/:page"],
     ["/verify-email", "/verify-email"],
     ["/blog", "/blog"],
     ["/blog/example-post", "/blog/:post_id"],
@@ -38,4 +42,11 @@ describe("application routes", () => {
   it("uses the named wildcard route for unknown URLs", () => {
     expect(Router.match("/missing/page").at(-1)?.pattern).toBe("/*404");
   });
+
+  it.each(["/about/finances", "/about-blog/secrets", "/about/experience/extra"])(
+    "rejects unknown About subpage %s",
+    (url) => {
+      expect(Router.match(url).at(-1)?.pattern).toBe("/*404");
+    },
+  );
 });

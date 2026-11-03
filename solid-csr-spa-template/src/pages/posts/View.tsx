@@ -20,7 +20,12 @@ import type {
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import { UserBadge } from "../../components/UserBadge";
-import { t, tx } from "../../state/i18n";
+import { locale, t, tx } from "../../state/i18n";
+import {
+  estimateReadingMinutes,
+  outlineHeadings,
+  type OutlineEntry,
+} from "../../utils/readingTime";
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
 import rust from "highlight.js/lib/languages/rust";
@@ -739,6 +744,7 @@ export default function PostViewPage() {
 
   return (
     <main class={pageStyles.page}>
+      <div class="reading-progress" aria-hidden="true" />
       <div class={`${pageStyles.pageInner} blog-post-layout max-w-5xl flex flex-row gap-8`}>
         <div class="flex-1">
           <Show when={postLoading()}>
@@ -793,6 +799,8 @@ export default function PostViewPage() {
                   : markdownContentFromMetadata(data().post.post_metadata),
               );
               let renderedPostElement: HTMLDivElement | undefined;
+              const [outline, setOutline] = createSignal<OutlineEntry[]>([]);
+              const [readingMinutes, setReadingMinutes] = createSignal(0);
               createEffect(
                 () => renderedPostHtml(),
                 () => {
@@ -801,6 +809,11 @@ export default function PostViewPage() {
                     .forEach((block) => {
                       hljs.highlightElement(block as HTMLElement);
                     });
+                  // Derive the contents list and reading time from the
+                  // sanitized DOM once it is in place.
+                  setOutline(renderedPostElement ? outlineHeadings(renderedPostElement) : []);
+                  const text = renderedPostElement?.textContent ?? fallbackPostText();
+                  setReadingMinutes(text.trim() ? estimateReadingMinutes(text, locale()) : 0);
                 },
               );
 
@@ -911,6 +924,12 @@ export default function PostViewPage() {
                           {data().post.post_share_count ?? 0}{" "}
                           {t("common.shares")}
                         </span>
+                        <Show when={readingMinutes() > 0}>
+                          <span class="ml-3 text-ink-faint">•</span>
+                          <span class="font-mono tabular-nums">
+                            {tx("blog.post.reading_time", { minutes: readingMinutes() })}
+                          </span>
+                        </Show>
                       </div>
                       {/* Tag badges */}
                       <Show
@@ -928,6 +947,20 @@ export default function PostViewPage() {
                             )}
                           </For>
                         </div>
+                      </Show>
+                      <Show when={outline().length >= 3}>
+                        <details class="post-outline">
+                          <summary>{t("blog.post.contents")}</summary>
+                          <ol>
+                            <For each={outline()}>
+                              {(entry) => (
+                                <li data-level={entry.level}>
+                                  <a href={`#${entry.id}`}>{entry.text}</a>
+                                </li>
+                              )}
+                            </For>
+                          </ol>
+                        </details>
                       </Show>
                       <Show
                         when={renderedPostHtml()}

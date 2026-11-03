@@ -11,6 +11,7 @@ import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import LanguageSelect from "./LanguageSelect";
 import ThemeToggle from "./ThemeToggle";
+import CommandPaletteButton from "./CommandPaletteButton";
 import { t } from "../state/i18n";
 import AdminNavigation from "./AdminNavigation";
 import MobileDrawer from "./MobileDrawer";
@@ -103,7 +104,7 @@ const TopBar = () => {
     <>
       <header
         data-site-bar="top"
-        class="site-header fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper/85 text-ink backdrop-blur transition-colors duration-90"
+        class="site-header site-header-glass fixed top-0 left-0 right-0 z-40 text-ink transition-colors duration-90"
       >
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="site-header-row flex items-center justify-between gap-2 py-2 sm:py-3">
@@ -156,6 +157,7 @@ const TopBar = () => {
                 when={isAuthenticated()}
                 fallback={
                   <div class="flex items-center gap-2 sm:gap-3">
+                    <CommandPaletteButton />
                     <ThemeToggle />
                     <LanguageSelect />
                     <span class="relative">
@@ -171,6 +173,7 @@ const TopBar = () => {
                 }
               >
                 <div class="flex items-center gap-2 sm:gap-4">
+                  <CommandPaletteButton />
                   <ThemeToggle />
                   <LanguageSelect />
                   <span class="relative flex items-center">
