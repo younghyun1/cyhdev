@@ -7,13 +7,30 @@ default-run = "rust-be-template"
 [lints]
 workspace = true
 
+# Binaries build no test harness. None of them holds tests, and each harness
+# linked another full copy of the backend on every `cargo test`. Every binary is
+# declared here so auto-discovery cannot add one with a harness; the xtask
+# `backend_binaries_tests` check fails on undeclared binaries and on test code
+# in their sources, which would otherwise never compile or run.
+[[bin]]
+name = "rust-be-template"
+path = "src/main.rs"
+test = false
+
+[[bin]]
+name = "minecraft-tile-benchmark"
+path = "src/bin/minecraft-tile-benchmark.rs"
+test = false
+
 [[bin]]
 name = "process_ip2location_dbs"
 path = "src/bin/process-ip2location.rs"
+test = false
 
 [[bin]]
 name = "openapi-contracts"
 path = "src/openapi_contracts_main.rs"
+test = false
 
 [dependencies]
 minecraft-seed = { path = "../tools/minecraft-seed" }

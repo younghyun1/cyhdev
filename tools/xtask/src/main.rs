@@ -1,6 +1,8 @@
 //! Root-relative development and verification commands for the workspace.
 
 #[cfg(test)]
+mod backend_binaries_tests;
+#[cfg(test)]
 mod container_tests;
 mod database_review;
 mod eu5_web;
