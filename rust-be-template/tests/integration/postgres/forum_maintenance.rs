@@ -1,7 +1,5 @@
 //! Forum list summaries and batched notification expiry.
 
-mod support;
-
 use std::sync::Arc;
 
 use diesel::sql_types::Uuid as SqlUuid;
@@ -11,7 +9,7 @@ use rust_be_template::features::forum::{
     repository::forum_repository::ForumRepository, service::forum_service::ForumService,
 };
 
-use support::{
+use crate::support::{
     content::verified_account,
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::account_test_context,

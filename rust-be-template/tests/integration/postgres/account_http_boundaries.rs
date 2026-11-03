@@ -1,5 +1,3 @@
-mod support;
-
 use std::sync::Arc;
 
 use axum::{
@@ -18,7 +16,7 @@ use rust_be_template::{
     routers::middleware::{auth::auth_middleware, role::require_superuser_middleware},
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{AccountTestContext, VALID_PASSWORD, account_test_context, seed_account},
 };
@@ -93,7 +91,7 @@ fn http_authorization_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 
 async fn exercise_authorization_routes(
     context: &AccountTestContext,
-    fixture: &support::fixtures::AccountFixture,
+    fixture: &crate::support::fixtures::AccountFixture,
     unverified_token: &str,
     base_url: &str,
 ) -> TestResult {

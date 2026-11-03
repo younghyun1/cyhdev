@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for bounded profile-picture history and durable cleanup.
 
-mod support;
-
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -18,7 +16,7 @@ use rust_be_template::{
     },
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{account_test_context, seed_account},
 };

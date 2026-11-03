@@ -1,7 +1,9 @@
 //! Database-current authority, content erasure, and tombstone pagination coverage.
 
-mod support;
-
+use crate::support::{
+    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
+};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use rust_be_template::{
@@ -14,10 +16,6 @@ use rust_be_template::{
         },
     },
     schema::live_chat_messages,
-};
-use support::{
-    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
-    fixtures::{VALID_PASSWORD, account_test_context, seed_account},
 };
 use uuid::Uuid;
 

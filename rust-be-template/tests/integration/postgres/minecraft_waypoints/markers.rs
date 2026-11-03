@@ -1,7 +1,9 @@
 //! Public marker persistence, current authority, hard capacity, and cross-world moves.
 
-mod support;
-
+use crate::support::{
+    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    fixtures::{account_test_context, seed_account},
+};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use rust_be_template::{
@@ -15,12 +17,8 @@ use rust_be_template::{
     schema::minecraft_waypoint,
 };
 use std::sync::Arc;
-use support::{
-    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
-    fixtures::{account_test_context, seed_account},
-};
 
-fn marker(world: &str, name: &str) -> WaypointInput {
+pub(super) fn marker(world: &str, name: &str) -> WaypointInput {
     WaypointInput {
         world: world.into(),
         name: name.into(),
@@ -220,8 +218,8 @@ fn rollback_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .await?;
         let url = database.database_url().to_owned();
         tokio::task::spawn_blocking(move || -> TestResult {
+            use crate::support::migrations::{latest_down_is_refused, rewind_to_migration};
             use diesel::{Connection, pg::PgConnection};
-            use support::migrations::{latest_down_is_refused, rewind_to_migration};
             let mut connection = PgConnection::establish(&url)?;
             rewind_to_migration(&mut connection, "20260928000001")?;
             latest_down_is_refused(&mut connection)
@@ -245,5 +243,3 @@ fn rollback_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )
     })
 }
-
-mod minecraft_waypoints;

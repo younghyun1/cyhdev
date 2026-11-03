@@ -52,7 +52,6 @@ pub fn test_media_object_store() -> Arc<dyn MediaObjectStore> {
 
 pub struct AccountTestContext {
     pub accounts: Arc<AccountService>,
-    pub live_chat_cache: Arc<LiveChatCache>,
     pub repository: Arc<AccountRepository>,
     pub sessions: Arc<SessionService>,
     pub pool: Pool<AsyncPgConnection>,
@@ -72,10 +71,9 @@ pub fn account_test_context(database: &TestDatabase) -> TestResult<AccountTestCo
     let pool = database.pool()?;
     let repository = Arc::new(AccountRepository::new(pool.clone()));
     let sessions = Arc::new(SessionService::new());
-    let live_chat_cache = Arc::new(LiveChatCache::default());
     let live_chat_lifecycle: Arc<
         dyn rust_be_template::features::live_chat::service::lifecycle::LiveChatAccountLifecyclePort,
-    > = live_chat_cache.clone();
+    > = Arc::new(LiveChatCache::default());
     let email_client = AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous("127.0.0.1")
         .port(9)
         .build();
@@ -92,7 +90,6 @@ pub fn account_test_context(database: &TestDatabase) -> TestResult<AccountTestCo
 
     Ok(AccountTestContext {
         accounts,
-        live_chat_cache,
         repository,
         sessions,
         pool,

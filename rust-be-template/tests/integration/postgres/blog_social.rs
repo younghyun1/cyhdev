@@ -1,7 +1,5 @@
 //! Draft visibility for blog social writes and buffered view persistence.
 
-mod support;
-
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 
@@ -13,7 +11,7 @@ use rust_be_template::{
     schema::{posts, tags},
 };
 
-use support::{
+use crate::support::{
     content::{blog_service, save_post, verified_account},
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::account_test_context,

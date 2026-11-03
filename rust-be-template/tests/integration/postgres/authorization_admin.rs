@@ -1,5 +1,3 @@
-mod support;
-
 use std::sync::Arc;
 
 use diesel::{ExpressionMethods, QueryDsl};
@@ -14,7 +12,7 @@ use rust_be_template::{
     schema::{authorization_audit_events, user_roles, users},
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
@@ -161,7 +159,7 @@ fn role_and_permission_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 }
 
 async fn assert_authority_lease_serializes_role_change(
-    context: &support::fixtures::AccountTestContext,
+    context: &crate::support::fixtures::AccountTestContext,
     actor_user_id: Uuid,
 ) -> TestResult {
     let authority_lease = context
@@ -189,7 +187,7 @@ async fn assert_authority_lease_serializes_role_change(
 }
 
 async fn assert_audit_guards(
-    context: &support::fixtures::AccountTestContext,
+    context: &crate::support::fixtures::AccountTestContext,
     audit_event_id: Uuid,
 ) -> TestResult {
     let mut connection = context.pool.get().await?;

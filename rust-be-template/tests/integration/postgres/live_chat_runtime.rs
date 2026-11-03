@@ -1,10 +1,12 @@
 //! Live-chat persistence behind runtime limits: expiring prefix bans, room-scoped
 //! history, tied keyset cursors, and call-row reconciliation.
 
-mod support;
-
 use std::net::IpAddr;
 
+use crate::support::{
+    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    fixtures::account_test_context,
+};
 use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -19,10 +21,6 @@ use rust_be_template::{
         },
     },
     schema::{live_chat_call_participants, live_chat_calls, live_chat_messages},
-};
-use support::{
-    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
-    fixtures::account_test_context,
 };
 use uuid::Uuid;
 

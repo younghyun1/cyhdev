@@ -1,7 +1,5 @@
 //! Comment tombstones, reply retention, and keyset comment pages.
 
-mod support;
-
 use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
@@ -20,7 +18,7 @@ use rust_be_template::{
     schema::{comments, photograph_comments},
 };
 
-use support::{
+use crate::support::{
     content::{blog_service, save_post, seed_photograph, verified_account},
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::account_test_context,

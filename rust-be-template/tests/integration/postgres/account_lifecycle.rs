@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for account deletion, retention, and permanent tombstones.
 
-mod support;
-
 use chrono::{DateTime, Duration, Utc};
 use diesel::{Connection, QueryDsl, pg::PgConnection};
 use diesel_async::RunQueryDsl;
@@ -20,7 +18,7 @@ use rust_be_template::{
     schema::users,
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },

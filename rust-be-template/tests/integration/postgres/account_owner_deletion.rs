@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for owner preservation across account deletion and demotion.
 
-mod support;
-
 use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -21,7 +19,7 @@ use rust_be_template::{
     schema::{deleted_account_retention, user_roles, users},
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{AccountTestContext, VALID_PASSWORD, account_test_context, seed_verified_account},
 };

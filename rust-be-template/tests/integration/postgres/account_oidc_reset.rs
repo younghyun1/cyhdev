@@ -1,7 +1,5 @@
 //! A password reset removes linked sign-in methods and every session.
 
-mod support;
-
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use zeroize::Zeroizing;
@@ -14,7 +12,7 @@ use rust_be_template::{
     schema::password_reset_tokens,
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, HarnessError, TestDatabase, TestResult, require,
         run_database_test,

@@ -1,14 +1,12 @@
 //! Account migrations refuse identity collisions and convert stored token capabilities.
 
-mod support;
-
 use diesel::{Connection, QueryDsl, RunQueryDsl, pg::PgConnection};
 use diesel_migrations::MigrationHarness;
 use sha2::{Digest, Sha256};
 
 use rust_be_template::{init::db_migrations::MIGRATIONS, schema::email_verification_tokens};
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     migrations::rewind_to_migration,
 };

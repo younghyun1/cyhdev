@@ -33,4 +33,4 @@ The chat panel keeps at most 300 entries and trims the end farther from the read
 
 ## Verification
 
-Unit tests cover the codec (no address bytes on the wire), keyed identity against RFC 4231 vectors, address grouping, rate-table saturation and sweeps, prefix bans, connection caps, typing coalescing, the event budget, shared broadcast encoding, a socket-level oversized-frame test, and the ICE policy. `tests/postgres_live_chat_runtime.rs` covers prefix-ban expiry, room-scoped history, tied row-comparison cursors, and call reconciliation against PostgreSQL 18.
+Unit tests cover the codec (no address bytes on the wire), keyed identity against RFC 4231 vectors, address grouping, rate-table saturation and sweeps, prefix bans, connection caps, typing coalescing, the event budget, shared broadcast encoding, a socket-level oversized-frame test, and the ICE policy. `tests/integration/postgres/live_chat_runtime.rs` covers prefix-ban expiry, room-scoped history, tied row-comparison cursors, and call reconciliation against PostgreSQL 18.

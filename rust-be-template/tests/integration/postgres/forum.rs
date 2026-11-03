@@ -1,5 +1,3 @@
-mod support;
-
 use std::sync::Arc;
 
 use diesel::{Connection, ExpressionMethods, QueryDsl, dsl::count_star, pg::PgConnection};
@@ -24,7 +22,7 @@ use rust_be_template::{
     },
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },

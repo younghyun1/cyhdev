@@ -1,8 +1,6 @@
-mod support;
-
 use rust_be_template::features::accounts::{domain::oidc::OidcIdentityClaims, error::AccountError};
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },

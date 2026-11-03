@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for durable pre-purge notification delivery.
 
-mod support;
-
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -18,7 +16,7 @@ use rust_be_template::features::accounts::{
     },
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{VALID_PASSWORD, account_test_context, seed_account},
 };

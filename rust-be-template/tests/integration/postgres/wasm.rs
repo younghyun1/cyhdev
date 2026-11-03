@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for deletion-aware WebAssembly metadata projection.
 
-mod support;
-
 use chrono::Utc;
 use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
@@ -18,7 +16,7 @@ use rust_be_template::{
     schema::wasm_module,
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{VALID_PASSWORD, account_test_context, seed_account, test_media_object_store},
 };

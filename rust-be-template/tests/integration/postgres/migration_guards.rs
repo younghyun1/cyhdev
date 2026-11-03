@@ -1,10 +1,8 @@
 //! Targeted evidence for fail-closed migration rollback guards.
 
-mod support;
-
 use diesel::{Connection, RunQueryDsl, pg::PgConnection};
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, run_database_test},
     migrations::{latest_down_is_refused, rewind_to_migration},
 };

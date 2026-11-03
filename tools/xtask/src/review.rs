@@ -26,20 +26,27 @@ pub(crate) fn run_format_check(root: &Path) -> TaskResult<()> {
     )
 }
 
+/// Package and feature selection for every native `cargo test` build.
+///
+/// Cargo unifies dependency features across the selected packages, so a
+/// narrower selection compiles different dependency artifacts and relinks the
+/// backend. The unit and database commands share this selection so the
+/// database commands reuse the test binaries the unit suite already built.
+pub(crate) const NATIVE_TEST_SELECTION: &[&str] = &[
+    "--workspace",
+    "--exclude",
+    "block_breaker",
+    "--exclude",
+    "ray_tracer",
+    "--all-features",
+];
+
 pub(crate) fn run_unit_tests(root: &Path) -> TaskResult<()> {
     run_command(
         Command::new("cargo")
-            .args([
-                "test",
-                "--locked",
-                "--workspace",
-                "--exclude",
-                "block_breaker",
-                "--exclude",
-                "ray_tracer",
-                "--all-features",
-                "--no-fail-fast",
-            ])
+            .args(["test", "--locked"])
+            .args(NATIVE_TEST_SELECTION)
+            .arg("--no-fail-fast")
             .current_dir(root),
     )
 }

@@ -1,11 +1,9 @@
 //! A blocked waypoint transaction retains its authority lease through commit.
 
-use crate::{
-    marker,
-    support::{
-        database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
-        fixtures::{account_test_context, seed_account},
-    },
+use super::markers::marker;
+use crate::support::{
+    database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
+    fixtures::{account_test_context, seed_account},
 };
 use diesel::QueryDsl;
 use diesel_async::{AsyncConnection, RunQueryDsl};

@@ -1,7 +1,5 @@
 //! PostgreSQL coverage for photograph vote-total serialization.
 
-mod support;
-
 use std::sync::Arc;
 
 use diesel::{ExpressionMethods, QueryDsl};
@@ -16,7 +14,7 @@ use rust_be_template::{
     schema::{photograph_comment_votes, photograph_comments, photograph_votes, photographs},
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{account_test_context, seed_account},
 };

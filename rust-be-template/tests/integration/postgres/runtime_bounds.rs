@@ -1,7 +1,5 @@
 //! PostgreSQL evidence for the maintained visitor board and pooled session time bounds.
 
-mod support;
-
 use std::net::IpAddr;
 
 use diesel::{Connection, QueryableByName, pg::PgConnection, sql_query};
@@ -17,7 +15,7 @@ use rust_be_template::{
     },
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     migrations::rewind_to_migration,
 };
@@ -163,16 +161,17 @@ fn session_bounds_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
 
         // The migration connection keeps PostgreSQL's unbounded default.
         let migration_url = database.database_url().to_owned();
-        let migration_setting =
-            tokio::task::spawn_blocking(move || -> Result<String, support::database::BoxError> {
+        let migration_setting = tokio::task::spawn_blocking(
+            move || -> Result<String, crate::support::database::BoxError> {
                 let mut connection = PgConnection::establish(&migration_url)?;
                 let row: SettingRow = diesel::RunQueryDsl::get_result(
                     sql_query("SELECT current_setting('statement_timeout') AS setting"),
                     &mut connection,
                 )?;
                 Ok(row.setting)
-            })
-            .await??;
+            },
+        )
+        .await??;
         require(
             migration_setting == "0",
             "migration sessions must stay unbounded",

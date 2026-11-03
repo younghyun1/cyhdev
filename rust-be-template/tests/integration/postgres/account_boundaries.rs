@@ -1,5 +1,3 @@
-mod support;
-
 use diesel::{Connection, pg::PgConnection};
 use diesel_migrations::MigrationHarness;
 
@@ -8,7 +6,7 @@ use rust_be_template::{
     init::db_migrations::MIGRATIONS,
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },

@@ -1,7 +1,5 @@
 //! PostgreSQL concurrency coverage for deletion-linearized content writes.
 
-mod support;
-
 use std::{sync::Arc, time::Duration};
 
 use chrono::Utc;
@@ -20,7 +18,7 @@ use rust_be_template::{
     schema::live_chat_messages,
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{VALID_PASSWORD, account_test_context, seed_account},
 };

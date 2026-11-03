@@ -1,9 +1,10 @@
 //! Embedded locale synchronization, database uniqueness, and cached/read-through selection.
 
-mod support;
-
 use std::sync::Arc;
 
+use crate::support::database::{
+    DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
+};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use rust_be_template::{
@@ -17,7 +18,6 @@ use rust_be_template::{
     },
     schema::i18n_strings,
 };
-use support::database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test};
 use uuid::Uuid;
 
 #[tokio::test]

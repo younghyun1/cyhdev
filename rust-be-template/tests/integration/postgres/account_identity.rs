@@ -1,5 +1,3 @@
-mod support;
-
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 
@@ -8,7 +6,7 @@ use rust_be_template::{
     schema::users,
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },

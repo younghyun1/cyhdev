@@ -1,7 +1,5 @@
 //! PostgreSQL-backed evidence for process-cache publication and refresh.
 
-mod support;
-
 use std::{collections::HashMap, sync::Arc};
 
 use diesel::{ExpressionMethods, QueryDsl};
@@ -25,7 +23,7 @@ use rust_be_template::{
     schema::i18n_strings,
 };
 
-use support::{
+use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::{account_test_context, seed_account},
 };

@@ -1,7 +1,5 @@
 //! Email verification: one-time tokens, session revocation, and pre-registration takeover.
 
-mod support;
-
 use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -19,7 +17,7 @@ use rust_be_template::{
     schema::{email_verification_tokens, users},
 };
 
-use support::{
+use crate::support::{
     database::{
         BoxError, DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test,
     },
