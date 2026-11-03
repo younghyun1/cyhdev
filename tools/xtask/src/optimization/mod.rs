@@ -14,12 +14,15 @@ mod driver;
 mod files;
 mod inventory;
 mod measurement;
+#[cfg(test)]
+mod measurement_tests;
 #[cfg(all(test, target_os = "linux", target_arch = "x86_64"))]
 mod native_profile_tests;
 mod nightly;
 #[cfg(test)]
 mod nightly_tests;
 mod process;
+mod rounds;
 mod state;
 #[cfg(test)]
 mod tests;

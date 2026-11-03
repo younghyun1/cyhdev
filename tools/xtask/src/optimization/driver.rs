@@ -85,16 +85,23 @@ impl State {
         self.check_inputs()
     }
 
-    pub(super) fn measurement(&self, stage: &str) -> TaskResult<measurement::Measurement> {
-        files::read_json(
-            &self.directory.join(format!("{stage}-benchmark.json")),
-            1024 * 1024,
-        )
+    fn benchmark_report(&self, stage: &str, round: usize) -> std::path::PathBuf {
+        self.directory
+            .join(format!("{stage}-benchmark-round-{round}.json"))
     }
 
-    pub(super) fn benchmark(&self, stage: &str) -> TaskResult<()> {
+    pub(super) fn measurement(
+        &self,
+        stage: &str,
+        round: usize,
+    ) -> TaskResult<measurement::Measurement> {
+        files::read_json(&self.benchmark_report(stage, round), 1024 * 1024)
+    }
+
+    /// Runs one stage's repeated benchmark for one rotated round.
+    pub(super) fn benchmark(&self, stage: &str, round: usize) -> TaskResult<()> {
         self.check_inputs()?;
-        println!("Optimization campaign: {stage} repeated benchmark");
+        println!("Optimization campaign: {stage} repeated benchmark, round {round}");
         let binary = format!("{stage}-rust-be-template");
         let digest = files::digest(&self.directory.join(&binary))?;
         process::bounded(
@@ -104,13 +111,18 @@ impl State {
                 &binary,
                 if stage == "bolt" { "pgo" } else { stage },
             )?
-            .env("CYHDEV_OPT_MODE", "benchmark"),
+            .env("CYHDEV_OPT_MODE", "benchmark")
+            .env("CYHDEV_OPT_BENCHMARK_ROUND", round.to_string())
+            .env(
+                "CYHDEV_BENCHMARK_REPORT",
+                self.benchmark_report(stage, round),
+            ),
             self.config.timeout_seconds,
         )?;
         if files::digest(&self.directory.join(&binary))? != digest {
             return Err(TaskError("benchmark changed its binary".into()));
         }
-        measurement::validate(&self.measurement(stage)?, stage, &digest)?;
+        measurement::validate(&self.measurement(stage, round)?, stage, &digest)?;
         self.check_inputs()
     }
 }

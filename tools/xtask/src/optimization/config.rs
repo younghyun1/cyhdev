@@ -21,6 +21,14 @@ pub(super) struct Config {
     pub timeout_seconds: u64,
     pub maximum_latency_ratio: f64,
     pub minimum_throughput_ratio: f64,
+    /// Rotated rounds in which every stage is benchmarked once; a multiple of
+    /// three so each stage runs equally often first, second and last.
+    #[serde(default = "default_benchmark_rounds")]
+    pub benchmark_rounds: usize,
+}
+
+fn default_benchmark_rounds() -> usize {
+    3
 }
 
 impl Config {
@@ -41,8 +49,12 @@ impl Config {
             || !(1.0..=1.25).contains(&config.maximum_latency_ratio)
             || !config.minimum_throughput_ratio.is_finite()
             || !(0.8..=1.2).contains(&config.minimum_throughput_ratio)
+            || !(3..=12).contains(&config.benchmark_rounds)
+            || config.benchmark_rounds % 3 != 0
         {
-            return Err(TaskError("invalid timeout or comparison budget".into()));
+            return Err(TaskError(
+                "invalid timeout, comparison budget, or benchmark round count".into(),
+            ));
         }
         config.runtime_directory = match resolve(root, &config.runtime_directory) {
             Ok(runtime) => runtime,

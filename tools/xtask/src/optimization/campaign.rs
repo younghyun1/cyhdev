@@ -7,26 +7,31 @@ use serde_json::json;
 use crate::{TaskError, TaskResult};
 
 use super::state::State;
-use super::{artifacts, config::Config, container, files, inventory, measurement, process};
+use super::{artifacts, config::Config, container, files, inventory, process, rounds};
 
-/// Inspect a campaign without compiling, or execute it from a clean commit.
+/// Inspect a campaign without compiling, execute it from a clean commit, or
+/// re-benchmark an earlier run's binaries.
 pub(crate) fn run(root: &Path, arguments: &[String]) -> TaskResult<()> {
     if arguments.len() == 2 && arguments[0] == "inventory" {
         return inventory::generate(root, &root.join(&arguments[1]));
     }
-    if arguments.len() != 2 || !matches!(arguments[0].as_str(), "plan" | "run") {
+    if !matches!(
+        (arguments.first().map(String::as_str), arguments.len()),
+        (Some("plan" | "run"), 2) | (Some("rebenchmark"), 3)
+    ) {
         return Err(TaskError(
-            "usage: cargo xtask optimize inventory OUTPUT_DIR | <plan|run> CONFIG.json".into(),
+            "usage: cargo xtask optimize inventory OUTPUT_DIR | <plan|run> CONFIG.json | rebenchmark CONFIG.json RUN_DIR".into(),
         ));
     }
     let config_path = root.join(&arguments[1]);
     let config = Config::read(root, &config_path)?;
     if arguments[0] == "plan" {
         println!(
-            "Campaign: {}; CPU: {}; runtime: {}\nStages: baseline build/coverage/benchmark; PGO instrument/train/merge/build/coverage/benchmark; BOLT instrument/train/merge/optimize/strip/coverage/benchmark; compare; export\nRequires a clean commit, Linux x86-64 runner, Docker, complete live fixtures and benchmark reports. Output: target/optimization/{}/dist/",
+            "Campaign: {}; CPU: {}; runtime: {}\nStages: baseline build/coverage; PGO instrument/train/merge/build/coverage; BOLT instrument/train/merge/optimize/strip/coverage; {} rotated benchmark rounds of all three; compare; export\nRequires a clean commit, Linux x86-64 runner, Docker, complete live fixtures and benchmark reports. Output: target/optimization/{}/dist/",
             config.name,
             config.target_cpu,
             config.runtime_directory.display(),
+            config.benchmark_rounds,
             config.name
         );
         return Ok(());
@@ -34,24 +39,11 @@ pub(crate) fn run(root: &Path, arguments: &[String]) -> TaskResult<()> {
     if !cfg!(all(target_os = "linux", target_arch = "x86_64")) {
         return Err(TaskError("run the campaign on native Linux x86-64; emulation would distort training and benchmarks".into()));
     }
-    let revision = process::revision(root)?;
-    let directory = root.join("target/optimization").join(&config.name);
-    let parent = match directory.parent() {
-        Some(parent) => parent,
-        None => return Err(TaskError("invalid run directory".into())),
-    };
-    match fs::create_dir_all(parent).and_then(|()| fs::create_dir(&directory)) {
-        Ok(()) => {}
-        Err(error) => {
-            return Err(TaskError(format!(
-                "cannot create fresh campaign; use a new name: {error}"
-            )));
-        }
+    if arguments[0] == "rebenchmark" {
+        return rounds::rebenchmark(root, config_path, config, &root.join(&arguments[2]));
     }
-    let directory = match directory.canonicalize() {
-        Ok(path) => path,
-        Err(error) => return Err(TaskError(format!("cannot resolve run directory: {error}"))),
-    };
+    let revision = process::revision(root)?;
+    let directory = fresh_directory(root, &config.name)?;
     for kind in ["pgo", "bolt"] {
         if let Err(error) = fs::create_dir_all(directory.join(format!("raw/{kind}"))) {
             return Err(TaskError(format!(
@@ -97,6 +89,27 @@ pub(crate) fn run(root: &Path, arguments: &[String]) -> TaskResult<()> {
     }
 }
 
+/// Creates `target/optimization/NAME`, refusing to reuse an earlier run.
+pub(super) fn fresh_directory(root: &Path, name: &str) -> TaskResult<std::path::PathBuf> {
+    let directory = root.join("target/optimization").join(name);
+    let parent = match directory.parent() {
+        Some(parent) => parent,
+        None => return Err(TaskError("invalid run directory".into())),
+    };
+    match fs::create_dir_all(parent).and_then(|()| fs::create_dir(&directory)) {
+        Ok(()) => {}
+        Err(error) => {
+            return Err(TaskError(format!(
+                "cannot create fresh campaign; use a new name: {error}"
+            )));
+        }
+    }
+    match directory.canonicalize() {
+        Ok(path) => Ok(path),
+        Err(error) => Err(TaskError(format!("cannot resolve run directory: {error}"))),
+    }
+}
+
 impl State {
     fn execute(&mut self, epoch: &str) -> TaskResult<()> {
         inventory::export(&self.root, &self.directory.join("surface.json"))?;
@@ -122,9 +135,6 @@ impl State {
             )?;
             self.record(stage)?;
             self.train(stage, &format!("{stage}-rust-be-template"), stage)?;
-            if stage == "baseline" {
-                self.benchmark(stage)?;
-            }
         }
         let profiles = artifacts::profiles(&self.directory, "pgo")?;
         container::merge_pgo(&self.image, &self.directory, &profiles)?;
@@ -137,7 +147,6 @@ impl State {
         )?;
         self.record("pgo")?;
         self.train("pgo", "pgo-rust-be-template", "pgo")?;
-        self.benchmark("pgo")?;
         let bolt_input = files::digest(&self.directory.join("pgo-rust-be-template"))?;
         self.receipt["bolt_input_sha256"] = json!(bolt_input);
         artifacts::instrument_bolt(&self.image, &self.directory)?;
@@ -155,18 +164,10 @@ impl State {
         artifacts::optimize_bolt(&self.image, &self.directory, &profiles)?;
         self.record("bolt")?;
         self.train("bolt", "bolt-rust-be-template", "pgo")?;
-        self.benchmark("bolt")?;
-        let baseline = self.measurement("baseline")?;
-        let pgo = self.measurement("pgo")?;
-        let bolt = self.measurement("bolt")?;
-        for (reference, candidate) in [(&baseline, &pgo), (&baseline, &bolt), (&pgo, &bolt)] {
-            measurement::compare(
-                reference,
-                candidate,
-                self.config.maximum_latency_ratio,
-                self.config.minimum_throughput_ratio,
-            )?;
-        }
+        // All three stages are benchmarked together at the end, in rotated
+        // rounds, rather than each right after its build: single runs taken
+        // half an hour apart compared host drift as much as the binaries.
+        self.benchmark_rounds()?;
         self.check_inputs()?;
         artifacts::publish(&self.root, &self.directory)?;
         self.receipt["artifact_sha256"] = json!(files::digest(
@@ -189,7 +190,7 @@ impl State {
         Ok(())
     }
 
-    fn record(&mut self, stage: &str) -> TaskResult<()> {
+    pub(super) fn record(&mut self, stage: &str) -> TaskResult<()> {
         let stages = match self.receipt["stages"].as_array_mut() {
             Some(stages) => stages,
             None => return Err(TaskError("invalid internal receipt".into())),
@@ -198,7 +199,7 @@ impl State {
         self.save()
     }
 
-    fn save(&self) -> TaskResult<()> {
+    pub(super) fn save(&self) -> TaskResult<()> {
         files::write_json(&self.directory.join("receipt.json"), &self.receipt)
     }
 }

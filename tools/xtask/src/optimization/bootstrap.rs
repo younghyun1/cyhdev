@@ -10,34 +10,44 @@ use std::{
     env, fs,
     net::TcpStream,
     path::Path,
-    process::{Command, Stdio},
+    process::Command,
     thread,
     time::{Duration, Instant},
 };
 
 pub(crate) fn run(root: &Path, arguments: &[String]) -> TaskResult<()> {
     match arguments {
-        [] => managed(root),
+        [] => managed(root, None),
+        [flag, previous] if flag == "--rebenchmark" => managed(root, Some(&root.join(previous))),
         [argument] if matches!(argument.as_str(), "--help" | "-h") => {
             println!(
-                "Usage: ./build_pgo_and_bolt.sh [CONFIG.json]\nWithout a config: prepare fresh isolated PostgreSQL and synthetic providers, generate a unique campaign, run PGO+BOLT, and stop owned fixtures.\nWith a config: run manually prepared fixtures. Requires native Linux x86-64, local Docker, PostgreSQL 18 client tools, OpenSSL, Node/npm, curl and oha. Existing services are never stopped."
+                "Usage: ./build_pgo_and_bolt.sh [CONFIG.json | --rebenchmark RUN_DIR]\nWithout a config: prepare fresh isolated PostgreSQL and synthetic providers, generate a unique campaign, run PGO+BOLT, and stop owned fixtures.\nWith a config: run manually prepared fixtures.\nWith --rebenchmark: prepare the same fresh fixtures and compare an earlier run's baseline, PGO and BOLT binaries in rotated rounds without compiling them.\nRequires native Linux x86-64, local Docker, PostgreSQL 18 client tools, OpenSSL, Node/npm, curl and oha. Existing services are never stopped."
             );
             Ok(())
         }
         [config] => campaign::run(root, &["run".into(), config.clone()]),
         _ => Err(TaskError(
-            "usage: ./build_pgo_and_bolt.sh [CONFIG.json]".into(),
+            "usage: ./build_pgo_and_bolt.sh [CONFIG.json | --rebenchmark RUN_DIR]".into(),
         )),
     }
 }
 
-fn managed(root: &Path) -> TaskResult<()> {
+/// Runs a fresh campaign, or with `previous` re-benchmarks that run's binaries.
+fn managed(root: &Path, previous: Option<&Path>) -> TaskResult<()> {
     if !cfg!(all(target_os = "linux", target_arch = "x86_64")) {
         return Err(TaskError(
             "managed PGO+BOLT builds require native Linux x86-64".into(),
         ));
     }
     process::revision(root)?;
+    if let Some(previous) = previous
+        && !previous.join("surface.json").is_file()
+    {
+        return Err(TaskError(format!(
+            "{} is not a campaign run directory with surface.json",
+            previous.display()
+        )));
+    }
     let oha = bootstrap_inputs::prerequisites(root)?;
     let inputs = bootstrap_inputs::inputs(root, oha)?;
     let _signals = Signals::install()?;
@@ -51,7 +61,18 @@ fn managed(root: &Path) -> TaskResult<()> {
     })?;
     browser_tools(root)?;
     let fixture = build_tools(root, &inputs)?;
-    inventory::generate(root, &inputs.directory)?;
+    match previous {
+        // The earlier run's surface matches its binaries, and reusing it avoids
+        // the release-profile inventory export.
+        Some(previous) => {
+            fs::copy(
+                previous.join("surface.json"),
+                inputs.directory.join("surface.json"),
+            )
+            .map_err(|error| TaskError(format!("cannot copy the earlier surface: {error}")))?;
+        }
+        None => inventory::generate(root, &inputs.directory)?,
+    }
     let mut directory = fs::DirBuilder::new();
     use std::os::unix::fs::DirBuilderExt;
     directory
@@ -59,7 +80,7 @@ fn managed(root: &Path) -> TaskResult<()> {
         .create(&inputs.runtime)
         .map_err(|error| TaskError(format!("cannot create fresh runtime: {error}")))?;
     let database = Database::new(root, &inputs.runtime);
-    let outcome = execute(root, &inputs, &database, &fixture);
+    let outcome = execute(root, &inputs, &database, &fixture, previous);
     let cleanup = database.cleanup();
     match (outcome, cleanup) {
         (Ok(()), Ok(())) => {
@@ -148,7 +169,13 @@ fn browser_tools(root: &Path) -> TaskResult<()> {
     Ok(())
 }
 
-fn execute(root: &Path, inputs: &Inputs, database: &Database, fixture: &Path) -> TaskResult<()> {
+fn execute(
+    root: &Path,
+    inputs: &Inputs,
+    database: &Database,
+    fixture: &Path,
+    previous: Option<&Path>,
+) -> TaskResult<()> {
     stage(bootstrap_inputs::command("docker", root).args(["pull", "postgres:18"]))?;
     let image = process::output(bootstrap_inputs::command("docker", root).args([
         "image",
@@ -158,7 +185,7 @@ fn execute(root: &Path, inputs: &Inputs, database: &Database, fixture: &Path) ->
         "postgres:18",
     ]))?;
     stage(&mut database.start_command(&format!("cyhdev-opt-{}", inputs.name), &image))?;
-    wait_database(root)?;
+    bootstrap_resources::wait_database(root)?;
     stage(
         fixture_command(root, inputs, fixture)
             .arg("prepare")
@@ -218,8 +245,17 @@ fn execute(root: &Path, inputs: &Inputs, database: &Database, fixture: &Path) ->
         ])
         .arg(inputs.runtime.join("environment.sh"))
         .arg(executable)
-        .args(["optimize", "run"])
-        .arg(inputs.directory.join("config.json"))
+        .arg("optimize")
+        .arg(if previous.is_some() {
+            "rebenchmark"
+        } else {
+            "run"
+        })
+        .arg(inputs.directory.join("config.json"));
+    if let Some(previous) = previous {
+        command.arg(previous);
+    }
+    command
         .env("CYHDEV_OPT_LATEST_NIGHTLY", "1")
         .env("CYHDEV_OHA", &inputs.oha);
     stage(&mut command)
@@ -239,35 +275,4 @@ fn fixture_command(root: &Path, inputs: &Inputs, executable: &Path) -> Command {
 
 fn stage(command: &mut Command) -> TaskResult<()> {
     OwnedChild::spawn(command)?.wait()
-}
-
-fn wait_database(root: &Path) -> TaskResult<()> {
-    let deadline = Instant::now() + Duration::from_secs(60);
-    loop {
-        let result = bootstrap_inputs::command("pg_isready", root)
-            .args([
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "35432",
-                "--username",
-                "optimization_fixture",
-                "--dbname",
-                "postgres",
-                "--timeout",
-                "1",
-            ])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-        if matches!(result, Ok(status) if status.success()) {
-            return Ok(());
-        }
-        if bootstrap_resources::interrupted() || Instant::now() >= deadline {
-            return Err(TaskError(
-                "disposable PostgreSQL did not become ready on 127.0.0.1:35432".into(),
-            ));
-        }
-        thread::sleep(Duration::from_millis(100));
-    }
 }

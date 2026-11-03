@@ -227,3 +227,35 @@ impl Drop for Database {
         }
     }
 }
+
+/// Waits for the disposable PostgreSQL container to accept connections.
+pub(super) fn wait_database(root: &Path) -> TaskResult<()> {
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let result = bootstrap_inputs::command("pg_isready", root)
+            .args([
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "35432",
+                "--username",
+                "optimization_fixture",
+                "--dbname",
+                "postgres",
+                "--timeout",
+                "1",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        if matches!(result, Ok(status) if status.success()) {
+            return Ok(());
+        }
+        if interrupted() || Instant::now() >= deadline {
+            return Err(TaskError(
+                "disposable PostgreSQL did not become ready on 127.0.0.1:35432".into(),
+            ));
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+}

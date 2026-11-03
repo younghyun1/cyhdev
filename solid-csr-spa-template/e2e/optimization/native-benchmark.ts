@@ -52,7 +52,10 @@ export async function nativeBenchmark(context: BrowserContext, campaign: Campaig
   const version = execFileSync(executable, ["--version"], { encoding: "utf8", timeout: 5000 }).trim();
   const ticksPerSecond = Number(execFileSync("/usr/bin/getconf", ["CLK_TCK"], { encoding: "utf8", timeout: 5000 }).trim());
   if (!Number.isInteger(ticksPerSecond) || ticksPerSecond <= 0) throw new Error("Invalid process CPU clock rate");
-  const directory = resolve(required("CYHDEV_OPT_RUN"), "native-loadgen", required("CYHDEV_OPT_STAGE"));
+  // Rotated rounds benchmark each stage several times; keep every round's raw samples.
+  const round = process.env.CYHDEV_OPT_BENCHMARK_ROUND;
+  if (round !== undefined && !/^[1-9][0-9]?$/.test(round)) throw new Error("Invalid benchmark round");
+  const directory = resolve(required("CYHDEV_OPT_RUN"), "native-loadgen", required("CYHDEV_OPT_STAGE"), round ? `round-${round}` : ".");
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const urls = config.cases.map((step) => localUrl(campaign.base_url, interpolate(step.path, campaign.parameters)));
   const targetFile = `${directory}/urls.txt`;

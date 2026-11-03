@@ -11,7 +11,6 @@ use super::{
     artifacts, config,
     coverage::{Policy, Report, Surface},
     files,
-    measurement::{self, Measurement, Sample},
 };
 
 fn set(values: &[&str]) -> BTreeSet<String> {
@@ -98,50 +97,6 @@ fn missing_success_and_stale_identity_fail_closed() {
         )
         .is_err()
     );
-}
-
-fn measurement(stage: &str, rate: f64, latency: f64) -> Measurement {
-    Measurement {
-        schema_version: 1,
-        stage: stage.into(),
-        binary_sha256: "a".repeat(64),
-        environment_sha256: "b".repeat(64),
-        workload_sha256: "c".repeat(64),
-        samples: (0..5)
-            .map(|_| Sample {
-                requests_per_second: rate,
-                p95_ms: latency,
-                p99_ms: latency * 2.0,
-                failures: 0,
-            })
-            .collect(),
-    }
-}
-
-#[test]
-fn faster_candidate_accepts_but_latency_or_throughput_regression_rejects() {
-    let baseline = measurement("baseline", 100.0, 10.0);
-    assert!(measurement::compare(&baseline, &measurement("bolt", 110.0, 9.0), 1.05, 0.98).is_ok());
-    assert!(measurement::compare(&baseline, &measurement("bolt", 97.0, 10.0), 1.05, 0.98).is_err());
-    assert!(
-        measurement::compare(&baseline, &measurement("bolt", 110.0, 11.0), 1.05, 0.98).is_err()
-    );
-}
-
-#[test]
-fn different_environment_or_invalid_samples_cannot_pass_comparison() {
-    let baseline = measurement("baseline", 100.0, 10.0);
-    let mut candidate = measurement("bolt", 110.0, 9.0);
-    candidate.environment_sha256 = "d".repeat(64);
-    assert!(measurement::compare(&baseline, &candidate, 1.05, 0.98).is_err());
-    candidate.environment_sha256 = baseline.environment_sha256.clone();
-    candidate.samples[0].failures = 1;
-    assert!(measurement::compare(&baseline, &candidate, 1.05, 0.98).is_err());
-    candidate.samples[0].failures = 0;
-    candidate.samples[0].p95_ms = f64::NAN;
-    assert!(measurement::compare(&baseline, &candidate, 1.05, 0.98).is_err());
-    candidate.samples.clear();
-    assert!(measurement::compare(&baseline, &candidate, 1.05, 0.98).is_err());
 }
 
 #[test]

@@ -153,4 +153,18 @@ fn owned_child_failure_and_scope_drop_reap_only_the_spawned_process()
 fn bootstrap_help_and_argument_errors_need_no_runtime_directory() {
     assert!(bootstrap::run(Path::new("/missing-checkout"), &["--help".into()]).is_ok());
     assert!(bootstrap::run(Path::new("/missing-checkout"), &["a".into(), "b".into()]).is_err());
+    assert!(
+        bootstrap::run(
+            Path::new("/missing-checkout"),
+            &["--rebenchmark".into(), "target/optimization/missing".into()]
+        )
+        .is_err()
+    );
+    assert!(
+        super::campaign::run(
+            Path::new("/missing-checkout"),
+            &["rebenchmark".into(), "config.json".into()]
+        )
+        .is_err()
+    );
 }
