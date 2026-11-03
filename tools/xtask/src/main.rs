@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod backend_binaries_tests;
+mod cargo_environment;
 #[cfg(test)]
 mod container_tests;
 mod database_review;
@@ -41,6 +42,7 @@ impl Display for TaskError {
 impl Error for TaskError {}
 
 fn main() -> ExitCode {
+    cargo_environment::clear_running_package();
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
