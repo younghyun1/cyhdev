@@ -52,7 +52,7 @@ Implementation update:
 
 - English and Korean source bundles live in `rust-be-template/i18n/ui/*.json`.
 - The backend validates those files at compile/startup through `source_bundles()`.
-- Startup calls `sync_file_backed_ui_text_sources()` before `sync_i18n_data()`, so file-backed UI strings are upserted into `i18n_strings` first, then loaded into `ServerState.i18n_cache`.
+- Startup calls `I18nService::synchronize_file_sources()` before `synchronize_cache()`, so file-backed UI strings reach `i18n_strings` first and are then loaded into the service's RAM cache. The source sync reads the stored rows for the registry keys and upserts only rows that are missing or differ; PostgreSQL locks every row that reaches `ON CONFLICT DO UPDATE` even when its `WHERE` skips the update, so an unchanged catalog now costs one read and writes nothing (2026-11-03; previously about 0.9 MB of WAL per restart for 5,656 rows).
 - The admin i18n sync route also runs the file-backed source sync before rehydrating the RAM cache.
 - Normal frontend bundle requests use `GET /api/i18n/ui-text?locale=...`, which reads from RAM only.
 

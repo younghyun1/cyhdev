@@ -8,7 +8,10 @@ use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_conne
 use uuid::Uuid;
 
 use crate::{
-    features::i18n::domain::{message::InternationalizationString, source::UiTextSourceBundle},
+    features::i18n::domain::{
+        message::InternationalizationString,
+        source_sync::{StoredUiText, UiTextSourceRow},
+    },
     schema::i18n_strings,
 };
 
@@ -30,6 +33,15 @@ struct I18nStringRecord {
     i18n_string_country_code: i32,
     i18n_string_country_subdivision_code: Option<String>,
     i18n_string_reference_key: String,
+}
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = i18n_strings, check_for_backend(diesel::pg::Pg))]
+struct StoredSourceRecord {
+    i18n_string_reference_key: String,
+    i18n_string_country_code: i32,
+    i18n_string_language_code: i32,
+    i18n_string_content: String,
 }
 
 pub struct I18nRepository {
@@ -90,44 +102,57 @@ impl I18nRepository {
             .collect())
     }
 
-    /// Upserts every embedded source entry and returns how many were processed.
+    /// Stored file-backed rows (no subdivision) for `reference_keys`.
+    ///
+    /// The partial unique index on key, country, and language admits one such
+    /// row per key and locale, so the result is bounded by the key count times
+    /// the stored locales.
+    pub async fn source_texts(&self, reference_keys: &[&str]) -> anyhow::Result<Vec<StoredUiText>> {
+        let mut connection = self.pool.get().await?;
+        Ok(i18n_strings::table
+            .filter(i18n_strings::i18n_string_reference_key.eq_any(reference_keys))
+            .filter(i18n_strings::i18n_string_country_subdivision_code.is_null())
+            .select(StoredSourceRecord::as_select())
+            .load::<StoredSourceRecord>(&mut connection)
+            .await?
+            .into_iter()
+            .map(|record| StoredUiText {
+                reference_key: record.i18n_string_reference_key,
+                country_code: record.i18n_string_country_code,
+                language_code: record.i18n_string_language_code,
+                content: record.i18n_string_content,
+            })
+            .collect())
+    }
+
+    /// Upserts `rows` and returns how many were inserted or updated.
     ///
     /// Rows are written in multi-row statements of [`SOURCE_SYNC_CHUNK_ROWS`]
-    /// inside one transaction. The conflict update only fires when the stored
-    /// content differs, so an unchanged catalog rewrites no rows and keeps
-    /// each row's `updated_at`, which orders the cache snapshot.
-    pub async fn synchronize_sources(
-        &self,
-        bundles: Vec<UiTextSourceBundle>,
-    ) -> anyhow::Result<usize> {
-        let rows = bundles
-            .iter()
-            .flat_map(|bundle| {
-                bundle.entries.iter().map(|entry| {
-                    (
-                        entry.content.as_str(),
-                        bundle.locale.language_code(),
-                        bundle.locale.country_code(),
-                        entry.key.as_str(),
-                    )
-                })
-            })
-            .collect::<Vec<_>>();
+    /// inside one transaction; an empty slice opens no connection. Callers pass
+    /// only rows that differed when read, and the conflict update still fires
+    /// only when the stored content differs, so a concurrent synchronization
+    /// that wrote the same content first turns the row into a no-op and keeps
+    /// its `updated_at`, which orders the cache snapshot.
+    pub async fn upsert_source_rows(&self, rows: &[UiTextSourceRow<'_>]) -> anyhow::Result<usize> {
+        if rows.is_empty() {
+            return Ok(0);
+        }
         let mut connection = self.pool.get().await?;
         let system_user_id = Uuid::nil();
         let now = chrono::Utc::now();
         connection
-            .transaction::<(), diesel::result::Error, _>(async |connection| {
+            .transaction::<usize, diesel::result::Error, _>(async |connection| {
+                let mut written = 0;
                 for chunk in rows.chunks(SOURCE_SYNC_CHUNK_ROWS) {
                     let values = chunk
                         .iter()
-                        .map(|(content, language, country, key)| {
+                        .map(|row| {
                             (
-                                i18n_strings::i18n_string_content.eq(*content),
+                                i18n_strings::i18n_string_content.eq(row.content),
                                 i18n_strings::i18n_string_updated_by.eq(system_user_id),
-                                i18n_strings::i18n_string_language_code.eq(*language),
-                                i18n_strings::i18n_string_country_code.eq(*country),
-                                i18n_strings::i18n_string_reference_key.eq(*key),
+                                i18n_strings::i18n_string_language_code.eq(row.language_code),
+                                i18n_strings::i18n_string_country_code.eq(row.country_code),
+                                i18n_strings::i18n_string_reference_key.eq(row.reference_key),
                             )
                         })
                         .collect::<Vec<_>>();
@@ -149,7 +174,7 @@ impl I18nRepository {
                     // `ON CONFLICT ... DO UPDATE ... WHERE`. Insert statements have
                     // no `QueryDsl`, and importing `FilterDsl` would make every
                     // table `.filter` in this file ambiguous, so it is called by path.
-                    diesel::query_dsl::methods::FilterDsl::filter(
+                    written += diesel::query_dsl::methods::FilterDsl::filter(
                         upsert,
                         i18n_strings::i18n_string_content
                             .is_distinct_from(excluded(i18n_strings::i18n_string_content)),
@@ -157,10 +182,10 @@ impl I18nRepository {
                     .execute(&mut *connection)
                     .await?;
                 }
-                Ok(())
+                Ok(written)
             })
-            .await?;
-        Ok(rows.len())
+            .await
+            .map_err(Into::into)
     }
 }
 

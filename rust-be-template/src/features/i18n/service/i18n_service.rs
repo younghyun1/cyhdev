@@ -6,7 +6,11 @@ use tokio::sync::RwLock;
 use tracing::info;
 
 use crate::features::i18n::{
-    domain::source::source_bundles,
+    domain::{
+        keys::REQUIRED_UI_TEXT_KEYS,
+        source::source_bundles,
+        source_sync::{SourceSyncOutcome, changed_source_rows},
+    },
     repository::i18n_repository::I18nRepository,
     service::cache::{I18N_CACHE_MAX_BYTES, I18N_CACHE_MAX_ENTRIES, I18nCache},
 };
@@ -116,17 +120,32 @@ impl I18nService {
         }
     }
 
-    pub async fn synchronize_file_sources(&self) -> anyhow::Result<usize> {
+    /// Writes embedded catalog rows that PostgreSQL lacks or holds with other content.
+    ///
+    /// Unchanged rows are filtered out before the upsert because PostgreSQL
+    /// locks every row that reaches `ON CONFLICT DO UPDATE`, even when its
+    /// `WHERE` skips the update. Sending the whole catalog would mark all of
+    /// its rows and write WAL on every restart; measured on PostgreSQL 18, about
+    /// 0.9 MB for 5,656 unchanged rows after a checkpoint. With nothing to
+    /// write, this is one read and no transaction.
+    pub async fn synchronize_file_sources(&self) -> anyhow::Result<SourceSyncOutcome> {
         let start = tokio::time::Instant::now();
-        let synchronized = self
-            .repository
-            .synchronize_sources(source_bundles()?)
-            .await?;
+        let bundles = source_bundles()?;
+        let source_rows = bundles.iter().map(|bundle| bundle.entries.len()).sum();
+        let stored = self.repository.source_texts(REQUIRED_UI_TEXT_KEYS).await?;
+        let changed = changed_source_rows(&bundles, &stored);
+        drop(stored);
+        let written_rows = self.repository.upsert_source_rows(&changed).await?;
         info!(
             elapsed = ?start.elapsed(),
-            rows_synchronized = synchronized,
+            source_rows,
+            changed_rows = changed.len(),
+            written_rows,
             "Synchronized file-backed UI i18n source data"
         );
-        Ok(synchronized)
+        Ok(SourceSyncOutcome {
+            source_rows,
+            written_rows,
+        })
     }
 }

@@ -8,7 +8,10 @@ use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use rust_be_template::{
     features::i18n::{
-        domain::{keys::REQUIRED_UI_TEXT_KEYS, locale::UiLocale, source::source_bundles},
+        domain::{
+            keys::REQUIRED_UI_TEXT_KEYS, locale::UiLocale, source::source_bundles,
+            source_sync::SourceSyncOutcome,
+        },
         repository::i18n_repository::I18nRepository,
         service::i18n_service::I18nService,
     },
@@ -32,8 +35,12 @@ fn synchronize_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(sources.len() == 8, "expected eight embedded locale sources")?;
         let expected_rows = sources.len() * REQUIRED_UI_TEXT_KEYS.len();
         require(
-            service.synchronize_file_sources().await? == expected_rows,
-            "source synchronization did not process every locale key",
+            service.synchronize_file_sources().await?
+                == SourceSyncOutcome {
+                    source_rows: expected_rows,
+                    written_rows: expected_rows,
+                },
+            "first synchronization did not write every locale key",
         )?;
 
         let mut connection = pool.get().await?;
@@ -72,8 +79,12 @@ fn synchronize_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         .await?;
         drop(connection);
         require(
-            service.synchronize_file_sources().await? == expected_rows,
-            "repeated synchronization did not process every source key",
+            service.synchronize_file_sources().await?
+                == SourceSyncOutcome {
+                    source_rows: expected_rows,
+                    written_rows: 1,
+                },
+            "repeated synchronization did not write exactly the drifted row",
         )?;
         let second_versions = stored_versions(&pool, expected_rows).await?;
         let second_ids = second_versions
@@ -93,6 +104,22 @@ fn synchronize_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             rewritten == ["common.save"],
             "repeated synchronization rewrote unchanged rows or missed the drifted row",
+        )?;
+
+        // Matching catalogs must write nothing. Row selection is unit-tested in
+        // `source_sync`; an empty selection sends no upsert, which matters
+        // because PostgreSQL would lock every conflicting row it received.
+        require(
+            service.synchronize_file_sources().await?
+                == SourceSyncOutcome {
+                    source_rows: expected_rows,
+                    written_rows: 0,
+                },
+            "synchronization of unchanged catalogs wrote rows",
+        )?;
+        require(
+            stored_versions(&pool, expected_rows).await? == second_versions,
+            "synchronization of unchanged catalogs changed stored rows",
         )?;
 
         for source in sources {
