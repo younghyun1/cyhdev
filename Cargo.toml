@@ -38,6 +38,13 @@ correctness = { level = "deny", priority = -1 }
 perf = { level = "warn", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 
+# Dependencies carry no debug info in development and test builds. Their DWARF
+# was about 900 MB of each roughly 1 GB backend test binary and was rewritten on
+# every link. Workspace crates keep full debug info; dependency frames in a
+# backtrace still show function names, without file and line.
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 opt-level = 3
 codegen-units = 1
