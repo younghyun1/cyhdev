@@ -119,7 +119,7 @@ for (const width of WIDTHS) {
           // The English copyright sentence stays left to right, so its link cannot mirror.
           const moved = box.bar && !box.key.includes("span[1]>a[0]") && (Math.abs(box.start - reference.start) > TOLERANCE_PX || Math.abs(box.top - reference.top) > TOLERANCE_PX);
           if (widthDelta > TOLERANCE_PX || heightDelta > TOLERANCE_PX || moved) {
-            offenders.push(`${tag} ${box.key} .${box.css} "${reference.label}" -> "${box.label}" w ${reference.width.toFixed(1)}->${box.width.toFixed(1)} h ${reference.height.toFixed(1)}->${box.height.toFixed(1)}-> top ->` : ""}`);
+            offenders.push(`${tag} ${box.key} .${box.css} "${reference.label}" -> "${box.label}" w ${reference.width.toFixed(1)}->${box.width.toFixed(1)} h ${reference.height.toFixed(1)}->${box.height.toFixed(1)}${moved ? ` moved start ${reference.start.toFixed(1)}->${box.start.toFixed(1)} top ${reference.top.toFixed(1)}->${box.top.toFixed(1)}` : ""}`);
           }
         }
       }
