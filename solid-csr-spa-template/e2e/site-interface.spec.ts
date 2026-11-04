@@ -218,6 +218,16 @@ test.describe("home board", () => {
     await expect.poll(() => opened).toBe(true);
   });
 
+  test("a chat chunk that fails to load leaves the page working", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await installApiMocks(page, "logged-out");
+    await page.route("**/components/LiveChatPanel*", (route) => route.abort());
+    await page.goto("/");
+    await expect(page.locator(".home-panel--chat .home-empty")).toBeVisible();
+    await expect(page.locator(".home-hero-title")).toBeVisible();
+    await expect(page.locator(".home-panel--posts")).toBeVisible();
+  });
+
   test("loading chat scrolls its own list, not the page", async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 500 });
     await installApiMocks(page, "logged-out");

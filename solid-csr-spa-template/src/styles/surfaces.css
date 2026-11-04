@@ -70,10 +70,6 @@
   background: var(--accent);
 }
 
-.ui-button {
-  border-radius: 0.125rem;
-}
-
 /* Authentication: one card with an accent edge, left-aligned like other forms. */
 .auth-card {
   position: relative;

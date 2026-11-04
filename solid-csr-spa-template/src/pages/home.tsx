@@ -1,4 +1,5 @@
 import {
+  Errored,
   For,
   Loading,
   Show,
@@ -84,11 +85,14 @@ function HomeChat(): JSX.Element {
   const skeleton = <div class="home-skeleton home-chat-skeleton" />;
   return (
     <div class="home-chat-slot" ref={(element) => (slot = element)}>
-      <Show when={near()} fallback={skeleton}>
-        <Loading fallback={skeleton}>
-          <LiveChatPanel mode="compact" />
-        </Loading>
-      </Show>
+      {/* A failed chunk, as after a deploy, must not take the whole page with it. */}
+      <Errored fallback={<div class="home-empty">{t("live_chat.connection_failed")}</div>}>
+        <Show when={near()} fallback={skeleton}>
+          <Loading fallback={skeleton}>
+            <LiveChatPanel mode="compact" />
+          </Loading>
+        </Show>
+      </Errored>
     </div>
   );
 }
