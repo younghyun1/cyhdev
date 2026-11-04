@@ -1,10 +1,10 @@
 # Interface pass: home board, forum, animation switch, page styling
 
-- Status: complete, 2026-11-04. All nine interface items and the [follow-ups](#follow-ups) are implemented. The optimized build in `miniserver:~/` was made from `4086a5a`, before the follow-ups, so it does not contain them; nothing is installed or restarted on the server.
+- Status: complete, 2026-11-04. All nine interface items and the [follow-ups](#follow-ups) are implemented. The optimized build in `miniserver:~/` was made from `a140267` and contains the follow-ups. It is not installed: the service still runs the `4086a5a` build from `~/dist`.
 - Checkout: `main`; see `git log --oneline origin/main..main` for anything unpushed.
 - Completed: see [Scope](#scope), [Decisions](#decisions), and [Follow-ups](#follow-ups).
 - Verification: see [Verification](#verification).
-- Remaining: revoke the database passwords in [History redaction](#history-redaction), which only the owner can do; owner review of the new translated strings; a new optimized build if the follow-ups should deploy; then the normal deployment workflow.
+- Remaining: revoke the database passwords in [History redaction](#history-redaction), which only the owner can do; owner review of the new translated strings; installing the `a140267` build through the normal deployment workflow, including `~/dist/minecraft-seed`, which is older than either delivered seed helper.
 
 ## Scope
 
@@ -81,7 +81,11 @@ Follow-ups, on the final working tree:
 - A scan of all 15,184 objects in the rewritten repository found none of the three passwords, in any of seven encodings. On GitHub, the rewritten removal commit shows the redacted line, and the old hash still serves the original.
 - `cargo test --package xtask` passed, and the session end signal has seven tests covering logout, rotation, the per-account cap, revocation, expiry, and other sessions staying open.
 
-The new chat, home failure, and forum regression tests were each seen failing against the old code before the fixes applied. Pages were reviewed by eye at 390, 1024, 1440, and 1920 pixels against mocked APIs. The contour field's tab-switch fix has no dedicated test, and no test closes a real socket through the end signal, because the socket handler needs a database-backed service. Not run: WebKit projects, `test:e2e:performance`, and any optimized build of the follow-ups.
+The new chat, home failure, and forum regression tests were each seen failing against the old code before the fixes applied. Pages were reviewed by eye at 390, 1024, 1440, and 1920 pixels against mocked APIs. The contour field's tab-switch fix has no dedicated test, and no test closes a real socket through the end signal, because the socket handler needs a database-backed service. Not run: WebKit projects and `test:e2e:performance`.
+
+`./build_pgo_and_bolt.sh` on a clean `a140267` was accepted as run `cyhdev-pgo-bolt-18e4f5a5eae3e2c8_5cc4a`. The live browser campaign passed in all 14 runs, on the same balanced host policy as the first pass. Median of paired rounds against baseline: PGO throughput 1.165x, p95 0.870x, p99 0.876x; BOLT throughput 1.199x, p95 0.835x, p99 0.838x. BOLT warned that it left seven hand-written crypto assembly functions unoptimized.
+
+`scp` placed `dist/rust-be-template` at `miniserver:~/rust-be-template` and `dist/minecraft-seed` at `miniserver:~/minecraft-seed`, replacing the first-pass seed helper. `sha256sum` matched on both ends: `b0e2c59f...3df9` for the server, which is also the receipt's artifact, and `be5f7ccd...429d` for the seed helper. These binaries have not been started on the server, so the follow-ups are unverified there.
 
 First pass, at `4086a5a`:
 
@@ -110,4 +114,4 @@ Median of paired rounds against baseline: PGO throughput 1.153x, p95 0.863x, p99
 
 `scp` placed `dist/rust-be-template` at `miniserver:~/rust-be-template` and `dist/minecraft-seed` at `miniserver:~/minecraft-seed`; neither path existed beforehand. `sha256sum` matched on both ends: `bbb9167d...cfe7` for the server, which is also the receipt's BOLT stage, and `58bb9d73...5c7b` for the seed helper.
 
-Not run: WebKit projects and `test:e2e:performance`. The transferred binaries have not been started on the server, so the deployed site itself is unverified.
+Not run: WebKit projects and `test:e2e:performance`. This work did not start the transferred binaries. The server binary was later found installed and running at `~/dist/rust-be-template` with the same hash; the deployed site itself is unverified here.
