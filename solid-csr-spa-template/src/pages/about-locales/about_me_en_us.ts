@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "Measurements come before claims. When a benchmark turns out to be measuring its own client instead of the server, the correction gets written down too; the [performance notes](/about-blog/performance) for this site are an example.",
+              text: "Measurements come before claims; the [performance notes](/about-blog/performance) for this site show how they are taken.",
             },
           ],
         },

@@ -22,7 +22,7 @@ import type {
 import { pageStyles } from "../styles/pageStyles";
 import "../styles/live-chat.css";
 import type { UiTextKey } from "../i18n/keys";
-import { t, tx } from "../state/i18n";
+import { locale, t, tx } from "../state/i18n";
 import {
   type LiveChatConnectionState,
   useLiveChatSocket,
@@ -41,6 +41,10 @@ import {
   prependOlder,
   trimOldest,
 } from "../services/live_chat_history";
+import {
+  type LiveChatGreeting,
+  greetingFromHello,
+} from "../services/live_chat_greeting";
 
 export type LiveChatPanelMode = "compact" | "full";
 
@@ -339,12 +343,11 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     });
   };
 
-  createEffect(
-    () => visibleMessages().length,
-    () => {
-      restoreOrScrollAfterRender();
-    },
-  );
+  // The list itself, not its length: a full window keeps the same length as
+  // messages arrive.
+  createEffect(visibleMessages, () => {
+    restoreOrScrollAfterRender();
+  });
 
   // Surface transport errors from the shared socket and clear them on recovery.
   createEffect(
@@ -358,21 +361,23 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
     },
   );
 
+  const applyGreeting = (greeting: LiveChatGreeting) => {
+    setActor(greeting.actor);
+    detached = false;
+    detachedBuffer = [];
+    setMessages(
+      greeting.recentMessages.filter(isVisibleMessage).slice(-LIVE_CHAT_HISTORY_LIMIT).map((message) => ({ kind: "sent", message })),
+    );
+    scheduleBottomScroll();
+    setNextBeforeMessageId(greeting.recentMessages[0]?.live_chat_message_id ?? null);
+    setHasMore(greeting.hasOlder);
+    setConnectedCount(greeting.connectedCount);
+  };
+
   const handleServerEvent = (event: LiveChatServerEvent) => {
     switch (event.type) {
       case "hello":
-        setActor(event.actor);
-        detached = false;
-        detachedBuffer = [];
-        setMessages(
-          event.recent_messages.filter(isVisibleMessage).slice(-LIVE_CHAT_HISTORY_LIMIT).map((message) => ({ kind: "sent", message })),
-        );
-        scheduleBottomScroll();
-        setNextBeforeMessageId(
-          event.recent_messages[0]?.live_chat_message_id ?? null,
-        );
-        setHasMore(event.recent_messages.length >= PAGE_SIZE);
-        setConnectedCount(event.connected_count);
+        applyGreeting(greetingFromHello(event));
         break;
       case "message": {
         const message = event.message;
@@ -381,13 +386,16 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           detachedBuffer = bufferDetached(detachedBuffer, message);
           break;
         }
-        const atLiveEdge = isNearBottom();
-        shouldScrollAfterRender = atLiveEdge;
+        // A scroll still pending means the last message has not rendered yet, so
+        // in a burst the measured distance would wrongly say the reader left.
+        const atLiveEdge = shouldScrollAfterRender || isNearBottom();
         const update = updateWindow((prev) =>
           containsSentMessage(prev, message.live_chat_message_id)
             ? null
             : appendLive<LiveChatMessageView>(prev, { kind: "sent", message }, atLiveEdge),
         );
+        // An unchanged list renders nothing, so nothing would clear the flag.
+        if (update) shouldScrollAfterRender = atLiveEdge;
         if (update?.detached) detachedBuffer = bufferDetached(detachedBuffer, message);
         break;
       }
@@ -607,6 +615,9 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   onSettled(() => {
     const release = socket.acquire();
     const unsubscribe = socket.onEvent(handleServerEvent);
+    // A connection the previous route kept open will not be greeted again.
+    const greeting = socket.greeting();
+    if (greeting) applyGreeting(greeting);
     return () => {
       unsubscribe();
       release();
@@ -707,7 +718,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                   </Show>
                 </span>
                 <time class="live-chat-time">
-                  {new Date(messageCreatedAt(message)).toLocaleTimeString([], {
+                  {new Date(messageCreatedAt(message)).toLocaleTimeString(locale(), {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}

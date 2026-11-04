@@ -43,14 +43,6 @@ const SECTION_LINKS: ReadonlyArray<{
   { href: "/about-blog/performance", parentKey: "top_bar.nav.about_blog", labelKey: "about_blog.nav.performance" },
 ];
 
-const ACCENT_LABELS: Readonly<Record<(typeof ACCENTS)[number], UiTextKey>> = {
-  amber: "accent.amber",
-  lagoon: "accent.lagoon",
-  cobalt: "accent.cobalt",
-  orchid: "accent.orchid",
-  graphite: "accent.graphite",
-};
-
 /**
  * Site-wide command palette: fuzzy search over public pages, About subpages,
  * and display actions. Implements the ARIA combobox pattern with a listbox;
@@ -107,7 +99,7 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
       (name): PaletteEntry => ({
         id: `action:accent:${name}`,
         group: "actions",
-        label: tx("command_palette.action.accent", { name: t(ACCENT_LABELS[name]) }),
+        label: tx("command_palette.action.accent", { name: t(`accent.${name}`) }),
         hint: name === accent() ? "●" : "○",
         current: name === accent(),
         run: () => setAccent(name),

@@ -217,7 +217,7 @@ export default function ForumTopicPage() {
           <a href="/forum">{t("page.forum.title")}</a>
           <span aria-hidden="true">/</span>
           <span class="forum-breadcrumb__current" aria-current="page">
-            {topic()?.title ?? t("forum.loading")}
+            {topic() ? (topic()?.title ?? t("forum.topic.masked")) : loading() ? t("forum.loading") : ""}
           </span>
           <Show when={capabilities()?.authenticated}>
             <a class="forum-breadcrumb__end" href="/forum/notifications">
@@ -271,6 +271,8 @@ export default function ForumTopicPage() {
                   reply={reply}
                   number={index() + 2}
                   isOriginalPoster={
+                    // Every deleted account shares one placeholder id.
+                    !reply.author.is_deleted &&
                     reply.author.public_user_id === topic()?.author.public_user_id
                   }
                   own={own(reply.author.public_user_id)}

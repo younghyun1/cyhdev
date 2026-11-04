@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20.1% 請求/秒",
   "home.showcase.pgo.title": "PGO 與 BOLT",
   "home.showcase.pgo.text": "採用設定檔引導最佳化與連結後最佳化的後端建置，以 oha 在固定核心上量測。",
-  "home.showcase.nodelay.kicker": "41 毫秒 → 0.15 毫秒",
-  "home.showcase.nodelay.title": "一個通訊端選項",
-  "home.showcase.nodelay.text": "啟用 TCP_NODELAY 後，HTTP/2 回應不再因延遲確認而停頓。",
   "home.showcase.sfu.kicker": "WebRTC 通話",
   "home.showcase.sfu.title": "行程內 SFU",
   "home.showcase.sfu.text": "語音與視訊通話在 Rust 伺服器內部轉送，無需轉碼。",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "已中斷",
   "live_chat.state.error": "連線錯誤",
   "live_chat.in_call": "{count} 人通話中",
-  "live_chat.empty": "還沒有訊息。打個招呼吧。"
+  "live_chat.empty": "還沒有訊息。打個招呼吧。",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "攝影處理流程",
+  "home.showcase.photography.text": "上傳圖片在固定像素上限內解碼，並以最慢預設編碼為 AVIF，同時最多處理兩個工作。",
+  "accent.custom": "自訂",
+  "accent.custom_rgb": "RGB 值",
+  "accent.custom_invalid": "請輸入 RGB 值，例如 255, 120, 40 或 #ff7828。",
+  "accent.custom_adjusted": "已在此模式下調整，以維持文字可讀。"
 }

@@ -33,10 +33,8 @@ const content: AboutBlogContent = {
                   label: "Aller-retour observé avec la base de données via un socket UNIX, contre ~600 µs en TCP sur localhost",
                 },
                 {
-                  value: "130 Kio",
-                  count: 130,
-                  suffix: " Kio",
-                  label: "Budget gzip des ressources frontend initiales, imposé lors de la construction du bundle",
+                  value: "0",
+                  label: "Processus Node.js en production ; le frontend est intégré au binaire du serveur",
                 },
                 {
                   value: "8",
@@ -44,8 +42,8 @@ const content: AboutBlogContent = {
                   label: "Langues d’interface, chacune téléchargée uniquement lorsqu’elle est sélectionnée",
                 },
                 {
-                  value: "0,15 ms",
-                  label: "Temps médian de réception complète d’une tuile en HTTP/2 après activation de `TCP_NODELAY`, contre 41 ms auparavant",
+                  value: "4 096",
+                  label: "Connexions ouvertes admises avant TLS, dont 64 au plus par adresse ou /64 IPv6",
                 },
                 {
                   value: "1",
@@ -114,7 +112,7 @@ const content: AboutBlogContent = {
                   title: "Frontend",
                   href: "/about-blog/frontend",
                   meta: "SolidJS 2 · Vite · Tailwind",
-                  text: "Le squelette de l’application, le budget de chargement, la localisation, le système de design et les animations.",
+                  text: "Le squelette de l’application, le chargement, la localisation, le système de design et les animations.",
                 },
                 {
                   title: "Sous-systèmes",
@@ -126,7 +124,7 @@ const content: AboutBlogContent = {
                   title: "Performances",
                   href: "/about-blog/performance",
                   meta: "PGO · BOLT · oha",
-                  text: "Les builds optimisés, le benchmark qui mesurait la mauvaise chose et les chiffres corrigés.",
+                  text: "Les builds optimisés, la façon dont ils ont été mesurés et les résultats.",
                 },
               ],
             },
@@ -327,7 +325,7 @@ const content: AboutBlogContent = {
               kind: "tags",
               groups: [
                 { label: "Application", items: ["SolidJS 2", "Solid Router 2", "TypeScript", "Vite 8"] },
-                { label: "Styles", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLCH"] },
+                { label: "Styles", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLab"] },
                 { label: "Composants", items: ["Toast UI Editor", "Leaflet", "Chart.js", "highlight.js", "DOMPurify"] },
                 { label: "Tests", items: ["Vitest", "Playwright", "axe-core"] },
               ],
@@ -339,13 +337,13 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "budget",
-          heading: "Budget de chargement",
+          id: "loading",
+          heading: "Chargement",
           blocks: [
             {
               kind: "list",
               items: [
-                "Un plugin Vite suit les imports statiques depuis le chunk d’entrée et fait échouer le build si les scripts et styles initiaux dépassent **130 Kio** gzip.",
+                "Les pages, le panneau de discussion de la page d’accueil et son shader de lignes de niveau sont des chunks séparés, et le build indique la taille gzip de ce qui se charge en premier.",
                 "Seuls les textes d’interface en anglais sont inclus dans le chunk initial. Les autres langues, ainsi que les pages À propos de chaque langue, sont des chunks distincts chargés lors de leur sélection.",
                 "Des tests de performance mobile avec bridage visent un LCP d’au plus 2,5 s, des interactions d’au plus 200 ms et un CLS d’au plus 0,1.",
               ],
@@ -358,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "L’interface prend en charge l’anglais, le coréen, le français, l’espagnol, le chinois simplifié et traditionnel, le japonais et l’allemand. Un catalogue d’environ 650 clés est validé par rapport au registre du backend, et les espaces réservés doivent survivre à la traduction. Ces pages À propos sont des modules de données typés, si bien qu’une traduction ne peut pas omettre en silence une section présente en anglais.",
+              text: "L’interface prend en charge l’anglais, le coréen, le français, l’espagnol, le chinois simplifié et traditionnel, le japonais et l’allemand. Un catalogue d’environ 740 clés est validé par rapport au registre du backend, et les espaces réservés doivent survivre à la traduction. Ces pages À propos sont des modules de données typés, si bien qu’une traduction ne peut pas omettre en silence une section présente en anglais.",
             },
           ],
         },
@@ -368,7 +366,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Le style est chaleureux et technique : papier crème ou noir pur, bordures fines, police à chasse fixe pour tout ce qui est technique et une seule couleur d’accent à la fois. Les couleurs sont des variables CSS sémantiques, si bien que les composants n’ont jamais besoin de variantes pour le mode sombre. Les préréglages d’accent sont définis en OKLCH, qui maintient une luminosité perçue constante d’une teinte à l’autre, et le mode clair ou sombre ainsi que l’accent sont appliqués avant le premier rendu.",
+              text: "Le style est chaleureux et technique : papier crème ou noir pur, bordures fines, police à chasse fixe pour tout ce qui est technique et une seule couleur d’accent à la fois. Les couleurs sont des variables CSS sémantiques, si bien que les composants n’ont jamais besoin de variantes pour le mode sombre. Le contraste des préréglages d’accent avec les fonds de page est vérifié par des tests, une couleur RVB saisie par le visiteur est ajustée dans chaque mode pour rester lisible, et le mode clair ou sombre ainsi que l’accent sont appliqués avant le premier rendu.",
             },
           ],
         },
@@ -383,7 +381,7 @@ const content: AboutBlogContent = {
                 "Les statistiques s’incrémentent grâce à un entier `@property` enregistré, la valeur finale étant présente dans le balisage pour les technologies d’assistance.",
                 "Le changement de thème se déploie depuis le bouton de bascule grâce à l’API View Transitions.",
                 "Le champ de lignes de niveau de la page d’accueil est un petit shader WebGL qui se charge une fois la page inactive, ne s’exécute que sur les navigateurs de bureau capables, plafonne sa fréquence d’images et se met en pause hors de l’écran.",
-                "Tout élément décoratif est ignoré lorsque le système demande des animations réduites.",
+                "Un réglage du site désactive tout cela. Les animations sont activées par défaut et ne suivent pas le réglage de réduction des animations du système d’exploitation.",
               ],
             },
           ],
@@ -484,20 +482,6 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "correction",
-          heading: "Le benchmark qui se mesurait lui-même",
-          blocks: [
-            {
-              kind: "paragraph",
-              text: "La première campagne générait la charge depuis Playwright et semblait montrer des régressions. Elles n’étaient pas réelles : les appels d’API Playwright sans portée parcourent les étapes de test précédentes pour trouver leur parent, si bien que le client ralentissait au fil de l’exécution. Face à un serveur HTTP trivial, le client seul est passé de 2 684 à 1 314 requêtes/s sur neuf échantillons.",
-            },
-            {
-              kind: "paragraph",
-              text: "La génération de charge est passée à oha. Playwright vérifie toujours la réponse de chaque route, mais en dehors de la fenêtre chronométrée.",
-            },
-          ],
-        },
-        {
           id: "setup",
           heading: "Configuration",
           blocks: [
@@ -508,6 +492,7 @@ const content: AboutBlogContent = {
                 "HTTPS sur HTTP/1.1 avec un pool de 32 connexions, lecture complète des réponses et délais de deux secondes.",
                 "Trois manches en rotation avec cinq échantillons par variante, chacun après 10 000 requêtes d’échauffement, à partir d’un instantané de base de données neuf.",
                 "27 000 000 de requêtes chronométrées au total ; toutes ont renvoyé HTTP 200.",
+                "La charge vient d’oha ; Playwright vérifie la réponse de chaque route en dehors de la fenêtre chronométrée.",
               ],
             },
           ],
@@ -556,20 +541,14 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "transport",
-          heading: "Les petites corrections comptent aussi",
+          id: "corrections",
+          heading: "Corrections",
           blocks: [
             {
-              kind: "paragraph",
-              text: "L’accepteur Rustls par défaut d’axum-server ne définissait pas `TCP_NODELAY`, si bien que les réponses HTTP/2 découpées en trames d’en-tête et de données pouvaient attendre un accusé de réception différé. L’activer sur chaque socket accepté a modifié ainsi une réponse de tuile de 59 571 octets sur une connexion réutilisée.",
-            },
-            {
-              kind: "table",
-              columns: ["TCP_NODELAY", "Protocole", "Premier octet (médiane)", "Réception complète (médiane)"],
-              numericColumns: [2, 3],
-              rows: [
-                ["Désactivé", "HTTP/2", "0,290 ms", "40,981 ms"],
-                ["Activé", "HTTP/2", "0,113 ms", "0,152 ms"],
+              kind: "list",
+              items: [
+                "`TCP_NODELAY` n’était pas défini au départ : l’accepteur Rustls par défaut d’axum-server le laisse désactivé, si bien que les réponses HTTP/2 pouvaient attendre environ 40 ms un accusé de réception différé. Chaque socket accepté le définit désormais.",
+                "Le premier benchmark générait la charge depuis Playwright, dont le client ralentissait au fil de l’exécution, et montrait à tort des régressions. Ces chiffres ont été écartés.",
               ],
             },
           ],

@@ -27,7 +27,7 @@ export default function HeroField(props: { pointerTarget: () => HTMLElement | un
   let canvas: HTMLCanvasElement | undefined;
   let field: ContourField | null = null;
   let cancelled = false;
-  let idleHandle: number | undefined;
+  let cancelStart: (() => void) | undefined;
 
   onSettled(() => {
     if (!shouldStartHeroField()) return;
@@ -40,9 +40,11 @@ export default function HeroField(props: { pointerTarget: () => HTMLElement | un
       });
     };
     if (typeof window.requestIdleCallback === "function") {
-      idleHandle = window.requestIdleCallback(start, { timeout: 2500 });
+      const handle = window.requestIdleCallback(start, { timeout: 2500 });
+      cancelStart = () => window.cancelIdleCallback(handle);
     } else {
-      idleHandle = window.setTimeout(start, 1200);
+      const handle = window.setTimeout(start, 1200);
+      cancelStart = () => window.clearTimeout(handle);
     }
   });
 
@@ -55,10 +57,7 @@ export default function HeroField(props: { pointerTarget: () => HTMLElement | un
 
   onCleanup(() => {
     cancelled = true;
-    if (idleHandle !== undefined) {
-      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleHandle);
-      window.clearTimeout(idleHandle);
-    }
+    cancelStart?.();
     field?.dispose();
   });
 

@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "Messungen kommen vor Behauptungen. Wenn sich herausstellt, dass ein Benchmark seinen eigenen Client statt des Servers misst, wird auch die Korrektur festgehalten; die [Leistungsnotizen](/about-blog/performance) zu dieser Website sind ein Beispiel dafür.",
+              text: "Messungen kommen vor Behauptungen; die [Leistungsnotizen](/about-blog/performance) zu dieser Website zeigen, wie sie entstehen.",
             },
           ],
         },

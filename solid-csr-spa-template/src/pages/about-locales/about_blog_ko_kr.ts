@@ -33,10 +33,8 @@ const content: AboutBlogContent = {
                   label: "UNIX 소켓을 통한 데이터베이스 왕복 시간 관측값, localhost TCP에서는 약 600 µs",
                 },
                 {
-                  value: "130 KiB",
-                  count: 130,
-                  suffix: " KiB",
-                  label: "번들 빌드 시 강제하는 초기 프런트엔드 에셋의 gzip 예산",
+                  value: "0",
+                  label: "프로덕션의 Node.js 프로세스 수. 프런트엔드는 서버 바이너리에 내장됩니다",
                 },
                 {
                   value: "8",
@@ -44,8 +42,8 @@ const content: AboutBlogContent = {
                   label: "선택할 때만 내려받는 인터페이스 언어",
                 },
                 {
-                  value: "0.15 ms",
-                  label: "`TCP_NODELAY` 활성화 후 HTTP/2 타일 완료 시간 중앙값, 이전에는 41 ms",
+                  value: "4,096",
+                  label: "TLS 이전에 허용하는 열린 연결 수. 주소 또는 IPv6 /64당 최대 64개",
                 },
                 {
                   value: "1",
@@ -114,7 +112,7 @@ const content: AboutBlogContent = {
                   title: "프런트엔드",
                   href: "/about-blog/frontend",
                   meta: "SolidJS 2 · Vite · Tailwind",
-                  text: "애플리케이션 셸, 로딩 예산, 다국어화, 디자인 시스템, 모션을 다룹니다.",
+                  text: "애플리케이션 셸, 로딩, 다국어화, 디자인 시스템, 모션을 다룹니다.",
                 },
                 {
                   title: "하위 시스템",
@@ -126,7 +124,7 @@ const content: AboutBlogContent = {
                   title: "성능",
                   href: "/about-blog/performance",
                   meta: "PGO · BOLT · oha",
-                  text: "최적화 빌드, 엉뚱한 것을 측정한 벤치마크, 그리고 바로잡은 수치를 다룹니다.",
+                  text: "최적화 빌드, 측정 방법, 그리고 결과를 다룹니다.",
                 },
               ],
             },
@@ -327,7 +325,7 @@ const content: AboutBlogContent = {
               kind: "tags",
               groups: [
                 { label: "애플리케이션", items: ["SolidJS 2", "Solid Router 2", "TypeScript", "Vite 8"] },
-                { label: "스타일링", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLCH"] },
+                { label: "스타일링", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLab"] },
                 { label: "컴포넌트", items: ["Toast UI Editor", "Leaflet", "Chart.js", "highlight.js", "DOMPurify"] },
                 { label: "테스트", items: ["Vitest", "Playwright", "axe-core"] },
               ],
@@ -339,13 +337,13 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "budget",
-          heading: "로딩 예산",
+          id: "loading",
+          heading: "로딩",
           blocks: [
             {
               kind: "list",
               items: [
-                "Vite 플러그인이 진입 청크의 정적 import를 따라가며, 초기 스크립트와 스타일이 gzip 기준 **130 KiB**를 넘으면 빌드를 실패시킵니다.",
+                "페이지, 홈 페이지의 채팅 패널과 등고선 셰이더는 별도 청크이며, 빌드는 처음 로드되는 항목의 gzip 크기를 보고합니다.",
                 "초기 청크에는 영어 인터페이스 텍스트만 포함됩니다. 다른 언어와 각 언어의 소개 페이지는 선택할 때 로드되는 별도 청크입니다.",
                 "스로틀링한 모바일 성능 테스트는 LCP 2.5초 이하, 상호작용 200 ms 이하, CLS 0.1 이하를 목표로 합니다.",
               ],
@@ -358,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "인터페이스는 영어, 한국어, 프랑스어, 스페인어, 중국어 간체와 번체, 일본어, 독일어를 지원합니다. 약 650개 키로 이루어진 카탈로그는 백엔드 레지스트리와 대조해 검증되며, 자리 표시자는 번역 후에도 유지되어야 합니다. 이 소개 페이지는 타입이 지정된 데이터 모듈이므로, 번역에서 영어에 있는 섹션을 조용히 빠뜨릴 수 없습니다.",
+              text: "인터페이스는 영어, 한국어, 프랑스어, 스페인어, 중국어 간체와 번체, 일본어, 독일어를 지원합니다. 약 740개 키로 이루어진 카탈로그는 백엔드 레지스트리와 대조해 검증되며, 자리 표시자는 번역 후에도 유지되어야 합니다. 이 소개 페이지는 타입이 지정된 데이터 모듈이므로, 번역에서 영어에 있는 섹션을 조용히 빠뜨릴 수 없습니다.",
             },
           ],
         },
@@ -368,7 +366,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "따뜻하면서도 기술적인 분위기를 지향합니다: 크림색 종이나 순수한 검정 배경, 가는 테두리, 기술적인 내용에는 고정폭 글꼴, 한 번에 하나의 강조 색상. 색상은 의미 기반 CSS 변수이므로 컴포넌트에 다크 모드 변형이 필요 없습니다. 강조 색상 프리셋은 색조가 달라도 체감 명도를 일정하게 유지하는 OKLCH로 정의하며, 라이트·다크 모드와 강조 색상은 첫 페인트 전에 적용됩니다.",
+              text: "따뜻하면서도 기술적인 분위기를 지향합니다: 크림색 종이나 순수한 검정 배경, 가는 테두리, 기술적인 내용에는 고정폭 글꼴, 한 번에 하나의 강조 색상. 색상은 의미 기반 CSS 변수이므로 컴포넌트에 다크 모드 변형이 필요 없습니다. 강조 색상 프리셋은 페이지 배경과의 대비를 테스트로 확인하고, 방문자가 직접 입력한 RGB 색상은 모드별로 읽기 쉽게 조정하며, 라이트·다크 모드와 강조 색상은 첫 페인트 전에 적용됩니다.",
             },
           ],
         },
@@ -383,7 +381,7 @@ const content: AboutBlogContent = {
                 "통계 수치는 등록된 `@property` 정수로 카운트업되며, 보조 기술을 위해 최종 값이 마크업에 들어 있습니다.",
                 "테마 전환은 View Transitions API를 통해 토글 버튼에서부터 퍼져 나갑니다.",
                 "홈 페이지의 등고선 배경은 작은 WebGL 셰이더로, 페이지가 유휴 상태가 된 뒤 로드되고, 성능이 충분한 데스크톱 브라우저에서만 실행되며, 프레임 속도를 제한하고 화면 밖에서는 일시 정지합니다.",
-                "시스템이 동작 줄이기를 요청하면 장식 효과는 모두 생략합니다.",
+                "사이트 설정으로 이 모든 효과를 끌 수 있습니다. 애니메이션은 기본적으로 켜져 있으며 운영 체제의 동작 줄이기 설정을 따르지 않습니다.",
               ],
             },
           ],
@@ -484,20 +482,6 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "correction",
-          heading: "자기 자신을 측정한 벤치마크",
-          blocks: [
-            {
-              kind: "paragraph",
-              text: "첫 번째 측정에서는 Playwright로 부하를 걸었고, 성능이 저하된 것처럼 보였습니다. 실제 저하는 아니었습니다: 범위가 지정되지 않은 Playwright API 호출은 부모를 찾기 위해 이전 테스트 단계를 검색하므로, 실행이 진행될수록 클라이언트가 느려졌습니다. 단순한 HTTP 서버를 대상으로 했을 때 클라이언트만으로도 샘플 9개에 걸쳐 초당 2,684개에서 1,314개 요청으로 떨어졌습니다.",
-            },
-            {
-              kind: "paragraph",
-              text: "부하 생성은 oha로 옮겼습니다. Playwright는 여전히 각 경로의 응답을 검사하지만, 시간 측정 구간 밖에서 수행합니다.",
-            },
-          ],
-        },
-        {
           id: "setup",
           heading: "측정 환경",
           blocks: [
@@ -508,6 +492,7 @@ const content: AboutBlogContent = {
                 "연결 32개를 풀링한 HTTP/1.1 기반 HTTPS를 사용하고, 응답 전체를 읽으며, 기한은 2초로 설정했습니다.",
                 "새 데이터베이스 스냅샷에서 시작해 순서를 바꿔 가며 3라운드를 진행했고, 라운드마다 변형별 샘플 5개를 각각 10,000개의 워밍업 요청 뒤에 측정했습니다.",
                 "측정한 요청은 총 27,000,000개이며, 모두 HTTP 200을 반환했습니다.",
+                "부하는 oha로 생성하며, Playwright는 시간 측정 구간 밖에서 각 경로의 응답을 검사합니다.",
               ],
             },
           ],
@@ -556,20 +541,14 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "transport",
-          heading: "작은 수정도 중요합니다",
+          id: "corrections",
+          heading: "정정",
           blocks: [
             {
-              kind: "paragraph",
-              text: "axum-server의 기본 Rustls acceptor는 `TCP_NODELAY`를 설정하지 않았기 때문에, 헤더 프레임과 데이터 프레임으로 나뉜 HTTP/2 응답이 지연 ACK를 기다릴 수 있었습니다. 수락한 모든 소켓에 이 옵션을 활성화하자, 재사용 연결에서 59,571바이트 타일 응답이 다음과 같이 바뀌었습니다.",
-            },
-            {
-              kind: "table",
-              columns: ["TCP_NODELAY", "프로토콜", "첫 바이트 중앙값", "완료 중앙값"],
-              numericColumns: [2, 3],
-              rows: [
-                ["꺼짐", "HTTP/2", "0.290 ms", "40.981 ms"],
-                ["켜짐", "HTTP/2", "0.113 ms", "0.152 ms"],
+              kind: "list",
+              items: [
+                "처음에는 `TCP_NODELAY`를 설정하지 않았습니다. axum-server의 기본 Rustls acceptor가 이를 켜지 않아 HTTP/2 응답이 지연 ACK를 약 40 ms 기다릴 수 있었습니다. 지금은 수락한 모든 소켓에 설정합니다.",
+                "첫 벤치마크는 Playwright로 부하를 걸었는데, 실행이 진행될수록 클라이언트가 느려져 성능 저하가 있는 것처럼 잘못 나타났습니다. 그 수치는 폐기했습니다.",
               ],
             },
           ],

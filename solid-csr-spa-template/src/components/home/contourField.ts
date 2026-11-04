@@ -235,7 +235,7 @@ export function startContourField(
   let animated = initiallyAnimated;
   let tooSlow = false;
   let disposed = false;
-  const probe = createFrameProbe();
+  let probe = createFrameProbe();
 
   const render = () => {
     gl.uniform1f(uTime, elapsed);
@@ -281,11 +281,18 @@ export function startContourField(
     readColors();
     if (!shouldRun()) render();
   });
+  // A custom accent changes through the style attribute alone.
   themeObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ["class", "data-accent"],
+    attributeFilter: ["class", "data-accent", "style"],
   });
-  document.addEventListener("visibilitychange", resume);
+  // A frame left pending while hidden fires late on return, and that gap says
+  // nothing about how fast this device is.
+  const onVisibilityChange = () => {
+    lastCallback = 0;
+    resume();
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
   render();
   resume();
 
@@ -293,6 +300,9 @@ export function startContourField(
     setAnimated: (next) => {
       animated = next;
       if (next) {
+        // Asking for animation again earns a fresh measurement.
+        tooSlow = false;
+        probe = createFrameProbe();
         resume();
       } else if (frame !== 0) {
         cancelAnimationFrame(frame);
@@ -305,7 +315,7 @@ export function startContourField(
       intersection.disconnect();
       resizeObserver.disconnect();
       themeObserver.disconnect();
-      document.removeEventListener("visibilitychange", resume);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       pointerTarget.removeEventListener("pointermove", onPointerMove);
       pointerTarget.removeEventListener("pointerleave", onPointerLeave);
       gl.deleteBuffer(buffer);

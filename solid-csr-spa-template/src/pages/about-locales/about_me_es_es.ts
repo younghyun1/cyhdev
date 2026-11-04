@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "Las mediciones van antes que las afirmaciones. Cuando una prueba de rendimiento resulta medir su propio cliente en lugar del servidor, la corrección también se documenta; las [notas de rendimiento](/about-blog/performance) de este sitio son un ejemplo.",
+              text: "Las mediciones van antes que las afirmaciones; las [notas de rendimiento](/about-blog/performance) de este sitio muestran cómo se realizan.",
             },
           ],
         },

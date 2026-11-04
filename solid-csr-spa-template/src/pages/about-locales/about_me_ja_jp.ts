@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "主張する前に計測します。ベンチマークがサーバーではなく自身のクライアントを測っていたと分かったときは、その訂正も記録します。このサイトの[パフォーマンスに関するメモ](/about-blog/performance)がその一例です。",
+              text: "主張する前に計測します。計測方法はこのサイトの[パフォーマンスに関するメモ](/about-blog/performance)にまとめています。",
             },
           ],
         },

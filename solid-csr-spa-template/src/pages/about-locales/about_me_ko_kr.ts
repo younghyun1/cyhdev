@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "주장보다 측정이 먼저입니다. 벤치마크가 서버가 아니라 자기 클라이언트를 측정하고 있었다고 밝혀지면 그 정정도 기록합니다. 이 사이트의 [성능 기록](/about-blog/performance)이 그 예입니다.",
+              text: "주장보다 측정이 먼저입니다. 이 사이트의 [성능 기록](/about-blog/performance)에서 측정 방법을 볼 수 있습니다.",
             },
           ],
         },

@@ -1,7 +1,7 @@
 /* Home page. The hero carries a static CSS grid with the contour canvas over
-   it; the board below keeps chat in a sticky left column beside posts,
-   photographs, and engineering notes, on narrow gutters so the width goes to
-   content. Phones stack the panels with notes last. */
+   it; the board below keeps chat in a left column beside posts, photographs,
+   and engineering notes, on narrow gutters so the width goes to content. Chat
+   ends level with the notes. Phones stack the panels with notes last. */
 .home-page {
   --home-gutter: clamp(0.75rem, 1.4vw, 1.5rem);
   --home-max: 128rem;
@@ -204,24 +204,31 @@
     align-items: start;
   }
 
-  /* Sticky, so chat stays in view while the reader scrolls notes. The height
-     leaves room for the hero, which keeps the composer visible on arrival
-     rather than below the fold. */
+  /* The column takes its height from the other panels and ends level with the
+     notes. Size containment keeps a long conversation from growing the rows. */
   .home-panel--chat {
-    position: sticky;
-    top: calc(var(--site-header-height) + 0.75rem);
+    align-self: stretch;
+    min-height: 24rem;
+    contain: size;
   }
 
+  /* Fills the column unless that is taller than the screen, as when the panels
+     stack beside it. It then stays in view and meets the end of the column at
+     the end of the page, so the composer is never out of reach. */
   .home-chat-slot {
-    height: calc(100dvh - var(--site-header-height) - var(--site-footer-height) - 15rem);
+    position: sticky;
+    top: calc(var(--site-header-height) + 0.75rem);
+    height: min(
+      100%,
+      100dvh - var(--site-header-height) - 0.75rem - var(--site-footer-height) - 1.5rem
+    );
     min-height: 24rem;
-    max-height: 56rem;
   }
 }
 
 /* Landscape phones: chat taller than the screen must scroll with the page. */
 @media (min-width: 768px) and (max-height: 560px) {
-  .home-panel--chat {
+  .home-chat-slot {
     position: static;
   }
 }
@@ -235,7 +242,8 @@
       "chat notes notes";
   }
 
-  /* Rows share the photo grid's height, so neither panel leaves a gap. */
+  /* The list matches the photo grid's height. A full list of POST_COUNT rows
+     shares that height evenly; a shorter one keeps thin rows at the top. */
   .home-panel--posts {
     display: flex;
     align-self: stretch;
@@ -248,8 +256,7 @@
     flex-direction: column;
   }
 
-  .home-post,
-  .home-post-skeleton {
+  .home-post-list:has(> :nth-child(5)) > * {
     flex: 1;
   }
 

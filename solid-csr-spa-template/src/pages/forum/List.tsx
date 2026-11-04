@@ -86,7 +86,13 @@ export default function ForumListPage() {
         currentCount + incoming.length >= MAX_LOCAL_TOPICS;
       setCursor(reachedLocalLimit ? null : response.data.next_cursor);
     } catch {
-      if (request === latestRequest) setError(t("forum.load_failed"));
+      if (request !== latestRequest) return;
+      setError(t("forum.load_failed"));
+      // The last query's rows and cursor must not stand in for this one's.
+      if (replace) {
+        setTopics([]);
+        setCursor(null);
+      }
     } finally {
       if (request === latestRequest) setLoading(false);
     }

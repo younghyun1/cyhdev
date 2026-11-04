@@ -30,14 +30,20 @@
         document.documentElement.classList.add(t);
         var m = document.querySelector('meta[name="theme-color"]');
         if (m) m.setAttribute("content", t === "dark" ? "#000000" : "#f6f1e8");
-        // Accent preset; must mirror ACCENTS in src/state/accent.ts.
+        // Accent preset or custom color; must mirror readAccent in
+        // src/state/accent.ts. A custom color's values are stored ready-made.
         var a = null;
+        var c = null;
         try {
           a = localStorage.getItem("accent");
+          c = localStorage.getItem("accent-custom");
         } catch (e) {
           /* storage unavailable */
         }
         if (a === "lagoon" || a === "cobalt" || a === "orchid" || a === "graphite") {
+          document.documentElement.setAttribute("data-accent", a);
+        } else if (a === "custom" && /^(--custom-accent[a-z-]*:#[0-9a-f]{6};){7}$/.test(c)) {
+          document.documentElement.style.cssText = c;
           document.documentElement.setAttribute("data-accent", a);
         }
         // Animation switch; must mirror readMotion in src/state/motion.ts.

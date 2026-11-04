@@ -33,10 +33,8 @@ const content: AboutBlogContent = {
                   label: "Ida y vuelta observada con la base de datos mediante un socket UNIX, frente a ~600 µs por TCP en localhost",
                 },
                 {
-                  value: "130 KiB",
-                  count: 130,
-                  suffix: " KiB",
-                  label: "Presupuesto gzip para los recursos iniciales del frontend, aplicado al generar el bundle",
+                  value: "0",
+                  label: "Procesos de Node.js en producción; el frontend va integrado en el binario del servidor",
                 },
                 {
                   value: "8",
@@ -44,8 +42,8 @@ const content: AboutBlogContent = {
                   label: "Idiomas de interfaz, cada uno descargado solo al seleccionarlo",
                 },
                 {
-                  value: "0,15 ms",
-                  label: "Mediana de finalización de una tesela por HTTP/2 tras activar `TCP_NODELAY`, frente a 41 ms antes",
+                  value: "4.096",
+                  label: "Conexiones abiertas admitidas antes de TLS, con un máximo de 64 por dirección o /64 de IPv6",
                 },
                 {
                   value: "1",
@@ -114,7 +112,7 @@ const content: AboutBlogContent = {
                   title: "Frontend",
                   href: "/about-blog/frontend",
                   meta: "SolidJS 2 · Vite · Tailwind",
-                  text: "La estructura de la aplicación, el presupuesto de carga, la localización, el sistema de diseño y las animaciones.",
+                  text: "La estructura de la aplicación, la carga, la localización, el sistema de diseño y las animaciones.",
                 },
                 {
                   title: "Subsistemas",
@@ -126,7 +124,7 @@ const content: AboutBlogContent = {
                   title: "Rendimiento",
                   href: "/about-blog/performance",
                   meta: "PGO · BOLT · oha",
-                  text: "Las compilaciones optimizadas, la prueba de rendimiento que medía lo que no debía y las cifras corregidas.",
+                  text: "Las compilaciones optimizadas, cómo se midieron y los resultados.",
                 },
               ],
             },
@@ -327,7 +325,7 @@ const content: AboutBlogContent = {
               kind: "tags",
               groups: [
                 { label: "Aplicación", items: ["SolidJS 2", "Solid Router 2", "TypeScript", "Vite 8"] },
-                { label: "Estilos", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLCH"] },
+                { label: "Estilos", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLab"] },
                 { label: "Componentes", items: ["Toast UI Editor", "Leaflet", "Chart.js", "highlight.js", "DOMPurify"] },
                 { label: "Pruebas", items: ["Vitest", "Playwright", "axe-core"] },
               ],
@@ -339,13 +337,13 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "budget",
-          heading: "Presupuesto de carga",
+          id: "loading",
+          heading: "Carga",
           blocks: [
             {
               kind: "list",
               items: [
-                "Un plugin de Vite sigue los imports estáticos desde el chunk de entrada y hace fallar la compilación si los scripts y estilos iniciales superan **130 KiB** en gzip.",
+                "Las páginas, el panel de chat de la página de inicio y su shader de curvas de nivel son chunks separados, y la compilación informa del tamaño gzip de lo que se carga primero.",
                 "Solo el texto de la interfaz en inglés va en el chunk inicial. Los demás idiomas, y las páginas «Acerca de» de cada idioma, son chunks separados que se cargan al seleccionarlos.",
                 "Las pruebas de rendimiento móvil con limitación apuntan a un LCP de 2,5 s o menos, interacciones de 200 ms o menos y un CLS de 0,1 o menos.",
               ],
@@ -358,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "La interfaz admite inglés, coreano, francés, español, chino simplificado y tradicional, japonés y alemán. Un catálogo de unas 650 claves se valida con el registro del backend, y los marcadores de posición deben sobrevivir a la traducción. Estas páginas «Acerca de» son módulos de datos tipados, así que una traducción no puede omitir en silencio una sección que exista en inglés.",
+              text: "La interfaz admite inglés, coreano, francés, español, chino simplificado y tradicional, japonés y alemán. Un catálogo de unas 740 claves se valida con el registro del backend, y los marcadores de posición deben sobrevivir a la traducción. Estas páginas «Acerca de» son módulos de datos tipados, así que una traducción no puede omitir en silencio una sección que exista en inglés.",
             },
           ],
         },
@@ -368,7 +366,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "El aspecto es cálido y técnico: papel crema o negro puro, bordes finos, tipografía monoespaciada para todo lo técnico y un solo color de acento a la vez. Los colores son variables CSS semánticas, así que los componentes nunca necesitan variantes para el modo oscuro. Los ajustes de acento se definen en OKLCH, que mantiene constante la luminosidad percibida entre tonos, y el modo claro u oscuro y el acento se aplican antes del primer pintado.",
+              text: "El aspecto es cálido y técnico: papel crema o negro puro, bordes finos, tipografía monoespaciada para todo lo técnico y un solo color de acento a la vez. Los colores son variables CSS semánticas, así que los componentes nunca necesitan variantes para el modo oscuro. El contraste de los ajustes de acento con los fondos de página se comprueba con pruebas, un color RGB introducido por el visitante se ajusta en cada modo para seguir siendo legible, y el modo claro u oscuro y el acento se aplican antes del primer pintado.",
             },
           ],
         },
@@ -383,7 +381,7 @@ const content: AboutBlogContent = {
                 "Las estadísticas cuentan hacia arriba mediante un entero registrado con `@property`, con el valor final presente en el marcado para las tecnologías de apoyo.",
                 "El cambio de tema se expande desde el interruptor mediante la API View Transitions.",
                 "El campo de curvas de nivel de la página de inicio es un pequeño shader WebGL que se carga cuando la página queda inactiva, solo se ejecuta en navegadores de escritorio capaces, limita su tasa de fotogramas y se pausa fuera de la pantalla.",
-                "Todo lo decorativo se omite cuando el sistema solicita movimiento reducido.",
+                "Un ajuste del sitio lo desactiva todo. Las animaciones están activadas por defecto y no siguen el ajuste de movimiento reducido del sistema operativo.",
               ],
             },
           ],
@@ -484,20 +482,6 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "correction",
-          heading: "La prueba que se medía a sí misma",
-          blocks: [
-            {
-              kind: "paragraph",
-              text: "La primera campaña generaba la carga desde Playwright y parecía mostrar regresiones. No eran reales: las llamadas a la API de Playwright sin ámbito recorren los pasos de prueba anteriores para encontrar su padre, así que el cliente se ralentizaba a medida que avanzaba la ejecución. Frente a un servidor HTTP trivial, el cliente por sí solo cayó de 2.684 a 1.314 solicitudes/s en nueve muestras.",
-            },
-            {
-              kind: "paragraph",
-              text: "La generación de carga pasó a oha. Playwright sigue comprobando la respuesta de cada ruta, pero fuera de la ventana cronometrada.",
-            },
-          ],
-        },
-        {
           id: "setup",
           heading: "Configuración",
           blocks: [
@@ -508,6 +492,7 @@ const content: AboutBlogContent = {
                 "HTTPS sobre HTTP/1.1 con un pool de 32 conexiones, lectura completa de las respuestas y plazos de dos segundos.",
                 "Tres rondas rotadas con cinco muestras por variante, cada una tras 10.000 solicitudes de calentamiento, a partir de una instantánea nueva de la base de datos.",
                 "27.000.000 de solicitudes cronometradas en total; todas devolvieron HTTP 200.",
+                "La carga la genera oha; Playwright comprueba la respuesta de cada ruta fuera de la ventana cronometrada.",
               ],
             },
           ],
@@ -556,20 +541,14 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "transport",
-          heading: "Los pequeños arreglos también cuentan",
+          id: "corrections",
+          heading: "Correcciones",
           blocks: [
             {
-              kind: "paragraph",
-              text: "El aceptador Rustls predeterminado de axum-server no establecía `TCP_NODELAY`, por lo que las respuestas HTTP/2 divididas en tramas de encabezado y de datos podían esperar un acuse de recibo diferido. Activarlo en cada socket aceptado cambió así una respuesta de tesela de 59.571 bytes sobre una conexión reutilizada.",
-            },
-            {
-              kind: "table",
-              columns: ["TCP_NODELAY", "Protocolo", "Primer byte (mediana)", "Recepción completa (mediana)"],
-              numericColumns: [2, 3],
-              rows: [
-                ["Desactivado", "HTTP/2", "0,290 ms", "40,981 ms"],
-                ["Activado", "HTTP/2", "0,113 ms", "0,152 ms"],
+              kind: "list",
+              items: [
+                "Al principio `TCP_NODELAY` no estaba activado: el aceptador Rustls predeterminado de axum-server lo deja desactivado, por lo que las respuestas HTTP/2 podían esperar unos 40 ms un acuse de recibo diferido. Ahora se activa en cada socket aceptado.",
+                "La primera prueba generaba la carga desde Playwright, cuyo cliente se ralentizaba a medida que avanzaba la ejecución, y mostró regresiones que no existían. Esas cifras se descartaron.",
               ],
             },
           ],

@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "先测量，再下结论。当发现某个基准测试测的是它自己的客户端而非服务器时，这一修正也会被记录下来；本站的[性能笔记](/about-blog/performance)就是一个例子。",
+              text: "先测量，再下结论；本站的[性能笔记](/about-blog/performance)说明了测量方式。",
             },
           ],
         },

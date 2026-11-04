@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "先量測，再下結論。當發現某個效能測試量到的是自己的用戶端而非伺服器時，這項修正也會記錄下來；本站的[效能筆記](/about-blog/performance)就是一例。",
+              text: "先量測，再下結論；本站的[效能筆記](/about-blog/performance)說明了量測方式。",
             },
           ],
         },

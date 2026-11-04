@@ -382,7 +382,7 @@ const content: AboutMeContent = {
             },
             {
               kind: "paragraph",
-              text: "Les mesures précèdent les affirmations. Quand un benchmark s’avère mesurer son propre client plutôt que le serveur, la correction est elle aussi consignée ; les [notes sur les performances](/about-blog/performance) de ce site en sont un exemple.",
+              text: "Les mesures précèdent les affirmations ; les [notes sur les performances](/about-blog/performance) de ce site montrent comment elles sont réalisées.",
             },
           ],
         },

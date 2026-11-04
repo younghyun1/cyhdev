@@ -254,6 +254,22 @@
     min-height: 44px;
   }
 
+  /* The accent choices need the row's width once the custom fields show. */
+  .mobile-drawer-control-row:has(.accent-controls) {
+    flex-wrap: wrap;
+    padding-block: 0.5rem;
+  }
+
+  .mobile-drawer-control-row .accent-custom-text {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .mobile-drawer-control-row .accent-custom-color {
+    width: 44px;
+    height: 44px;
+  }
+
   /* A switch stays switch-shaped: the row's 44px rule is for square controls,
      and the row itself is the 44px target. */
   .mobile-drawer-control-row .motion-switch {

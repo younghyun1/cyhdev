@@ -33,10 +33,8 @@ const content: AboutBlogContent = {
                   label: "透過 UNIX socket 觀察到的資料庫往返時間；透過 localhost TCP 則為 ~600 µs",
                 },
                 {
-                  value: "130 KiB",
-                  count: 130,
-                  suffix: " KiB",
-                  label: "初始前端資源的 gzip 預算，於打包建置時強制執行",
+                  value: "0",
+                  label: "正式環境中的 Node.js 程序數；前端內嵌在伺服器二進位檔中",
                 },
                 {
                   value: "8",
@@ -44,8 +42,8 @@ const content: AboutBlogContent = {
                   label: "介面語言，每種語言僅在選取時下載",
                 },
                 {
-                  value: "0.15 ms",
-                  label: "啟用 `TCP_NODELAY` 後 HTTP/2 圖磚回應完成時間的中位數，先前為 41 ms",
+                  value: "4,096",
+                  label: "在 TLS 之前准入的開啟連線數，每個位址或 IPv6 /64 最多 64 條",
                 },
                 {
                   value: "1",
@@ -114,7 +112,7 @@ const content: AboutBlogContent = {
                   title: "前端",
                   href: "/about-blog/frontend",
                   meta: "SolidJS 2 · Vite · Tailwind",
-                  text: "應用程式外殼、載入預算、在地化、設計系統與動態效果。",
+                  text: "應用程式外殼、載入、在地化、設計系統與動態效果。",
                 },
                 {
                   title: "子系統",
@@ -126,7 +124,7 @@ const content: AboutBlogContent = {
                   title: "效能",
                   href: "/about-blog/performance",
                   meta: "PGO · BOLT · oha",
-                  text: "最佳化建置、量錯對象的效能測試，以及修正後的數據。",
+                  text: "最佳化建置、量測方法與結果。",
                 },
               ],
             },
@@ -327,7 +325,7 @@ const content: AboutBlogContent = {
               kind: "tags",
               groups: [
                 { label: "應用程式", items: ["SolidJS 2", "Solid Router 2", "TypeScript", "Vite 8"] },
-                { label: "樣式", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLCH"] },
+                { label: "樣式", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLab"] },
                 { label: "元件", items: ["Toast UI Editor", "Leaflet", "Chart.js", "highlight.js", "DOMPurify"] },
                 { label: "測試", items: ["Vitest", "Playwright", "axe-core"] },
               ],
@@ -339,13 +337,13 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "budget",
-          heading: "載入預算",
+          id: "loading",
+          heading: "載入",
           blocks: [
             {
               kind: "list",
               items: [
-                "一個 Vite 外掛從進入點區塊開始追蹤靜態匯入，若初始指令碼與樣式的 gzip 大小超過 **130 KiB**，建置即失敗。",
+                "各頁面、首頁的聊天面板及其等高線著色器都是獨立的區塊，建置時會回報最先載入內容的 gzip 大小。",
                 "初始區塊只包含英文介面文字。其他語言以及各語言的關於頁面都是獨立的區塊，在選取時才載入。",
                 "在節流條件下的行動裝置效能測試目標為：LCP 不超過 2.5 s、互動不超過 200 ms、CLS 不超過 0.1。",
               ],
@@ -358,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "介面支援英文、韓文、法文、西班牙文、簡體中文、繁體中文、日文與德文。約 650 個鍵的目錄會與後端的註冊表比對驗證，預留位置在翻譯後也必須保留。這些關於頁面是具型別的資料模組，因此譯文不可能在無聲無息間漏掉英文版中的章節。",
+              text: "介面支援英文、韓文、法文、西班牙文、簡體中文、繁體中文、日文與德文。約 740 個鍵的目錄會與後端的註冊表比對驗證，預留位置在翻譯後也必須保留。這些關於頁面是具型別的資料模組，因此譯文不可能在無聲無息間漏掉英文版中的章節。",
             },
           ],
         },
@@ -368,7 +366,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "整體風格溫暖而具技術感：米色紙張或純黑底色、細線邊框、技術內容使用等寬字型，並且一次只用一種強調色。色彩皆為語意化 CSS 變數，因此元件不需要另外的深色模式變體。強調色預設集以 OKLCH 定義，可在不同色相間維持一致的感知亮度；淺色或深色模式與強調色都會在首次繪製前套用。",
+              text: "整體風格溫暖而具技術感：米色紙張或純黑底色、細線邊框、技術內容使用等寬字型，並且一次只用一種強調色。色彩皆為語意化 CSS 變數，因此元件不需要另外的深色模式變體。強調色預設集與頁面背景的對比度由測試檢查，訪客輸入的 RGB 色彩會在各模式下調整以維持可讀；淺色或深色模式與強調色都會在首次繪製前套用。",
             },
           ],
         },
@@ -383,7 +381,7 @@ const content: AboutBlogContent = {
                 "統計數字透過註冊的 `@property` 整數遞增顯示，最終數值保留在標記中，供輔助技術讀取。",
                 "主題切換透過 View Transitions API 從切換鈕向外展開。",
                 "首頁的等高線背景是一個小型 WebGL 著色器，在頁面閒置後載入，僅在效能足夠的桌面瀏覽器上執行，限制影格率，並在離開畫面時暫停。",
-                "當系統要求減少動態效果時，所有裝飾性效果都會略過。",
+                "網站設定可以關閉以上所有動畫。動畫預設開啟，不跟隨作業系統的減少動態效果設定。",
               ],
             },
           ],
@@ -484,20 +482,6 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "correction",
-          heading: "量到自己的效能測試",
-          blocks: [
-            {
-              kind: "paragraph",
-              text: "第一輪測試由 Playwright 產生負載，結果看似出現效能退化。但這些退化並不真實：未限定範圍的 Playwright API 呼叫會搜尋先前的測試步驟來尋找父項，因此用戶端隨著執行推進而越來越慢。即使面對一個極簡的 HTTP 伺服器，光是用戶端本身就在九個樣本中從 2,684 降到 1,314 requests/s。",
-            },
-            {
-              kind: "paragraph",
-              text: "負載產生改用 oha。Playwright 仍會檢查每條路由的回應，但在計時區間之外進行。",
-            },
-          ],
-        },
-        {
           id: "setup",
           heading: "測試環境",
           blocks: [
@@ -508,6 +492,7 @@ const content: AboutBlogContent = {
                 "透過集區化的 HTTP/1.1 使用 HTTPS，共 32 條連線，完整讀取回應，逾時期限為兩秒。",
                 "輪替順序進行三輪，每個變體五個樣本，每個樣本前先送出 10,000 個暖機請求，並從全新的資料庫快照開始。",
                 "計時請求共 27,000,000 個，全部回傳 HTTP 200。",
+                "負載由 oha 產生；Playwright 在計時區間之外檢查每條路由的回應。",
               ],
             },
           ],
@@ -556,20 +541,14 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "transport",
-          heading: "小修正也很重要",
+          id: "corrections",
+          heading: "更正",
           blocks: [
             {
-              kind: "paragraph",
-              text: "axum-server 預設的 Rustls 接受器沒有設定 `TCP_NODELAY`，因此拆成標頭訊框與資料訊框的 HTTP/2 回應可能需要等待延遲確認。在每個已接受的 socket 上啟用後，透過重複使用的連線傳輸的 59,571 位元組圖磚回應變化如下。",
-            },
-            {
-              kind: "table",
-              columns: ["TCP_NODELAY", "協定", "第一個位元組時間中位數", "完成時間中位數"],
-              numericColumns: [2, 3],
-              rows: [
-                ["關閉", "HTTP/2", "0.290 ms", "40.981 ms"],
-                ["開啟", "HTTP/2", "0.113 ms", "0.152 ms"],
+              kind: "list",
+              items: [
+                "最初沒有設定 `TCP_NODELAY`：axum-server 預設的 Rustls 接受器不會開啟它，因此 HTTP/2 回應可能要等待約 40 ms 的延遲確認。現在每個已接受的 socket 都會設定。",
+                "第一輪效能測試由 Playwright 產生負載，其用戶端隨著執行推進而變慢，錯誤地顯示出效能退化。這些數字已經捨棄。",
               ],
             },
           ],

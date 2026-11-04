@@ -13,15 +13,25 @@ export interface ForumBlock {
 }
 
 const URL_PATTERN = /https?:\/\/[^\s<>"'`]+/giu;
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}]+$/u;
+const TRAILING_PUNCTUATION = new Set(".,;:!?)]}");
 /** Quoted text is capped so repeated quoting cannot use up a 20,000-character reply. */
 const MAX_QUOTED_CHARACTERS = 2_000;
+
+/**
+ * Scans rather than using a `+$` regex, which is quadratic on a long punctuation
+ * run in the middle of a URL. Anyone can post one, and it runs on every render.
+ */
+function withoutTrailingPunctuation(url: string): string {
+  let end = url.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(url.charAt(end - 1))) end -= 1;
+  return url.slice(0, end);
+}
 
 function parseInline(text: string): ReadonlyArray<ForumInline> {
   const parts: ForumInline[] = [];
   let cursor = 0;
   for (const match of text.matchAll(URL_PATTERN)) {
-    const trimmed = match[0].replace(TRAILING_PUNCTUATION, "");
+    const trimmed = withoutTrailingPunctuation(match[0]);
     if (!URL.canParse(trimmed)) continue;
     if (match.index > cursor) {
       parts.push({ kind: "text", text: text.slice(cursor, match.index) });
@@ -39,7 +49,12 @@ export function parseForumBody(body: string): ReadonlyArray<ForumBlock> {
   let lines: string[] = [];
   let kind: ForumBlock["kind"] = "text";
   const flush = () => {
-    const text = lines.join("\n").replace(/^\n+|\n+$/gu, "");
+    // Dropped by index for the same reason as above: long blank runs are free to post.
+    let start = 0;
+    let end = lines.length;
+    while (start < end && lines[start] === "") start += 1;
+    while (end > start && lines[end - 1] === "") end -= 1;
+    const text = lines.slice(start, end).join("\n");
     if (text) blocks.push({ kind, inline: parseInline(text) });
     lines = [];
   };

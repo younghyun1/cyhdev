@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20,1 % req/s",
   "home.showcase.pgo.title": "PGO et BOLT",
   "home.showcase.pgo.text": "Builds du backend optimisés par profil et après l'édition de liens, mesurés avec oha sur des cœurs dédiés.",
-  "home.showcase.nodelay.kicker": "41 ms → 0,15 ms",
-  "home.showcase.nodelay.title": "Une option de socket",
-  "home.showcase.nodelay.text": "Activer TCP_NODELAY a supprimé les attentes d'accusé de réception retardé dans les réponses HTTP/2.",
   "home.showcase.sfu.kicker": "Appels WebRTC",
   "home.showcase.sfu.title": "SFU intégré",
   "home.showcase.sfu.text": "Les appels audio et vidéo sont relayés dans le serveur Rust, sans transcodage.",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "Déconnecté",
   "live_chat.state.error": "Erreur de connexion",
   "live_chat.in_call": "{count} en appel",
-  "live_chat.empty": "Aucun message pour l'instant. Dites bonjour."
+  "live_chat.empty": "Aucun message pour l'instant. Dites bonjour.",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "Chaîne de traitement photo",
+  "home.showcase.photography.text": "Images décodées dans des limites de pixels fixes et encodées en AVIF au préréglage le plus lent, deux tâches à la fois.",
+  "accent.custom": "Personnalisé",
+  "accent.custom_rgb": "Valeur RVB",
+  "accent.custom_invalid": "Saisissez une valeur RVB, par exemple 255, 120, 40 ou #ff7828.",
+  "accent.custom_adjusted": "Ajustée dans ce mode pour que le texte reste lisible."
 }

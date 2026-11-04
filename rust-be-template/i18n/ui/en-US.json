@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20.1% req/s",
   "home.showcase.pgo.title": "PGO and BOLT",
   "home.showcase.pgo.text": "Profile-guided and post-link optimized backend builds, measured with oha on pinned cores.",
-  "home.showcase.nodelay.kicker": "41 ms → 0.15 ms",
-  "home.showcase.nodelay.title": "One socket flag",
-  "home.showcase.nodelay.text": "Enabling TCP_NODELAY removed delayed-acknowledgement stalls from HTTP/2 responses.",
   "home.showcase.sfu.kicker": "WebRTC",
   "home.showcase.sfu.title": "In-process SFU",
   "home.showcase.sfu.text": "Voice and video calls forwarded inside the Rust server without transcoding.",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "Disconnected",
   "live_chat.state.error": "Connection error",
   "live_chat.in_call": "{count} in call",
-  "live_chat.empty": "No messages yet. Say hello."
+  "live_chat.empty": "No messages yet. Say hello.",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "Photography pipeline",
+  "home.showcase.photography.text": "Uploads decoded within fixed pixel bounds and encoded to AVIF at the slowest preset, two jobs at a time.",
+  "accent.custom": "Custom",
+  "accent.custom_rgb": "RGB value",
+  "accent.custom_invalid": "Enter an RGB value such as 255, 120, 40 or #ff7828.",
+  "accent.custom_adjusted": "Adjusted in this mode so text stays readable."
 }

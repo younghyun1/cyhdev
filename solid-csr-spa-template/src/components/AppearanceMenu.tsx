@@ -5,9 +5,10 @@ import AccentPicker from "./AccentPicker";
 import MotionToggle from "./MotionToggle";
 
 /**
- * Header popover for the accent preset and the animation switch. The trigger
- * shows the active accent so the option is visible without opening it. Outside
- * presses and Escape close the panel; Escape returns focus to the trigger.
+ * Header popover for the accent and the animation switch. The trigger shows the
+ * active accent so the option is visible without opening it. Outside presses,
+ * Escape, and tabbing past the end close the panel; Escape returns focus to the
+ * trigger.
  */
 export default function AppearanceMenu(): JSX.Element {
   const [open, setOpen] = createSignal(false);
@@ -39,10 +40,16 @@ export default function AppearanceMenu(): JSX.Element {
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("keydown", onKeyDown);
   };
+  // No target means focus left the page or a native picker opened, not that the
+  // reader moved on.
+  const onFocusOut = (event: FocusEvent) => {
+    const next = event.relatedTarget;
+    if (open() && next instanceof Node && !root?.contains(next)) close();
+  };
   onCleanup(removeListeners);
 
   return (
-    <div class="appearance-menu" ref={(element) => (root = element)}>
+    <div class="appearance-menu" ref={(element) => (root = element)} onFocusOut={onFocusOut}>
       <button
         ref={(element) => (trigger = element)}
         type="button"

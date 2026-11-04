@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20,1 % pet./s",
   "home.showcase.pgo.title": "PGO y BOLT",
   "home.showcase.pgo.text": "Compilaciones del backend optimizadas por perfil y tras el enlazado, medidas con oha en núcleos fijados.",
-  "home.showcase.nodelay.kicker": "41 ms → 0,15 ms",
-  "home.showcase.nodelay.title": "Una opción de socket",
-  "home.showcase.nodelay.text": "Activar TCP_NODELAY eliminó las esperas por ACK retardado en las respuestas HTTP/2.",
   "home.showcase.sfu.kicker": "Llamadas WebRTC",
   "home.showcase.sfu.title": "SFU integrado",
   "home.showcase.sfu.text": "Las llamadas de voz y vídeo se reenvían dentro del servidor Rust, sin transcodificación.",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "Desconectado",
   "live_chat.state.error": "Error de conexión",
   "live_chat.in_call": "{count} en llamada",
-  "live_chat.empty": "Aún no hay mensajes. Saluda."
+  "live_chat.empty": "Aún no hay mensajes. Saluda.",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "Procesado de fotografías",
+  "home.showcase.photography.text": "Imágenes decodificadas dentro de límites fijos de píxeles y codificadas en AVIF con el ajuste más lento, dos trabajos a la vez.",
+  "accent.custom": "Personalizado",
+  "accent.custom_rgb": "Valor RGB",
+  "accent.custom_invalid": "Introduce un valor RGB, como 255, 120, 40 o #ff7828.",
+  "accent.custom_adjusted": "Ajustado en este modo para que el texto siga siendo legible."
 }

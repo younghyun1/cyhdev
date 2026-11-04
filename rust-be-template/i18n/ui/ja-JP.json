@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20.1% リクエスト/秒",
   "home.showcase.pgo.title": "PGO と BOLT",
   "home.showcase.pgo.text": "プロファイルガイド最適化とリンク後最適化を施したバックエンドビルドを、コアを固定した oha で計測しました。",
-  "home.showcase.nodelay.kicker": "41 ミリ秒 → 0.15 ミリ秒",
-  "home.showcase.nodelay.title": "ソケットフラグひとつ",
-  "home.showcase.nodelay.text": "TCP_NODELAY を有効にし、HTTP/2 応答での遅延 ACK 待ちをなくしました。",
   "home.showcase.sfu.kicker": "WebRTC 通話",
   "home.showcase.sfu.title": "プロセス内 SFU",
   "home.showcase.sfu.text": "音声・ビデオ通話を、トランスコードせずに Rust サーバー内で転送します。",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "切断済み",
   "live_chat.state.error": "接続エラー",
   "live_chat.in_call": "通話中 {count} 人",
-  "live_chat.empty": "まだメッセージはありません。あいさつしてみましょう。"
+  "live_chat.empty": "まだメッセージはありません。あいさつしてみましょう。",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "写真パイプライン",
+  "home.showcase.photography.text": "アップロード画像を固定のピクセル上限内でデコードし、最も遅いプリセットで AVIF にエンコードします。同時処理は2件までです。",
+  "accent.custom": "カスタム",
+  "accent.custom_rgb": "RGB 値",
+  "accent.custom_invalid": "255, 120, 40 や #ff7828 のような RGB 値を入力してください。",
+  "accent.custom_adjusted": "文字が読みやすいよう、このモードでは調整しています。"
 }

@@ -249,10 +249,77 @@
 }
 
 /* Accent swatches. Each swatch shows its own preset color in the current mode
-   rather than the active accent. */
+   rather than the active accent; the custom one shows the whole wheel. */
+.accent-controls {
+  display: grid;
+  min-width: 0;
+  gap: 0.625rem;
+}
+
 .accent-picker {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.accent-custom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.accent-custom-color {
+  flex: none;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 9999px;
+  background: none;
+  cursor: pointer;
+}
+
+.accent-custom-color::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.accent-custom-color::-webkit-color-swatch {
+  border: 0;
+}
+
+.accent-custom-color::-moz-color-swatch {
+  border: 0;
+}
+
+.accent-custom-text {
+  width: 8.5rem;
+  min-width: 0;
+  min-height: 1.75rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.accent-custom-text[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.accent-custom-note {
+  max-width: 12.5rem;
+  margin: 0;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: var(--ink-muted);
+}
+
+.accent-custom-note--error {
+  color: var(--danger);
 }
 
 .accent-swatch {
@@ -285,6 +352,11 @@
   outline-offset: 4px;
 }
 
+.accent-swatch[data-swatch="custom"],
+.dark .accent-swatch[data-swatch="custom"] {
+  --swatch: var(--accent);
+  background: conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #ec4899, #ef4444);
+}
 .accent-swatch[data-swatch="lagoon"] { --swatch: #0f766e; }
 .accent-swatch[data-swatch="cobalt"] { --swatch: #1d4ed8; }
 .accent-swatch[data-swatch="orchid"] { --swatch: #7e22ce; }

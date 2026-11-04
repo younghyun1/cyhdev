@@ -33,10 +33,8 @@ const content: AboutBlogContent = {
                   label: "Observed database round trip over a UNIX socket, against ~600 µs over localhost TCP",
                 },
                 {
-                  value: "130 KiB",
-                  count: 130,
-                  suffix: " KiB",
-                  label: "Gzip budget for the initial frontend assets, enforced when the bundle is built",
+                  value: "0",
+                  label: "Node.js processes in production; the frontend is embedded in the server binary",
                 },
                 {
                   value: "8",
@@ -44,8 +42,8 @@ const content: AboutBlogContent = {
                   label: "Interface languages, each downloaded only when selected",
                 },
                 {
-                  value: "0.15 ms",
-                  label: "Median HTTP/2 tile completion after enabling `TCP_NODELAY`, down from 41 ms",
+                  value: "4,096",
+                  label: "Open connections admitted before TLS, with at most 64 per address or IPv6 /64",
                 },
                 {
                   value: "1",
@@ -114,7 +112,7 @@ const content: AboutBlogContent = {
                   title: "Frontend",
                   href: "/about-blog/frontend",
                   meta: "SolidJS 2 · Vite · Tailwind",
-                  text: "The application shell, loading budget, localization, design system, and motion.",
+                  text: "The application shell, loading, localization, design system, and motion.",
                 },
                 {
                   title: "Subsystems",
@@ -126,7 +124,7 @@ const content: AboutBlogContent = {
                   title: "Performance",
                   href: "/about-blog/performance",
                   meta: "PGO · BOLT · oha",
-                  text: "Optimized builds, the benchmark that measured the wrong thing, and the corrected numbers.",
+                  text: "Optimized builds, how they were measured, and the results.",
                 },
               ],
             },
@@ -327,7 +325,7 @@ const content: AboutBlogContent = {
               kind: "tags",
               groups: [
                 { label: "Application", items: ["SolidJS 2", "Solid Router 2", "TypeScript", "Vite 8"] },
-                { label: "Styling", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLCH"] },
+                { label: "Styling", items: ["Tailwind CSS 4", "IBM Plex Sans", "IBM Plex Mono", "OKLab"] },
                 { label: "Components", items: ["Toast UI Editor", "Leaflet", "Chart.js", "highlight.js", "DOMPurify"] },
                 { label: "Testing", items: ["Vitest", "Playwright", "axe-core"] },
               ],
@@ -339,13 +337,13 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "budget",
-          heading: "Loading budget",
+          id: "loading",
+          heading: "Loading",
           blocks: [
             {
               kind: "list",
               items: [
-                "A Vite plugin follows static imports from the entry chunk and fails the build if the initial scripts and styles exceed **130 KiB** gzip.",
+                "Pages, the home page's chat panel, and its contour shader are separate chunks, and the build reports the gzip size of what loads first.",
                 "Only English interface text ships in the initial chunk. Other languages, and each language's About pages, are separate chunks loaded on selection.",
                 "Throttled mobile performance tests target LCP at or under 2.5 s, interactions at or under 200 ms, and CLS at or under 0.1.",
               ],
@@ -358,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "The interface supports English, Korean, French, Spanish, Simplified and Traditional Chinese, Japanese, and German. A catalog of roughly 650 keys is validated against the backend's registry, and placeholders must survive translation. These About pages are typed data modules, so a translation cannot silently omit a section that English has.",
+              text: "The interface supports English, Korean, French, Spanish, Simplified and Traditional Chinese, Japanese, and German. A catalog of roughly 740 keys is validated against the backend's registry, and placeholders must survive translation. These About pages are typed data modules, so a translation cannot silently omit a section that English has.",
             },
           ],
         },
@@ -368,7 +366,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "The look is warm and technical: cream paper or pure black, hairline borders, monospace for anything technical, and one accent color at a time. Colors are semantic CSS variables, so components never need dark-mode variants. Accent presets are defined in OKLCH, which keeps perceived lightness consistent across hues, and the light or dark mode and accent are applied before first paint.",
+              text: "The look is warm and technical: cream paper or pure black, hairline borders, monospace for anything technical, and one accent color at a time. Colors are semantic CSS variables, so components never need dark-mode variants. Accent presets are tested for contrast against the page backgrounds, a visitor's own RGB color is adjusted in each mode to stay readable, and the light or dark mode and accent are applied before first paint.",
             },
           ],
         },
@@ -383,7 +381,7 @@ const content: AboutBlogContent = {
                 "Statistics count up through a registered `@property` integer, with the final value present in the markup for assistive technology.",
                 "The theme switch expands from the toggle through the View Transitions API.",
                 "The home page's contour field is a small WebGL shader that loads after the page is idle, runs only on capable desktop browsers, caps its frame rate, and pauses off-screen.",
-                "Everything decorative is skipped when the system asks for reduced motion.",
+                "A site setting turns all of this off. Animations default to on and do not follow the operating system's reduced-motion setting.",
               ],
             },
           ],
@@ -484,20 +482,6 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "correction",
-          heading: "The benchmark that measured itself",
-          blocks: [
-            {
-              kind: "paragraph",
-              text: "The first campaign drove load from Playwright and appeared to show regressions. They were not real: unscoped Playwright API calls search earlier test steps to find their parent, so the client slowed down as the run went on. Against a trivial HTTP server, the client alone fell from 2,684 to 1,314 requests/s over nine samples.",
-            },
-            {
-              kind: "paragraph",
-              text: "Load generation moved to oha. Playwright still checks each route's response, but outside the timed window.",
-            },
-          ],
-        },
-        {
           id: "setup",
           heading: "Setup",
           blocks: [
@@ -508,6 +492,7 @@ const content: AboutBlogContent = {
                 "HTTPS over pooled HTTP/1.1 with 32 connections, full response reads, and two-second deadlines.",
                 "Three rotated rounds with five samples per variant, each after 10,000 warm-up requests, from a fresh database snapshot.",
                 "27,000,000 timed requests in total; every one returned HTTP 200.",
+                "Load comes from oha; Playwright checks each route's response outside the timed window.",
               ],
             },
           ],
@@ -556,20 +541,14 @@ const content: AboutBlogContent = {
           ],
         },
         {
-          id: "transport",
-          heading: "Small fixes count too",
+          id: "corrections",
+          heading: "Corrections",
           blocks: [
             {
-              kind: "paragraph",
-              text: "The default Rustls acceptor in axum-server did not set `TCP_NODELAY`, so HTTP/2 responses split into header and data frames could wait for a delayed acknowledgement. Enabling it on every accepted socket changed a 59,571-byte tile response over a reused connection as follows.",
-            },
-            {
-              kind: "table",
-              columns: ["TCP_NODELAY", "Protocol", "Median first byte", "Median complete"],
-              numericColumns: [2, 3],
-              rows: [
-                ["Off", "HTTP/2", "0.290 ms", "40.981 ms"],
-                ["On", "HTTP/2", "0.113 ms", "0.152 ms"],
+              kind: "list",
+              items: [
+                "`TCP_NODELAY` was not set at first: axum-server's default Rustls acceptor leaves it off, so HTTP/2 responses could wait about 40 ms on a delayed acknowledgement. Every accepted socket now sets it.",
+                "The first benchmark drove load from Playwright, whose client slowed down as a run went on, and wrongly showed regressions. Those numbers were discarded.",
               ],
             },
           ],

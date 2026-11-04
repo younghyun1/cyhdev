@@ -134,9 +134,19 @@
 
 /* Accent presets. One decorative accent is active at a time; amber is the
    default and needs no attribute. `data-accent` is set on <html> before first
-   paint by index.html and afterwards by state/accent.ts. Each light accent
-   keeps at least 4.5:1 contrast on --paper, --surface, and --accent-soft
-   (amber keeps its historical values). */
+   paint by index.html and afterwards by state/accent.ts. Each preset keeps at
+   least 4.5:1 contrast on --paper, --surface, and --accent-soft in its mode
+   (amber keeps its historical values); e2e/site-interface.spec.ts checks this. */
+:root[data-accent="custom"] {
+    --accent: var(--custom-accent-light);
+    --accent-strong: var(--custom-accent-strong-light);
+    --accent-soft: var(--custom-accent-soft-light);
+}
+:root.dark[data-accent="custom"] {
+    --accent: var(--custom-accent-dark);
+    --accent-strong: var(--custom-accent-strong-dark);
+    --accent-soft: var(--custom-accent-soft-dark);
+}
 :root[data-accent="lagoon"] {
     --accent: #0f766e;
     --accent-strong: #115e59;
@@ -259,8 +269,10 @@ main {
     flex-direction: column;
 }
 
+/* The measured footer: it wraps taller than any fixed clearance at some widths,
+   which would leave the end of a page behind it. */
 .site-main {
-    padding-bottom: var(--fixed-footer-clearance);
+    padding-bottom: var(--site-footer-height);
 }
 
 @media (min-width: 640px) {

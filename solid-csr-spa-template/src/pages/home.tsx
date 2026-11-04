@@ -21,11 +21,11 @@ const LiveChatPanel = lazy(() => import("../components/LiveChatPanel"));
 /** Recent engineering write-ups surfaced on the home page. */
 const SHOWCASE = [
   { id: "pgo", href: "/about-blog/performance" },
-  { id: "nodelay", href: "/about-blog/performance#transport" },
   { id: "sfu", href: "/about-blog/subsystems#live-chat" },
   { id: "minecraft", href: "/minecraft" },
   { id: "geoip", href: "/about-blog/subsystems#geo-ip" },
   { id: "eu5", href: "/eu5-locations-db" },
+  { id: "photography", href: "/about-blog/subsystems#photography" },
 ] as const;
 
 const CONNECT_LINKS = [
@@ -38,6 +38,7 @@ const CONNECT_LINKS = [
   },
 ] as const;
 
+/** home.css shares the list's height among the rows once this many are shown. */
 const POST_COUNT = 5;
 const PHOTO_COUNT = 6;
 
@@ -98,10 +99,23 @@ function HomeChat(): JSX.Element {
 }
 
 export default function Home() {
-  const posts = createMemo(() =>
-    blogApi.getPosts({ page: 1, posts_per_page: POST_COUNT }),
-  );
-  const photos = createMemo(() => photographyApi.getPhotographs(1, PHOTO_COUNT));
+  // A failed panel shows its empty state; the rest of the page does not depend on it.
+  const posts = createMemo(async () => {
+    try {
+      return await blogApi.getPosts({ page: 1, posts_per_page: POST_COUNT });
+    } catch (err) {
+      console.error("Failed to load the latest posts:", err);
+      return null;
+    }
+  });
+  const photos = createMemo(async () => {
+    try {
+      return await photographyApi.getPhotographs(1, PHOTO_COUNT);
+    } catch (err) {
+      console.error("Failed to load the latest photographs:", err);
+      return null;
+    }
+  });
 
   const getPhotoItems = () => {
     const res = photos();
@@ -176,7 +190,7 @@ export default function Home() {
             }
           >
             <Show
-              when={posts()}
+              when={posts()?.data?.posts?.length}
               fallback={<div class="home-empty">{t("home.no_data_found")}</div>}
             >
               <div class="home-post-list">

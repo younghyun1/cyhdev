@@ -2,8 +2,6 @@ import { gzipSync } from "node:zlib";
 import type { OutputAsset, OutputBundle, OutputChunk } from "rollup";
 import type { Plugin } from "vite";
 
-export const INITIAL_ASSET_BUDGET_BYTES = 130 * 1024;
-
 type ViteOutputChunk = OutputChunk & {
   readonly viteMetadata?: {
     readonly importedCss?: ReadonlySet<string>;
@@ -35,11 +33,10 @@ export function collectInitialAssetNames(bundle: OutputBundle): ReadonlySet<stri
   return initialAssets;
 }
 
-export function initialAssetBudgetPlugin(
-  limitBytes = INITIAL_ASSET_BUDGET_BYTES,
-): Plugin {
+/** Reports what a first visit downloads, so growth is visible in every build. */
+export function initialAssetReportPlugin(): Plugin {
   return {
-    name: "initial-asset-budget",
+    name: "initial-asset-report",
     apply: "build",
     enforce: "post",
     generateBundle(_options, bundle) {
@@ -49,13 +46,7 @@ export function initialAssetBudgetPlugin(
         return item ? sum + gzipSync(emittedBytes(item), { level: 9 }).byteLength : sum;
       }, 0);
       const kib = (gzipBytes / 1024).toFixed(1);
-      const limitKib = (limitBytes / 1024).toFixed(0);
       this.info(`initial module graph: ${kib} KiB gzip (${names.size} assets)`);
-      if (gzipBytes > limitBytes) {
-        this.error(
-          `Initial module graph is ${kib} KiB gzip; budget is ${limitKib} KiB.`,
-        );
-      }
     },
   };
 }

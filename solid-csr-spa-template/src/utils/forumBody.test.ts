@@ -26,6 +26,20 @@ describe("parseForumBody", () => {
   it("returns nothing for blank bodies", () => {
     expect(parseForumBody("\n\n")).toEqual([]);
   });
+
+  it("drops blank lines around a block but keeps them inside it", () => {
+    const [block] = parseForumBody(`\n\na${"\n".repeat(19_000)}b\n\n`);
+    expect(block?.inline).toEqual([{ kind: "text", text: `a${"\n".repeat(19_000)}b` }]);
+  });
+
+  it("keeps punctuation that is not at the end of a URL", () => {
+    const url = `http://a.test/${"!".repeat(19_000)}x`;
+    const [block] = parseForumBody(`${url}!!!`);
+    expect(block?.inline).toEqual([
+      { kind: "link", text: url, href: url },
+      { kind: "text", text: "!!!" },
+    ]);
+  });
 });
 
 describe("quoteForReply", () => {

@@ -4,10 +4,10 @@ import ts from "typescript";
 import solidPlugin from "@solidjs/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 import { resolveConfiguredBuildTimestamp } from "./src/config/buildTimestamp.ts";
-import { initialAssetBudgetPlugin } from "./build/initialAssetBudget.ts";
+import { initialAssetReportPlugin } from "./build/initialAssetReport.ts";
 
 export default defineConfig({
-  plugins: [solidPlugin(), initialAssetBudgetPlugin()],
+  plugins: [solidPlugin(), initialAssetReportPlugin()],
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(
       resolveConfiguredBuildTimestamp(

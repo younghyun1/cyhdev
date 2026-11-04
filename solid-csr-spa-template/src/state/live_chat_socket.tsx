@@ -2,6 +2,7 @@ import {
   type Accessor,
   type ParentComponent,
   createContext,
+  createEffect,
   createSignal,
   onCleanup,
   useContext,
@@ -11,7 +12,12 @@ import {
   LIVE_CHAT_BINARY_PROTOCOL,
   decodeServerEventFrame,
 } from "../services/live_chat_binary";
+import {
+  type LiveChatGreeting,
+  advanceGreeting,
+} from "../services/live_chat_greeting";
 import type { LiveChatServerEvent } from "../dtos/responses/live_chat";
+import { user } from "./auth";
 
 export type LiveChatConnectionState =
   | "connecting"
@@ -31,6 +37,11 @@ interface LiveChatSocketContextValue {
   acquire: () => () => void;
   /** Subscribe to decoded server events; returns an unsubscribe function. */
   onEvent: (handler: EventHandler) => () => void;
+  /**
+   * The open connection's greeting, or null when its `hello` is still to come.
+   * Not reactive: read once after subscribing, then follow `onEvent`.
+   */
+  greeting: () => LiveChatGreeting | null;
 }
 
 const RECONNECT_BASE_MS = 1000;
@@ -69,6 +80,7 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
   let reconnectAttempts = 0;
   let reconnectTimer: number | undefined;
   let closeTimer: number | undefined;
+  let greeting: LiveChatGreeting | null = null;
   const handlers = new Set<EventHandler>();
 
   const emit = (event: LiveChatServerEvent) => {
@@ -130,6 +142,7 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
     socket.onclose = () => {
       if (ws === socket) {
         ws = null;
+        greeting = null;
         setConnectionState("closed");
         scheduleReconnect();
       }
@@ -140,7 +153,9 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
     };
     socket.onmessage = (event) => {
       const parsed = parseData(event.data);
-      if (parsed) emit(parsed);
+      if (!parsed) return;
+      greeting = advanceGreeting(greeting, parsed);
+      emit(parsed);
     };
   };
 
@@ -148,12 +163,30 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
     clearReconnect();
     const socket = ws;
     ws = null;
+    greeting = null;
     if (socket) {
       socket.onclose = null;
       socket.close();
     }
     setConnectionState("closed");
   };
+
+  // The server fixes a connection's identity when it upgrades, so signing out or
+  // changing account needs a new one. Signing in does not: a session found at
+  // startup was already on the upgrade, and the login page holds no panel.
+  createEffect(
+    () => user()?.user_info?.user_id ?? null,
+    (userId, previousUserId) => {
+      if (!previousUserId || userId === previousUserId) return;
+      disconnect();
+      // Next task, so consumers watching the state see the old connection end.
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        reconnectAttempts = 0;
+        connect();
+      });
+    },
+  );
 
   const clearCloseTimer = () => {
     if (closeTimer !== undefined) {
@@ -215,6 +248,7 @@ export const LiveChatSocketProvider: ParentComponent = (props) => {
     send,
     acquire,
     onEvent,
+    greeting: () => greeting,
   };
 
   return (

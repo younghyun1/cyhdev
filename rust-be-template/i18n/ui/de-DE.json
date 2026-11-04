@@ -697,9 +697,6 @@
   "home.showcase.pgo.kicker": "+20,1 % Anfragen/s",
   "home.showcase.pgo.title": "PGO und BOLT",
   "home.showcase.pgo.text": "Profilgesteuert und nach dem Linken optimierte Backend-Builds, gemessen mit oha auf fest zugewiesenen Kernen.",
-  "home.showcase.nodelay.kicker": "41 ms → 0,15 ms",
-  "home.showcase.nodelay.title": "Ein Socket-Flag",
-  "home.showcase.nodelay.text": "TCP_NODELAY beseitigte Wartezeiten durch verzögerte Bestätigungen bei HTTP/2-Antworten.",
   "home.showcase.sfu.kicker": "WebRTC-Anrufe",
   "home.showcase.sfu.title": "SFU im Prozess",
   "home.showcase.sfu.text": "Sprach- und Videoanrufe werden im Rust-Server ohne Transkodierung weitergeleitet.",
@@ -732,5 +729,12 @@
   "live_chat.state.closed": "Getrennt",
   "live_chat.state.error": "Verbindungsfehler",
   "live_chat.in_call": "{count} im Anruf",
-  "live_chat.empty": "Noch keine Nachrichten. Sag hallo."
+  "live_chat.empty": "Noch keine Nachrichten. Sag hallo.",
+  "home.showcase.photography.kicker": "AVIF",
+  "home.showcase.photography.title": "Foto-Pipeline",
+  "home.showcase.photography.text": "Hochgeladene Bilder werden innerhalb fester Pixelgrenzen dekodiert und mit der langsamsten Voreinstellung als AVIF kodiert, höchstens zwei Aufträge gleichzeitig.",
+  "accent.custom": "Eigene",
+  "accent.custom_rgb": "RGB-Wert",
+  "accent.custom_invalid": "Gib einen RGB-Wert ein, etwa 255, 120, 40 oder #ff7828.",
+  "accent.custom_adjusted": "In diesem Modus angepasst, damit Text lesbar bleibt."
 }

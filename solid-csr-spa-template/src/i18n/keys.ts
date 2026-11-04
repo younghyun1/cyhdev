@@ -595,9 +595,6 @@ export const UI_TEXT_KEYS = [
   "home.showcase.pgo.kicker",
   "home.showcase.pgo.title",
   "home.showcase.pgo.text",
-  "home.showcase.nodelay.kicker",
-  "home.showcase.nodelay.title",
-  "home.showcase.nodelay.text",
   "home.showcase.sfu.kicker",
   "home.showcase.sfu.title",
   "home.showcase.sfu.text",
@@ -631,6 +628,13 @@ export const UI_TEXT_KEYS = [
   "live_chat.state.error",
   "live_chat.in_call",
   "live_chat.empty",
+  "home.showcase.photography.kicker",
+  "home.showcase.photography.title",
+  "home.showcase.photography.text",
+  "accent.custom",
+  "accent.custom_rgb",
+  "accent.custom_invalid",
+  "accent.custom_adjusted",
 ] as const;
 
 export type UiTextKey = (typeof UI_TEXT_KEYS)[number];
