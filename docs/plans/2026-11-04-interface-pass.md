@@ -1,10 +1,10 @@
 # Interface pass: home board, forum, animation switch, page styling
 
-- Status: complete, 2026-11-04. All nine interface items are implemented and the optimized build of `5d63813` reached `miniserver:~/`; nothing is pushed, installed, or restarted.
-- Checkout: `main`, implementation through `5d63813`; see `git log --oneline origin/main..main`.
+- Status: complete, 2026-11-04. All nine interface items are implemented and the optimized build of `5d63813` reached `miniserver:~/`; the commits are pushed, but nothing is installed or restarted on the server.
+- Checkout: `main`, implementation through `5d63813`.
 - Completed: see [Scope](#scope) and [Decisions](#decisions).
 - Verification: see [Verification](#verification).
-- Remaining: owner review of the new translated strings; then push and the normal deployment workflow.
+- Remaining: owner review of the new translated strings; then the normal deployment workflow.
 
 ## Scope
 
