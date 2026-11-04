@@ -1,26 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type {
+  AboutBlogContent,
+  AboutMeContent,
   ContentBlock,
   ContentPage,
   SectionContent,
 } from "../pages/about-locales/content_types";
 import { parseInline } from "../utils/inlineMarkup";
+import { UI_LOCALES } from "../i18n/locales";
 import meEn from "../pages/about-locales/about_me_en_us";
-import meKo from "../pages/about-locales/about_me_ko_kr";
-import meFr from "../pages/about-locales/about_me_fr_fr";
-import meEs from "../pages/about-locales/about_me_es_es";
-import meZhHans from "../pages/about-locales/about_me_zh_hans";
-import meZhHant from "../pages/about-locales/about_me_zh_hant";
-import meJa from "../pages/about-locales/about_me_ja_jp";
-import meDe from "../pages/about-locales/about_me_de_de";
 import blogEn from "../pages/about-locales/about_blog_en_us";
-import blogKo from "../pages/about-locales/about_blog_ko_kr";
-import blogFr from "../pages/about-locales/about_blog_fr_fr";
-import blogEs from "../pages/about-locales/about_blog_es_es";
-import blogZhHans from "../pages/about-locales/about_blog_zh_hans";
-import blogZhHant from "../pages/about-locales/about_blog_zh_hant";
-import blogJa from "../pages/about-locales/about_blog_ja_jp";
-import blogDe from "../pages/about-locales/about_blog_de_de";
+
+type Modules<T> = Record<string, { readonly default: T }>;
+const meModules: Modules<AboutMeContent> = import.meta.glob("../pages/about-locales/about_me_*.ts", { eager: true });
+const blogModules: Modules<AboutBlogContent> = import.meta.glob("../pages/about-locales/about_blog_*.ts", { eager: true });
+const entries = <T,>(modules: Modules<T>): ReadonlyArray<readonly [string, T]> =>
+  Object.entries(modules).map(([path, module]) => [path, module.default]);
 
 /** Every inline string in a block, in document order. */
 function inlineStrings(block: ContentBlock): string[] {
@@ -100,22 +95,21 @@ function checkSection<Id extends string>(
 }
 
 describe("About content translations", () => {
+  it("exist for every interface language", () => {
+    expect(Object.keys(meModules)).toHaveLength(UI_LOCALES.length);
+    expect(Object.keys(blogModules)).toHaveLength(UI_LOCALES.length);
+  });
+
   it("match the English About Me structure", () => {
-    checkSection(meEn, [
-      ["en-US", meEn], ["ko-KR", meKo], ["fr-FR", meFr], ["es-ES", meEs],
-      ["zh-Hans", meZhHans], ["zh-Hant", meZhHant], ["ja-JP", meJa], ["de-DE", meDe],
-    ]);
+    checkSection(meEn, entries(meModules));
   });
 
   it("match the English About Blog structure", () => {
-    checkSection(blogEn, [
-      ["en-US", blogEn], ["ko-KR", blogKo], ["fr-FR", blogFr], ["es-ES", blogEs],
-      ["zh-Hans", blogZhHans], ["zh-Hant", blogZhHant], ["ja-JP", blogJa], ["de-DE", blogDe],
-    ]);
+    checkSection(blogEn, entries(blogModules));
   });
 
   it("keep excluded personal topics out of every locale", () => {
-    const all = JSON.stringify([meKo, meFr, meEs, meZhHans, meZhHant, meJa, meDe, meEn]);
+    const all = JSON.stringify(entries(meModules));
     for (const forbidden of [/West Papua/i, /Sakartvelo/i, /human rights/i, /719/, /0000 0000/, /22KR/]) {
       expect(all).not.toMatch(forbidden);
     }

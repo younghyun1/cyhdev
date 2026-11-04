@@ -1,13 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { installApiMocks } from "./fixtures";
-import { UI_LOCALES } from "../src/i18n/locales";
+import { localeDirection, UI_LOCALES } from "../src/i18n/locales";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const loginLabels = {
-  "en-US": "Login", "ko-KR": "로그인", "fr-FR": "Connexion",
-  "es-ES": "Iniciar sesión", "zh-Hans": "登录", "zh-Hant": "登入",
-  "ja-JP": "ログイン", "de-DE": "Anmelden",
-};
+const catalog = (tag: string): Record<string, string> =>
+  JSON.parse(readFileSync(resolve(`../rust-be-template/i18n/ui/${tag}.json`), "utf8"));
 
 test("Korean Home introduction and About pages translate", async ({ page }) => {
   await installApiMocks(page, "logged-out");
@@ -41,14 +39,16 @@ for (const { tag } of UI_LOCALES) {
     await page.route("**/api/i18n/ui-text*", (route) => route.abort());
     await page.goto("/login");
     await expect(page.locator("html")).toHaveAttribute("lang", tag);
-    expect(await page.locator("select").first().locator("option").allTextContents()).toEqual([
-      "English", "한국어", "Français", "Español", "简体中文", "繁體中文", "日本語", "Deutsch",
-    ]);
-    await expect(page.getByRole("heading", { name: loginLabels[tag], exact: true })).toBeVisible();
+    const loginTitle = catalog(tag)["page.login.title"] ?? "";
+    expect(await page.locator("select").first().locator("option").allTextContents()).toEqual(
+      UI_LOCALES.map(({ label }) => label),
+    );
+    await expect(page.locator("html")).toHaveAttribute("dir", localeDirection(tag));
+    await expect(page.getByRole("heading", { name: loginTitle, exact: true })).toBeVisible();
     await expect(page).toHaveTitle("Young Hyun Chi | Software Engineer");
     await expect(page.locator(".site-header-brand span").last()).toHaveText("Younghyun's Blog");
     await page.reload();
-    await expect(page.getByRole("heading", { name: loginLabels[tag], exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: loginTitle, exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: resolve("../target/localization-renders", `${tag}-login-mobile.png`), fullPage: true });
   });

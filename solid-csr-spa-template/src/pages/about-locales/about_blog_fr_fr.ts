@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Processus Node.js en production ; le frontend est intégré au binaire du serveur",
                 },
                 {
-                  value: "8",
-                  count: 8,
+                  value: "24",
+                  count: 24,
                   label: "Langues d’interface, chacune téléchargée uniquement lorsqu’elle est sélectionnée",
                 },
                 {
@@ -356,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "L’interface prend en charge l’anglais, le coréen, le français, l’espagnol, le chinois simplifié et traditionnel, le japonais et l’allemand. Un catalogue d’environ 740 clés est validé par rapport au registre du backend, et les espaces réservés doivent survivre à la traduction. Ces pages À propos sont des modules de données typés, si bien qu’une traduction ne peut pas omettre en silence une section présente en anglais.",
+              text: "L’interface prend en charge 24 langues, avec une mise en page de droite à gauche pour l’arabe, le persan et l’ourdou. Un catalogue d’environ 740 clés est validé par rapport au registre du backend, et les espaces réservés doivent survivre à la traduction. Ces pages À propos sont des modules de données typés, si bien qu’une traduction ne peut pas omettre en silence une section présente en anglais.",
             },
           ],
         },

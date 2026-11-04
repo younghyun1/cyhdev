@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import type { UiLocale, UiTextKey } from "../i18n/keys";
 import { UI_TEXT_KEYS } from "../i18n/keys";
 import { EN_US_DEFAULT_TEXTS } from "../i18n/defaults/en-us";
-import { isUiLocale, LOCAL_TEXT_LOADERS, resolveLocale } from "../i18n/locales";
+import { isUiLocale, LOCAL_TEXT_LOADERS, localeDirection, resolveLocale } from "../i18n/locales";
 import { i18nApi } from "../services/all_api";
 
 const UI_LOCALE_STORAGE_KEY = "ui_locale";
@@ -69,7 +69,11 @@ let loadSequence = 0;
 export function applyLocale(nextLocale: UiLocale) {
   if (typeof document === "undefined") return;
   document.documentElement.lang = nextLocale;
+  document.documentElement.dir = localeDirection(nextLocale);
 }
+
+// Before the first render, so a right-to-left page never paints mirrored the wrong way.
+applyLocale(INITIAL_LOCALE);
 
 export async function loadUiTextBundle(nextLocale = locale()) {
   const sequence = ++loadSequence;

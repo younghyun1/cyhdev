@@ -638,4 +638,4 @@ export const UI_TEXT_KEYS = [
 ] as const;
 
 export type UiTextKey = (typeof UI_TEXT_KEYS)[number];
-export type UiLocale = "en-US" | "ko-KR" | "fr-FR" | "es-ES" | "zh-Hans" | "zh-Hant" | "ja-JP" | "de-DE";
+export type UiLocale = "en-US" | "ko-KR" | "fr-FR" | "es-ES" | "zh-Hans" | "zh-Hant" | "ja-JP" | "de-DE" | "ar" | "hi-IN" | "bn-BD" | "te-IN" | "pt-BR" | "id-ID" | "ru-RU" | "ur-PK" | "vi-VN" | "tl-PH" | "fa-IR" | "it-IT" | "pl-PL" | "sv-SE" | "sh" | "ro-RO";

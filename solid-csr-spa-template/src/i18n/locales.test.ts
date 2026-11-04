@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { UI_TEXT_KEYS } from "./keys";
 import { EN_US_DEFAULT_TEXTS } from "./defaults/en-us";
 import { KO_KR_DEFAULT_TEXTS } from "./defaults/ko-kr";
-import { isUiLocale, LOCAL_TEXT_LOADERS, resolveLocale, UI_LOCALES } from "./locales";
+import { isUiLocale, LOCAL_TEXT_LOADERS, localeDirection, resolveLocale, UI_LOCALES } from "./locales";
 import backendEnglish from "../../../rust-be-template/i18n/ui/en-US.json";
 import backendKorean from "../../../rust-be-template/i18n/ui/ko-KR.json";
 
@@ -35,6 +35,11 @@ describe("UI locales", () => {
     });
   }
 
+  it("marks exactly the Arabic-script languages as right to left", () => {
+    expect(UI_LOCALES.filter(({ tag }) => localeDirection(tag) === "rtl").map(({ tag }) => tag))
+      .toEqual(["ar", "ur-PK", "fa-IR"]);
+  });
+
   it("negotiates regions while preserving Chinese script preferences", () => {
     for (const [input, expected] of [
       ["fr-CA", "fr-FR"], ["es-MX", "es-ES"], ["de-AT", "de-DE"],
@@ -42,6 +47,11 @@ describe("UI locales", () => {
       ["zh", "zh-Hans"], ["zh-SG", "zh-Hans"], ["zh-TW", "zh-Hant"],
       ["zh-HK", "zh-Hant"], ["zh-MO", "zh-Hant"],
       ["zh-Hans-TW", "zh-Hans"], ["zh-Hant-CN", "zh-Hant"],
+      ["ar-EG", "ar"], ["hi", "hi-IN"], ["bn-IN", "bn-BD"], ["te", "te-IN"],
+      ["pt-PT", "pt-BR"], ["in", "id-ID"], ["ru-UA", "ru-RU"], ["ur-IN", "ur-PK"],
+      ["vi", "vi-VN"], ["fil-PH", "tl-PH"], ["tl", "tl-PH"], ["fa-AF", "fa-IR"],
+      ["it-CH", "it-IT"], ["pl", "pl-PL"], ["sv-FI", "sv-SE"], ["ro-MD", "ro-RO"],
+      ["hr-HR", "sh"], ["sr-Latn-RS", "sh"], ["bs", "sh"], ["cnr", "sh"], ["sh", "sh"],
     ]) {
       expect(resolveLocale(input ?? "")).toBe(expected);
     }

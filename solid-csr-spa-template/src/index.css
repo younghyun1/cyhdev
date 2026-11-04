@@ -24,7 +24,7 @@
     gap: 0.125rem 0.5rem;
     padding: 0.125rem max(0.75rem, var(--safe-area-right)) 0.25rem max(0.75rem, var(--safe-area-left));
     color: var(--ink-muted);
-    font-family: "IBM Plex Mono", monospace;
+    font-family: var(--font-mono);
     font-size: 0.625rem;
     line-height: 1.25;
     text-align: center;
@@ -51,12 +51,21 @@
         align-items: baseline;
     }
 
+    /* Each status line is one fixed row, so a longer translated label is cut
+       rather than wrapping and changing the height of the whole bar. */
     .site-status-builds,
     .site-status-metrics,
     .site-status-timing {
         display: block;
         min-width: 0;
-        overflow-wrap: anywhere;
+    }
+
+    .site-status-builds > *,
+    .site-status-metrics > *,
+    .site-status-timing {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .site-status-builds { grid-area: 1 / 1; }
@@ -71,12 +80,46 @@
 
 @media (min-width: 1280px) {
     .site-status-layout {
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 24rem minmax(0, 1fr);
     }
     .site-status-builds { grid-column: 1 / 3; }
     .site-status-metrics { grid-column: 3; }
     .site-status-timing { grid-column: 3; }
     .site-copyright { grid-column: 2; }
+}
+
+/* Controls take their size from here, never from their label, so changing the
+   language cannot move anything. A long label wraps inside the box instead of
+   growing it, which is why the box owns its padding and call sites' padding
+   classes do not apply. Width utilities on a control still win, because they
+   sit in a later layer. */
+@layer components {
+    .ui-button {
+        inline-size: 9rem;
+        block-size: 2.5rem;
+        padding-block: 0 !important;
+        padding-inline: 0.5rem !important;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    .ui-button.text-xs {
+        inline-size: 7rem;
+        block-size: 2rem;
+    }
+
+    .ui-button--wide {
+        inline-size: 13rem;
+    }
+
+    /* One line that may be cut; pair it with a title holding the full text. */
+    .ui-clip {
+        overflow-x: clip;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 /* Semantic tokens. Warm neutrals in both modes; the light canvas is cream
@@ -196,6 +239,54 @@
         sans-serif;
     --font-mono:
         "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* IBM Plex has no Arabic, Devanagari, Bengali, or Telugu here, so these scripts
+   use each platform's own reading face, as Korean and Chinese body text already
+   do. A monospace face for them does not exist in practice, so both tokens name
+   the same stack and only the Latin runs inside stay monospaced. */
+:lang(ar),
+:lang(fa),
+:lang(ur) {
+    --font-sans:
+        "IBM Plex Sans", "Noto Sans Arabic", "Segoe UI", "SF Arabic", "Geeza Pro",
+        Tahoma, sans-serif;
+    --font-mono:
+        "IBM Plex Mono", "Noto Sans Arabic", "Segoe UI", "SF Arabic", "Geeza Pro",
+        Tahoma, monospace;
+}
+
+:lang(hi) {
+    --font-sans:
+        "IBM Plex Sans", "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari",
+        Mangal, sans-serif;
+    --font-mono:
+        "IBM Plex Mono", "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari",
+        Mangal, monospace;
+}
+
+:lang(bn) {
+    --font-sans:
+        "IBM Plex Sans", "Noto Sans Bengali", "Nirmala UI", "Kohinoor Bangla",
+        Vrinda, sans-serif;
+    --font-mono:
+        "IBM Plex Mono", "Noto Sans Bengali", "Nirmala UI", "Kohinoor Bangla",
+        Vrinda, monospace;
+}
+
+:lang(te) {
+    --font-sans:
+        "IBM Plex Sans", "Noto Sans Telugu", "Nirmala UI", "Kohinoor Telugu",
+        Gautami, sans-serif;
+    --font-mono:
+        "IBM Plex Mono", "Noto Sans Telugu", "Nirmala UI", "Kohinoor Telugu",
+        Gautami, monospace;
+}
+
+/* Tracking pulls apart Arabic joins and Indic conjuncts, and it outranks every
+   per-component letter-spacing because no component can know the script. */
+:is(:lang(ar), :lang(fa), :lang(ur), :lang(hi), :lang(bn), :lang(te)) * {
+    letter-spacing: 0 !important;
 }
 
 /* Color tokens are mode-dependent var() references, so they must be

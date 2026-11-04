@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Node.js processes in production; the frontend is embedded in the server binary",
                 },
                 {
-                  value: "8",
-                  count: 8,
+                  value: "24",
+                  count: 24,
                   label: "Interface languages, each downloaded only when selected",
                 },
                 {
@@ -356,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "The interface supports English, Korean, French, Spanish, Simplified and Traditional Chinese, Japanese, and German. A catalog of roughly 740 keys is validated against the backend's registry, and placeholders must survive translation. These About pages are typed data modules, so a translation cannot silently omit a section that English has.",
+              text: "The interface supports 24 languages, including right-to-left layouts for Arabic, Persian, and Urdu. A catalog of roughly 740 keys is validated against the backend's registry, and placeholders must survive translation. These About pages are typed data modules, so a translation cannot silently omit a section that English has.",
             },
           ],
         },

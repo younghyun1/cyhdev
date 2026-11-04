@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal, onSettled } from "solid-js";
 import type { JSX } from "@solidjs/web";
 import type { UiLocale } from "../../i18n/keys";
+import { localeDirection } from "../../i18n/locales";
 import type {
   ContentBlock,
   ContentPage as ContentPageData,
@@ -118,7 +119,7 @@ export default function ContentPage<Id extends string>(
   });
 
   return (
-    <main lang={props.locale} class={["app-page cp-page", props.pageClass]}>
+    <main lang={props.locale} dir={localeDirection(props.locale)} class={["app-page cp-page", props.pageClass]}>
       <div class="reading-progress" aria-hidden="true" />
       <div class="cp-shell">
         <nav class="cp-tabs" aria-label={props.content.chrome.sectionNavigation}>

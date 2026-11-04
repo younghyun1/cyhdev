@@ -18,6 +18,22 @@ const loadAboutMe = createLocaleContentLoader<AboutMeContent>({
   "zh-Hant": () => import("./about-locales/about_me_zh_hant"),
   "ja-JP": () => import("./about-locales/about_me_ja_jp"),
   "de-DE": () => import("./about-locales/about_me_de_de"),
+  "ar": () => import("./about-locales/about_me_ar"),
+  "hi-IN": () => import("./about-locales/about_me_hi_in"),
+  "bn-BD": () => import("./about-locales/about_me_bn_bd"),
+  "te-IN": () => import("./about-locales/about_me_te_in"),
+  "pt-BR": () => import("./about-locales/about_me_pt_br"),
+  "id-ID": () => import("./about-locales/about_me_id_id"),
+  "ru-RU": () => import("./about-locales/about_me_ru_ru"),
+  "ur-PK": () => import("./about-locales/about_me_ur_pk"),
+  "vi-VN": () => import("./about-locales/about_me_vi_vn"),
+  "tl-PH": () => import("./about-locales/about_me_tl_ph"),
+  "fa-IR": () => import("./about-locales/about_me_fa_ir"),
+  "it-IT": () => import("./about-locales/about_me_it_it"),
+  "pl-PL": () => import("./about-locales/about_me_pl_pl"),
+  "sv-SE": () => import("./about-locales/about_me_sv_se"),
+  "sh": () => import("./about-locales/about_me_sh"),
+  "ro-RO": () => import("./about-locales/about_me_ro_ro"),
 });
 
 /** Subpage ids accepted by the `/about/:page` route filter. */

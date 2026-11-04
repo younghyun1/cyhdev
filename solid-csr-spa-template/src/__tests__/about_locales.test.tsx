@@ -22,6 +22,22 @@ const headings: ReadonlyArray<{
   { locale: "zh-Hant", about: "關於我", blog: "部落格技術架構" },
   { locale: "ja-JP", about: "プロフィール", blog: "ブログの技術構成" },
   { locale: "de-DE", about: "Über mich", blog: "Technologie-Stack des Blogs" },
+  { locale: "ar", about: "حول", blog: "التقنيات المستخدمة في المدونة" },
+  { locale: "hi-IN", about: "परिचय", blog: "ब्लॉग का टेक स्टैक" },
+  { locale: "bn-BD", about: "পরিচিতি", blog: "ব্লগের টেক স্ট্যাক" },
+  { locale: "te-IN", about: "పరిచయం", blog: "బ్లాగ్ టెక్ స్టాక్" },
+  { locale: "pt-BR", about: "Sobre", blog: "Stack técnica do blog" },
+  { locale: "id-ID", about: "Tentang", blog: "Stack Teknologi Blog" },
+  { locale: "ru-RU", about: "Обо мне", blog: "Технологический стек блога" },
+  { locale: "ur-PK", about: "تعارف", blog: "بلاگ کا ٹیک اسٹیک" },
+  { locale: "vi-VN", about: "Giới thiệu", blog: "Công nghệ của blog" },
+  { locale: "tl-PH", about: "Tungkol", blog: "Tech Stack ng Blog" },
+  { locale: "fa-IR", about: "درباره", blog: "فناوری‌های وبلاگ" },
+  { locale: "it-IT", about: "Info", blog: "Stack tecnologico del blog" },
+  { locale: "pl-PL", about: "O mnie", blog: "Stos technologiczny bloga" },
+  { locale: "sv-SE", about: "Om", blog: "Bloggens teknikstack" },
+  { locale: "sh", about: "O meni", blog: "Tehnološki stek bloga" },
+  { locale: "ro-RO", about: "Despre", blog: "Stack-ul tehnic al blogului" },
 ];
 
 afterEach(() => {

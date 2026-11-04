@@ -19,6 +19,22 @@ const loadAboutBlog = createLocaleContentLoader<AboutBlogContent>({
   "zh-Hant": () => import("./about-locales/about_blog_zh_hant"),
   "ja-JP": () => import("./about-locales/about_blog_ja_jp"),
   "de-DE": () => import("./about-locales/about_blog_de_de"),
+  "ar": () => import("./about-locales/about_blog_ar"),
+  "hi-IN": () => import("./about-locales/about_blog_hi_in"),
+  "bn-BD": () => import("./about-locales/about_blog_bn_bd"),
+  "te-IN": () => import("./about-locales/about_blog_te_in"),
+  "pt-BR": () => import("./about-locales/about_blog_pt_br"),
+  "id-ID": () => import("./about-locales/about_blog_id_id"),
+  "ru-RU": () => import("./about-locales/about_blog_ru_ru"),
+  "ur-PK": () => import("./about-locales/about_blog_ur_pk"),
+  "vi-VN": () => import("./about-locales/about_blog_vi_vn"),
+  "tl-PH": () => import("./about-locales/about_blog_tl_ph"),
+  "fa-IR": () => import("./about-locales/about_blog_fa_ir"),
+  "it-IT": () => import("./about-locales/about_blog_it_it"),
+  "pl-PL": () => import("./about-locales/about_blog_pl_pl"),
+  "sv-SE": () => import("./about-locales/about_blog_sv_se"),
+  "sh": () => import("./about-locales/about_blog_sh"),
+  "ro-RO": () => import("./about-locales/about_blog_ro_ro"),
 });
 
 /** Subpage ids accepted by the `/about-blog/:page` route filter. */

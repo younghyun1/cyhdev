@@ -16,6 +16,22 @@ pub enum UiLocale {
     ZhHant,
     JaJp,
     DeDe,
+    Ar,
+    HiIn,
+    BnBd,
+    TeIn,
+    PtBr,
+    IdId,
+    RuRu,
+    UrPk,
+    ViVn,
+    TlPh,
+    FaIr,
+    ItIt,
+    PlPl,
+    SvSe,
+    Sh,
+    RoRo,
 }
 
 impl UiLocale {
@@ -31,6 +47,23 @@ impl UiLocale {
             Some("es") => Self::EsEs,
             Some("ja") => Self::JaJp,
             Some("de") => Self::DeDe,
+            Some("ar") => Self::Ar,
+            Some("hi") => Self::HiIn,
+            Some("bn") => Self::BnBd,
+            Some("te") => Self::TeIn,
+            Some("pt") => Self::PtBr,
+            Some("id" | "in") => Self::IdId,
+            Some("ru") => Self::RuRu,
+            Some("ur") => Self::UrPk,
+            Some("vi") => Self::ViVn,
+            Some("tl" | "fil") => Self::TlPh,
+            Some("fa" | "prs") => Self::FaIr,
+            Some("it") => Self::ItIt,
+            Some("pl") => Self::PlPl,
+            Some("sv") => Self::SvSe,
+            // One Latin-script catalog serves the mutually intelligible standards.
+            Some("sh" | "hbs" | "sr" | "hr" | "bs" | "cnr") => Self::Sh,
+            Some("ro") => Self::RoRo,
             Some("zh") => {
                 let mut parts = normalized.split('-').skip(1);
                 if parts.clone().any(|part| part == "hans") {
@@ -55,6 +88,22 @@ impl UiLocale {
             Self::ZhHant => "zh-Hant",
             Self::JaJp => "ja-JP",
             Self::DeDe => "de-DE",
+            Self::Ar => "ar",
+            Self::HiIn => "hi-IN",
+            Self::BnBd => "bn-BD",
+            Self::TeIn => "te-IN",
+            Self::PtBr => "pt-BR",
+            Self::IdId => "id-ID",
+            Self::RuRu => "ru-RU",
+            Self::UrPk => "ur-PK",
+            Self::ViVn => "vi-VN",
+            Self::TlPh => "tl-PH",
+            Self::FaIr => "fa-IR",
+            Self::ItIt => "it-IT",
+            Self::PlPl => "pl-PL",
+            Self::SvSe => "sv-SE",
+            Self::Sh => "sh",
+            Self::RoRo => "ro-RO",
         }
     }
 
@@ -67,6 +116,22 @@ impl UiLocale {
             Self::ZhHans | Self::ZhHant => 30,
             Self::JaJp => 73,
             Self::DeDe => 52,
+            Self::Ar => 7,
+            Self::HiIn => 60,
+            Self::BnBd => 19,
+            Self::TeIn => 155,
+            Self::PtBr => 129,
+            Self::IdId => 64,
+            Self::RuRu => 134,
+            Self::UrPk => 171,
+            Self::ViVn => 174,
+            Self::TlPh => 161,
+            Self::FaIr => 126,
+            Self::ItIt => 71,
+            Self::PlPl => 127,
+            Self::SvSe => 153,
+            Self::Sh => 141,
+            Self::RoRo => 133,
         }
     }
 
@@ -80,6 +145,22 @@ impl UiLocale {
             Self::ZhHant => 158,
             Self::JaJp => 392,
             Self::DeDe => 276,
+            Self::Ar => 682,
+            Self::HiIn => 356,
+            Self::BnBd => 50,
+            Self::TeIn => 356,
+            Self::PtBr => 76,
+            Self::IdId => 360,
+            Self::RuRu => 643,
+            Self::UrPk => 586,
+            Self::ViVn => 704,
+            Self::TlPh => 608,
+            Self::FaIr => 364,
+            Self::ItIt => 380,
+            Self::PlPl => 616,
+            Self::SvSe => 752,
+            Self::Sh => 688,
+            Self::RoRo => 642,
         }
     }
 }
@@ -101,12 +182,35 @@ mod tests {
             ("zh-HK", UiLocale::ZhHant),
             ("zh-Hant-CN", UiLocale::ZhHant),
             ("zh-Hans-TW", UiLocale::ZhHans),
+            ("ar-EG", UiLocale::Ar),
+            ("hi", UiLocale::HiIn),
+            ("bn-IN", UiLocale::BnBd),
+            ("te", UiLocale::TeIn),
+            ("pt-PT", UiLocale::PtBr),
+            ("in", UiLocale::IdId),
+            ("ru-UA", UiLocale::RuRu),
+            ("ur-IN", UiLocale::UrPk),
+            ("vi", UiLocale::ViVn),
+            ("fil-PH", UiLocale::TlPh),
+            ("fa-AF", UiLocale::FaIr),
+            ("it-CH", UiLocale::ItIt),
+            ("pl", UiLocale::PlPl),
+            ("sv-FI", UiLocale::SvSe),
+            ("hr-HR", UiLocale::Sh),
+            ("sr-Latn-RS", UiLocale::Sh),
+            ("bs", UiLocale::Sh),
+            ("ro-MD", UiLocale::RoRo),
             ("unknown", UiLocale::EnUs),
         ] {
             assert_eq!(UiLocale::parse(Some(tag)), expected);
             assert_eq!(UiLocale::parse(Some(expected.as_tag())), expected);
         }
         assert_eq!(UiLocale::parse(None), UiLocale::EnUs);
+        // Hindi and Telugu share a country, so the language row must separate them.
+        assert_ne!(
+            UiLocale::HiIn.language_code(),
+            UiLocale::TeIn.language_code()
+        );
         assert_ne!(
             UiLocale::ZhHans.country_code(),
             UiLocale::ZhHant.country_code()

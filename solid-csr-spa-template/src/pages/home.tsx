@@ -13,6 +13,7 @@ import type { JSX } from "@solidjs/web";
 import HeroField from "../components/home/HeroField";
 import { blogApi, photographyApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
+import { LOCAL_NAMES } from "../i18n/localName";
 import { locale, t } from "../state/i18n";
 
 /** Chat and its call code stay out of the initial route graph. */
@@ -132,11 +133,19 @@ export default function Home() {
         <div class="home-hero-inner">
           <div class="home-hero-identity">
             <h1 class="home-hero-title">
-              Younghyun Chi{" "}
+              <bdi>Younghyun Chi</bdi>{" "}
               <span class="home-hero-names">
                 //{" "}
-                <span class="font-sans tracking-normal normal-case">지영현</span>{" "}
-                // 池營賢 // 池营贤
+                <bdi class="font-sans tracking-normal normal-case">지영현</bdi>{" "}
+                // <bdi>池營賢</bdi> // <bdi>池营贤</bdi>
+                <Show when={LOCAL_NAMES[locale()]}>
+                  {(name) => (
+                    <>
+                      {" "}
+                      // <bdi lang={locale()} class="font-sans tracking-normal normal-case">{name()}</bdi>
+                    </>
+                  )}
+                </Show>
               </span>
             </h1>
             <p class="home-hero-role">{t("home.hero.role")}</p>

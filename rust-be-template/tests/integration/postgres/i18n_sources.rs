@@ -157,6 +157,22 @@ async fn verify_locale_readback(service: &I18nService) -> TestResult {
         (UiLocale::ZhHant, "儲存"),
         (UiLocale::JaJp, "保存"),
         (UiLocale::DeDe, "Speichern"),
+        (UiLocale::Ar, "حفظ"),
+        (UiLocale::HiIn, "सहेजें"),
+        (UiLocale::BnBd, "সংরক্ষণ"),
+        (UiLocale::TeIn, "సేవ్ చేయి"),
+        (UiLocale::PtBr, "Salvar"),
+        (UiLocale::IdId, "Simpan"),
+        (UiLocale::RuRu, "Сохранить"),
+        (UiLocale::UrPk, "محفوظ کریں"),
+        (UiLocale::ViVn, "Lưu"),
+        (UiLocale::TlPh, "I-save"),
+        (UiLocale::FaIr, "ذخیره"),
+        (UiLocale::ItIt, "Salva"),
+        (UiLocale::PlPl, "Zapisz"),
+        (UiLocale::SvSe, "Spara"),
+        (UiLocale::Sh, "Sačuvaj"),
+        (UiLocale::RoRo, "Salvați"),
     ] {
         let bundle = service
             .ui_text_bundle(

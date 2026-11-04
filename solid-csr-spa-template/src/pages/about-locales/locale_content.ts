@@ -15,7 +15,7 @@ export type LocalizedContent<T> = {
 /**
  * Returns a loader that downloads one locale's content chunk on first use, so
  * a visitor only fetches the active language. Promises are memoized per
- * locale; the map can hold at most the eight supported locales. A chunk that
+ * locale; the map can hold at most one entry per supported locale. A chunk that
  * fails to load, for example after a deployment removed it, resolves to
  * English and reports `en-US` so the page's `lang` stays truthful. A failed
  * English load is not memoized, so a later render can retry it, and still

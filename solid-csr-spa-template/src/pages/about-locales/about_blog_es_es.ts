@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Procesos de Node.js en producción; el frontend va integrado en el binario del servidor",
                 },
                 {
-                  value: "8",
-                  count: 8,
+                  value: "24",
+                  count: 24,
                   label: "Idiomas de interfaz, cada uno descargado solo al seleccionarlo",
                 },
                 {
@@ -356,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "La interfaz admite inglés, coreano, francés, español, chino simplificado y tradicional, japonés y alemán. Un catálogo de unas 740 claves se valida con el registro del backend, y los marcadores de posición deben sobrevivir a la traducción. Estas páginas «Acerca de» son módulos de datos tipados, así que una traducción no puede omitir en silencio una sección que exista en inglés.",
+              text: "La interfaz admite 24 idiomas, con diseño de derecha a izquierda para árabe, persa y urdu. Un catálogo de unas 740 claves se valida con el registro del backend, y los marcadores de posición deben sobrevivir a la traducción. Estas páginas «Acerca de» son módulos de datos tipados, así que una traducción no puede omitir en silencio una sección que exista en inglés.",
             },
           ],
         },

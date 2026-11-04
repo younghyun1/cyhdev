@@ -48,6 +48,70 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
             UiLocale::DeDe,
             include_str!("../../../../i18n/ui/de-DE.json"),
         )?,
+        parse_bundle(
+            UiLocale::Ar,
+            include_str!("../../../../i18n/ui/ar.json"),
+        )?,
+        parse_bundle(
+            UiLocale::HiIn,
+            include_str!("../../../../i18n/ui/hi-IN.json"),
+        )?,
+        parse_bundle(
+            UiLocale::BnBd,
+            include_str!("../../../../i18n/ui/bn-BD.json"),
+        )?,
+        parse_bundle(
+            UiLocale::TeIn,
+            include_str!("../../../../i18n/ui/te-IN.json"),
+        )?,
+        parse_bundle(
+            UiLocale::PtBr,
+            include_str!("../../../../i18n/ui/pt-BR.json"),
+        )?,
+        parse_bundle(
+            UiLocale::IdId,
+            include_str!("../../../../i18n/ui/id-ID.json"),
+        )?,
+        parse_bundle(
+            UiLocale::RuRu,
+            include_str!("../../../../i18n/ui/ru-RU.json"),
+        )?,
+        parse_bundle(
+            UiLocale::UrPk,
+            include_str!("../../../../i18n/ui/ur-PK.json"),
+        )?,
+        parse_bundle(
+            UiLocale::ViVn,
+            include_str!("../../../../i18n/ui/vi-VN.json"),
+        )?,
+        parse_bundle(
+            UiLocale::TlPh,
+            include_str!("../../../../i18n/ui/tl-PH.json"),
+        )?,
+        parse_bundle(
+            UiLocale::FaIr,
+            include_str!("../../../../i18n/ui/fa-IR.json"),
+        )?,
+        parse_bundle(
+            UiLocale::ItIt,
+            include_str!("../../../../i18n/ui/it-IT.json"),
+        )?,
+        parse_bundle(
+            UiLocale::PlPl,
+            include_str!("../../../../i18n/ui/pl-PL.json"),
+        )?,
+        parse_bundle(
+            UiLocale::SvSe,
+            include_str!("../../../../i18n/ui/sv-SE.json"),
+        )?,
+        parse_bundle(
+            UiLocale::Sh,
+            include_str!("../../../../i18n/ui/sh.json"),
+        )?,
+        parse_bundle(
+            UiLocale::RoRo,
+            include_str!("../../../../i18n/ui/ro-RO.json"),
+        )?,
     ])
 }
 
@@ -92,7 +156,7 @@ mod tests {
     #[test]
     fn locale_sources_cover_the_registry_and_translate_eu5_navigation() -> anyhow::Result<()> {
         let bundles = source_bundles()?;
-        assert_eq!(bundles.len(), 8);
+        assert_eq!(bundles.len(), 24);
         for bundle in &bundles {
             assert_eq!(bundle.entries.len(), REQUIRED_UI_TEXT_KEYS.len());
             assert_eq!(
