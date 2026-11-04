@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-29. A checkbox picker highlights multiple selected biomes on permitted prediction tiles and observed survey cells.
 
-Checkout: website `main` at implementation commits `057b8e1` and `88a332c`, ahead of fetched `origin/main` at `cda5b79`. Public integrations are pushed at [`14d4612`](https://github.com/younghyun1/cyh_minecraft_plugins/commit/14d4612). Sillok objective: `01a0ebf6-edd3-7af2-8e21-d950c8a6bc22`.
+Checkout: website `main` at implementation commits `536e32b` and `d3b6043`, ahead of fetched `origin/main` at `d4fd007`. Public integrations are pushed at [`14d4612`](https://github.com/younghyun1/cyh_minecraft_plugins/commit/14d4612). Sillok objective: `01a0ebf6-edd3-7af2-8e21-d950c8a6bc22`.
 
 Design: offer the pinned 26.3 sampler's dimension-specific biome list in the Layers menu. Draw translucent highlights over permitted prediction tiles, sharing the existing tile store so checkbox changes do not need new seed requests. Highlight observed biome cells from the existing manual survey as well. Keep empty selections free of extra tile canvases, clear highlights on dimension changes, and leave map gestures and markers interactive.
 

@@ -2,9 +2,9 @@
 
 Status: complete for the scoped fixes, local verification, and publication on September 26. Fixed the confirmed request deadline, owner deletion, browser state, gallery pagination, and verification defects.
 
-Checkout: implementation through `574bae0` was pushed to `origin/main` and verified by remote read-back. This completion record and its index links are the remaining documentation changes.
+Checkout: implementation through `ba39d6c` was pushed to `origin/main` and verified by remote read-back. This completion record and its index links are the remaining documentation changes.
 
-Completed: request deadlines apply through WebSocket handshakes; established sessions retain their separate limits (`cb2fd44`). Account deletion and role changes share ordered owner-row locks and reject removal of the final active owner with the existing HTTP 409 conflict (`4579691`). Photo social state is keyed by photograph, disposed callbacks cannot change later views, editable controls retain arrow keys, gallery page size stays fixed, and blog page bounds wait for matching server metadata (`8923822`). Evidence registrations are repaired and regression-tested; runtime reports require valid passing JSON, full review clears stale receipts, and a separate Validation workflow enforces non-release application checks (`574bae0`).
+Completed: request deadlines apply through WebSocket handshakes; established sessions retain their separate limits (`2d1f27d`). Account deletion and role changes share ordered owner-row locks and reject removal of the final active owner with the existing HTTP 409 conflict (`aa459b9`). Photo social state is keyed by photograph, disposed callbacks cannot change later views, editable controls retain arrow keys, gallery page size stays fixed, and blog page bounds wait for matching server metadata (`f6428ae`). Evidence registrations are repaired and regression-tested; runtime reports require valid passing JSON, full review clears stale receipts, and a separate Validation workflow enforces non-release application checks (`ba39d6c`).
 
 Verification: all checks below passed. Logs are `/tmp/cyhdev-fixes-*.log`. The isolated PostgreSQL 18.6 container was stopped after verification. No optimized build, deployment, or live-service mutation occurred.
 

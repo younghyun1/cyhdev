@@ -1,6 +1,6 @@
 # Visual review, chat moderation, and security checks
 
-Status: complete for local implementation and fixture-based review on September 21, 2026; live-service visual verification remains an explicit limitation. Checkout: `main`, implementation commit `e449780`; the separate page map is `710ba8a`. Scope: visitor-map stacking, all SPA route renders, observed visual fixes, superuser live-chat deletion, and non-release performance/security review.
+Status: complete for local implementation and fixture-based review on September 21, 2026; live-service visual verification remains an explicit limitation. Checkout: `main`, implementation commit `08f8072`; the separate page map is `987d280`. Scope: visitor-map stacking, all SPA route renders, observed visual fixes, superuser live-chat deletion, and non-release performance/security review.
 
 ## Completed
 

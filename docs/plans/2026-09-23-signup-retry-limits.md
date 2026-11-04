@@ -2,7 +2,7 @@
 
 Status: complete, September 23. Increased signup retry allowances after production logs showed two invalid submissions exhausting the daily identity budget.
 
-Checkout: `fix/performance-security-review` at implementation commit `de0d005`; policy, focused tests, and authentication documentation are committed. This completion record follows that commit.
+Checkout: `fix/performance-security-review` at implementation commit `0d976db`; policy, focused tests, and authentication documentation are committed. This completion record follows that commit.
 
 Decision: raise each normalized email and user-name allowance from two to five attempts per day. Raise the source-IP allowance from three to ten per hour and from ten to twenty per day. Keep bounded tables, IPv6 /64 grouping, fixed-window expiry, and existing admission order.
 

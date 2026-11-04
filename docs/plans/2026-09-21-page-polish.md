@@ -4,7 +4,7 @@ Status: complete. Fixed comment sorting, forum search alignment, chat moderation
 
 The partial About translation was subsequently removed by request; both About pages now remain English. See [introduction language consistency](2026-09-22-introduction-language.md) for the current behavior and Korean Home correction.
 
-Checkout: main, starting at 448c4e3. Document title and navigation branding remain unchanged.
+Checkout: main, starting at 81af4e9. Document title and navigation branding remain unchanged.
 
 Completed: kept the comment sort label on one line; matched search control heights; grouped chat deletion with the author; enlarged chat and map; removed legacy bold tags from visitor popup text without HTML interpretation. Desktop footer and mobile details share UTC timestamps and explicit SolidJS, TypeScript, Vite, Axum, Rust, and PostgreSQL labels. Removed advocacy passages from About and translated its volunteering, projects, and hobbies sections into Korean; the rest of the profile remains English.
 

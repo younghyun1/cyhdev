@@ -2,7 +2,7 @@
 
 Status: complete, October 30, 2026. Updated the first-party Rust workspace to current registry releases and refreshed its pinned Minecraft dependency.
 
-Checkout: `main` at `8b06043`. The upgrade edits `Cargo.lock`, the root and package Cargo manifests, and this plan; commit the coherent set before stopping.
+Checkout: `main` at `599fd2a`. The upgrade edits `Cargo.lock`, the root and package Cargo manifests, and this plan; commit the coherent set before stopping.
 
 Completed: `cargo upgrade --incompatible` originally failed because Cargo was offline and the local index did not contain the selected wasm-bindgen macro release. Retried online with `CARGO_NET_OFFLINE=false cargo upgrade --incompatible --ignore-rust-version`, then updated the lockfile. The old Pumpkin revision pinned `sha2` exactly to 0.11.0, so the three Pumpkin crates now share upstream commit [`5152bb5`](https://github.com/Pumpkin-MC/Pumpkin/commit/5152bb5c1db05f63003fc7e1cd26ba293a45de41), which permits `sha2` 0.11.1. Cargo updated 71 registry and Git packages.
 

@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-29. The initial coverage fix was mirrored to the public integration repository. Its deliberate detail reduction is superseded by [restoring full prediction resolution](2026-09-29-minecraft-prediction-resolution.md).
 
-Checkout: website `main` at implementation commit `11189aa` and overview regression commit `8806665`, seven commits ahead of fetched `origin/main` before this documentation commit. Public integrations are pushed at [`037858a`](https://github.com/younghyun1/cyh_minecraft_plugins/commit/037858ab15fdff25ce4e6f3d6b655b20ee5ea474). The Minecraft service was not touched.
+Checkout: website `main` at implementation commit `604bcb3` and overview regression commit `988e083`, seven commits ahead of fetched `origin/main` before this documentation commit. Public integrations are pushed at [`037858a`](https://github.com/younghyun1/cyh_minecraft_plugins/commit/037858ab15fdff25ce4e6f3d6b655b20ee5ea474). The Minecraft service was not touched.
 
 Diagnosis: prediction and highlight layers always used 256 CSS-pixel tiles. A 7,200 by 4,050 CSS-pixel viewport requires roughly 600 tiles with Leaflet's buffer, while the tile store admits at most 256 active targets; rejected subscriptions leave blank canvases. The image's isolated prediction strips match this failure mode. Browser zoom changes the CSS viewport after map creation, but the old resize path only changed Leaflet's minimum zoom.
 

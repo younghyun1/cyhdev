@@ -2,7 +2,7 @@
 
 Status: complete on November 3, 2026. The managed PGO and BOLT campaign now benchmarks all three binaries together in rotated rounds, and a re-benchmark confirmed that the rejected November 3 binaries were faster than baseline.
 
-Checkout: `main`; implementation commit `6d41e8b` on top of `4359979`, which built the measured binaries. No uncommitted paths.
+Checkout: `main`; implementation commit `223347b` on top of `d310ec1`, which built the measured binaries. No uncommitted paths.
 
 ## Problem
 

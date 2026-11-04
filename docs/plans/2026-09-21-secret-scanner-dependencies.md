@@ -2,7 +2,7 @@
 
 Status: complete, September 21, 2026. Confidential-source scanning covers submodules without silently skipping their files or history. Corrective dependency pruning is complete; three upstream findings remain explicitly open.
 
-Checkout: `main`, implementation baseline `2865879`. Scope: `tools/xtask/src/secret_scan/`, its command wrapper and tests, dependency manifests/lockfile only when a supported corrective update exists, and this document.
+Checkout: `main`, implementation baseline `73fe8d2`. Scope: `tools/xtask/src/secret_scan/`, its command wrapper and tests, dependency manifests/lockfile only when a supported corrective update exists, and this document.
 
 Completed: `git_inventory.rs` discovers indexed Git links recursively, requires real initialized checkout roots, bounds traversal, and rejects symlinked ancestors and unresolved indexes. Source snapshots share aggregate limits across repositories. The command scans all refs for every discovered repository using the root redaction policy. Eight regression tests cover initialized/nested/uninitialized/missing submodules, tracked credentials, symlinked parents/submodules, and unexpected directories. Removed unused Comrak CLI/syntax-highlighter defaults, eliminating `bincode` and `yaml-rust` from the lockfile while retaining shortcode support.
 

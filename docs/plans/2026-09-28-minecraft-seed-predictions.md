@@ -1,7 +1,7 @@
 # Minecraft biome predictions
 
 - Status: complete, 2026-09-28. Local implementation and applicable development verification are complete.
-- Checkout: `main`, implementation commits `3b6de9f`, `120965c`, `d2d620a`, `43ad99b`, and final build fix `25c3e33`; thirteen commits ahead of fetched `origin/main`, none behind, before this documentation commit.
+- Checkout: `main`, implementation commits `1354db3`, `231f54d`, `e981890`, `7b2d5bd`, and final build fix `de695ce`; thirteen commits ahead of fetched `origin/main`, none behind, before this documentation commit.
 - Completed: separate GPL-3.0 Pumpkin worker, effective Paper default/large-biomes profiles, conservative chunk coverage, seed-free HTTP contracts, 512 MiB RAM cache, and an explicit fixed-Y browser preview with a thin dark perimeter. Predictions remain approximate because equally close biome candidates can differ from saved chunk traversal.
 - Verification: native, frontend, contract, Java, Chromium, fixture, and actual-worker/cache checks pass as detailed below. No production service changes or release builds.
 - Remaining: no local implementation work. Deployment and Apple Silicon runtime verification remain outside this completed scope; activation instructions are below.

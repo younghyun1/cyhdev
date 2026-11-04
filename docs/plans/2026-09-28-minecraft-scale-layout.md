@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-28. The zoom control aligns with the dimension selector, and a longer distance ruler sits at the map's bottom center.
 
-Checkout: `main` at implementation commit `555a948`, ahead of fetched `origin/main` at `cda5b79`. The scoped changes are in the Minecraft map controls, CSS, tests, and design documentation. Sillok objective: `01a0eb8c-e6b0-7dd0-aaf0-fe73eb520f29`.
+Checkout: `main` at implementation commit `bcc4c2b`, ahead of fetched `origin/main` at `d4fd007`. The scoped changes are in the Minecraft map controls, CSS, tests, and design documentation. Sillok objective: `01a0eb8c-e6b0-7dd0-aaf0-fe73eb520f29`.
 
 Design: keep Leaflet's native zoom and Home controls. Position the top-left control corner at the same inset as the dimension selector. Render the scale in Leaflet's bottom-left corner, centered with CSS, and size it from the map viewport. Show five quarter ticks with metre or kilometre labels; limit mobile labels to avoid collisions. Preserve one block per metre at every supported zoom and dimension.
 

@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-28. Hovering or selecting terrain shows biome data with explicit observed and predicted provenance and bounded background requests.
 
-Checkout: `main`, implementation commit `d6eb44a`. Scope: Minecraft frontend components, styles, focused tests, and design documentation. Documentation records this implementation separately.
+Checkout: `main`, implementation commit `24a970d`. Scope: Minecraft frontend components, styles, focused tests, and design documentation. Documentation records this implementation separately.
 
 Completed: implemented the native pointer/tap readout, observed and predicted provenance, exact block-search matches, one-chunk reads, a 64-entry cache with 30-second expiry, and a shared query gate with manual priority. The existing area contract and plugin need no change. Inspected desktop and 390-pixel mobile screenshots.
 

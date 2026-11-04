@@ -1,6 +1,6 @@
 # RTC runtime compatibility and reconnect verification
 
-Status: complete, September 21, 2026. Checkout: `main`, integration baseline `45c0e8b`; initial compatibility fix `2865879` is pushed. Runtime fixes live in `rust-be-template/src/features/live_chat/service/rtc/` and `solid-csr-spa-template/e2e/rtc-live.spec.ts`.
+Status: complete, September 21, 2026. Checkout: `main`, integration baseline `d1d8e46`; initial compatibility fix `73fe8d2` is pushed. Runtime fixes live in `rust-be-template/src/features/live_chat/service/rtc/` and `solid-csr-spa-template/e2e/rtc-live.spec.ts`.
 
 ## Findings and changes
 

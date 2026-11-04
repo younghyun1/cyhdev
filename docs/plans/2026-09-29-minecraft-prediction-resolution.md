@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-29. Restore the original 256 CSS-pixel prediction tiles at every browser zoom while allowing large viewports to load fully.
 
-Checkout: website implementation is committed on `main` at `af591ae`, based on fetched remote head `9a058d6`. Public integrations started at remote head `037858a`; the adapter and reusable package mirror `af591ae` and record source hashes.
+Checkout: website implementation is committed on `main` at `2a31879`, based on fetched remote head `507b40e`. Public integrations started at remote head `037858a`; the adapter and reusable package mirror `2a31879` and record source hashes.
 
 Correction: enlarging the grid to 1,024 or 2,048 CSS pixels retained only 64 by 64 samples and visibly reduced biome detail. Browser zoom must not change the seed level for a fixed map zoom.
 

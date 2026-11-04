@@ -1,15 +1,15 @@
 # RTC, security, visual polish, and localization
 
-Status: complete local implementation and verification, September 21, 2026. Checkout: `main`, implementation head `031f41e`; initial compatibility baseline `2865879` was pushed at start. Scope: local two-browser RTC smoke verification, confidentiality scanner and dependency-advisory fixes, statistics-page visual polish, and French/Spanish/Simplified Chinese/Traditional Chinese/Japanese/German UI translations.
+Status: complete local implementation and verification, September 21, 2026. Checkout: `main`, implementation head `639da3f`; initial compatibility baseline `73fe8d2` was pushed at start. Scope: local two-browser RTC smoke verification, confidentiality scanner and dependency-advisory fixes, statistics-page visual polish, and French/Spanish/Simplified Chinese/Traditional Chinese/Japanese/German UI translations.
 
 Ownership is separated across RTC verification/integration, security tooling/dependencies, statistics components/styles, and localization files. Integration owns shared gate execution and commits. No release builds, production mutations, or confidential runtime files are required. Live-media/embedded-page visual review was explicitly dismissed by the user and is not a completion requirement; RTC media behavior testing remains requested.
 
 ## Delivered
 
-- `f3c8a8a`: [recursive submodule confidentiality scanning and Markdown dependency pruning](2026-09-21-secret-scanner-dependencies.md). Removed two unused transitive dependency findings; retained three unsupported/unpatched upstream findings without suppressions.
-- `5d981fa`: [statistics visual polish](2026-09-21-statistics-polish.md), semantic chart colors, consistent panels, and dark-mobile contrast correction.
-- `45c0e8b`: [six additional UI translations](2026-09-21-localization.md), 650 keys per locale, fixed native-language selector names, lazy catalogs, fallback/race protection, cold-cache correction, and responsive authenticated-header layout.
-- `031f41e`: [RTC runtime fixes](2026-09-21-rtc-runtime-verification.md), explicitly delivered keyframe feedback, bounded subscriptions, join-specific track IDs, and publisher/subscriber teardown cancellation.
+- `f2d8979`: [recursive submodule confidentiality scanning and Markdown dependency pruning](2026-09-21-secret-scanner-dependencies.md). Removed two unused transitive dependency findings; retained three unsupported/unpatched upstream findings without suppressions.
+- `2740a7b`: [statistics visual polish](2026-09-21-statistics-polish.md), semantic chart colors, consistent panels, and dark-mobile contrast correction.
+- `d1d8e46`: [six additional UI translations](2026-09-21-localization.md), 650 keys per locale, fixed native-language selector names, lazy catalogs, fallback/race protection, cold-cache correction, and responsive authenticated-header layout.
+- `639da3f`: [RTC runtime fixes](2026-09-21-rtc-runtime-verification.md), explicitly delivered keyframe feedback, bounded subscriptions, join-specific track IDs, and publisher/subscriber teardown cancellation.
 
 ## Verification
 

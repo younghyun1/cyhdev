@@ -1,7 +1,7 @@
 # Site refresh: About sections, motion, palette, and dependencies
 
 - Status: complete, 2026-11-02. About Me and About Blog are expanded into readable localized subpages from professional records; the visual system gained accent presets, a glass header, and cheap motion; the site gained a command palette, post outlines, and a home engineering showcase; dependencies are upgraded. Local only; nothing is pushed or deployed.
-- Checkout: `main`, five commits ahead of `origin/main` at `1ea0f37`, none behind: dependency upgrade `50f4aaa`, tooling fix `874d6d0`, test fix `9375c6d`, feature `f740efa`, then this handoff. Nothing is pushed. The untracked `minecraft-20260921_052801.tar.zst` archive predates this work and is untouched.
+- Checkout: `main`, five commits ahead of `origin/main` at `77df4f5`, none behind: dependency upgrade `ae8f9e3`, tooling fix `a1b60f3`, test fix `2d9dc8a`, feature `0837012`, then this handoff. Nothing is pushed. The untracked `minecraft-20260921_052801.tar.zst` archive predates this work and is untouched.
 - Completed: see [Scope](#scope) and [Decisions](#decisions).
 - Verification: see [Verification](#verification).
 - Remaining: owner review of translated copy and of the Soundpatrol wording, then the normal deployment workflow. WebKit was not run for this change.

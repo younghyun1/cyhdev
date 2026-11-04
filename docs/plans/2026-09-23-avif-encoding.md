@@ -2,7 +2,7 @@
 
 Status: complete, September 23. Every output variant uses the slowest AVIF preset with encoder-managed threading, prioritizing compression over upload processing time.
 
-Checkout: `main` at implementation commit `96b8904`; the branch matched `origin/main` at `d9e3d47` before implementation. This completion record follows the implementation commit.
+Checkout: `main` at implementation commit `45c3fae`; the branch matched `origin/main` at `38dbb3c` before implementation. This completion record follows the implementation commit.
 
 Decision: speed 1 for photographs, profile pictures, gallery thumbnails, and demo thumbnails; no per-encoder thread override. Quality remains 80. Pixel bounds and the two-job processing semaphore remain unchanged. Speed affects encoding effort and may change file size and decoded appearance; no measured size or visual-quality comparison is available.
 

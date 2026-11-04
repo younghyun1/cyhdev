@@ -1,7 +1,7 @@
 # Minecraft seed-map blending exploration
 
 - Status: complete, 2026-09-28, for feasibility research and a bounded compatibility experiment. No prediction feature is implemented or enabled.
-- Checkout: `main`, preceding research commit `bca55c9`; seven local commits ahead of fetched `origin/main`, with no remote divergence before this documentation update.
+- Checkout: `main`, preceding research commit `d2e5be7`; seven local commits ahead of fetched `origin/main`, with no remote divergence before this documentation update.
 - Completed: reviewed the query contracts, squaremap projection, coverage, compositing, and provenance; compared a maintained 26.3 Cubiomes fork with saved Minecraft data; inspected Pumpkin and other Rust alternatives. Cubiomes fails the exact-biome gate. Paper is the shortest integration path; Pumpkin is the strongest reviewed native Rust candidate for 26.3.
 - Verification: primary-source and installed-API inspection; pinned Cubiomes Debug build and five upstream tests pass; independent comparison finds 179 mismatches across 75,264 saved quart-biome samples. Pumpkin and other Rust alternatives received source review only, without builds or local benchmarks. No production seed, world files, or services were accessed, and no new terrain was generated.
 - Remaining: no research work remains. Implement bounded Paper sampling for the quickest preview, or first test a pinned Pumpkin adapter against the same fixture if Rust ownership is preferred. Production prediction, structure validation, and Apple Silicon runtime verification remain future work; they are not prerequisites for completing this exploration.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Completed 2026-09-21. Scope: provide a tracked root instruction file, scoped instructions at meaningful project boundaries, and a repeatable handoff convention. Implementation baseline: `main` at `25d4300`, confirmed equal to live `origin/main` before edits. Application behavior and dependency versions are unchanged.
+Completed 2026-09-21. Scope: provide a tracked root instruction file, scoped instructions at meaningful project boundaries, and a repeatable handoff convention. Implementation baseline: `main` at `bc27e0a`, confirmed equal to live `origin/main` before edits. Application behavior and dependency versions are unchanged.
 
 ## Research
 

@@ -2,7 +2,7 @@
 
 Status: open, not started; recorded November 3, 2026 for future optimization. No code was changed. These notes collect estimates and known gaps from the [rotated PGO and BOLT re-benchmark](2026-11-03-pgo-bolt-rotated-benchmarks.md) and the [September 30 results](2026-09-30-pgo-bolt-results.md).
 
-Checkout: `main` at `ac32c27`; no uncommitted paths.
+Checkout: `main` at `dde6924`; no uncommitted paths.
 
 ## Measured inputs
 

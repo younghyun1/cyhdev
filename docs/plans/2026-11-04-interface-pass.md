@@ -1,10 +1,10 @@
 # Interface pass: home board, forum, animation switch, page styling
 
-- Status: complete, 2026-11-04. All nine interface items and the [follow-ups](#follow-ups) are implemented. The optimized build in `miniserver:~/` was made from `5d63813`, before the follow-ups, so it does not contain them; nothing is installed or restarted on the server.
+- Status: complete, 2026-11-04. All nine interface items and the [follow-ups](#follow-ups) are implemented. The optimized build in `miniserver:~/` was made from `4086a5a`, before the follow-ups, so it does not contain them; nothing is installed or restarted on the server.
 - Checkout: `main`; see `git log --oneline origin/main..main` for anything unpushed.
 - Completed: see [Scope](#scope), [Decisions](#decisions), and [Follow-ups](#follow-ups).
 - Verification: see [Verification](#verification).
-- Remaining: owner review of the new translated strings; a new optimized build if the follow-ups should deploy; then the normal deployment workflow.
+- Remaining: revoke the database passwords in [History redaction](#history-redaction), which only the owner can do; owner review of the new translated strings; a new optimized build if the follow-ups should deploy; then the normal deployment workflow.
 
 ## Scope
 
@@ -59,7 +59,15 @@ Decisions:
 - A custom color is used exactly when it clears 4.5:1 and is otherwise moved only as far as each mode needs, with a note saying so. The accent colors links and labels, so exact pure yellow on cream would be unreadable.
 - Custom accent code is a lazy chunk. It was split out when the follow-ups reached 130.0 KiB of the former limit, and stays split because few visitors use it.
 
-Known limit: the server does not close a session's chat sockets on logout. The tab that signs out reconnects, but another open tab stays on the old identity until it reloads or the socket drops.
+Chat identity now ends with its session. The server fixed a connection's identity at the upgrade and never revisited it, so a signed-out tab's other tabs, and a stolen cookie's socket, kept posting as that user. `accounts/service/session_end.rs` gives each stored session an end signal that only the store holds, and removing the entry by any path closes that session's connections and no others. Requests clone only the session, so the hot path is unchanged. The cost is deliberate: a call on a signed-in connection ends when the session's hour runs out. Exempting expiry would keep calls alive, at the price of letting authority outlive the session.
+
+## History redaction
+
+Reviewing the secret scan found three database logins in old `Dockerfile` revisions, public on `main` from January 2025 until their removal in August 2026. The scan had never flagged them, because its default rules do not read passwords inside connection strings. `TODO` item W0-A already tracked revoking the historical password.
+
+On the owner's instruction, history was rewritten with `git filter-repo`, matching the connection-string shape so that no password was written to disk, then force pushed to both remote branches and the 18 archive tags in one atomic push, each ref guarded by its previous hash. 935 of 1,214 commits changed hash. Every tip's file tree is identical except seven archive tags, which differ only in their `Dockerfile`, and references in `docs/` and `TODO` were updated through the rewrite's commit map.
+
+This does not make the passwords private. The old commits remain readable on GitHub by hash, and `refs/pull/1/head` pins that history, until GitHub support purges them. Local clones and worktrees elsewhere still need replacing. Treat the passwords as public and revoke them.
 
 ## Verification
 
@@ -69,16 +77,18 @@ Follow-ups, on the final working tree:
 - `npx playwright test --project=chromium` from `solid-csr-spa-template/`: 308 passed, 1 skipped.
 - `npm run test:e2e:security -- --project=chromium`: 38 passed, with the new pre-paint script hash in `e2e/security-headers.json`.
 - `cargo xtask clippy`, `fmt`, `unit`, and `openapi` passed.
-- `cargo xtask secret-scan` fails, on findings that predate this work: 8 in the current tree and 12 in history, all the `generic-api-key` rule in test and fixture files, from September commits. None touches this change. The values are redacted and were not assessed, and no allowlist was added.
+- `cargo xtask secret-scan` passed with no findings in the tree, history, or submodule history. It had been failing since September 23 on synthetic values, now allowlisted by exact value and file after review. A planted connection-string password was caught, a redacted one was not, and a fixture password placed in another file still failed.
+- A scan of all 15,184 objects in the rewritten repository found none of the three passwords, in any of seven encodings. On GitHub, the rewritten removal commit shows the redacted line, and the old hash still serves the original.
+- `cargo test --package xtask` passed, and the session end signal has seven tests covering logout, rotation, the per-account cap, revocation, expiry, and other sessions staying open.
 
-The new chat, home failure, and forum regression tests were each seen failing against the old code before the fixes applied. Pages were reviewed by eye at 390, 1024, 1440, and 1920 pixels against mocked APIs. The contour field's tab-switch fix has no dedicated test. Not run: WebKit projects, `test:e2e:performance`, and any optimized build of the follow-ups.
+The new chat, home failure, and forum regression tests were each seen failing against the old code before the fixes applied. Pages were reviewed by eye at 390, 1024, 1440, and 1920 pixels against mocked APIs. The contour field's tab-switch fix has no dedicated test, and no test closes a real socket through the end signal, because the socket handler needs a database-backed service. Not run: WebKit projects, `test:e2e:performance`, and any optimized build of the follow-ups.
 
-First pass, at `5d63813`:
+First pass, at `4086a5a`:
 
 - `cargo xtask frontend-check` passed: 354 Vitest tests, 17 optimization tests, and an initial route graph of 127.9 KiB gzip against the 130 KiB budget.
 - `npx playwright test --project=chromium` from `solid-csr-spa-template/`: 285 passed, 1 skipped. This includes the new `e2e/site-interface.spec.ts`.
 
-At `b9577bb`, whose Rust and HTTP surface `5d63813` did not change:
+At `cc49d43`, whose Rust and HTTP surface `4086a5a` did not change:
 
 - `cargo xtask clippy`, `fmt`, `unit`, and `openapi` passed.
 - `npm run test:e2e:security -- --project=chromium`: 38 passed.
@@ -88,7 +98,7 @@ Contour field, once, with a temporary spec that was not kept, under software GL:
 
 Every route was reviewed by eye through contact sheets at 1920, 1440, 1024, 800, and 390 pixels against mocked APIs, in both themes where relevant.
 
-`./build_pgo_and_bolt.sh` on a clean `5d63813` was accepted as run `cyhdev-pgo-bolt-18e4d4512a02ed27_1667d`. The live browser campaign, which checks each route against the built backend and synthetic fixture data, passed in all 14 runs: five profiling and coverage runs and nine benchmark rounds. Rounds were rotated on a host left on its balanced policy (`powersave`, `balance_performance`), so the ratios matter more than the absolute numbers:
+`./build_pgo_and_bolt.sh` on a clean `4086a5a` was accepted as run `cyhdev-pgo-bolt-18e4d4512a02ed27_1667d`. The live browser campaign, which checks each route against the built backend and synthetic fixture data, passed in all 14 runs: five profiling and coverage runs and nine benchmark rounds. Rounds were rotated on a host left on its balanced policy (`powersave`, `balance_performance`), so the ratios matter more than the absolute numbers:
 
 | Round | Baseline req/s | PGO req/s | BOLT req/s |
 | --- | --- | --- | --- |

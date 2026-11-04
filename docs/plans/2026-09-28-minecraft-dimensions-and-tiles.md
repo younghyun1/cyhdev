@@ -2,7 +2,7 @@
 
 Status: complete, 2026-09-28. Continuous biome prediction supports the vanilla Nether and End, wider zoom-out retains actual squaremap terrain, binary and image tile transports have codec/browser measurements, and custom Minecraft integrations are published in the public `cyh_minecraft_plugins` monorepo.
 
-Checkout: `main` with plugin/sampler commit `7bac701`, backend/codec commit `a2c5b22`, and final frontend/gzip commit `edcb4e8`. The user subsequently pushed through documentation commit `7c876ab` and started `./build.sh`; fetched `origin/main` matches that commit. Build completion and deployment are not verified. Sillok objective: `01a0eaba-b402-7d72-ac7a-b73bccf67cf7`.
+Checkout: `main` with plugin/sampler commit `61a1c32`, backend/codec commit `b9b1fff`, and final frontend/gzip commit `aa84ce6`. The user subsequently pushed through documentation commit `1c83d46` and started `./build.sh`; fetched `origin/main` matches that commit. Build completion and deployment are not verified. Sillok objective: `01a0eaba-b402-7d72-ac7a-b73bccf67cf7`.
 
 Decisions: preserve the legacy Overworld preview protocol. Continuous profiles add `nether` and `end` presets, verified against each world's effective vanilla generator and source. Profiles remain private and dimension-specific; the shared prediction cache remains capped at 512 MiB. The End has five biome classes in Java Edition. Negative zoom must retain native squaremap imagery without unbounded native-tile fanout. No live restart, reload, or signal is authorized.
 

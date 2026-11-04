@@ -1,6 +1,6 @@
 # RTC dependency compatibility
 
-Status: complete. Checkout: `main`, based on dependency upgrade `1368341`, equal to `origin/main` at start. Scope: fix compilation and Clippy failures introduced by the rtc/webrtc 0.21 and nutype 0.8 upgrades without reverting versions or changing unrelated dependencies.
+Status: complete. Checkout: `main`, based on dependency upgrade `b482252`, equal to `origin/main` at start. Scope: fix compilation and Clippy failures introduced by the rtc/webrtc 0.21 and nutype 0.8 upgrades without reverting versions or changing unrelated dependencies.
 
 Initial `cargo xtask clippy` failed because `SettingEngine::set_nat_1to1_ips` was removed. The installed 0.21 source exposes `SettingEngineBuilder::with_nat_1to1_ips(...).build()`. Updated `features/live_chat/service/rtc/engine.rs` to use that API while retaining the configured public IP and `Host` candidate type. Added participant-limit tests in `config.rs` that accept 1 and 64 and reject 0, 65, and `usize::MAX`, following the Rust conventions' boundary-testing requirement. Corrected the matching ICE documentation's obsolete shared-port configuration. Dependency manifests and lockfile remain unchanged.
 

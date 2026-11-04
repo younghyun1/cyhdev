@@ -2,7 +2,7 @@
 
 Status: complete for implementation and local verification, 2026-09-28; plugin staged for the user's manual restart on 2026-09-29 UTC. Replaced the single 128 by 128 block preview with a continuous, zoom-aware prediction layer beneath squaremap. Default and large-biomes support, hover inspection, the thin rendered-terrain boundary, and the maximum 512 MiB server prediction budget remain enforced. No live service stop, restart, reload, or signal occurred during implementation or staging.
 
-Checkout: `main` at handoff commit `44a3452`, equal to fetched `origin/main` at the start of plugin staging. Implementation commits are `7745858` (continuous tiles), `d2c20a6` (private visibility profiles), and `18f9892` (function-only datapack compatibility). Only this staging record remains to be committed. Sillok objectives: `01a0ea95-ad15-75a0-b40a-db3f0dab3e3b` (implementation) and `01a0eab2-7c2d-7732-914e-01e335b83329` (plugin staging).
+Checkout: `main` at handoff commit `b6680f1`, equal to fetched `origin/main` at the start of plugin staging. Implementation commits are `a06ec32` (continuous tiles), `637f129` (private visibility profiles), and `14a9c0f` (function-only datapack compatibility). Only this staging record remains to be committed. Sillok objectives: `01a0ea95-ad15-75a0-b40a-db3f0dab3e3b` (implementation) and `01a0eab2-7c2d-7732-914e-01e335b83329` (plugin staging).
 
 Correction: the earlier bounded preview did not satisfy the intended map interaction. Its per-request process startup, two Paper coverage calls, shared one-second cooldown, single response state, and SVG-cell rendering prevent continuous loading. Pumpkin already exports an independently usable biome sampler; no Minecraft server instance or preview world is needed.
 

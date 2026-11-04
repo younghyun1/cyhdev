@@ -1,7 +1,7 @@
 # Code license and copyright footer
 
 - Status: complete; 2026-09-22. License, attribution, shared desktop metrics row, and repository link implemented.
-- Checkout: `main`; layout refinement starts from `ca0a6aa`. Original license implementation: `3c254f5`.
+- Checkout: `main`; layout refinement starts from `d1dca43`. Original license implementation: `7f063d3`.
 - Decision: MIT permits reuse and derivatives while requiring preservation of copyright and permission notices; it does not mandate visible website credit. The frontend already declares MIT. Repository history starts in 2025, so the notice covers 2025-2026. Preserve third-party licenses and distinguish code from personal site content.
 - Sources: [OSI MIT license](https://opensource.org/license/mit), consulted 2026-09-22.
 - Implementation: root license and README scope; explicit “Code licensed under the MIT License.” wording with Code linking to the repository in a separate tab. At wide desktop sizes copyright is centered on the same grid row as the final timing metrics, rather than adding a fourth line. Narrow desktop columns and mobile wrapping avoid overlap. The mobile status opener is a native button separate from the link; keyboard activation of Code cannot open status details.

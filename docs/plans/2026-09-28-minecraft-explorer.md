@@ -1,7 +1,7 @@
 # Minecraft map exploration
 
 - Status: complete, 2026-09-28, for local implementation and verification.
-- Checkout: `main`, implementation through `e4a7fdb`; this completion record accompanies the documentation commit. Started clean and equal to fetched `origin/main` at `02fb3cb6b1250287f34f7a35e95e12bfeeb80858`. Local commits have not been pushed.
+- Checkout: `main`, implementation through `9edc8cd`; this completion record accompanies the documentation commit. Started clean and equal to fetched `origin/main` at `b16f9d3af50489fb16cb02d8381872548f5521c5`. Local commits have not been pushed.
 - Completed: bounded actual-world biome, elevation, block, and saved-structure queries; public named waypoints with administrator-only writes; native Solid/Leaflet terrain explorer with Minecraft-style controls, navigation, ruler and portal coordinates. Original squaremap remains available in its existing sandbox. Fixed a mobile footer focus transition that could intercept form submission.
 - Verification: Java compilation and fixtures, isolated Paper integration, Rust Clippy/format/unit/OpenAPI, frontend types/lint/unit/build, and disposable PostgreSQL integration/rollback pass. See the evidence table below for browser results and limitations. Both disposable servers were stopped cleanly.
 - Remaining: no scoped implementation work remains. Production activation is a separate deployment step; start with the plugin README and activation notes below when authorized. No live plugin installation, database migration, service restart, or world mutation occurred. WebKit verification requires the missing host libraries noted below.

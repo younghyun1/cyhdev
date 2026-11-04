@@ -1,6 +1,6 @@
 # Performance and security review, September 23
 
-Status: complete for local implementation and available verification on September 23. Checkout: `fix/performance-security-review` at `558b92b` before this completion record, with no upstream; includes `origin/main` at `b2a0ecb`. Scope: backend accounts, content, realtime, HTTP, persistence, browser performance, photo viewer loading, WASM demos, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md).
+Status: complete for local implementation and available verification on September 23. Checkout: `fix/performance-security-review` at `046ccaf` before this completion record, with no upstream; includes `origin/main` at `4cb4ebd`. Scope: backend accounts, content, realtime, HTTP, persistence, browser performance, photo viewer loading, WASM demos, Docker, CI, and xtask. This follows the [September 21 review](2026-09-21-performance-security-findings.md).
 
 Completed: merged account/session/OIDC, chat/RTC, HTTP/security-header, content/persistence/media, frontend/photo-viewer, and tooling/WASM fixes. Regenerated browser contracts. Retention remains indefinite by policy; guest IPs remain server side. The viewer clears to black on navigation, delays its amber progress line by 150 ms, fades in decoded images, and preloads neighbours.
 
@@ -10,7 +10,7 @@ Verification: the implementation handoff records passing `cargo xtask openapi`, 
 
 Remaining: public push/PR and deployment order remain an owner decision because the production service is unpatched. WebKit, live-service checks, query-plan measurements, and optimized build verification remain outside the evidence below. No local implementation failures remain.
 
-The findings below preserve the original pre-fix review at `b2a0ecb`, including its source locations and proposed remedies; they do not describe the current implementation. Every finding was traced in source. Items marked plausible had an unconfirmed impact (query plans, cancellation timing, proxy behavior). No finding was exercised against a running server during that review. Backend paths are relative to `rust-be-template/src/` and browser paths to `solid-csr-spa-template/src/`, unless they start with a package directory.
+The findings below preserve the original pre-fix review at `4cb4ebd`, including its source locations and proposed remedies; they do not describe the current implementation. Every finding was traced in source. Items marked plausible had an unconfirmed impact (query plans, cancellation timing, proxy behavior). No finding was exercised against a running server during that review. Backend paths are relative to `rust-be-template/src/` and browser paths to `solid-csr-spa-template/src/`, unless they start with a package directory.
 
 ## Fix first
 
