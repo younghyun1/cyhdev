@@ -14,3 +14,69 @@ condition = "AND"
 regexTarget = "match"
 paths = ['''tools/throughput/README\.md$''']
 regexes = ['''--restrict-key=[A-Za-z0-9_-]{32,}''']
+
+# Reviewed synthetic values, each matched exactly and only in its own files, so anything
+# else appearing there still fails. None of these authorizes anything outside a test run.
+[[allowlists]]
+description = "Throwaway passwords and secret for the disposable optimization campaign"
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''solid-csr-spa-template/e2e/optimization/lifecycle\.ts$''',
+  '''solid-csr-spa-template/e2e/optimization/scenarios/(accounts|browser|support)\.ts$''',
+  '''tools/optimization-fixtures/src/campaign\.rs$''',
+]
+regexes = ['''optimizationfixture012345678901234567890|OptimizationReset456|OptimizationWrong123|OptimizationFixture123''']
+
+[[allowlists]]
+description = "Deterministic pg_dump restriction seed used only for snapshot digests"
+condition = "AND"
+regexTarget = "match"
+paths = ['''tools/optimization-fixtures/src/database\.rs$''']
+regexes = ['''--restrict-key=0123456789abcdef0123456789abcdef''']
+
+[[allowlists]]
+description = "Guest actor value in a binary codec test vector"
+condition = "AND"
+regexTarget = "match"
+paths = ['''solid-csr-spa-template/src/__tests__/live_chat_binary\.test\.ts$''']
+regexes = ['''5f0c1e2d3b4a69788796a5b4c3d2e1f0''']
+
+[[allowlists]]
+description = "Base64 of for-tests-only-not-a-real-token! in email verification tests"
+condition = "AND"
+regexTarget = "match"
+paths = ['''solid-csr-spa-template/src/__tests__/verify_email(_link)?\.test\.tsx?$''']
+regexes = ['''Zm9yLXRlc3RzLW9ubHktbm90LWEtcmVhbC10b2tlbiE''']
+
+# The default rules do not recognize a password inside a connection string, which is how
+# database credentials once reached public history unnoticed.
+[[rules]]
+id = "connection-string-password"
+description = "Inline password in a database or broker connection string"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?)://[^\s:@/'"`]+:([^\s@/'"`]+)@[^\s'"`]+'''
+secretGroup = 1
+keywords = ["postgres", "mysql", "mariadb", "mongodb", "redis", "amqp"]
+
+[[rules.allowlists]]
+description = "Redacted history and documentation placeholders"
+regexes = ['''(?i)^(?:REDACTED|password|passwd|pass|secret|changeme)$''']
+
+[[rules.allowlists]]
+description = "Parser test vectors and the disposable optimization database, reviewed by file"
+paths = [
+  '''rust-be-template/src/init/db_config_tests\.rs$''',
+  '''rust-be-template/src/init/request_rate_limit_tests\.rs$''',
+  '''solid-csr-spa-template/e2e/optimization/model\.test\.ts$''',
+  '''tools/optimization-fixtures/README\.md$''',
+  '''tools/optimization-fixtures/src/database\.rs$''',
+  '''tools/xtask/src/optimization/bootstrap\.rs$''',
+  '''tools/xtask/src/psql_connection\.rs$''',
+  '''tools/xtask/src/test_database\.rs$''',
+]
+
+[[rules.allowlists]]
+description = "Throwaway service-container login in a removed workflow, reachable only in history"
+condition = "AND"
+paths = ['''\.github/workflows/validation\.yml$''']
+regexes = ['''^postgres$''']
