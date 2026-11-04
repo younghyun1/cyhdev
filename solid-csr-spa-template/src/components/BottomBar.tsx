@@ -154,18 +154,24 @@ const BottomBar: Component = () => {
       <footer
         data-site-bar="bottom"
         class={{
-          "site-status-bar fixed bottom-0 left-0 w-full transition-colors duration-90 border-t border-line bg-paper/90 backdrop-blur text-[9px] sm:text-[11px]": true,
+          "site-status-bar fixed inset-x-0 bottom-0 transition-colors duration-90 border-t border-line bg-paper/90 backdrop-blur text-[9px] sm:text-[11px]": true,
           "site-status-bar--keyboard-hidden": keyboardControlFocused(),
         }}
         style={{ "z-index": 50 }}
         aria-hidden={keyboardControlFocused() ? "true" : undefined}
       >
-        <div class="site-status-layout font-mono tabular-nums">
+        <div
+          class="site-status-layout font-mono tabular-nums"
+          // Status lines are cut to keep the bar one height; hovering reveals the full text.
+          onPointerOver={(event) => {
+            if (event.target instanceof HTMLElement) event.target.title = event.target.textContent ?? "";
+          }}
+        >
           <div class="site-status-builds text-ink-muted leading-tight space-y-0.5">
             <BuildDetails />
           </div>
 
-          <div class="site-status-metrics text-ink-muted leading-tight text-right space-y-0.5">
+          <div class="site-status-metrics text-ink-muted leading-tight text-end space-y-0.5">
             {healthState() ? (
               (() => {
                 const health = healthState()!;
@@ -189,7 +195,7 @@ const BottomBar: Component = () => {
             )}
           </div>
 
-          <div class="site-status-timing text-ink-muted leading-tight text-right">
+          <div class="site-status-timing text-ink-muted leading-tight text-end">
             <Show when={healthState()}>
               {(health) => <>
                 {t("bottom_bar.time_to_report")}: {health().time_to_process ?? "?"}{" "}

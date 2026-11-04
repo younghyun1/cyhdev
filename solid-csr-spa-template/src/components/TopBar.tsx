@@ -105,7 +105,7 @@ const TopBar = () => {
     <>
       <header
         data-site-bar="top"
-        class="site-header site-header-glass fixed top-0 left-0 right-0 z-40 text-ink transition-colors duration-90"
+        class="site-header site-header-glass fixed inset-x-0 top-0 z-40 text-ink transition-colors duration-90"
       >
         <div class="w-full px-3 sm:px-4 lg:px-6">
           <div class="site-header-row flex items-center justify-between gap-2 py-2 sm:py-3">
@@ -145,8 +145,8 @@ const TopBar = () => {
                 <span class="hidden md:block">{t("top_bar.site_title")}</span>
               </a>
 
-              <nav class="site-header-navigation hidden md:block flex-1 overflow-x-auto md:overflow-visible ml-2">
-                <ul class="flex items-center font-mono text-sm min-w-max md:min-w-0">
+              <nav class="site-header-navigation hidden md:block flex-1 md:overflow-visible">
+                <ul class="flex items-center">
                   <PublicNavigation variant="desktop" isActive={isActive} />
                   <AdminNavigation variant="desktop" isActive={isActive} />
                 </ul>
@@ -159,7 +159,7 @@ const TopBar = () => {
                 when={isAuthenticated()}
                 fallback={
                   <a href="/login" class="site-header-mobile-login">
-                    {t("top_bar.auth.login")}
+                    <span class="site-nav-label">{t("top_bar.auth.login")}</span>
                   </a>
                 }
               >
@@ -191,14 +191,14 @@ const TopBar = () => {
                 fallback={
                   <a
                     href="/login"
-                    class={`${pageStyles.buttonSecondary} px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm whitespace-nowrap`}
+                    class={`${pageStyles.buttonSecondary} site-header-login`}
                   >
-                    {t("top_bar.auth.login")}
+                    <span class="site-nav-label">{t("top_bar.auth.login")}</span>
                   </a>
                 }
               >
                 <div class="flex items-center gap-2 sm:gap-3">
-                  <div class="site-header-identity hidden sm:flex flex-col items-end select-none">
+                  <div class="site-header-identity hidden sm:flex flex-col items-end select-none" dir="auto">
                     <span class="font-medium text-xs sm:text-sm">
                       {user()?.user_info?.user_name}
                     </span>
@@ -227,13 +227,13 @@ const TopBar = () => {
                     </button>
                     <Show when={menuOpen()}>
                       <div
-                        class="profile-menu absolute right-0 mt-2 w-40 sm:w-48 bg-surface/95 text-ink rounded-sm shadow-lg py-1 z-50 border border-line transition-colors duration-90"
+                        class="profile-menu absolute end-0 mt-2 w-48 bg-surface/95 text-ink rounded-sm shadow-lg py-1 z-50 border border-line transition-colors duration-90"
                         role="menu"
                       >
                         <a
                           href="/edit-profile"
                           role="menuitem"
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-start px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                         >
                           <svg
                             width="18"
@@ -252,7 +252,7 @@ const TopBar = () => {
                         <button
                           type="button"
                           role="menuitem"
-                          class="w-full text-left px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
+                          class="w-full text-start px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                           onClick={() => void handleLogout()}
                         >
                           <svg

@@ -48,6 +48,11 @@
     padding: 0;
   }
 
+  /* The route title takes whatever the fixed controls leave, in every language. */
+  .site-header-brand {
+    flex: 1 1 0;
+  }
+
   .site-header-mobile-title {
     min-width: 0;
     overflow: hidden;
@@ -72,7 +77,8 @@
   }
 
   .site-header-mobile-login {
-    padding-inline: 0.5rem;
+    inline-size: 7.5rem;
+    padding-inline: 0.25rem;
     font-family: var(--font-mono);
     font-size: 0.8125rem;
     font-weight: 700;

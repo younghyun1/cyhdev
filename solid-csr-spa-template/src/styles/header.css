@@ -30,14 +30,99 @@
   }
 }
 
-/* Keep long translated navigation and the exact site title out of account controls. */
+/* The bar has one geometry in every language: navigation sits in equal cells and
+   each control has a fixed size, so a longer label never moves its neighbours.
+   Seven cells must fit a 768px bar with an administrator signed in. */
+.site-nav-cell {
+  position: relative;
+  flex: none;
+  inline-size: var(--site-nav-cell);
+}
+
+.site-nav-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  inline-size: 100%;
+  block-size: 1.75rem;
+  padding-inline: 0.25rem;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: none;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--site-nav-font-size);
+  line-height: 1.25rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 90ms ease, border-color 90ms ease;
+}
+
+.site-nav-control:hover {
+  border-block-end-color: var(--accent-glow);
+  color: var(--accent);
+}
+
+.site-nav-control--active,
+.site-nav-control--active:hover {
+  border-block-end-color: var(--accent);
+  color: var(--ink);
+}
+
+.site-nav-control--group::after {
+  flex: none;
+  content: "▾";
+}
+
+/* Clipped on the inline axis only: tall marks in Arabic and Indic scripts rise
+   above the line box and must not be cut off vertically. */
+.site-nav-label {
+  min-inline-size: 0;
+  overflow-x: clip;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-nav-panel {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 50;
+  inline-size: 15rem;
+  margin-block-start: 0.5rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-xl, 0 18px 40px -22px rgb(0 0 0 / 0.55));
+}
+
+.site-language-select {
+  flex: none;
+  inline-size: 8.75rem;
+}
+
+.site-header-login.ui-button {
+  flex: none;
+  inline-size: 7.5rem;
+  block-size: 2.25rem;
+  padding-inline: 0.5rem;
+  padding-block: 0;
+}
+
+/* Keep the exact site title out of account controls. */
 @media (min-width: 768px) {
+  :root {
+    --site-nav-cell: min(7.5rem, calc((100vw - 3rem) / 7));
+    --site-nav-font-size: 0.875rem;
+  }
+
   .site-main {
     padding-top: var(--site-header-height);
   }
 
   .site-header-identity {
-    max-width: 12rem;
+    inline-size: 12rem;
   }
 
   .site-header-identity > span {
@@ -47,8 +132,14 @@
     white-space: nowrap;
   }
 
-  .site-header-navigation > ul {
-    flex-wrap: wrap;
+  .site-header-navigation {
+    flex: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --site-nav-font-size: 0.75rem;
   }
 }
 
@@ -79,7 +170,6 @@
   .site-header-navigation {
     grid-column: 1 / -1;
     grid-row: 2;
-    margin-left: -0.75rem;
   }
 }
 
@@ -134,8 +224,18 @@
 }
 
 @media (min-width: 1600px) {
+  /* Tracking is dropped for some scripts, so the width cannot come from the text. */
+  .site-header-brand {
+    inline-size: 14.5rem;
+  }
+
   .cmdk-trigger-label {
     display: inline;
+    inline-size: 5rem;
+    overflow: hidden;
+    text-align: start;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -175,12 +275,11 @@
 .appearance-panel {
   position: absolute;
   top: calc(100% + 0.5rem);
-  right: 0;
+  inset-inline-end: 0;
   z-index: 50;
   display: grid;
   gap: 0.875rem;
-  width: max-content;
-  min-width: 13rem;
+  inline-size: 15rem;
   padding: 0.875rem;
   border: 1px solid var(--line-strong);
   border-radius: 0.25rem;
@@ -234,7 +333,7 @@
 .motion-switch-thumb {
   position: absolute;
   top: 50%;
-  left: 0.1875rem;
+  inset-inline-start: 0.1875rem;
   width: 0.875rem;
   height: 0.875rem;
   border-radius: 9999px;
@@ -246,6 +345,10 @@
 .motion-switch[aria-checked="true"] .motion-switch-thumb {
   background: var(--paper);
   transform: translate(1.125rem, -50%);
+}
+
+:root[dir="rtl"] .motion-switch[aria-checked="true"] .motion-switch-thumb {
+  transform: translate(-1.125rem, -50%);
 }
 
 /* Accent swatches. Each swatch shows its own preset color in the current mode

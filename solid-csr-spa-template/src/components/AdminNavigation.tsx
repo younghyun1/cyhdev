@@ -23,26 +23,21 @@ const AdminNavigation: Component<AdminNavigationProps> = (props) => {
 
   return (
     <Show when={canViewAdminNavigation()}>
-      <li class={desktop() ? "px-2 py-1 md:px-3" : undefined}>
+      <li class={desktop() ? "site-nav-cell" : undefined}>
         <a
           href={ADMIN_DEFAULT_HREF}
           class={desktop()
-            ? [
-              "whitespace-nowrap transition-colors duration-90",
-              active()
-                ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
-                : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8",
-            ].join(" ")
+            ? ["site-nav-control", active() && "site-nav-control--active"]
             : [
               "block rounded-sm px-4 py-2 font-mono text-sm transition-colors",
               active()
-                ? "border-l-2 border-accent bg-surface-2 text-ink"
+                ? "border-s-2 border-accent bg-surface-2 text-ink"
                 : "text-ink-muted hover:bg-surface-2 hover:text-ink",
-            ].join(" ")}
+            ]}
           aria-current={active() ? "page" : undefined}
           onClick={() => props.onNavigate?.()}
         >
-          {t("top_bar.admin.title")}
+          <span class={desktop() ? "site-nav-label" : undefined}>{t("top_bar.admin.title")}</span>
         </a>
       </li>
     </Show>

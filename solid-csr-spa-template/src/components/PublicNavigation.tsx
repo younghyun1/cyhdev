@@ -109,7 +109,7 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
         item.kind === "link" ? (
           <li
             data-public-navigation={navigationId}
-            class={props.variant === "desktop" ? "py-1 px-2 md:px-3" : ""}
+            class={props.variant === "desktop" ? "site-nav-cell" : ""}
           >
             <a
               href={item.link.href}
@@ -117,27 +117,27 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
               class={
                 props.variant === "desktop"
                   ? [
-                      "whitespace-nowrap transition-colors duration-90",
-                      props.isActive(item.link.href)
-                        ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
-                        : "text-ink-muted no-underline hover:text-accent hover:underline hover:decoration-accent/40 hover:underline-offset-8",
+                      "site-nav-control",
+                      props.isActive(item.link.href) && "site-nav-control--active",
                     ]
                   : [
                       "block px-4 py-2 font-mono text-sm rounded-sm transition-colors",
                       props.isActive(item.link.href)
-                        ? "text-ink bg-surface-2 border-l-2 border-accent"
+                        ? "text-ink bg-surface-2 border-s-2 border-accent"
                         : "text-ink-muted hover:text-ink hover:bg-surface-2",
                     ]
               }
               onClick={navigate}
             >
-              {t(item.link.labelKey)}
+              <span class={props.variant === "desktop" ? "site-nav-label" : undefined}>
+                {t(item.link.labelKey)}
+              </span>
             </a>
           </li>
         ) : (
           <li
             data-public-navigation={navigationId}
-            class={props.variant === "desktop" ? "relative py-1 px-2 md:px-3" : ""}
+            class={props.variant === "desktop" ? "site-nav-cell" : ""}
           >
             <button
               type="button"
@@ -151,28 +151,28 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
               class={
                 props.variant === "desktop"
                   ? [
-                      "cursor-pointer appearance-none border-0 bg-transparent p-0 font-mono text-sm whitespace-nowrap transition-colors duration-90 after:ml-1 after:content-['▾']",
-                      item.links.some((link) => props.isActive(link.href))
-                        ? "text-ink underline decoration-accent decoration-2 underline-offset-8"
-                        : "text-ink-muted hover:text-accent",
+                      "site-nav-control site-nav-control--group",
+                      item.links.some((link) => props.isActive(link.href)) && "site-nav-control--active",
                     ]
                   : [
-                      "w-full cursor-pointer appearance-none border-0 bg-transparent px-4 py-2 text-left font-mono text-sm rounded-sm transition-colors after:ml-1 after:content-['▾']",
+                      "w-full cursor-pointer appearance-none border-0 bg-transparent px-4 py-2 text-start font-mono text-sm rounded-sm transition-colors after:ms-1 after:content-['▾']",
                       item.links.some((link) => props.isActive(link.href))
-                        ? "text-ink bg-surface-2 border-l-2 border-accent"
+                        ? "text-ink bg-surface-2 border-s-2 border-accent"
                         : "text-ink-muted hover:text-ink hover:bg-surface-2",
                     ]
               }
             >
-              {t(item.labelKey)}
+              <span class={props.variant === "desktop" ? "site-nav-label" : undefined}>
+                {t(item.labelKey)}
+              </span>
             </button>
             <Show when={openGroup() === item.labelKey}>
               <ul
                 id={`${navigationId}-${item.labelKey}`}
                 class={
                   props.variant === "desktop"
-                    ? "absolute left-0 z-50 mt-2 min-w-52 rounded-sm border border-line bg-surface/98 p-1 shadow-xl"
-                    : "mt-1 space-y-1 pl-3"
+                    ? "site-nav-panel"
+                    : "mt-1 space-y-1 ps-3"
                 }
               >
                 <For each={item.links}>
@@ -182,7 +182,7 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
                         href={link.href}
                         aria-current={props.isActive(link.href) ? "page" : undefined}
                         class={[
-                          "block whitespace-nowrap rounded-sm px-3 py-2 font-mono text-sm transition-colors",
+                          "block truncate rounded-sm px-3 py-2 font-mono text-sm transition-colors",
                           props.isActive(link.href)
                             ? "bg-surface-2 text-ink"
                             : "text-ink-muted hover:bg-surface-2 hover:text-ink",

@@ -12,7 +12,7 @@ const LanguageSelect: Component = () => {
 
   return (
     <select
-      class="h-8 rounded-sm border border-line bg-surface/80 px-2 text-xs text-ink hover:bg-surface-2 transition-colors"
+      class="site-language-select h-8 rounded-sm border border-line bg-surface/80 px-2 text-xs text-ink hover:bg-surface-2 transition-colors"
       value={locale()}
       aria-label={t("top_bar.language.label")}
       onChange={handleChange}
