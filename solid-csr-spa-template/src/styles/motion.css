@@ -1,6 +1,6 @@
 /* Shared motion primitives. Animations here change only transform, so text
    contrast and layout are never affected mid-animation, and every one of
-   them is removed when the system asks for reduced motion. */
+   them is removed by the site's animation switch (data-motion="off"). */
 
 /* Reading progress for long pages: driven by the document scroll position
    through a scroll timeline, with no script. Browsers without scroll
@@ -40,24 +40,34 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .home-hero-inner,
-  .home-showcase-card {
-    animation: rise-in 0.55s cubic-bezier(0.2, 0.75, 0.2, 1) both;
-  }
-
-  .home-showcase-card:nth-child(2) { animation-delay: 50ms; }
-  .home-showcase-card:nth-child(3) { animation-delay: 100ms; }
-  .home-showcase-card:nth-child(4) { animation-delay: 150ms; }
-  .home-showcase-card:nth-child(5) { animation-delay: 200ms; }
-  .home-showcase-card:nth-child(6) { animation-delay: 250ms; }
+/* Route content enters with one short transform-only rise. Backwards fill only:
+   a forwards-filled transform would keep these elements a containing block for
+   the fixed modals inside them after the rise ends. */
+.page-inner,
+.page-inner-narrow,
+.forum-shell,
+.photographs-toolbar,
+.home-hero-inner,
+.home-board {
+  animation: rise-in 0.45s cubic-bezier(0.2, 0.75, 0.2, 1) backwards;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .reading-progress {
-    animation: none;
-    display: none;
-  }
+/* None, not just shortened: a pending animation holds its first frame until the
+   browser next paints. */
+:root[data-motion="off"] :is(
+  .page-inner,
+  .page-inner-narrow,
+  .forum-shell,
+  .photographs-toolbar,
+  .home-hero-inner,
+  .home-board
+) {
+  animation: none;
+}
+
+:root[data-motion="off"] .reading-progress {
+  animation: none;
+  display: none;
 }
 
 /* 404 backdrop: oversized monospace numerals with an occasional channel
@@ -100,14 +110,17 @@
   clip-path: inset(60% 0 0 0);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .not-found-glyph::before {
-    animation: glitch-shift 3.2s steps(1, end) infinite;
-  }
+.not-found-glyph::before {
+  animation: glitch-shift 3.2s steps(1, end) infinite;
+}
 
-  .not-found-glyph::after {
-    animation: glitch-shift 3.2s steps(1, end) infinite reverse;
-  }
+.not-found-glyph::after {
+  animation: glitch-shift 3.2s steps(1, end) infinite reverse;
+}
+
+:root[data-motion="off"] .not-found-glyph::before,
+:root[data-motion="off"] .not-found-glyph::after {
+  animation: none;
 }
 
 @keyframes glitch-shift {

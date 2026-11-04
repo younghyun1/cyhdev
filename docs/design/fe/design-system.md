@@ -26,11 +26,9 @@ Semantic CSS variables declared on `:root` (light) and `.dark`, exposed to Tailw
 | `--ok` | `text-ok`/`bg-ok` | `#047857` | `#34d399` | success, upvotes, online |
 | `--danger` | `text-danger`/`bg-danger` | `#be123c` | `#fb7185` | errors, downvotes, delete |
 
-`--glow-ok` / `--glow-danger` are 60% color-mix halos for the status dots (`shadow-[0_0_8px_2px_var(--glow-ok)]`).
-
 Derived tokens follow whichever accent is active: `--accent-glow` (45% mix, halos and seams), `--accent-wash` (12% light / 16% dark, hero washes and card spotlights), `--grid-line` (6-7% ink, blueprint grids), and `--glass` / `--glass-highlight` (translucent header ground and its top specular line).
 
-Accent presets: `data-accent` on `<html>` selects `lagoon`, `cobalt`, `orchid`, or `graphite`; no attribute means amber. Each preset overrides only `--accent`, `--accent-strong`, and `--accent-soft` per mode in `index.css`. Light accents keep at least 4.5:1 contrast on `--paper`, `--surface`, and `--accent-soft` (amber keeps its historical values). The pre-paint script in `index.html` applies the stored preset with the theme; `src/state/accent.ts` owns the choice afterwards, and the command palette and mobile drawer expose it.
+Accent presets: `data-accent` on `<html>` selects `lagoon`, `cobalt`, `orchid`, or `graphite`; no attribute means amber. Each preset overrides only `--accent`, `--accent-strong`, and `--accent-soft` per mode in `index.css`. Light accents keep at least 4.5:1 contrast on `--paper`, `--surface`, and `--accent-soft` (amber keeps its historical values). The pre-paint script in `index.html` applies the stored preset with the theme; `src/state/accent.ts` owns the choice afterwards. The header appearance menu, the command palette, and the mobile drawer all expose it.
 
 Policy: one decorative accent at a time. `ok`/`danger` are semantic only, so no preset uses green or rose. No raw `slate-*`/`gray-*`/`blue-*` palette classes; the audit `grep -rnE "(slate|gray|blue|amber|emerald|rose|red)-[0-9]" src/` must stay empty. Route stylesheets and inline `<style>` blocks use `var(--...)` directly; literal colors are allowed only for mode-independent areas: image letterboxes, overlay scrims, on-image controls.
 
@@ -62,7 +60,8 @@ Policy: one decorative accent at a time. `ok`/`danger` are semantic only, so no 
 - Selection: `::selection` uses `--accent-soft`.
 - Grain: a fixed `body::before` SVG-noise overlay (2.5% light / 4% dark) above the ground, below content. The body ground also carries a non-fixed accent wash at the top of the first screen.
 - Header: `.site-header-glass` in `styles/header.css` is translucent paper with an 18px backdrop blur, a top specular highlight, and an accent seam; `prefers-reduced-transparency: reduce` restores opaque paper.
-- Command palette: Ctrl+K or Command+K (ignored inside other text fields), the header search button, or the mobile drawer opens a lazily loaded combobox dialog over public pages, About subpages, theme, and accent actions. It reuses the shared dialog lifecycle for focus containment and inert background.
+- Appearance menu: the header button shows the active accent and opens a popover with the accent swatches and the animation switch; the mobile drawer carries the same two controls. Outside presses and Escape close it, and Escape returns focus to the button.
+- Command palette: Ctrl+K or Command+K (ignored inside other text fields), the header search button, or the mobile drawer opens a lazily loaded combobox dialog over public pages, About subpages, theme, animation, and accent actions. It reuses the shared dialog lifecycle for focus containment and inert background.
 
 ## Motion
 
@@ -72,8 +71,13 @@ Motion is allowed where it explains structure or adds polish at negligible cost.
 - Prefer CSS over script: scroll-driven animations (`animation-timeline: view()` / `scroll()`) for section reveals, benchmark bars, statistics, and the reading-progress bar; `@property` for the count-up integers and the portrait ring angle; `@supports` gates every timeline feature, and unsupported browsers see the final state.
 - Chrome transitions stay at 90ms for color, up to 200-300ms for icon swaps and hover lifts. Route content enters with a short transform-only rise.
 - The theme toggle uses the View Transitions API to reveal the new palette as a circle from the toggle; without the API it switches instantly.
-- The home hero's WebGL2 contour field (`components/home/`) loads after idle, only on desktop-width fine-pointer devices without reduced motion or Save-Data. It caps device pixel ratio at 1.25 and frame rate at 30, pauses off-screen and in hidden tabs, freezes on its last frame if the first frames are slow, and re-reads `--accent` and `--ink-faint` when the theme or accent changes.
-- `prefers-reduced-motion: reduce` removes all of the above: the global rule shortens durations, and timeline-driven or infinite animations are set to `none` explicitly because duration does not stop them. The photograph viewer keeps its existing exception: a decoded image fades in over 180ms, and a thin accent line sweeps only while a load has taken longer than 150ms.
+- The home hero's WebGL2 contour field (`components/home/`) loads after idle unless Save-Data is on. Desktop-width fine-pointer devices animate it; other devices, and everyone with animations off, draw one still frame. It drifts the terrain, raises the contour levels so lines keep migrating, and runs a soft brightness swell through the bands. It caps device pixel ratio at 1.25 and frame rate at 30, pauses off-screen and in hidden tabs, and re-reads `--accent` and `--ink-faint` when the theme or accent changes. It stops on its last frame only if animation-frame callbacks average under 20 per second; the probe must see every callback, because the interval between drawn frames is at least 33ms by construction.
+- The animation switch is the only control. `src/state/motion.ts` owns it, `data-motion="off"` on `<html>` gates the stylesheets, and the pre-paint script in `index.html` applies a stored choice. Animations are on by default and the operating system's `prefers-reduced-motion` is deliberately not consulted, at the site owner's request. Switched off, the global rule shortens durations, and timeline-driven, infinite, or entrance animations are set to `none` explicitly: duration does not stop the first kind, and a pending entrance would hold its first frame until the next paint. The photograph viewer keeps its existing exception: a decoded image fades in over 180ms, and a thin accent line sweeps only while a load has taken longer than 150ms.
+- Entrance animations use a backwards fill only. A forwards-filled transform would leave the element a stacking context and a containing block for the fixed modals inside it.
+
+## Page furniture
+
+`styles/surfaces.css` gives every route the look of the About pages: a faint blueprint grid at the top of the page, titles carrying a short accent rule, section headings with a square accent marker, and an accent edge on authentication cards. Components get these through `pageStyles.title`, `titleSm`, and `sectionTitle` rather than per-page styles. Lists of records (home posts, blog list, forum topics) are hairline rows inside one bordered box with a faint accent hover, not separate cards. Nothing in this file may create a stacking context on `.app-page`, because modals inside pages rely on the root stacking order against the fixed header.
 
 ## Content pages
 

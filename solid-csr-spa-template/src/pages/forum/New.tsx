@@ -43,11 +43,15 @@ export default function NewForumTopicPage() {
   return (
     <main class="forum-page">
       <div class="forum-shell forum-shell--narrow">
+        <nav class="forum-breadcrumb" aria-label={t("forum.breadcrumb")}>
+          <a href="/forum">{t("page.forum.title")}</a>
+          <span aria-hidden="true">/</span>
+          <span class="forum-breadcrumb__current" aria-current="page">
+            {t("forum.new_topic")}
+          </span>
+        </nav>
         <header class="forum-header">
           <h1 class="forum-heading">{t("page.forum.new_title")}</h1>
-          <a class="forum-link-button" href="/forum">
-            {t("forum.topic.back")}
-          </a>
         </header>
         <Show when={error()}>
           {(message) => (

@@ -5,9 +5,14 @@
  *
  * - renders at no more than 1.25 device pixels per CSS pixel and 30 frames/s;
  * - pauses while the canvas is off-screen or the document is hidden;
- * - stops animating and keeps its last frame if the first frames are slow;
+ * - stops animating and keeps its last frame if the browser cannot keep up;
+ * - draws one still frame when animation is switched off or not wanted;
  * - follows the active theme and accent by re-reading CSS tokens whenever
  *   the root element's class or `data-accent` attribute changes.
+ *
+ * Passive movement has three layers: the terrain drifts and warps, the contour
+ * levels rise so lines keep migrating across it, and a soft brightness swell
+ * travels through the elevation bands.
  */
 
 const VERTEX_SHADER = `#version 300 es
@@ -57,30 +62,61 @@ float fbm(vec2 p) {
 void main() {
   vec2 uv = gl_FragCoord.xy / u_resolution.y;
   vec2 p = uv * 2.4;
-  float t = u_time * 0.035;
+  float t = u_time * 0.075;
+  vec2 drift = vec2(0.6 * t, -0.4 * t);
   vec2 warp = vec2(fbm(p + t), fbm(p + vec2(5.2, 1.3) - t));
-  float height = fbm(p + 1.5 * warp + vec2(0.6 * t, -0.4 * t));
+  float warpAmount = 1.5 + 0.2 * sin(u_time * 0.16);
+  float height = fbm(p + warpAmount * warp + drift);
 
   vec2 pointer = u_pointer / u_resolution.y;
   float d = distance(uv, pointer);
   height += 0.16 * u_pointer_strength * exp(-d * d * 16.0);
 
-  float bands = height * 15.0;
+  // The rising offset is uniform across the frame, so fwidth and the line
+  // width still follow only the terrain gradient.
+  float bands = height * 15.0 + u_time * 0.14;
   float width = fwidth(bands);
   float minor = 1.0 - smoothstep(0.0, width * 1.4, min(fract(bands), 1.0 - fract(bands)));
   float majorBands = bands / 5.0;
   float major = 1.0 - smoothstep(0.0, width * 0.45, min(fract(majorBands), 1.0 - fract(majorBands)));
-  float alpha = minor * 0.16 + major * 0.32;
+  float swell = 0.5 + 0.5 * sin(height * 21.0 - u_time * 0.55);
+  float alpha = (minor * 0.14 + major * 0.28) * (0.7 + 0.6 * swell * swell);
   vec3 color = mix(u_ink, u_accent, smoothstep(0.38, 0.72, height));
   out_color = vec4(color * alpha, alpha);
 }`;
 
 const MAX_PIXEL_RATIO = 1.25;
 const FRAME_INTERVAL_MS = 1000 / 30;
-const SLOW_FRAME_MS = 28;
-const PROBE_FRAMES = 20;
+/** Browser frames to ignore while the shader compiles and the page settles. */
+const PROBE_SKIP_FRAMES = 10;
+const PROBE_FRAMES = 40;
+/** A display callback slower than this on average means under 20 frames/s. */
+const SLOW_CALLBACK_MS = 50;
 
 type Rgb = readonly [number, number, number];
+
+/**
+ * Decides whether the device can afford continuous animation. It must see every
+ * animation-frame callback, including those the 30 frames/s throttle skips: the
+ * interval between drawn frames is at least 33 ms by construction, so it says
+ * nothing about the device. Returns true once the callbacks prove too slow.
+ */
+export function createFrameProbe(): (callbackIntervalMs: number) => boolean {
+  let seen = 0;
+  let total = 0;
+  return (callbackIntervalMs) => {
+    seen += 1;
+    if (seen <= PROBE_SKIP_FRAMES || seen > PROBE_SKIP_FRAMES + PROBE_FRAMES) return false;
+    total += callbackIntervalMs;
+    return seen === PROBE_SKIP_FRAMES + PROBE_FRAMES && total / PROBE_FRAMES > SLOW_CALLBACK_MS;
+  };
+}
+
+export interface ContourField {
+  /** Starts or stops continuous animation; stopping keeps the current frame. */
+  readonly setAnimated: (animated: boolean) => void;
+  readonly dispose: () => void;
+}
 
 function parseColor(value: string, fallback: Rgb): Rgb {
   const hex = value.trim().match(/^#([0-9a-f]{6})$/iu)?.[1];
@@ -104,11 +140,12 @@ function compile(gl: WebGL2RenderingContext, type: number, source: string): WebG
   return shader;
 }
 
-/** Starts the field on `canvas`; returns a disposer, or null if WebGL2 is unavailable. */
+/** Starts the field on `canvas`; returns null if WebGL2 is unavailable. */
 export function startContourField(
   canvas: HTMLCanvasElement,
   pointerTarget: HTMLElement,
-): (() => void) | null {
+  initiallyAnimated: boolean,
+): ContourField | null {
   const gl = canvas.getContext("webgl2", {
     alpha: true,
     antialias: false,
@@ -190,42 +227,41 @@ export function startContourField(
 
   let visible = true;
   let frame = 0;
+  let lastCallback = 0;
   let lastDraw = 0;
-  let elapsed = 0;
-  let probeFrames = 0;
-  let probeTotal = 0;
-  let stopped = false;
+  // A fixed non-zero start keeps the still frame from always showing the
+  // zero-time terrain; the running clock continues from here.
+  let elapsed = 40;
+  let animated = initiallyAnimated;
+  let tooSlow = false;
+  let disposed = false;
+  const probe = createFrameProbe();
+
+  const render = () => {
+    gl.uniform1f(uTime, elapsed);
+    gl.uniform2f(uPointer, pointerX, pointerY);
+    gl.uniform1f(uPointerStrength, pointerStrength);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  };
+
+  const shouldRun = () => animated && !tooSlow && !disposed && visible && !document.hidden;
 
   const draw = (now: number) => {
     frame = 0;
-    if (stopped || !visible || document.hidden) return;
+    if (!shouldRun()) return;
     frame = requestAnimationFrame(draw);
+    if (lastCallback !== 0 && probe(now - lastCallback)) tooSlow = true;
+    lastCallback = now;
     if (lastDraw !== 0 && now - lastDraw < FRAME_INTERVAL_MS) return;
     const delta = lastDraw === 0 ? FRAME_INTERVAL_MS : Math.min(now - lastDraw, 100);
     lastDraw = now;
     elapsed += delta / 1000;
     pointerStrength += (pointerTargetStrength - pointerStrength) * 0.08;
-
-    gl.uniform1f(uTime, elapsed);
-    gl.uniform2f(uPointer, pointerX, pointerY);
-    gl.uniform1f(uPointerStrength, pointerStrength);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-    // Frame cost probe: the draw call is asynchronous, so the interval
-    // between frames is the useful signal. A device that cannot hold 30 fps
-    // keeps the last frame as a static image.
-    if (probeFrames < PROBE_FRAMES) {
-      probeFrames += 1;
-      probeTotal += delta;
-      if (probeFrames === PROBE_FRAMES && probeTotal / PROBE_FRAMES > SLOW_FRAME_MS) {
-        stopped = true;
-        cancelAnimationFrame(frame);
-        frame = 0;
-      }
-    }
+    render();
   };
   const resume = () => {
-    if (frame === 0 && !stopped && visible && !document.hidden) {
+    if (frame === 0 && shouldRun()) {
+      lastCallback = 0;
       lastDraw = 0;
       frame = requestAnimationFrame(draw);
     }
@@ -238,31 +274,43 @@ export function startContourField(
   intersection.observe(canvas);
   const resizeObserver = new ResizeObserver(() => {
     resize();
-    if (stopped) gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!shouldRun()) render();
   });
   resizeObserver.observe(canvas);
   const themeObserver = new MutationObserver(() => {
     readColors();
-    if (stopped) gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!shouldRun()) render();
   });
   themeObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["class", "data-accent"],
   });
   document.addEventListener("visibilitychange", resume);
+  render();
   resume();
 
-  return () => {
-    stopped = true;
-    if (frame !== 0) cancelAnimationFrame(frame);
-    intersection.disconnect();
-    resizeObserver.disconnect();
-    themeObserver.disconnect();
-    document.removeEventListener("visibilitychange", resume);
-    pointerTarget.removeEventListener("pointermove", onPointerMove);
-    pointerTarget.removeEventListener("pointerleave", onPointerLeave);
-    gl.deleteBuffer(buffer);
-    gl.deleteProgram(program);
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
+  return {
+    setAnimated: (next) => {
+      animated = next;
+      if (next) {
+        resume();
+      } else if (frame !== 0) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    },
+    dispose: () => {
+      disposed = true;
+      if (frame !== 0) cancelAnimationFrame(frame);
+      intersection.disconnect();
+      resizeObserver.disconnect();
+      themeObserver.disconnect();
+      document.removeEventListener("visibilitychange", resume);
+      pointerTarget.removeEventListener("pointermove", onPointerMove);
+      pointerTarget.removeEventListener("pointerleave", onPointerLeave);
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    },
   };
 }

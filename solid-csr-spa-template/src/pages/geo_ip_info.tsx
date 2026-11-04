@@ -46,7 +46,7 @@ export default function GeoIpInfo() {
         {props.title}
       </h2>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
+      <div class="grid grid-cols-2 gap-y-4 gap-x-6">
         <div>
           <span class="block text-xs font-medium text-ink-muted uppercase tracking-wider">
             {t("geo.ip_address")}
@@ -111,14 +111,15 @@ export default function GeoIpInfo() {
 
   return (
     <main class={pageStyles.page}>
-      <div class={pageStyles.pageInnerNarrow}>
-        <h1 class={`${pageStyles.title} mb-8 text-center`}>
+      <div class={pageStyles.pageInner}>
+        <h1 class={`${pageStyles.title} mb-6`}>
           {t("geo.title")}
         </h1>
+        <div class="geo-ip-columns">
 
         {/* Current Client IP Section */}
-        <section class="mb-10">
-          <h2 class={`${pageStyles.sectionTitle} mb-4`}>
+        <section>
+          <h2 class={`${pageStyles.sectionTitle} mb-3`}>
             {t("geo.your_ip_info")}
           </h2>
           <Loading
@@ -151,7 +152,7 @@ export default function GeoIpInfo() {
 
         {/* IP Lookup Section */}
         <section>
-          <h2 class={`${pageStyles.sectionTitle} mb-4`}>
+          <h2 class={`${pageStyles.sectionTitle} mb-3`}>
             {t("geo.lookup_any")}
           </h2>
           <form onSubmit={handleLookup} class="mb-6">
@@ -185,8 +186,9 @@ export default function GeoIpInfo() {
             />
           </Show>
         </section>
+        </div>
 
-        <p class="mt-10 text-center text-xs text-ink-faint">
+        <p class="mt-8 text-xs text-ink-muted">
           {t("geo.attribution_prefix")}{" "}
           <a
             href="https://lite.ip2location.com"

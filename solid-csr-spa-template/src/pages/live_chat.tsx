@@ -6,9 +6,9 @@ export default function LiveChatPage() {
   return (
     <main class={`${pageStyles.page} live-chat-page`}>
       <div class={`${pageStyles.pageInner} live-chat-shell max-w-5xl`}>
-        <div class="live-chat-page-heading mb-6">
+        <div class="live-chat-page-heading mb-4">
           <h1 class={pageStyles.title}>{t("page.live_chat.title")}</h1>
-          <p class={pageStyles.subtitle}>{t("page.live_chat.subtitle")}</p>
+          <p class={`${pageStyles.subtitle} mt-2`}>{t("page.live_chat.subtitle")}</p>
         </div>
         <LiveChatPanel mode="full" />
       </div>

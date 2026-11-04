@@ -60,6 +60,36 @@
     display: none;
   }
 
+  .site-header-mobile-login,
+  .site-header-mobile-avatar {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: none;
+  }
+
+  .site-header-mobile-login {
+    padding-inline: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .site-header-mobile-avatar img {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 9999px;
+    object-fit: cover;
+  }
+
+  /* One compact line of status and one of copyright: the bar is on screen all
+     the time, and every pixel of it comes out of a short viewport. */
   .site-status-bar {
     min-height: calc(44px + var(--safe-area-bottom));
     padding-bottom: var(--safe-area-bottom);
@@ -70,9 +100,14 @@
   }
 
   .site-status-mobile {
-    min-height: 44px;
+    min-height: 1.875rem;
     align-items: center;
     padding-inline: max(0.75rem, var(--safe-area-left)) max(0.75rem, var(--safe-area-right));
+  }
+
+  .site-status-bar .site-copyright {
+    padding-top: 0;
+    font-size: 0.5625rem;
   }
 
   .site-status-mobile > :last-child {
@@ -219,6 +254,24 @@
     min-height: 44px;
   }
 
+  /* A switch stays switch-shaped: the row's 44px rule is for square controls,
+     and the row itself is the 44px target. */
+  .mobile-drawer-control-row .motion-switch {
+    width: 3rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+  }
+
+  .mobile-drawer-control-row .motion-switch-thumb {
+    left: 0.25rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .mobile-drawer-control-row .motion-switch[aria-checked="true"] .motion-switch-thumb {
+    transform: translate(1.25rem, -50%);
+  }
+
   .mobile-drawer-action {
     display: flex;
     min-height: 44px;
@@ -233,17 +286,6 @@
 
   .mobile-drawer-action:hover {
     background: var(--surface-2);
-  }
-
-  .mobile-drawer-status {
-    width: 0.65rem;
-    height: 0.65rem;
-    border-radius: 999px;
-    background: var(--ok);
-  }
-
-  .mobile-drawer-status-offline {
-    background: var(--danger);
   }
 
   .mobile-drawer-identity {
@@ -302,42 +344,6 @@
     padding: 1rem max(1rem, var(--safe-area-right)) calc(1rem + var(--safe-area-bottom)) max(1rem, var(--safe-area-left));
     background: var(--surface);
     box-shadow: 0 -1rem 3rem color-mix(in srgb, #000 35%, transparent);
-  }
-
-  .home-hero-inner,
-  .home-content {
-    padding: 1.5rem 1rem;
-  }
-
-  .home-hero-title {
-    font-size: clamp(1.75rem, 9vw, 2.25rem);
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-
-  .home-actions {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .home-actions a {
-    width: 100%;
-  }
-
-  .home-section-header {
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
-
-  .home-section-header h2 {
-    font-size: 1.25rem;
-  }
-
-  .home-content article h3,
-  .home-content article h3 a {
-    display: block;
-    max-width: 100%;
-    overflow-wrap: anywhere;
   }
 
   .auth-page {
@@ -399,7 +405,11 @@
     grid-template-columns: 1fr;
   }
 
-  .blog-list-title-row,
+  .blog-list-title-row {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
   .blog-post-heading-row,
   .blog-comments-heading {
     align-items: stretch;
@@ -458,7 +468,7 @@
 
   .blog-post-actions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
     width: 100%;
     margin-left: 0;
   }
@@ -534,20 +544,14 @@
     font-size: 1.25rem;
   }
 
-  .live-chat-panel {
-    height: auto !important;
-    max-height: none !important;
-    flex: 1;
-  }
-
-  .live-chat-panel-header,
-  .live-chat-composer {
-    padding: 0.75rem;
+  .live-chat-panel--full {
+    height: auto;
+    max-height: none;
   }
 
   .live-chat-composer {
     align-items: stretch;
-    padding-bottom: max(0.75rem, var(--safe-area-bottom));
+    padding-bottom: max(0.625rem, var(--safe-area-bottom));
   }
 
   .call-grid {
@@ -757,11 +761,5 @@
   *::before,
   *::after {
     min-width: 0;
-  }
-}
-
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  html:focus-within {
-    scroll-behavior: auto;
   }
 }

@@ -1,0 +1,184 @@
+/* Live chat panel, shared by /live-chat and the home board. Messages are dense
+   rows on hairlines rather than separate cards, so a narrow column still shows
+   a useful amount of conversation. */
+.live-chat-panel {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.live-chat-panel--full {
+  height: calc(100dvh - var(--site-header-height) - var(--site-footer-height) - 9rem);
+  min-height: 24rem;
+  max-height: 56rem;
+}
+
+.live-chat-panel-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.live-chat-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.live-chat-title::before {
+  content: "";
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: var(--accent);
+}
+
+.live-chat-status {
+  margin: 0.125rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--ink-muted);
+}
+
+.live-chat-status[data-state="error"],
+.live-chat-status[data-state="closed"] {
+  color: var(--danger);
+}
+
+.live-chat-open {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.live-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.live-chat-older {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.live-chat-empty {
+  margin: 0;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.live-chat-message {
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  transition: background-color 90ms ease;
+}
+
+.live-chat-message + .live-chat-message {
+  border-top: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+}
+
+.live-chat-message:hover {
+  background: color-mix(in oklab, var(--surface-2) 55%, transparent);
+}
+
+.live-chat-message[data-delivery="sending"] {
+  color: var(--ink-muted);
+}
+
+.live-chat-message[data-delivery="failed"] {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
+.live-chat-message-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  margin-bottom: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.live-chat-sender {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.live-chat-time {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-chat-body {
+  margin: 0;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.live-chat-note {
+  flex: none;
+  padding: 0.25rem 0.875rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.live-chat-note--error {
+  color: var(--danger);
+}
+
+.live-chat-composer {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-top: 1px solid var(--line);
+}
+
+.live-chat-composer-field {
+  min-width: 0;
+  flex: 1;
+}
+
+.live-chat-counter {
+  margin-top: 0.125rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
+/* The call panel keeps its own controls; pad it to match the rows. */
+.live-chat-panel--full .call-grid {
+  gap: 0.375rem;
+}

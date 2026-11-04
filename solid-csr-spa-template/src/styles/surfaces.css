@@ -1,0 +1,129 @@
+/* Page furniture shared by every route, matching the About pages: a faint
+   blueprint grid at the top of the page, titles carrying a short accent rule,
+   and section headings with a square accent marker. No stacking context is
+   created here, because modals inside pages rely on the root stacking order. */
+.app-page,
+.forum-page {
+  position: relative;
+}
+
+.app-page:not(.home-page)::before,
+.forum-page::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 18rem;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 55% 95% at 18% 0%, #000 0%, transparent 75%);
+}
+
+.page-title,
+.page-title-small,
+.forum-heading {
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.page-title,
+.forum-heading {
+  font-size: clamp(1.75rem, 1.35rem + 1.5vw, 2.5rem);
+}
+
+.page-title-small {
+  font-size: clamp(1.5rem, 1.3rem + 0.8vw, 1.875rem);
+}
+
+.page-title::after,
+.page-title-small::after,
+.forum-heading::after {
+  content: "";
+  display: block;
+  width: 3rem;
+  height: 3px;
+  margin-top: 0.625rem;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.section-title::before {
+  content: "";
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  background: var(--accent);
+}
+
+.ui-button {
+  border-radius: 0.125rem;
+}
+
+/* Authentication: one card with an accent edge, left-aligned like other forms. */
+.auth-card {
+  position: relative;
+  align-items: stretch !important;
+  overflow: hidden;
+  border-color: var(--line-strong);
+  box-shadow: 0 24px 60px -48px rgb(0 0 0 / 0.6);
+}
+
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent 70%);
+}
+
+.auth-card form {
+  align-items: stretch !important;
+}
+
+/* Geo-IP lookup: your connection beside the lookup form. */
+.geo-ip-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .geo-ip-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Public profile */
+.user-info-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  font-size: clamp(1.25rem, 1.1rem + 0.8vw, 1.625rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.user-info-flag {
+  flex: none;
+  font-size: 1rem;
+}

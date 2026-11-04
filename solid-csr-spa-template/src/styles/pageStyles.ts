@@ -15,7 +15,7 @@ export const pageStyles = {
   title: "page-title text-3xl font-semibold tracking-tight",
   titleSm: "page-title-small text-2xl font-semibold tracking-tight",
   subtitle: "text-sm text-ink-muted",
-  sectionTitle: "text-xl font-semibold tracking-tight",
+  sectionTitle: "section-title",
   sectionSubtitle: "text-sm text-ink-muted",
   card: "rounded-sm border border-line bg-surface",
   cardHeader: "px-6 py-4 border-b border-line",

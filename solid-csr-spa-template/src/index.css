@@ -8,6 +8,7 @@
 @import "./styles/prose.css";
 @import "./styles/code.css";
 @import "./styles/header.css";
+@import "./styles/surfaces.css";
 @import "./styles/mobile.css";
 @import "./styles/home.css";
 @import "./styles/motion.css";
@@ -95,8 +96,6 @@
     --accent-soft: #f6e5c4;
     --ok: #047857;
     --danger: #be123c;
-    --glow-ok: color-mix(in srgb, var(--ok) 60%, transparent);
-    --glow-danger: color-mix(in srgb, var(--danger) 60%, transparent);
     /* Derived from whichever accent preset is active (see below). */
     --accent-glow: color-mix(in oklab, var(--accent) 45%, transparent);
     --accent-wash: color-mix(in oklab, var(--accent) 12%, transparent);
@@ -290,13 +289,12 @@ main {
     mix-blend-mode: normal;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    *,
-    ::before,
-    ::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-    }
+/* The site's own animation switch (state/motion.ts), not the OS preference. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] ::before,
+:root[data-motion="off"] ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
 }
 
 .chart-wrapper {

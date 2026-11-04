@@ -418,8 +418,8 @@ test("viewer reports a failed photograph and retries it", async ({ page }) => {
   await expect(alert).toHaveCount(0);
 });
 
-test("viewer loading cues are still under reduced motion", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+test("viewer loading cues are still with animations off", async ({ page }) => {
+  await page.addInitScript(() => window.localStorage.setItem("motion", "off"));
   await page.setViewportSize({ width: 1440, height: 900 });
   await installApiMocks(page, "logged-out");
   const held = gate();

@@ -11,6 +11,7 @@ import { authApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
 import LanguageSelect from "./LanguageSelect";
 import ThemeToggle from "./ThemeToggle";
+import AppearanceMenu from "./AppearanceMenu";
 import CommandPaletteButton from "./CommandPaletteButton";
 import { t } from "../state/i18n";
 import AdminNavigation from "./AdminNavigation";
@@ -152,34 +153,52 @@ const TopBar = () => {
               </nav>
             </div>
 
-            <div class="site-header-actions flex shrink-0 items-center gap-3 sm:gap-4">
+            {/* Phones keep every other control in the drawer. */}
+            <div class="site-header-mobile-actions flex shrink-0 items-center md:hidden">
               <Show
                 when={isAuthenticated()}
                 fallback={
-                  <div class="flex items-center gap-2 sm:gap-3">
-                    <CommandPaletteButton />
-                    <ThemeToggle />
-                    <LanguageSelect />
-                    <span class="relative">
-                      <span class="inline-block w-3 h-3 rounded-full bg-danger shadow-[0_0_8px_2px_var(--glow-danger)] mr-1 sm:mr-2" />
-                    </span>
-                    <a
-                      href="/login"
-                      class={`${pageStyles.buttonSecondary} px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm whitespace-nowrap`}
-                    >
-                      {t("top_bar.auth.login")}
-                    </a>
-                  </div>
+                  <a href="/login" class="site-header-mobile-login">
+                    {t("top_bar.auth.login")}
+                  </a>
                 }
               >
-                <div class="flex items-center gap-2 sm:gap-4">
-                  <CommandPaletteButton />
-                  <ThemeToggle />
-                  <LanguageSelect />
-                  <span class="relative flex items-center">
-                    <span class="inline-block w-3 h-3 rounded-full bg-ok shadow-[0_0_8px_2px_var(--glow-ok)] mr-1 sm:mr-2" />
-                  </span>
-                  <div class="site-header-identity hidden sm:flex flex-col items-end mr-1 sm:mr-2 select-none">
+                <a
+                  href="/edit-profile"
+                  class="site-header-mobile-avatar"
+                  aria-label={t("top_bar.profile.edit")}
+                >
+                  <img
+                    src={
+                      user()?.user_profile_picture?.user_profile_picture_link ||
+                      "/default-profile.png"
+                    }
+                    alt=""
+                    width="32"
+                    height="32"
+                  />
+                </a>
+              </Show>
+            </div>
+
+            <div class="site-header-actions flex shrink-0 items-center gap-2">
+              <CommandPaletteButton />
+              <ThemeToggle />
+              <AppearanceMenu />
+              <LanguageSelect />
+              <Show
+                when={isAuthenticated()}
+                fallback={
+                  <a
+                    href="/login"
+                    class={`${pageStyles.buttonSecondary} px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm whitespace-nowrap`}
+                  >
+                    {t("top_bar.auth.login")}
+                  </a>
+                }
+              >
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <div class="site-header-identity hidden sm:flex flex-col items-end select-none">
                     <span class="font-medium text-xs sm:text-sm">
                       {user()?.user_info?.user_name}
                     </span>

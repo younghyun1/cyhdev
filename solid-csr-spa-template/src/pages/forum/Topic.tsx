@@ -1,7 +1,9 @@
 import { For, Show, createSignal, onSettled } from "solid-js";
 import { useParams } from "@solidjs/router";
 
-import ForumReplyComposer from "../../components/forum/ForumReplyComposer";
+import ForumReplyComposer, {
+  REPLY_COMPOSER_ID,
+} from "../../components/forum/ForumReplyComposer";
 import ForumReplyItem from "../../components/forum/ForumReplyItem";
 import ForumTopicDetailCard from "../../components/forum/ForumTopicDetail";
 import { forumApi } from "../../services/contracts/forum";
@@ -14,8 +16,9 @@ import type {
   ForumTopicModerationAction,
 } from "../../services/contracts/forum_types";
 import { user } from "../../state/auth";
-import { t } from "../../state/i18n";
+import { t, tx } from "../../state/i18n";
 import "../../styles/forum.css";
+import { quoteForReply } from "../../utils/forumBody";
 import { createReplyFragmentFollower } from "./replyFragment";
 
 const REPLY_PAGE_SIZE = 50;
@@ -31,6 +34,7 @@ export default function ForumTopicPage() {
     createSignal<ForumCapabilitiesResponse | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
+  const [draft, setDraft] = createSignal("");
   let loadInFlight = false;
   const topicId = () => params.topic_id ?? "";
   const own = (authorId: string) =>
@@ -141,6 +145,28 @@ export default function ForumTopicPage() {
     } else {
       await reload();
     }
+    // Show the post that was just written instead of leaving the reader at an
+    // emptied composer. The list renders after the signal write commits.
+    requestAnimationFrame(() => {
+      document
+        .querySelector(".forum-replies > li:last-child")
+        ?.scrollIntoView({ block: "center" });
+    });
+  };
+  const canReply = () =>
+    (capabilities()?.can_post ?? false) &&
+    topic()?.access_state === "open" &&
+    topic()?.content_state === "visible";
+  const focusComposer = () => {
+    const composer = document.getElementById(REPLY_COMPOSER_ID);
+    composer?.scrollIntoView({ block: "center" });
+    composer?.focus();
+  };
+  const quote = (name: string, body: string | null): void => {
+    if (body === null) return;
+    const quoted = quoteForReply(tx("forum.post.quote_attribution", { name }), body);
+    setDraft((current) => (current ? `${current.trimEnd()}\n\n${quoted}` : quoted));
+    requestAnimationFrame(focusComposer);
   };
   const updateReply = async (
     replyId: string,
@@ -187,16 +213,18 @@ export default function ForumTopicPage() {
   return (
     <main class="forum-page">
       <div class="forum-shell">
-        <div class="forum-header">
-          <a class="forum-link-button" href="/forum">
-            {t("forum.topic.back")}
-          </a>
+        <nav class="forum-breadcrumb" aria-label={t("forum.breadcrumb")}>
+          <a href="/forum">{t("page.forum.title")}</a>
+          <span aria-hidden="true">/</span>
+          <span class="forum-breadcrumb__current" aria-current="page">
+            {topic()?.title ?? t("forum.loading")}
+          </span>
           <Show when={capabilities()?.authenticated}>
-            <a class="forum-link-button" href="/forum/notifications">
+            <a class="forum-breadcrumb__end" href="/forum/notifications">
               {t("forum.notifications")}
             </a>
           </Show>
-        </div>
+        </nav>
         <Show when={error()}>
           {(message) => (
             <div class="forum-alert forum-alert--error" role="alert">
@@ -205,7 +233,10 @@ export default function ForumTopicPage() {
           )}
         </Show>
         <Show when={loading() && topic() === null}>
-          <p class="forum-alert" role="status">{t("forum.loading")}</p>
+          <p class="sr-only" role="status">{t("forum.loading")}</p>
+          <div class="forum-skeleton" aria-hidden="true">
+            <div class="forum-skeleton__post" />
+          </div>
         </Show>
         <Show when={topic()}>
           {(value) => (
@@ -215,6 +246,12 @@ export default function ForumTopicPage() {
               authenticated={capabilities()?.authenticated ?? false}
               canModerate={capabilities()?.can_moderate ?? false}
               subscribed={subscribed()}
+              onReply={canReply() ? focusComposer : undefined}
+              onQuote={
+                canReply()
+                  ? () => quote(value().author.display_name, value().body)
+                  : undefined
+              }
               onUpdate={updateTopic}
               onDelete={deleteTopic}
               onSubscription={updateSubscription}
@@ -223,18 +260,26 @@ export default function ForumTopicPage() {
           )}
         </Show>
 
-        <h2 class="forum-section-title">{t("forum.reply.heading")}</h2>
-        <Show when={!loading() && replies().length === 0 && topic() !== null}>
-          <p class="forum-alert">{t("forum.reply.empty")}</p>
+        <Show when={replies().length > 0}>
+          <h2 class="forum-section-title">{t("forum.reply.heading")}</h2>
         </Show>
         <ol class="forum-replies">
           <For each={replies()}>
-            {(reply) => (
+            {(reply, index) => (
               <li>
                 <ForumReplyItem
                   reply={reply}
+                  number={index() + 2}
+                  isOriginalPoster={
+                    reply.author.public_user_id === topic()?.author.public_user_id
+                  }
                   own={own(reply.author.public_user_id)}
                   canModerate={capabilities()?.can_moderate ?? false}
+                  onQuote={
+                    canReply()
+                      ? () => quote(reply.author.display_name, reply.body)
+                      : undefined
+                  }
                   onUpdate={(body, revision) =>
                     updateReply(reply.reply_id, body, revision)
                   }
@@ -252,6 +297,9 @@ export default function ForumTopicPage() {
             )}
           </For>
         </ol>
+        <Show when={!loading() && replies().length === 0 && topic() !== null}>
+          <p class="forum-empty">{t("forum.reply.empty")}</p>
+        </Show>
         <Show when={replyCursor()}>
           <div class="forum-pagination">
             <button
@@ -264,14 +312,27 @@ export default function ForumTopicPage() {
             </button>
           </div>
         </Show>
-        <Show when={capabilities()?.can_post && topic() !== null}>
-          <ForumReplyComposer
-            disabled={
-              topic()?.access_state !== "open" ||
-              topic()?.content_state !== "visible"
+        <Show when={topic() !== null}>
+          <Show
+            when={canReply()}
+            fallback={
+              <Show
+                when={capabilities()?.can_post}
+                fallback={
+                  <Show when={capabilities() !== null && !capabilities()?.authenticated}>
+                    <p class="forum-notice forum-composer-notice">
+                      <a href="/login">{t("forum.sign_in")}</a>{" "}
+                      <span>{t("forum.sign_in_to_reply")}</span>
+                    </p>
+                  </Show>
+                }
+              >
+                <p class="forum-notice forum-composer-notice">{t("forum.reply.locked")}</p>
+              </Show>
             }
-            onSubmit={createReply}
-          />
+          >
+            <ForumReplyComposer value={draft()} onInput={setDraft} onSubmit={createReply} />
+          </Show>
         </Show>
       </div>
     </main>

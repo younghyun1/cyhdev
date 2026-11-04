@@ -2,7 +2,6 @@ import { useParams } from "@solidjs/router";
 import { Loading, Show, createMemo } from "solid-js";
 import { userApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
-import { UserBadge } from "../components/UserBadge";
 import { t, tx } from "../state/i18n";
 
 export default function UserInfoPage() {
@@ -58,15 +57,12 @@ export default function UserInfoPage() {
                     />
                   </Show>
                   <div class="min-w-0 max-w-full">
-                    <UserBadge
-                      userName={publicUser().user_name}
-                      profilePictureUrl={
-                        publicUser().user_profile_picture_url ?? undefined
-                      }
-                      countryFlag={publicUser().user_country_flag}
-                      size="md"
-                      link={false}
-                    />
+                    <h1 class="user-info-name">
+                      {publicUser().user_name}
+                      <Show when={publicUser().user_country_flag}>
+                        <span class="user-info-flag">{publicUser().user_country_flag}</span>
+                      </Show>
+                    </h1>
                     <p class={pageStyles.subtitle}>
                       {tx("user.joined", {
                         date: new Date(

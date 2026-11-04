@@ -118,7 +118,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 
 | URL pattern | Route access | Page source / behavior |
 | --- | --- | --- |
-| `/` | Public | `pages/home.tsx` |
+| `/` | Public | `pages/home.tsx`; embeds the compact live chat panel beside posts, photographs, and engineering notes, mounted when its slot nears the viewport |
 | `/about` | Public | `pages/about.tsx`; overview from the active locale's typed content module |
 | `/about/:page` | Public | Same component; `experience`, `projects`, or `background` |
 | `/about-blog` | Public | `pages/about_blog.tsx`; overview and repository source map |
@@ -128,7 +128,7 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/blog/new` | Signed in | `pages/posts/New.tsx` |
 | `/blog/:post_id` | Public | `pages/posts/View.tsx`; links may supply a slug |
 | `/blog/:post_id/edit` | Signed in | `pages/posts/Edit.tsx`; write permission still enforced separately |
-| `/forum` | Public | `pages/forum/List.tsx` |
+| `/forum` | Public | `pages/forum/List.tsx`; the active search is the `q` URL parameter |
 | `/forum/new` | Signed in | `pages/forum/New.tsx` |
 | `/forum/notifications` | Signed in | `pages/forum/Notifications.tsx` |
 | `/forum/:topic_id` | Public | `pages/forum/Topic.tsx` |

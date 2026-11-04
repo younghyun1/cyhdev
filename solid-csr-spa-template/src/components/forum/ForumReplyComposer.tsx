@@ -1,25 +1,29 @@
-import { Show, createSignal } from "solid-js";
+import { Show, createMemo, createSignal } from "solid-js";
 
 import { t } from "../../state/i18n";
 
 const encoder = new TextEncoder();
+const MAX_REPLY_CHARACTERS = 20_000;
+export const REPLY_COMPOSER_ID = "forum-new-reply";
 
 interface ForumReplyComposerProps {
-  readonly disabled: boolean;
+  readonly value: string;
+  readonly onInput: (value: string) => void;
   readonly onSubmit: (body: string) => Promise<void>;
 }
 
+/** Reply box under a thread; its text lives in the page so posts can quote into it. */
 export default function ForumReplyComposer(props: ForumReplyComposerProps) {
-  const [body, setBody] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const count = createMemo(() => Array.from(props.value).length);
 
-  const submit = async (event: SubmitEvent): Promise<void> => {
-    event.preventDefault();
-    const next = body().trim();
+  const submit = async (): Promise<void> => {
+    if (busy()) return;
+    const next = props.value.trim();
     if (
       !next ||
-      Array.from(next).length > 20_000 ||
+      Array.from(next).length > MAX_REPLY_CHARACTERS ||
       encoder.encode(next).byteLength > 65_536
     ) {
       setError(t("forum.form.body_invalid"));
@@ -29,7 +33,7 @@ export default function ForumReplyComposer(props: ForumReplyComposerProps) {
     setError(null);
     try {
       await props.onSubmit(next);
-      setBody("");
+      props.onInput("");
     } catch {
       setError(t("forum.reply.create_failed"));
     } finally {
@@ -38,23 +42,32 @@ export default function ForumReplyComposer(props: ForumReplyComposerProps) {
   };
 
   return (
-    <form class="forum-form" onSubmit={(event) => void submit(event)}>
-      <label class="forum-label" for="forum-new-reply">
-        {t("forum.reply.heading")}
-        <textarea
-          id="forum-new-reply"
-          class="forum-textarea"
-          value={body()}
-          placeholder={t("forum.reply.placeholder")}
-          onInput={(event) => setBody(event.currentTarget.value)}
-          maxlength={40_000}
-          required
-          disabled={busy() || props.disabled}
-        />
+    <form
+      class="forum-form forum-composer"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
+      <label class="forum-label" for={REPLY_COMPOSER_ID}>
+        {t("forum.topic.reply_action")}
       </label>
-      <Show when={props.disabled}>
-        <p class="forum-alert">{t("forum.reply.locked")}</p>
-      </Show>
+      <textarea
+        id={REPLY_COMPOSER_ID}
+        class="forum-textarea"
+        value={props.value}
+        placeholder={t("forum.reply.placeholder")}
+        onInput={(event) => props.onInput(event.currentTarget.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            void submit();
+          }
+        }}
+        maxlength={40_000}
+        required
+        disabled={busy()}
+      />
       <Show when={error()}>
         {(message) => (
           <div class="forum-alert forum-alert--error" role="alert">
@@ -62,13 +75,17 @@ export default function ForumReplyComposer(props: ForumReplyComposerProps) {
           </div>
         )}
       </Show>
-      <button
-        class="forum-button forum-button--primary"
-        type="submit"
-        disabled={busy() || props.disabled}
-      >
-        {busy() ? t("forum.reply.submitting") : t("forum.reply.submit")}
-      </button>
+      <div class="forum-composer__footer">
+        <p class="forum-help">
+          {t("forum.reply.shortcut")}{" "}
+          <span class="forum-composer__count">
+            {count()}/{MAX_REPLY_CHARACTERS}
+          </span>
+        </p>
+        <button class="forum-button forum-button--primary" type="submit" disabled={busy()}>
+          {busy() ? t("forum.reply.submitting") : t("forum.reply.submit")}
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,7 +1,7 @@
 /* About Me and About Blog pages (components/content/). Colors come from the
    semantic tokens in index.css. Every animation here touches only transform
    or a registered custom property, so none of them affects layout or text
-   contrast; reduced motion removes all of them. */
+   contrast; the animation switch (data-motion="off") removes all of them. */
 
 @property --cp-count {
   syntax: "<integer>";
@@ -50,6 +50,11 @@
   scrollbar-width: none;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
+}
+
+/* Tabs scroll; they must not shrink into each other when space runs out. */
+.cp-tab-list > li {
+  flex: none;
 }
 
 .cp-tab {
@@ -180,8 +185,10 @@
   margin: 0;
 }
 
+/* Fit the image: stretched by a one-column grid, the ring becomes a wide pill. */
 .cp-portrait a {
   display: block;
+  width: fit-content;
   padding: 3px;
   border-radius: 9999px;
   background: conic-gradient(
@@ -494,17 +501,15 @@
   content: counter(cp-stat);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .cp-stat-count {
-    animation: cp-count 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+.cp-stat-count {
+  animation: cp-count 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  @supports (animation-timeline: view()) {
-    .cp-stat-count {
-      animation: cp-count linear both;
-      animation-timeline: view();
-      animation-range: entry 10% cover 40%;
-    }
+@supports (animation-timeline: view()) {
+  .cp-stat-count {
+    animation: cp-count linear both;
+    animation-timeline: view();
+    animation-range: entry 10% cover 40%;
   }
 }
 
@@ -941,13 +946,11 @@
   text-align: right;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .cp-bar-fill {
-      animation: cp-bar-grow linear both;
-      animation-timeline: view();
-      animation-range: entry 15% cover 45%;
-    }
+@supports (animation-timeline: view()) {
+  .cp-bar-fill {
+    animation: cp-bar-grow linear both;
+    animation-timeline: view();
+    animation-range: entry 15% cover 45%;
   }
 }
 
@@ -1065,13 +1068,11 @@
 }
 
 /* Scroll-driven reveal: transform only, so text contrast is never reduced. */
-@media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .cp-reveal {
-      animation: cp-reveal linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 40%;
-    }
+@supports (animation-timeline: view()) {
+  .cp-reveal {
+    animation: cp-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
   }
 }
 
@@ -1081,18 +1082,12 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cp-shell,
-  .cp-portrait a,
-  .cp-reveal,
-  .cp-bar-fill,
-  .cp-stat-count {
-    animation: none !important;
-  }
+:root[data-motion="off"] :is(.cp-shell, .cp-portrait a, .cp-reveal, .cp-bar-fill, .cp-stat-count) {
+  animation: none !important;
+}
 
-  .cp-pipeline::after {
-    display: none;
-  }
+:root[data-motion="off"] .cp-pipeline::after {
+  display: none;
 }
 
 @media (max-width: 767px) {

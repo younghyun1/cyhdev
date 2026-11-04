@@ -621,6 +621,16 @@ export const UI_TEXT_KEYS = [
   "about_blog.nav.subsystems",
   "about_blog.nav.performance",
   "accent.label",
+  "appearance.label",
+  "motion.label",
+  "command_palette.action.motion_on",
+  "command_palette.action.motion_off",
+  "live_chat.state.connecting",
+  "live_chat.state.open",
+  "live_chat.state.closed",
+  "live_chat.state.error",
+  "live_chat.in_call",
+  "live_chat.empty",
 ] as const;
 
 export type UiTextKey = (typeof UI_TEXT_KEYS)[number];

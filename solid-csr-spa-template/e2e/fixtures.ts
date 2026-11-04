@@ -378,6 +378,9 @@ export async function setUiPreferences(
       if (window !== window.top) return;
       localStorage.setItem("ui_locale", nextLocale);
       localStorage.setItem("theme", nextTheme);
+      // Layout assertions compare boxes across reads; the entrance rise would
+      // move them in between.
+      localStorage.setItem("motion", "off");
     },
     { locale, theme },
   );

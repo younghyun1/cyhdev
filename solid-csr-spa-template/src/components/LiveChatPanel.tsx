@@ -20,8 +20,13 @@ import type {
   LiveChatServerEvent,
 } from "../dtos/responses/live_chat";
 import { pageStyles } from "../styles/pageStyles";
+import "../styles/live-chat.css";
+import type { UiTextKey } from "../i18n/keys";
 import { t, tx } from "../state/i18n";
-import { useLiveChatSocket } from "../state/live_chat_socket";
+import {
+  type LiveChatConnectionState,
+  useLiveChatSocket,
+} from "../state/live_chat_socket";
 import { useRtc } from "../state/rtc";
 import { UserBadge } from "./UserBadge";
 import { CallPanel } from "./call/CallPanel";
@@ -63,6 +68,13 @@ const TYPING_IDLE_STOP_MS = 1500;
 const TYPING_REFRESH_MS = 2000;
 const LIVE_CHAT_MAX_MESSAGE_CHARS = 300;
 const AUTO_SCROLL_BOTTOM_THRESHOLD_PX = 80;
+const COMPACT_VISIBLE_MESSAGES = 40;
+const CONNECTION_LABELS: Readonly<Record<LiveChatConnectionState, UiTextKey>> = {
+  connecting: "live_chat.state.connecting",
+  open: "live_chat.state.open",
+  closed: "live_chat.state.closed",
+  error: "live_chat.state.error",
+};
 
 function actorKey(actor: ChatActor): string {
   return `${actor.actor_key.type}:${actor.actor_key.value}`;
@@ -207,7 +219,6 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   let typingExpiryTimer: number | undefined;
   let typingActive = false;
   let messagesScrollEl: HTMLDivElement | undefined;
-  let messagesEndEl: HTMLDivElement | undefined;
   let shouldScrollAfterRender = true;
   let preserveScrollOffsetAfterRender: number | null = null;
   // Set when the window stops reaching the newest message (see
@@ -270,7 +281,7 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
 
   const isFull = () => props.mode === "full";
   const visibleMessages = createMemo(() =>
-    isFull() ? messages() : messages().slice(-8),
+    isFull() ? messages() : messages().slice(-COMPACT_VISIBLE_MESSAGES),
   );
   const inputCharCount = createMemo(() => Array.from(input()).length);
   const typingText = createMemo(() => {
@@ -319,8 +330,10 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
         return;
       }
 
+      // Scroll only this list: the panel can sit below the fold on the home
+      // page, where scrollIntoView would drag the whole document to it.
       if (shouldScrollAfterRender) {
-        messagesEndEl?.scrollIntoView({ block: "end" });
+        messagesScrollEl.scrollTop = messagesScrollEl.scrollHeight;
         shouldScrollAfterRender = false;
       }
     });
@@ -612,32 +625,32 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       class={[
         pageStyles.card,
         "live-chat-panel flex min-h-0 flex-col",
-        isFull()
-          ? "h-[calc(100vh-10rem)] max-h-[50rem]"
-          : "h-[32rem] max-h-[calc(100vh-10rem)]",
+        isFull() ? "live-chat-panel--full" : "",
       ]}
     >
-      <header
-        class={`${pageStyles.cardHeader} live-chat-panel-header flex items-center justify-between gap-3`}
-      >
-        <div>
-          <h2 class="text-lg font-semibold">{t("page.live_chat.title")}</h2>
-          <p class={pageStyles.subtitle}>
-            {connectionState()} · {connectedCount()} {t("live_chat.online")}
+      <header class="live-chat-panel-header">
+        <div class="min-w-0">
+          {/* The full page already carries this as its heading. */}
+          <Show when={!isFull()}>
+            <h2 class="live-chat-title">{t("page.live_chat.title")}</h2>
+          </Show>
+          <p class="live-chat-status" data-state={connectionState()}>
+            {t(CONNECTION_LABELS[connectionState()])} · {connectedCount()}{" "}
+            {t("live_chat.online")}
           </p>
         </div>
-        <div class="flex items-center gap-2">
-          <Show when={!isFull() && rtc.participantCount() > 0}>
-            <span class={pageStyles.callPill}>
-              {rtc.participantCount()} in call
-            </span>
-          </Show>
-          <Show when={!isFull()}>
-            <a href="/live-chat" class={pageStyles.buttonSecondary}>
+        <Show when={!isFull()}>
+          <div class="flex items-center gap-2">
+            <Show when={rtc.participantCount() > 0}>
+              <span class={pageStyles.callPill}>
+                {tx("live_chat.in_call", { count: rtc.participantCount() })}
+              </span>
+            </Show>
+            <a href="/live-chat" class="live-chat-open">
               {t("live_chat.open")}
             </a>
-          </Show>
-        </div>
+          </div>
+        </Show>
       </header>
 
       <Show when={isFull()}>
@@ -646,13 +659,13 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
 
       <div
         ref={messagesScrollEl}
-        class="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+        class="live-chat-messages"
         onScroll={() => {
           if (detached && isNearBottom()) void resyncLatest();
         }}
       >
         <Show when={isFull() && hasMore()}>
-          <div class="mb-3 flex justify-center">
+          <div class="live-chat-older">
             <button
               class={pageStyles.buttonGhost}
               type="button"
@@ -664,90 +677,67 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
           </div>
         </Show>
 
-        <div class="space-y-3">
-          <For each={visibleMessages()}>
-            {(message) => (
-              <article
-                class={[
-                  "rounded-sm border px-3 py-2 text-sm",
-                  message.kind === "pending"
-                    ? message.status === "failed"
-                      ? "border-danger/30 bg-danger/10 text-danger"
-                      : "border-line bg-surface-2 text-ink-muted opacity-70"
-                    : "border-line bg-surface",
-                ]}
-              >
-                <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
-                  <span
-                    class={[
-                      "flex min-w-0 items-center gap-2 font-mono font-semibold",
-                      message.kind === "pending" ? "" : "text-ink",
-                    ]}
+        <Show when={visibleMessages().length === 0 && connectionState() === "open"}>
+          <p class="live-chat-empty">{t("live_chat.empty")}</p>
+        </Show>
+
+        <For each={visibleMessages()}>
+          {(message) => (
+            <article
+              class="live-chat-message"
+              data-delivery={message.kind === "pending" ? message.status : "sent"}
+            >
+              <div class="live-chat-message-head">
+                <span class="live-chat-sender">
+                  <Show
+                    when={messageUserId(message)}
+                    fallback={pendingMessageSenderLabel(message)}
                   >
-                    <Show
-                      when={messageUserId(message)}
-                      fallback={pendingMessageSenderLabel(message)}
-                    >
-                      <UserBadge
-                        userName={messageSenderName(message)}
-                        profilePictureUrl={
-                          messageSenderProfilePictureUrl(message) ?? undefined
-                        }
-                        countryFlag={messageSenderCountryFlag(message)}
-                        size="sm"
-                      />
-                    </Show>
-                    <Show when={message.kind === "sent" ? message.message.live_chat_message_id : null}>
-                      {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
-                    </Show>
-                  </span>
-                  <time class="ml-auto shrink-0">
-                    {new Date(messageCreatedAt(message)).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </time>
-                </div>
-                <p
-                  class={[
-                    "whitespace-pre-wrap break-words",
-                    message.kind === "pending" ? "" : "text-ink",
-                  ]}
-                >
-                  {messageBody(message)}
-                </p>
-              </article>
-            )}
-          </For>
-          <div ref={messagesEndEl} aria-hidden="true" />
-        </div>
+                    <UserBadge
+                      userName={messageSenderName(message)}
+                      profilePictureUrl={
+                        messageSenderProfilePictureUrl(message) ?? undefined
+                      }
+                      countryFlag={messageSenderCountryFlag(message)}
+                      size="sm"
+                    />
+                  </Show>
+                  <Show when={message.kind === "sent" ? message.message.live_chat_message_id : null}>
+                    {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
+                  </Show>
+                </span>
+                <time class="live-chat-time">
+                  {new Date(messageCreatedAt(message)).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+              </div>
+              <p class="live-chat-body">{messageBody(message)}</p>
+            </article>
+          )}
+        </For>
       </div>
 
       <Show when={typingText()}>
-        <div class="px-4 pb-2 text-xs text-ink-muted">
-          {typingText()}
-        </div>
+        <div class="live-chat-note">{typingText()}</div>
       </Show>
 
       <Show when={error()}>
-        <div class="mx-4 mb-2 text-xs text-danger">
-          {error()}
-        </div>
+        <div class="live-chat-note live-chat-note--error">{error()}</div>
       </Show>
 
-      <form
-        class={`${pageStyles.cardFooter} live-chat-composer flex items-start gap-2`}
-        onSubmit={sendMessage}
-      >
-        <div class="min-w-0 flex-1">
+      <form class="live-chat-composer" onSubmit={sendMessage}>
+        <div class="live-chat-composer-field">
           <input
             class={pageStyles.input}
             maxlength={LIVE_CHAT_MAX_MESSAGE_CHARS}
             value={input()}
             onInput={(event) => handleInput(event.currentTarget.value)}
             placeholder={t("live_chat.message_placeholder")}
+            aria-label={t("live_chat.message_placeholder")}
           />
-          <div class="mt-1 text-right font-mono text-[0.65rem] text-ink-muted">
+          <div class="live-chat-counter">
             {inputCharCount()}/{LIVE_CHAT_MAX_MESSAGE_CHARS}
           </div>
         </div>

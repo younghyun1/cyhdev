@@ -14,6 +14,7 @@ import { blogApi } from "../../services/all_api";
 import type { PostInfoWithVote } from "../../generated";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
+import "../../styles/blog.css";
 import { UserBadge } from "../../components/UserBadge";
 import { t, tx } from "../../state/i18n";
 
@@ -208,7 +209,7 @@ export default function PostsList() {
     <main class={pageStyles.page}>
       <div class={pageStyles.pageInner}>
         {/* 1. LAYOUT FIX: Align title and button in a row */}
-        <div class="blog-list-title-row flex flex-row items-center justify-between mb-4">
+        <div class="blog-list-title-row flex flex-row items-end justify-between mb-5">
           <h1 class={pageStyles.titleSm}>{t("page.blog.list_title")}</h1>
           <Show when={isSuperuser()}>
             <button
@@ -219,8 +220,6 @@ export default function PostsList() {
             </button>
           </Show>
         </div>
-
-        <hr class={`${pageStyles.divider} mb-4`} />
 
         {/* Search UI */}
         <div class="blog-search-row flex flex-col sm:flex-row gap-2 mb-6">
@@ -377,39 +376,64 @@ export default function PostsList() {
         </Show>
 
         <Show when={postItems().length > 0}>
-          <ul class="flex flex-col">
+          <ul class="blog-list">
             <For each={postItems()}>
               {(post) => {
                 const score = () =>
                   (post.total_upvotes ?? 0) - (post.total_downvotes ?? 0);
                 return (
-                  <li class="group border-b border-line py-4 first:border-t">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono tabular-nums text-xs text-ink-muted">
+                  <li class="blog-row">
+                    <a
+                      href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
+                      class="blog-row-title"
+                    >
+                      {post.post_title}
+                    </a>
+                    <Show when={post.post_summary}>
+                      <p class="blog-row-summary">{post.post_summary}</p>
+                    </Show>
+                    <div class="blog-row-meta">
                       <UserBadge
                         userName={post.user_name ?? t("common.unknown")}
                         profilePictureUrl={post.user_profile_picture_url}
                         countryFlag={post.user_country_flag}
                         size="sm"
                       />
-                      <span class="text-ink-faint">·</span>
+                      <span aria-hidden="true">·</span>
                       <span>
                         {new Date(post.post_created_at).toLocaleDateString()}
                       </span>
-                      <span class="text-ink-faint">·</span>
+                      <span aria-hidden="true">·</span>
                       <span>
                         {score() > 0 ? `+${score()}` : score()}
                       </span>
-                      <span class="text-ink-faint">·</span>
+                      <span aria-hidden="true">·</span>
                       <span>
                         {post.post_view_count ?? 0} {t("common.views")}
                       </span>
-                      <span class="text-ink-faint">·</span>
+                      <span aria-hidden="true">·</span>
                       <span>
                         {post.post_share_count ?? 0} {t("common.shares")}
                       </span>
                       <Show when={!post.post_is_published}>
-                        <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-accent">
-                          {t("common.draft")}
+                        <span class="blog-row-draft">{t("common.draft")}</span>
+                      </Show>
+                      <Show when={post.post_tags && post.post_tags.length > 0}>
+                        <span class="blog-row-tags">
+                          <For each={post.post_tags}>
+                            {(tag) => (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  searchByTag(tag);
+                                }}
+                                class="blog-row-tag"
+                              >
+                                #{tag}
+                              </button>
+                            )}
+                          </For>
                         </span>
                       </Show>
                       <Show
@@ -419,39 +443,13 @@ export default function PostsList() {
                         }
                       >
                         <button
-                          class={`${pageStyles.buttonGhost} ml-auto py-0.5 text-danger`}
+                          class={`${pageStyles.buttonGhost} blog-row-delete`}
                           onClick={(e) => handleDeletePost(e, post.post_id)}
                         >
                           {t("common.delete")}
                         </button>
                       </Show>
                     </div>
-
-                    <a
-                      href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
-                      class="mt-1 block text-lg font-semibold text-ink group-hover:text-accent decoration-accent/40 underline-offset-4 hover:underline transition-colors"
-                    >
-                      {post.post_title}
-                    </a>
-
-                    {/* Tags: inline mono links, no pills */}
-                    <Show when={post.post_tags && post.post_tags.length > 0}>
-                      <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 font-mono text-xs">
-                        <For each={post.post_tags}>
-                          {(tag) => (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                searchByTag(tag);
-                              }}
-                              class="text-accent/80 hover:text-accent hover:underline underline-offset-4 transition-colors cursor-pointer"
-                            >
-                              #{tag}
-                            </button>
-                          )}
-                        </For>
-                      </div>
-                    </Show>
                   </li>
                 );
               }}

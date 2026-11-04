@@ -167,4 +167,4 @@
   .minecraft-player-warning { bottom: 35px; right: 8px; max-width: calc(100% - 16px); }
 }
 
-@media (prefers-reduced-motion: reduce) { .minecraft-atlas *, .minecraft-atlas *::before, .minecraft-atlas *::after { transition-duration: 0s !important; animation: none !important; } }
+:root[data-motion="off"] :is(.minecraft-atlas *, .minecraft-atlas *::before, .minecraft-atlas *::after) { transition-duration: 0s !important; animation: none !important; }

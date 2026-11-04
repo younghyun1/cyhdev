@@ -4,16 +4,22 @@ import type {
   ForumReply,
   ForumReplyModerationAction,
 } from "../../services/contracts/forum_types";
-import { locale, t, tx } from "../../state/i18n";
-import ForumAuthorBadge from "./ForumAuthor";
+import { t } from "../../state/i18n";
 import ForumModerationControls from "./ForumModerationControls";
+import ForumPost from "./ForumPost";
+import ForumPostBody from "./ForumPostBody";
 
 const encoder = new TextEncoder();
 
 interface ForumReplyItemProps {
   readonly reply: ForumReply;
+  /** Position in the thread; the opening post is 1. */
+  readonly number: number;
+  readonly isOriginalPoster: boolean;
   readonly own: boolean;
   readonly canModerate: boolean;
+  /** Present when the viewer can reply to this topic. */
+  readonly onQuote?: () => void;
   readonly onUpdate: (body: string, revision: number) => Promise<void>;
   readonly onDelete: (revision: number) => Promise<void>;
   readonly onModerate: (
@@ -30,8 +36,6 @@ export default function ForumReplyItem(props: ForumReplyItemProps) {
   );
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const masked = () => props.reply.content_state !== "visible";
-  const date = () => new Date(props.reply.created_at).toLocaleString(locale());
 
   const update = async (event: SubmitEvent): Promise<void> => {
     event.preventDefault();
@@ -73,24 +77,60 @@ export default function ForumReplyItem(props: ForumReplyItemProps) {
     props.reply.content_state === "hidden" ? ["restore"] : ["hide"];
 
   return (
-    <article
+    <ForumPost
       id={`forum-reply-${props.reply.reply_id}`}
-      class={["forum-reply", masked() ? "forum-reply--masked" : ""]}
+      number={props.number}
+      author={props.reply.author}
+      isOriginalPoster={props.isOriginalPoster}
+      createdAt={props.reply.created_at}
+      editedAt={props.reply.edited_at}
+      contentState={props.reply.content_state}
+      actions={
+        <>
+          <Show when={props.onQuote && props.reply.content_state === "visible"}>
+            <button class="forum-text-button" type="button" onClick={() => props.onQuote?.()}>
+              {t("forum.post.quote")}
+            </button>
+          </Show>
+          <Show when={props.own && props.reply.content_state !== "deleted"}>
+            <Show when={props.reply.content_state === "visible"}>
+              <button
+                class="forum-text-button"
+                type="button"
+                disabled={busy()}
+                onClick={() => setEditing(true)}
+              >
+                {t("forum.reply.edit")}
+              </button>
+            </Show>
+            <button
+              class="forum-text-button forum-text-button--danger"
+              type="button"
+              disabled={busy()}
+              onClick={() => void remove()}
+            >
+              {t("forum.reply.delete")}
+            </button>
+          </Show>
+          <Show when={props.canModerate && props.reply.content_state !== "deleted"}>
+            <ForumModerationControls
+              idPrefix={`forum-reply-${props.reply.reply_id}-moderation`}
+              actions={moderationActions()}
+              onModerate={(action, reason) =>
+                props.onModerate(
+                  action as ForumReplyModerationAction,
+                  reason,
+                  props.reply.revision,
+                )
+              }
+            />
+          </Show>
+        </>
+      }
     >
-      <div class="forum-reply__meta">
-        <ForumAuthorBadge author={props.reply.author} />
-        <span>{tx("forum.topic.created", { date: date() })}</span>
-        <Show when={props.reply.edited_at}>
-          <span>{t("forum.topic.edited")}</span>
-        </Show>
-      </div>
       <Show
         when={editing()}
-        fallback={
-          <p class="forum-reply__body">
-            {props.reply.body ?? t("forum.topic.masked")}
-          </p>
-        }
+        fallback={<ForumPostBody body={props.reply.body ?? t("forum.topic.masked")} />}
       >
         <form class="forum-form" onSubmit={(event) => void update(event)}>
           <label
@@ -134,44 +174,6 @@ export default function ForumReplyItem(props: ForumReplyItemProps) {
           </div>
         )}
       </Show>
-      <footer class="forum-reply__footer">
-        <span class="forum-badge">{props.reply.content_state}</span>
-        <Show when={props.own && props.reply.content_state !== "deleted"}>
-          <div class="forum-actions">
-            <Show when={props.reply.content_state === "visible"}>
-              <button
-                class="forum-button"
-                type="button"
-                disabled={busy()}
-                onClick={() => setEditing(true)}
-              >
-                {t("forum.reply.edit")}
-              </button>
-            </Show>
-            <button
-              class="forum-button forum-button--danger"
-              type="button"
-              disabled={busy()}
-              onClick={() => void remove()}
-            >
-              {t("forum.reply.delete")}
-            </button>
-          </div>
-        </Show>
-      </footer>
-      <Show when={props.canModerate && props.reply.content_state !== "deleted"}>
-        <ForumModerationControls
-          idPrefix={`forum-reply-${props.reply.reply_id}-moderation`}
-          actions={moderationActions()}
-          onModerate={(action, reason) =>
-            props.onModerate(
-              action as ForumReplyModerationAction,
-              reason,
-              props.reply.revision,
-            )
-          }
-        />
-      </Show>
-    </article>
+    </ForumPost>
   );
 }

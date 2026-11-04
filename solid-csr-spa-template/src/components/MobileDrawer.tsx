@@ -6,6 +6,7 @@ import { MobileDialog } from "./MobileDialog";
 import SystemStatusDetails from "./SystemStatusDetails";
 import ThemeToggle from "./ThemeToggle";
 import AccentPicker from "./AccentPicker";
+import MotionToggle from "./MotionToggle";
 import { openCommandPalette } from "../state/command_palette";
 
 type MobileDrawerProps = {
@@ -72,6 +73,10 @@ const MobileDrawer: ParentComponent<MobileDrawerProps> = (props) => (
           <AccentPicker name="drawer-accent" />
         </div>
         <div class="mobile-drawer-control-row">
+          <span>{t("motion.label")}</span>
+          <MotionToggle />
+        </div>
+        <div class="mobile-drawer-control-row">
           <span>{t("top_bar.language.label")}</span>
           <LanguageSelect />
         </div>
@@ -85,7 +90,6 @@ const MobileDrawer: ParentComponent<MobileDrawerProps> = (props) => (
               href="/login"
               onClick={() => props.onClose()}
             >
-              <span class="mobile-drawer-status mobile-drawer-status-offline" />
               {t("top_bar.auth.login")}
             </a>
           }

@@ -40,6 +40,14 @@
         if (a === "lagoon" || a === "cobalt" || a === "orchid" || a === "graphite") {
           document.documentElement.setAttribute("data-accent", a);
         }
+        // Animation switch; must mirror readMotion in src/state/motion.ts.
+        var o = null;
+        try {
+          o = localStorage.getItem("motion");
+        } catch (e) {
+          /* storage unavailable */
+        }
+        if (o === "off") document.documentElement.setAttribute("data-motion", "off");
       })();
     </script>
   </head>

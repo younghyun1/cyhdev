@@ -1,12 +1,13 @@
 import { For, Show, createSignal, onSettled } from "solid-js";
 
-import ForumAuthorBadge from "../../components/forum/ForumAuthor";
+import { ForumAvatar } from "../../components/forum/ForumAuthor";
+import ForumTime from "../../components/forum/ForumTime";
 import { forumApi } from "../../services/contracts/forum";
 import type {
   ForumNotification,
   ForumNotificationCursor,
 } from "../../services/contracts/forum_types";
-import { locale, t, tx } from "../../state/i18n";
+import { t, tx } from "../../state/i18n";
 import "../../styles/forum.css";
 
 const NOTIFICATION_PAGE_SIZE = 50;
@@ -95,11 +96,18 @@ export default function ForumNotificationsPage() {
   return (
     <main class="forum-page">
       <div class="forum-shell forum-shell--narrow">
+        <nav class="forum-breadcrumb" aria-label={t("forum.breadcrumb")}>
+          <a href="/forum">{t("page.forum.title")}</a>
+          <span aria-hidden="true">/</span>
+          <span class="forum-breadcrumb__current" aria-current="page">
+            {t("forum.notifications")}
+          </span>
+        </nav>
         <header class="forum-header">
-          <h1 class="forum-heading">{t("page.forum.notifications_title")}</h1>
-          <a class="forum-link-button" href="/forum">
-            {t("forum.topic.back")}
-          </a>
+          <div class="min-w-0">
+            <h1 class="forum-heading">{t("page.forum.notifications_title")}</h1>
+            <p class="forum-subtitle">{t("forum.notifications.subtitle")}</p>
+          </div>
         </header>
         <Show when={error()}>
           {(message) => (
@@ -109,10 +117,14 @@ export default function ForumNotificationsPage() {
           )}
         </Show>
         <Show when={loading() && notifications().length === 0}>
-          <p class="forum-alert" role="status">{t("forum.loading")}</p>
+          <p class="sr-only" role="status">{t("forum.loading")}</p>
+          <div class="forum-skeleton" aria-hidden="true">
+            <div class="forum-skeleton__row" />
+            <div class="forum-skeleton__row" />
+          </div>
         </Show>
         <Show when={!loading() && notifications().length === 0}>
-          <p class="forum-alert">{t("forum.notifications.empty")}</p>
+          <p class="forum-empty forum-empty--boxed">{t("forum.notifications.empty")}</p>
         </Show>
         <ol class="forum-notification-list">
           <For each={notifications()}>
@@ -129,25 +141,23 @@ export default function ForumNotificationsPage() {
                       unread() ? "forum-notification--unread" : "",
                     ]}
                   >
-                    <div class="forum-notification__meta">
-                      <ForumAuthorBadge author={notification.actor} />
-                      <span>
-                        {new Date(notification.created_at).toLocaleString(
-                          locale(),
-                        )}
-                      </span>
-                      <span>
-                        {unread()
-                          ? t("forum.notifications.unread")
-                          : t("forum.notifications.read")}
-                      </span>
+                    <ForumAvatar author={notification.actor} />
+                    <div class="forum-notification__main">
+                      <p class="forum-notification__body">
+                        {tx("forum.notifications.topic_reply", {
+                          actor: actor(),
+                          topic: title(),
+                        })}
+                      </p>
+                      <div class="forum-notification__meta">
+                        <ForumTime at={notification.created_at} />
+                        <span>
+                          {unread()
+                            ? t("forum.notifications.unread")
+                            : t("forum.notifications.read")}
+                        </span>
+                      </div>
                     </div>
-                    <p class="forum-notification__body">
-                      {tx("forum.notifications.topic_reply", {
-                        actor: actor(),
-                        topic: title(),
-                      })}
-                    </p>
                     <div class="forum-actions">
                       <a
                         class="forum-link-button"

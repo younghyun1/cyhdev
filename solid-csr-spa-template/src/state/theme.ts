@@ -1,4 +1,5 @@
 import { createSignal, flush } from "solid-js";
+import { motionEnabled } from "./motion";
 
 function getInitialTheme(): "light" | "dark" {
   if (typeof window !== "undefined") {
@@ -55,14 +56,12 @@ export function toggleTheme() {
 /**
  * Toggles the theme behind a View Transition that reveals the new palette as
  * a circle growing from `origin`, normally the toggle's center. Browsers
- * without the API, and visitors who prefer reduced motion, get the plain
- * toggle. The DOM update happens synchronously inside the transition
+ * without the API, and visitors with animations off, get the plain toggle.
+ * The DOM update happens synchronously inside the transition
  * callback so the browser captures the correct before and after states.
  */
 export function toggleThemeFrom(origin: { x: number; y: number }): void {
-  const reduceMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-  if (typeof document.startViewTransition !== "function" || reduceMotion) {
+  if (typeof document.startViewTransition !== "function" || !motionEnabled()) {
     toggleTheme();
     return;
   }

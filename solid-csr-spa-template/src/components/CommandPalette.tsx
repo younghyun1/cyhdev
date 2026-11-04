@@ -4,6 +4,7 @@ import { useNavigate } from "@solidjs/router";
 import type { UiTextKey } from "../i18n/keys";
 import { ACCENTS, accent, setAccent } from "../state/accent";
 import { t, tx } from "../state/i18n";
+import { motionEnabled, toggleMotion } from "../state/motion";
 import { theme, toggleThemeFrom } from "../state/theme";
 import { rankByQuery } from "../utils/fuzzyMatch";
 import { MobileDialog } from "./MobileDialog";
@@ -112,7 +113,18 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
         run: () => setAccent(name),
       }),
     );
-    return [...pages, ...sections, themeAction, ...accents];
+    const motionAction: PaletteEntry = {
+      id: "action:motion",
+      group: "actions",
+      label: t(
+        motionEnabled()
+          ? "command_palette.action.motion_off"
+          : "command_palette.action.motion_on",
+      ),
+      hint: motionEnabled() ? "●" : "○",
+      run: toggleMotion,
+    };
+    return [...pages, ...sections, themeAction, motionAction, ...accents];
   });
 
   const results = createMemo(() =>

@@ -1,7 +1,7 @@
 import { render, screen } from "@solidjs/testing-library";
 import { describe, expect, it } from "vitest";
 
-import ForumTopicCard from "../components/forum/ForumTopicCard";
+import ForumTopicRow from "../components/forum/ForumTopicRow";
 import ForumTopicDetailCard from "../components/forum/ForumTopicDetail";
 import type { ForumTopic } from "../services/contracts/forum_types";
 
@@ -29,7 +29,7 @@ const topicFixture = (): ForumTopic => ({
 
 describe("forum rendering", () => {
   it("renders server content as plain text", () => {
-    const result = render(() => <ForumTopicCard topic={topicFixture()} />);
+    const result = render(() => <ForumTopicRow topic={topicFixture()} />);
 
     expect(screen.getByText("<script>bad()</script>")).toBeTruthy();
     expect(screen.getByText('<img src=x onerror="bad()">')).toBeTruthy();
@@ -52,6 +52,6 @@ describe("forum rendering", () => {
       />
     ));
 
-    expect(screen.queryByText("Moderation")).toBeNull();
+    expect(screen.queryByText("Moderate")).toBeNull();
   });
 });

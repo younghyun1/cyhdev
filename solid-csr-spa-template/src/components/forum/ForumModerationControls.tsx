@@ -49,11 +49,12 @@ export default function ForumModerationControls(
   const [reason, setReason] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  // Collapsed by default: a moderator's form must not outweigh every post.
+  const [open, setOpen] = createSignal(false);
 
   createEffect(
-    () => props.actions,
-    (actions) => {
-      const current = action();
+    () => ({ actions: props.actions, current: action() }),
+    ({ actions, current }) => {
       if (current === null || !actions.includes(current)) {
         setAction(actions[0] ?? null);
       }
@@ -87,12 +88,21 @@ export default function ForumModerationControls(
   };
 
   return (
-    <form
-      class="forum-panel forum-moderation"
-      onSubmit={(event) => void submit(event)}
-    >
-      <h3 class="forum-section-title">{t("forum.moderation.title")}</h3>
-      <div class="forum-moderation__controls">
+    <>
+      <button
+        class="forum-text-button"
+        type="button"
+        aria-expanded={open() ? "true" : "false"}
+        onClick={() => setOpen((current) => !current)}
+      >
+        {t("forum.moderation.toggle")}
+      </button>
+      <Show when={open()}>
+      <form
+        class="forum-panel forum-moderation__form"
+        onSubmit={(event) => void submit(event)}
+      >
+        <div class="forum-moderation__controls">
         <label class="forum-label" for={`${props.idPrefix}-action`}>
           <span class="forum-help">{t("forum.moderation.title")}</span>
           <select
@@ -140,6 +150,8 @@ export default function ForumModerationControls(
           </div>
         )}
       </Show>
-    </form>
+      </form>
+      </Show>
+    </>
   );
 }

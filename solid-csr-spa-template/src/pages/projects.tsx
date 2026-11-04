@@ -232,8 +232,7 @@ export default function Projects() {
   return (
     <main class={pageStyles.page}>
       <div class={pageStyles.pageInner}>
-        <h1 class={pageStyles.title}>{t("page.projects.title")}</h1>
-        <hr class={`${pageStyles.divider} my-4`} />
+        <h1 class={`${pageStyles.title} mb-3`}>{t("page.projects.title")}</h1>
         <p class={pageStyles.muted}>
           {t("projects.subtitle")}
         </p>

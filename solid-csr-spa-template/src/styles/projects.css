@@ -1,21 +1,41 @@
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
+  gap: 0.75rem;
   padding: 1rem 0;
 }
 
 .project-card {
-  border-radius: 0.25rem;
+  position: relative;
+  border-radius: 0.125rem;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: border-color 120ms ease;
   background-color: var(--surface);
   border: 1px solid var(--line);
 }
-.project-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+
+/* Accent sweep along the top edge, as on the home page's notes. */
+.project-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+.project-card:hover,
+.project-card:focus-within {
+  border-color: var(--line-strong);
+}
+
+.project-card:hover::before,
+.project-card:focus-within::before {
+  transform: scaleX(1);
 }
 
 .project-thumbnail {
