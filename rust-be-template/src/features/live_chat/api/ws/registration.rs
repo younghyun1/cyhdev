@@ -17,7 +17,7 @@ use crate::{
         },
     },
     features::{
-        accounts::service::session_service::SessionService,
+        accounts::service::{session_end::SessionEnd, session_service::SessionService},
         live_chat::service::live_chat_service::LiveChatService,
     },
 };
@@ -32,6 +32,15 @@ pub(super) enum LiveChatRegistrationError {
 pub(super) struct RegisteredLiveChatConnection {
     pub(super) connection_id: Uuid,
     pub(super) disconnect_rx: tokio::sync::watch::Receiver<bool>,
+    /// Ends a signed-in connection with its session; guests have none.
+    pub(super) session_end: Option<SessionEnd>,
+}
+
+/// How a new connection relates to the session that authorized it.
+enum SessionBinding {
+    Guest,
+    Current(SessionEnd),
+    Stale,
 }
 
 pub(super) async fn register_connection(
@@ -74,30 +83,37 @@ pub(super) async fn register_connection(
         return Err(rejection);
     }
 
-    if !session_is_current(sessions, cookie_jar, actor.user_id).await {
-        service.cache.unregister_connection(connection_id).await;
-        return Err(LiveChatRegistrationError::ExpiredSession);
-    }
+    let session_end = match bind_to_session(sessions, cookie_jar, actor.user_id).await {
+        SessionBinding::Guest => None,
+        SessionBinding::Current(session_end) => Some(session_end),
+        SessionBinding::Stale => {
+            service.cache.unregister_connection(connection_id).await;
+            return Err(LiveChatRegistrationError::ExpiredSession);
+        }
+    };
 
     Ok(RegisteredLiveChatConnection {
         connection_id,
         disconnect_rx,
+        session_end,
     })
 }
 
-async fn session_is_current(
+async fn bind_to_session(
     sessions: &SessionService,
     cookie_jar: &CookieJar,
     user_id: Option<Uuid>,
-) -> bool {
+) -> SessionBinding {
     let Some(user_id) = user_id else {
-        return true;
+        return SessionBinding::Guest;
     };
     let Some(session_cookie) = cookie_jar.get(SESSION_COOKIE_NAME) else {
-        return false;
+        return SessionBinding::Stale;
     };
-    match sessions.lookup(session_cookie.value()).await {
-        Some(session) => session.get_user_id() == user_id,
-        None => false,
+    match sessions.lookup_with_end(session_cookie.value()).await {
+        Some((session, session_end)) if session.get_user_id() == user_id => {
+            SessionBinding::Current(session_end)
+        }
+        Some(_) | None => SessionBinding::Stale,
     }
 }

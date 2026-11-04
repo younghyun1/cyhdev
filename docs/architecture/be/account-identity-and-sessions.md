@@ -26,6 +26,8 @@ Sessions expire after one hour. Lookup removes an expired entry immediately. The
 
 Login rotates only the valid session token already presented by that browser. Other browsers and devices retain independent sessions. Password, verification, and identity changes revoke every session for the user; profile authority and role changes refresh every unexpired session from committed account data. Logout removes only the presented session and sits outside the authentication gate, so any session, whatever its state, can end itself. The raw token and its derived key are never logged.
 
+A live chat connection fixes its identity at the upgrade, so it holds an end signal from the session that authorized it. The store alone owns the sender, so removing an entry by any path closes the connection: logout, rotation, the per-account cap, revocation, or expiry once a lookup or the maintenance purge reaches the entry. Other browsers and devices keep their own sessions and connections. A closed client reconnects with whatever cookie it now has, which makes it a guest. A call on that connection ends with it, including when a session's hour runs out. Guests have no session and no signal.
+
 ## Security boundary
 
 The cookie replaces a shared frontend API key, not browser trust. A copied cookie remains a bearer credential until its one-hour expiry, explicit logout, user-wide revocation, or process restart. `HttpOnly` prevents direct cookie reads through page JavaScript, but an active same-origin script injection can still issue requests as the user. Exact trusted-origin checks on unsafe requests and WebSocket handshakes remain required alongside output encoding and the application content-security policy.

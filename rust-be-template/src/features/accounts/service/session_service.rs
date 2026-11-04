@@ -16,6 +16,7 @@ use crate::features::accounts::{
         },
     },
     error::AccountError,
+    service::session_end::{SessionEnd, StoredSession},
 };
 
 pub const MAX_SESSIONS: usize = 16_384;
@@ -28,7 +29,7 @@ const MAX_TOKEN_GENERATION_ATTEMPTS: usize = 4;
 
 /// Owns all session authority for the single backend process.
 pub struct SessionService {
-    sessions: scc::HashMap<SessionKey, Session>,
+    sessions: scc::HashMap<SessionKey, StoredSession>,
     active_slots: AtomicUsize,
     max_sessions: usize,
     max_sessions_per_user: usize,
@@ -113,7 +114,8 @@ impl SessionService {
             user_country: account.country,
         };
 
-        match self.sessions.insert_async(key, session).await {
+        let stored = StoredSession::new(session);
+        match self.sessions.insert_async(key, stored).await {
             Ok(()) => Ok(token),
             Err(_) => {
                 self.release_slots(1);
@@ -127,13 +129,28 @@ impl SessionService {
         let key = SessionKey::from_token(token)?;
         let session = self
             .sessions
-            .read_async(&key, |_, session| session.clone())
+            .read_async(&key, |_, stored| stored.session.clone())
             .await?;
+        self.unless_expired(&key, session).await
+    }
 
+    /// As [`Self::lookup`], for a connection that must not outlive the session.
+    pub async fn lookup_with_end(&self, token: &str) -> Option<(Session, SessionEnd)> {
+        let key = SessionKey::from_token(token)?;
+        let (session, session_end) = self
+            .sessions
+            .read_async(&key, |_, stored| {
+                (stored.session.clone(), stored.end_signal())
+            })
+            .await?;
+        Some((self.unless_expired(&key, session).await?, session_end))
+    }
+
+    async fn unless_expired(&self, key: &SessionKey, session: Session) -> Option<Session> {
         if session.is_unexpired_at(chrono::Utc::now()) {
             Some(session)
         } else {
-            let _ = self.remove_key(&key).await;
+            let _ = self.remove_key(key).await;
             None
         }
     }
@@ -149,15 +166,15 @@ impl SessionService {
 
         self.sessions
             .iter_mut_async(|mut entry| {
-                if !entry.is_unexpired_at(now) {
+                if !entry.session.is_unexpired_at(now) {
                     let _ = entry.consume();
                     self.release_slots(1);
-                } else if entry.user_id == user_id {
-                    entry.user_name = Arc::from(account.user_name.as_str());
-                    entry.user_country = account.country;
-                    entry.user_language = account.language;
-                    entry.is_email_verified = account.is_email_verified;
-                    entry.role_type = role_type;
+                } else if entry.session.user_id == user_id {
+                    entry.session.user_name = Arc::from(account.user_name.as_str());
+                    entry.session.user_country = account.country;
+                    entry.session.user_language = account.language;
+                    entry.session.is_email_verified = account.is_email_verified;
+                    entry.session.role_type = role_type;
                     refreshed += 1;
                 }
                 true
@@ -186,7 +203,7 @@ impl SessionService {
         let mut removed = 0usize;
         self.sessions
             .iter_mut_async(|entry| {
-                if entry.user_id == user_id {
+                if entry.session.user_id == user_id {
                     let _ = entry.consume();
                     self.release_slots(1);
                     removed += 1;
@@ -202,7 +219,7 @@ impl SessionService {
         let mut pruned = 0usize;
         self.sessions
             .iter_mut_async(|entry| {
-                if !entry.is_unexpired_at(now) {
+                if !entry.session.is_unexpired_at(now) {
                     let _ = entry.consume();
                     self.release_slots(1);
                     pruned += 1;
@@ -222,9 +239,9 @@ impl SessionService {
         let keep = self.max_sessions_per_user - 1;
         let mut owned = Vec::new();
         self.sessions
-            .iter_async(|key, session| {
-                if session.user_id == user_id {
-                    owned.push((session.created_at, *key));
+            .iter_async(|key, stored| {
+                if stored.session.user_id == user_id {
+                    owned.push((stored.session.created_at, *key));
                 }
                 true
             })

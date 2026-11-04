@@ -111,14 +111,6 @@ pub async fn live_chat_ws_handler(
         });
     })
     .on_upgrade(move |socket| {
-        handle_live_chat_socket(
-            socket,
-            service,
-            actor,
-            client_ip,
-            wire_protocol,
-            connection_id,
-            registered.disconnect_rx,
-        )
+        handle_live_chat_socket(socket, service, actor, client_ip, wire_protocol, registered)
     })
 }

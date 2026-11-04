@@ -5,9 +5,12 @@ use futures_util::{StreamExt, stream::SplitStream};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::features::live_chat::{
-    domain::actor::ChatActor,
-    service::{cache::LiveChatServerEvent, live_chat_service::LiveChatService},
+use crate::features::{
+    accounts::service::session_end::SessionEnd,
+    live_chat::{
+        domain::actor::ChatActor,
+        service::{cache::LiveChatServerEvent, live_chat_service::LiveChatService},
+    },
 };
 
 mod actor_resolution;
@@ -28,6 +31,7 @@ mod writer;
 use message_handler::{FrameGuard, FrameOutcome, handle_client_frame};
 use presence::cleanup_live_chat_connection;
 use protocol::{OutboundSender, encode_event};
+use registration::RegisteredLiveChatConnection;
 use rtc::RtcSession;
 pub use upgrade::live_chat_ws_handler;
 use writer::{WriterInputs, send_with_timeout, spawn_writer};
@@ -69,15 +73,19 @@ struct ConnectionContext {
     rtc: Arc<RtcSession>,
 }
 
-pub(super) async fn handle_live_chat_socket(
+async fn handle_live_chat_socket(
     socket: WebSocket,
     service: Arc<LiveChatService>,
     actor: ChatActor,
     client_ip: IpAddr,
     wire_protocol: LiveChatWireProtocol,
-    connection_id: Uuid,
-    disconnect_rx: tokio::sync::watch::Receiver<bool>,
+    registered: RegisteredLiveChatConnection,
 ) {
+    let RegisteredLiveChatConnection {
+        connection_id,
+        disconnect_rx,
+        session_end,
+    } = registered;
     let broadcasts = service.cache.subscribe();
     let (mut sink, stream) = socket.split();
 
@@ -136,7 +144,7 @@ pub(super) async fn handle_live_chat_socket(
         connection_id,
         rtc: Arc::clone(&rtc_session),
     };
-    read_frames(&context, stream, disconnect_rx).await;
+    read_frames(&context, stream, disconnect_rx, session_end).await;
 
     // Tear down any active call for this connection before the socket closes.
     rtc_session.teardown().await;
@@ -156,13 +164,22 @@ pub(super) async fn handle_live_chat_socket(
     cleanup_live_chat_connection(service, connection_id, &actor).await;
 }
 
-/// Read until the peer closes, the account is revoked, the writer gives up on
-/// a slow consumer, a frame handler closes the connection, or nothing arrives
-/// within the idle timeout.
+/// Completes when a signed-in connection's session ends. A guest's never does.
+async fn session_ended(session_end: &mut Option<SessionEnd>) {
+    match session_end {
+        Some(session_end) => session_end.ended().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// Read until the peer closes, the session ends, the account is revoked, the
+/// writer gives up on a slow consumer, a frame handler closes the connection, or
+/// nothing arrives within the idle timeout.
 async fn read_frames(
     context: &ConnectionContext,
     mut stream: SplitStream<WebSocket>,
     mut disconnect_rx: tokio::sync::watch::Receiver<bool>,
+    mut session_end: Option<SessionEnd>,
 ) {
     let mut guard = FrameGuard::new(tokio::time::Instant::now());
     let idle = tokio::time::sleep(LIVE_CHAT_IDLE_TIMEOUT);
@@ -177,6 +194,11 @@ async fn read_frames(
                 if revoked {
                     return;
                 }
+            }
+            // The identity was fixed at the upgrade, so it must not outlive the session.
+            () = session_ended(&mut session_end) => {
+                info!(connection_id = %context.connection_id, "Closing live chat connection whose session ended");
+                return;
             }
             () = context.out.closed() => return,
             () = &mut idle => {

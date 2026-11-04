@@ -24,5 +24,6 @@ pub mod registration;
 pub mod retention_notifications;
 pub mod roles;
 mod session_coordination;
+pub mod session_end;
 pub mod session_service;
 pub mod verification;
