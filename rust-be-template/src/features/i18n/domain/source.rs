@@ -48,10 +48,7 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
             UiLocale::DeDe,
             include_str!("../../../../i18n/ui/de-DE.json"),
         )?,
-        parse_bundle(
-            UiLocale::Ar,
-            include_str!("../../../../i18n/ui/ar.json"),
-        )?,
+        parse_bundle(UiLocale::Ar, include_str!("../../../../i18n/ui/ar.json"))?,
         parse_bundle(
             UiLocale::HiIn,
             include_str!("../../../../i18n/ui/hi-IN.json"),
@@ -104,10 +101,7 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
             UiLocale::SvSe,
             include_str!("../../../../i18n/ui/sv-SE.json"),
         )?,
-        parse_bundle(
-            UiLocale::Sh,
-            include_str!("../../../../i18n/ui/sh.json"),
-        )?,
+        parse_bundle(UiLocale::Sh, include_str!("../../../../i18n/ui/sh.json"))?,
         parse_bundle(
             UiLocale::RoRo,
             include_str!("../../../../i18n/ui/ro-RO.json"),
