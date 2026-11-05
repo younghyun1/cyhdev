@@ -21,6 +21,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [November 2 site refresh: About subpages, motion, palette, dependencies](plans/2026-11-02-site-refresh.md)
 - [November 3 PGO and BOLT rotated benchmarks and re-measurement](plans/2026-11-03-pgo-bolt-rotated-benchmarks.md)
 - [Deployment capacity estimates and compression notes for future optimization](plans/2026-11-03-deployment-capacity-notes.md)
+- [November 4 language expansion: sixteen languages, right-to-left, stable control sizes](plans/2026-11-04-language-expansion.md)
 - [November 4 interface pass: home board, forum, animation switch, page styling](plans/2026-11-04-interface-pass.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.

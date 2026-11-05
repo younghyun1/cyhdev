@@ -6,6 +6,10 @@ Applies to `solid-csr-spa-template/`. Source of truth for tokens is `src/index.c
 
 Technical-brutalist, warm. Cream paper in light mode, pure black in dark mode, warm neutrals in both, one decorative accent at a time (amber by default). Monospace for anything technical (nav, labels, metadata, status bar); sans for reading copy. Hard 1px borders carry structure, with faint blueprint grids and accent washes behind heroes; shadows are reserved for floating chrome (glass header, menus, drawers, palette). Motion is deliberate and cheap: see [Motion](#motion).
 
+## Control sizing
+
+Changing the language must not move anything. A control's size never comes from its label: the top bar uses equal navigation cells in `src/styles/header.css`, `.ui-button` is a fixed box in `src/index.css` whose label wraps inside it, tab strips use equal cells, and tables use `table-layout: fixed`. A label may be cut only with `.ui-clip` and a `title` holding the full text. Running text may reflow; controls may not. `npm run test:e2e:layout` loads each route and overlay in every language and fails if a control's size differs from English, a label is cut without a title, or a bar moves. It takes several minutes, so it is separate from the main browser suite.
+
 ## Tokens
 
 Semantic CSS variables declared on `:root` (light) and `.dark`, exposed to Tailwind through `@theme inline` so utilities are mode-aware without `dark:` variants.
