@@ -4,7 +4,7 @@
 - Checkout: `main`; see `git log --oneline origin/main..main` for anything unpushed.
 - Completed: see [Scope](#scope) and [Decisions](#decisions).
 - Verification: see [Verification](#verification).
-- Remaining: native-speaker review of the new languages (see [Open items](#open-items)), then install the optimized build through the normal deployment workflow.
+- Remaining: native-speaker review of the new languages (see [Open items](#open-items)), then install the optimized build at `miniserver:~/` through the normal deployment workflow (see [Optimized build](#optimized-build)).
 
 ## Scope
 
@@ -63,4 +63,10 @@ On the final code:
 
 Size differences across languages fell from 12,055 on the first sweep of 96 route and width combinations, in the original eight languages, to none across 24 languages. The right-to-left review opened 834 screenshots in Arabic, Urdu, and Persian with mixed-direction content, by its own count, though two of its second-look passes relied on code reading alone.
 
-Not run: WebKit, which cannot launch on this host because `libicudata.so.74` is missing, so right-to-left is unverified in Safari; `test:e2e:performance`; and `cargo xtask db-integration`, whose readback of each language's rows needs a disposable database. The optimized build's fixture campaign loads every catalog into a real PostgreSQL through backend startup.
+Not run: WebKit, which cannot launch on this host because `libicudata.so.74` is missing, so right-to-left is unverified in Safari; `test:e2e:performance`; and `cargo xtask db-integration`, whose readback of each language's rows needs a disposable database. The optimized build covers part of the last one: every backend start synchronized 17,712 source rows, 738 for each of the 24 languages, into a real PostgreSQL.
+
+## Optimized build
+
+`./build_pgo_and_bolt.sh` from `e66f2fb` was accepted as run `cyhdev-pgo-bolt-18e50257deb45a6a_b989a`, with its frontend compiled on the Node 26 image. Browser coverage passed on all five stages. BOLT against baseline measured 1.199x throughput, 0.834x p95, and 0.836x p99, the median of three paired rounds. Absolute throughput fell across the rounds, from 53,241 to 45,302 requests/s for the baseline, and the per-round BOLT throughput ratio ranged from 1.195x to 1.312x, so these ratios are approximate. The home page shows `+20.1% req/s`; this build measured 19.9%, and the figure was left unchanged.
+
+`rust-be-template` (`4b0af43e…e769`) and `minecraft-seed` (`1481d16b…8b9f`) are at `miniserver:~/`, and their SHA-256 hashes match the receipt on both ends. Neither is installed, and the service was not touched. `~/dist` holds the `a140267` binaries.
