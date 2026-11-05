@@ -5,7 +5,7 @@ ARG APP_NAME=rust-be-template
 # intentionally advanced. The tags retain their human-readable provenance.
 ARG RUST_DOCKER_TAG=nightly@sha256:dfd905886275b22be070dad4e8f2c2264bae8341ba7a4b2ceea370249190b044
 ARG RUST_ALPINE_DOCKER_TAG=nightly-alpine@sha256:ad0a86a1629fcf9e77b8b6d92a7803e16ce011a1c80a9602786abd5cb225d615
-ARG NODE_DOCKER_TAG=24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
+ARG NODE_DOCKER_TAG=26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94
 ARG ALPINE_DOCKER_TAG=3.23@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
 
 # Build the pinned EU5 source revision as a browser-native ES module package.
