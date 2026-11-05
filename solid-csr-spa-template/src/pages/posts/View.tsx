@@ -19,6 +19,7 @@ import type {
 } from "../../generated";
 import { isAuthenticated, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
+import "../../styles/blog.css";
 import { UserBadge } from "../../components/UserBadge";
 import { locale, t, tx } from "../../state/i18n";
 import {
@@ -58,6 +59,43 @@ const markdownContentFromMetadata = (metadata: unknown): string => {
   const markdownContent = metadata.markdown_content;
   return typeof markdownContent === "string" ? markdownContent.trim() : "";
 };
+
+/** Letters of Arabic, Hebrew, Syriac, Thaana, N'Ko, and their presentation forms. */
+const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
+const ANY_LETTER = /\p{L}/u;
+
+/**
+ * Direction of a block's own text by its first letter, as `dir="auto"` would
+ * decide it. Containers cannot use `auto` once their children carry their own
+ * direction, because the browser then skips those children and finds no text.
+ */
+function firstLetterDirection(text: string): "rtl" | "ltr" | null {
+  for (const ch of text) {
+    if (!ANY_LETTER.test(ch)) continue;
+    return RTL_LETTER.test(ch) ? "rtl" : "ltr";
+  }
+  return null;
+}
+
+/**
+ * Gives every block of a rendered post the direction of its own text, so an
+ * English paragraph in an Arabic post and the reverse both read correctly.
+ * Blocks that hold only inline text use `auto`; those that hold other blocks,
+ * such as lists, items with paragraphs, tables, and quotes, take an explicit
+ * direction from their first letter. Code is left to prose.css, which keeps it
+ * left to right.
+ */
+function applyBlockDirections(root: HTMLElement): void {
+  root
+    .querySelectorAll("p, h1, h2, h3, h4, h5, h6, dt, dd, figcaption")
+    .forEach((block) => block.setAttribute("dir", "auto"));
+  root
+    .querySelectorAll("ul, ol, li, table, th, td, blockquote, dl")
+    .forEach((container) => {
+      const direction = firstLetterDirection(container.textContent ?? "");
+      if (direction) container.setAttribute("dir", direction);
+    });
+}
 
 export default function PostViewPage() {
   const params = useParams();
@@ -550,7 +588,7 @@ export default function PostViewPage() {
 
           return (
             <div
-              class="threaded-comment mt-2 pl-3 md:pl-4 border-l border-line"
+              class="threaded-comment mt-2 ps-3 md:ps-4 border-s border-line"
               style={{
                 "--comment-depth": depth,
                 "--mobile-comment-indent":
@@ -564,8 +602,8 @@ export default function PostViewPage() {
                   countryFlag={comment().user_country_flag}
                   size="sm"
                 />
-                <span class="ml-3 text-xs">
-                  {new Date(comment().comment_created_at).toLocaleString()}
+                <span class="ms-3 text-xs">
+                  {new Date(comment().comment_created_at).toLocaleString(locale())}
                 </span>
               </div>
               <Show when={deleted()}>
@@ -577,7 +615,7 @@ export default function PostViewPage() {
                 when={!deleted() && editOpen[comment().comment_id]}
                 fallback={
                   <Show when={!deleted()}>
-                    <div class="text-ink whitespace-pre-wrap">
+                    <div class="text-ink whitespace-pre-wrap" dir="auto">
                       {comment().comment_content}
                     </div>
                   </Show>
@@ -586,6 +624,7 @@ export default function PostViewPage() {
                 <div class="mt-2">
                   <textarea
                     class={`${pageStyles.textarea} min-h-20`}
+                    dir="auto"
                     value={editText[comment().comment_id] ?? ""}
                     onInput={(e) =>
                       setEditText(comment().comment_id, e.currentTarget.value)
@@ -663,7 +702,7 @@ export default function PostViewPage() {
                 </div>
                 <div class="mt-1 flex gap-3">
                   <button
-                    class={`${pageStyles.link} text-xs`}
+                    class={`${pageStyles.link} blog-comment-action text-xs`}
                     onClick={() => toggleReply(comment().comment_id)}
                   >
                     {t("blog.comments.reply")}
@@ -677,13 +716,13 @@ export default function PostViewPage() {
                     }
                   >
                     <button
-                      class={`${pageStyles.link} text-xs`}
+                      class={`${pageStyles.link} blog-comment-action text-xs`}
                       onClick={() => toggleEdit(comment())}
                     >
                       {t("common.edit")}
                     </button>
                     <button
-                      class="text-xs text-danger hover:underline"
+                      class="blog-comment-action text-xs text-danger hover:underline"
                       onClick={() => handleDeleteComment(comment())}
                     >
                       {t("common.delete")}
@@ -695,6 +734,7 @@ export default function PostViewPage() {
                 <div class="mt-2">
                   <textarea
                     class={`${pageStyles.textarea} min-h-20`}
+                    dir="auto"
                     value={replyText[comment().comment_id] ?? ""}
                     onInput={(e) =>
                       setReplyText(comment().comment_id, e.currentTarget.value)
@@ -809,6 +849,10 @@ export default function PostViewPage() {
                     .forEach((block) => {
                       hljs.highlightElement(block as HTMLElement);
                     });
+                  // A post may mix languages, so each block takes the direction
+                  // of its own text. Code keeps its left-to-right handling in
+                  // prose.css.
+                  if (renderedPostElement) applyBlockDirections(renderedPostElement);
                   // Derive the contents list and reading time from the
                   // sanitized DOM once it is in place.
                   setOutline(renderedPostElement ? outlineHeadings(renderedPostElement) : []);
@@ -820,7 +864,7 @@ export default function PostViewPage() {
               return (
                 <>
                   <div class="blog-post-shell mb-4 flex flex-row items-start gap-4">
-                    <div class="blog-vote-rail flex flex-col items-center pr-4 select-none border-r border-line mr-2">
+                    <div class="blog-vote-rail flex flex-col items-center pe-4 select-none border-e border-line me-2">
                       <button
                         class={[
                           "text-2xl transition",
@@ -862,7 +906,7 @@ export default function PostViewPage() {
                     <div class="flex-1">
                       <div class="blog-post-heading-row flex justify-between items-start mb-2">
                         <div class="blog-post-title-group flex items-center gap-3">
-                          <h1 class="text-3xl font-bold">
+                          <h1 class="text-3xl font-bold" dir="auto">
                             {data().post.post_title}
                           </h1>
                           <Show when={!data().post.post_is_published}>
@@ -877,9 +921,9 @@ export default function PostViewPage() {
                             data().post.user_id === user()?.user_info?.user_id
                           }
                         >
-                          <div class="blog-post-actions flex gap-2 ml-4">
+                          <div class="blog-post-actions flex gap-2 ms-4">
                             <button
-                              class={`${pageStyles.buttonSecondary} whitespace-nowrap`}
+                              class={`${pageStyles.buttonSecondary}`}
                               onClick={() =>
                                 navigate(`/blog/${data().post.post_id}/edit`)
                               }
@@ -887,7 +931,7 @@ export default function PostViewPage() {
                               {t("blog.post.edit_post")}
                             </button>
                             <button
-                              class={`${pageStyles.buttonDanger} whitespace-nowrap`}
+                              class={`${pageStyles.buttonDanger}`}
                               onClick={handleDeletePost}
                             >
                               {t("blog.post.delete_post")}
@@ -909,23 +953,23 @@ export default function PostViewPage() {
                           }
                           size="md"
                         />
-                        <span class="ml-3">
+                        <span class="ms-3">
                           {new Date(
                             data().post.post_created_at,
-                          ).toLocaleString()}
+                          ).toLocaleString(locale())}
                         </span>
-                        <span class="ml-3 text-ink-faint">•</span>
+                        <span class="ms-3 text-ink-faint">•</span>
                         <span>
                           {data().post.post_view_count ?? 0}{" "}
                           {t("common.views")}
                         </span>
-                        <span class="ml-3 text-ink-faint">•</span>
+                        <span class="ms-3 text-ink-faint">•</span>
                         <span>
                           {data().post.post_share_count ?? 0}{" "}
                           {t("common.shares")}
                         </span>
                         <Show when={readingMinutes() > 0}>
-                          <span class="ml-3 text-ink-faint">•</span>
+                          <span class="ms-3 text-ink-faint">•</span>
                           <span class="font-mono tabular-nums">
                             {tx("blog.post.reading_time", { minutes: readingMinutes() })}
                           </span>
@@ -941,6 +985,7 @@ export default function PostViewPage() {
                               <a
                                 href={`/blog?q=${encodeURIComponent(tag)}&type=tag`}
                                 class="inline-flex items-center px-2.5 py-1 rounded-full font-mono text-xs font-medium bg-accent-soft text-accent hover:opacity-80 transition-opacity"
+                                dir="auto"
                               >
                                 #{tag}
                               </a>
@@ -955,7 +1000,9 @@ export default function PostViewPage() {
                             <For each={outline()}>
                               {(entry) => (
                                 <li data-level={entry.level}>
-                                  <a href={`#${entry.id}`}>{entry.text}</a>
+                                  <a href={`#${entry.id}`} dir="auto">
+                                    {entry.text}
+                                  </a>
                                 </li>
                               )}
                             </For>
@@ -965,13 +1012,14 @@ export default function PostViewPage() {
                       <Show
                         when={renderedPostHtml()}
                         fallback={
-                          <div class="prose mb-3 whitespace-pre-wrap">
+                          <div class="prose mb-3 whitespace-pre-wrap" dir="auto">
                             {fallbackPostText()}
                           </div>
                         }
                       >
                         <div
                           class="prose mb-3"
+                          dir="auto"
                           // eslint-disable-next-line solid/no-innerhtml
                           innerHTML={renderedPostHtml()}
                           ref={(element) => (renderedPostElement = element)}
@@ -986,9 +1034,9 @@ export default function PostViewPage() {
                         {t("blog.comments.title")}
                       </h2>
                       <label class="text-sm text-ink-muted flex items-center gap-2">
-                        <span class="whitespace-nowrap">{t("blog.comments.sort_by")}</span>
+                        <span>{t("blog.comments.sort_by")}</span>
                         <select
-                          class={pageStyles.select}
+                          class={`${pageStyles.select} blog-sort-select`}
                           value={commentSort()}
                           onChange={(e) =>
                             setCommentSort(
@@ -1037,6 +1085,7 @@ export default function PostViewPage() {
                     >
                       <textarea
                         class={pageStyles.textarea}
+                        dir="auto"
                         value={commentValue()}
                         onInput={(e) => setCommentValue(e.currentTarget.value)}
                         placeholder={t("blog.comments.placeholder")}

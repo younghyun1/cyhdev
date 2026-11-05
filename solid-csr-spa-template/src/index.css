@@ -410,5 +410,5 @@ main {
 }
 
 .threaded-comment {
-    margin-left: calc(var(--comment-depth, 0) * 16px);
+    margin-inline-start: calc(var(--comment-depth, 0) * 16px);
 }

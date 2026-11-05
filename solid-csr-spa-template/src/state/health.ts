@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import { fetchHealthState, type HealthStateResponse } from "../services/api";
+import { locale } from "./i18n";
 
 export type HealthState =
   | (HealthStateResponse["data"] & {
@@ -80,6 +81,16 @@ export const formatUptimeMs = (ms: number | null): string => {
   return `${secs}s`;
 };
 
+// This refreshes every second, and a formatter is slow to build; one locale is in use at a time.
+let cachedAgeFormat: { readonly tag: string; readonly format: Intl.RelativeTimeFormat } | null = null;
+
+function ageFormat(tag: string): Intl.RelativeTimeFormat {
+  if (cachedAgeFormat?.tag !== tag) {
+    cachedAgeFormat = { tag, format: new Intl.RelativeTimeFormat(tag, { style: "narrow" }) };
+  }
+  return cachedAgeFormat.format;
+}
+
 export const formatIsoAge = (
   iso: string | undefined,
   currentNow: Date | null,
@@ -91,15 +102,14 @@ export const formatIsoAge = (
 
   const diffMs = now.getTime() - base.getTime();
 
-  if (Number.isNaN(diffMs) || diffMs < 0) return "just now";
+  const format = ageFormat(locale());
+  if (Number.isNaN(diffMs) || diffMs < 0) return format.format(0, "second");
 
   const totalSec = Math.floor(diffMs / 1000);
-  const mins = Math.floor(totalSec / 60);
-  const secs = totalSec % 60;
-
-  if (mins <= 0) return `${secs}s ago`;
-
-  return `${mins}m ${secs}s ago`;
+  if (totalSec < 60) return format.format(-totalSec, "second");
+  if (totalSec < 3600) return format.format(-Math.floor(totalSec / 60), "minute");
+  if (totalSec < 86400) return format.format(-Math.floor(totalSec / 3600), "hour");
+  return format.format(-Math.floor(totalSec / 86400), "day");
 };
 
 export function refreshHealthState(): Promise<void> {

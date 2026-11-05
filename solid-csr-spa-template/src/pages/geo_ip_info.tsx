@@ -51,7 +51,7 @@ export default function GeoIpInfo() {
           <span class="block text-xs font-medium text-ink-muted uppercase tracking-wider">
             {t("geo.ip_address")}
           </span>
-          <span class="text-lg text-ink font-mono font-medium">
+          <span dir="ltr" class="inline-block text-lg text-ink font-mono font-medium">
             {props.info.ip}
           </span>
         </div>
@@ -100,7 +100,7 @@ export default function GeoIpInfo() {
             {t("geo.coordinates")}
           </span>
           <div class="flex items-center gap-2">
-            <span class="text-ink font-mono bg-surface-2 px-2 py-1 rounded-sm text-sm">
+            <span dir="ltr" class="text-ink font-mono bg-surface-2 px-2 py-1 rounded-sm text-sm">
               {props.info.latitude}, {props.info.longitude}
             </span>
           </div>
@@ -159,6 +159,7 @@ export default function GeoIpInfo() {
             <div class="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
+                dir="ltr"
                 value={ipInput()}
                 onInput={(e) => setIpInput(e.currentTarget.value)}
                 placeholder={t("geo.input_placeholder")}
@@ -182,7 +183,8 @@ export default function GeoIpInfo() {
           <Show when={ipInfo()}>
             <IpInfoDisplay
               info={ipInfo()!}
-              title={tx("geo.results_for", { ip: ipInfo()!.ip })}
+              // The isolate keeps an IPv6 address in order inside a right-to-left heading.
+              title={tx("geo.results_for", { ip: `\u2066${ipInfo()!.ip}\u2069` })}
             />
           </Show>
         </section>

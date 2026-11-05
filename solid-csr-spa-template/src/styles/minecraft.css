@@ -26,14 +26,14 @@
 .minecraft-world-picker { display: flex !important; align-items: center; gap: 8px; min-width: 0; padding: 4px 6px; color: var(--mc-ink); background: var(--mc-panel); border: 2px solid var(--mc-edge); font-size: 10px; }
 .minecraft-atlas .minecraft-world-picker select { margin: 0; width: 160px; min-width: 0; }
 .minecraft-atlas-workspace { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-.minecraft-tool-tabs { position: absolute; z-index: 510; right: 12px; top: 68px; display: flex; flex-direction: column; gap: 5px; }
+.minecraft-tool-tabs { position: absolute; z-index: 510; inset-inline-end: 12px; top: 68px; display: flex; flex-direction: column; gap: 5px; }
 .minecraft-tool-tabs button { width: 42px; min-height: 42px; padding: 6px; }
 .minecraft-tool-tabs button span { font-size: 19px; line-height: 20px; }
 .minecraft-tool-tabs button[aria-expanded="true"] { background: #e5c67f; }
-.minecraft-map-menu { position: absolute; z-index: 510; top: 68px; right: 64px; width: 310px; max-width: calc(100% - 78px); max-height: calc(100% - 130px); border: 2px solid var(--mc-edge); background: var(--mc-panel); box-shadow: inset 2px 2px 0 var(--mc-highlight), 3px 3px 0 #0006; }
+.minecraft-map-menu { position: absolute; z-index: 510; top: 68px; inset-inline-end: 64px; width: 310px; max-width: calc(100% - 78px); max-height: calc(100% - 130px); border: 2px solid var(--mc-edge); background: var(--mc-panel); box-shadow: inset 2px 2px 0 var(--mc-highlight), 3px 3px 0 #0006; }
 .minecraft-map-menu[hidden] { display: none; }
 .minecraft-tool-scroll { overflow-y: auto; overflow-x: hidden; max-height: calc(100dvh - var(--site-header-height) - var(--site-footer-height) - 134px); padding: 38px 14px 14px; scrollbar-color: #827b69 #b6b1a4; }
-.minecraft-atlas .minecraft-menu-close { position: absolute; z-index: 1; top: 3px; right: 3px; min-height: 28px; width: 28px; padding: 0; font-size: 19px; }
+.minecraft-atlas .minecraft-menu-close { position: absolute; z-index: 1; top: 3px; inset-inline-end: 3px; min-height: 28px; width: 28px; padding: 0; font-size: 19px; }
 .minecraft-tool-panel { display: flex; flex-direction: column; gap: 14px; }
 .minecraft-tool-panel + .minecraft-tool-panel { margin-top: 22px; padding-top: 20px; border-top: 2px solid var(--mc-shadow); }
 .minecraft-tool-panel form { display: flex; flex-direction: column; gap: 10px; }
@@ -52,7 +52,7 @@
 .minecraft-biome-picker-list label:hover { background: #d5cebc; }
 .minecraft-biome-swatch { flex: none; width: 13px; height: 13px; border: 1px solid var(--mc-edge); }
 .minecraft-atlas .minecraft-biome-picker > button { margin: 0 8px 8px; min-height: 30px; font-size: 10px; }
-.minecraft-selection-readout { position: absolute; z-index: 500; bottom: 12px; left: 12px; padding: 7px 10px; border: 1px solid #b8ac7955; color: #f5f0df; background: #151b16e6; pointer-events: none; }
+.minecraft-selection-readout { position: absolute; z-index: 500; bottom: 12px; inset-inline-start: 12px; padding: 7px 10px; border: 1px solid #b8ac7955; color: #f5f0df; background: #151b16e6; pointer-events: none; }
 .minecraft-selection-readout > span { display: block; margin-bottom: 5px; font-size: 9px; letter-spacing: 1px; color: #4f493d; }
 .minecraft-selection-readout strong { display: block; font-size: 11px; }
 .minecraft-selection-readout strong span { padding: 0 5px; color: #746b58; }
@@ -82,10 +82,10 @@
 .minecraft-map-scale-label { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
 .minecraft-map-scale-label:first-child { transform: none; }
 .minecraft-map-scale-label:last-child { transform: translateX(-100%); }
-.minecraft-map-controls { position: absolute; z-index: 500; left: 60px; top: 12px; right: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; pointer-events: none; }
+.minecraft-map-controls { position: absolute; z-index: 500; inset-inline-start: 60px; top: 12px; inset-inline-end: 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; pointer-events: none; }
 .minecraft-map-controls > * { pointer-events: auto; }
 .minecraft-map-controls button { font-size: 10px; }
-.minecraft-refresh-status { position: absolute; z-index: 500; top: 66px; left: 60px; max-width: calc(100% - 130px); padding: 4px 7px; color: #f5f0df; background: #151b16e6; pointer-events: none; font-size: 10px; }
+.minecraft-refresh-status { position: absolute; z-index: 500; top: 66px; inset-inline-start: 60px; max-width: calc(100% - 130px); padding: 4px 7px; color: #f5f0df; background: #151b16e6; pointer-events: none; font-size: 10px; }
 .minecraft-prediction-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
 .minecraft-atlas .minecraft-toggle { display: flex; align-items: center; gap: 8px; }
 .minecraft-atlas-canvas .leaflet-minecraft-player-nameplates-pane { z-index: 650; pointer-events: none; }
@@ -100,10 +100,10 @@
 .minecraft-player-details { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .minecraft-player-name { max-width: 204px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .minecraft-player-vital { height: 8px; width: 80px; image-rendering: pixelated; }
-.minecraft-inspection { position: absolute; z-index: 500; left: 12px; bottom: var(--mc-readout-space); max-width: min(380px, calc(100% - 24px)); max-height: calc(100% - 130px); overflow: hidden; padding: 9px 12px; border: 2px solid var(--mc-edge); box-shadow: inset 2px 2px 0 var(--mc-highlight), inset -2px -2px 0 var(--mc-shadow); color: var(--mc-ink); background: var(--mc-paper); pointer-events: none; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.minecraft-inspection { position: absolute; z-index: 500; inset-inline-start: 12px; bottom: var(--mc-readout-space); max-width: min(380px, calc(100% - 24px)); max-height: calc(100% - 130px); overflow: hidden; padding: 9px 12px; border: 2px solid var(--mc-edge); box-shadow: inset 2px 2px 0 var(--mc-highlight), inset -2px -2px 0 var(--mc-shadow); color: var(--mc-ink); background: var(--mc-paper); pointer-events: none; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 .minecraft-inspection > strong { display: block; font-size: 12px; font-variant-numeric: tabular-nums; }
 .minecraft-inspection-id { color: var(--mc-muted); font-size: 9px; }
-.minecraft-map-key { position: absolute; bottom: 14px; right: 14px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; padding: 7px 10px; color: #f5f0df; background: #151b16e6; border: 1px solid #b8ac7955; pointer-events: none; font-size: 10px; }
+.minecraft-map-key { position: absolute; bottom: 14px; inset-inline-end: 14px; z-index: 500; display: flex; flex-wrap: wrap; gap: 12px; padding: 7px 10px; color: #f5f0df; background: #151b16e6; border: 1px solid #b8ac7955; pointer-events: none; font-size: 10px; }
 .minecraft-atlas-stage:has(.minecraft-inspection) .minecraft-map-key { display: none; }
 .minecraft-key-waypoint { color: #ffcd6e; }
 .minecraft-key-player { color: #a2ee8d; }
@@ -117,9 +117,9 @@
 .minecraft-seed-tile { image-rendering: pixelated; filter: saturate(0.55); }
 .minecraft-prediction-receipt { display: flex; flex-direction: column; gap: 10px; padding: 10px; background: #d8d2c1; border: 1px dashed #716958; }
 .minecraft-map-notice { padding: 12px 18px; background: var(--mc-paper); color: var(--mc-ink); }
-.minecraft-map-notice button { margin-left: 8px; }
+.minecraft-map-notice button { margin-inline-start: 8px; }
 .minecraft-map-warning, .minecraft-tool-panel [role="alert"] { margin-bottom: 12px; padding: 10px; border: 2px solid #9c642b; background: #f0dcb3; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-.minecraft-player-warning { position: absolute; bottom: 50px; right: 14px; z-index: 500; padding: 6px 10px; color: #f5f0df; background: #151b16e6; font-size: 10px; }
+.minecraft-player-warning { position: absolute; bottom: 50px; inset-inline-end: 14px; z-index: 500; padding: 6px 10px; color: #f5f0df; background: #151b16e6; font-size: 10px; }
 .minecraft-biome-legend { display: flex; flex-wrap: wrap; gap: 7px 12px; list-style: none; margin: 0; padding: 0; font-size: 10px; }
 .minecraft-biome-legend li { display: flex; align-items: center; gap: 5px; }
 .minecraft-biome-legend li span { display: block; width: 10px; height: 10px; border: 1px solid #4a4539; }
@@ -130,11 +130,32 @@
 .minecraft-result-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding: 0; margin: 0; }
 .minecraft-result-list > li { border-bottom: 1px solid #a49c87; padding-bottom: 8px; overflow-wrap: anywhere; }
 .minecraft-result-list p { font-size: 10px; margin: 5px 0; color: var(--mc-muted); }
-.minecraft-atlas .minecraft-place-link { width: 100%; text-align: left; min-height: 38px; background: #ddd8c8; }
-.minecraft-place-link small, .minecraft-distance small { display: block; }
+.minecraft-atlas .minecraft-place-link { width: 100%; text-align: start; min-height: 38px; background: #ddd8c8; }
+.minecraft-place-link small, .minecraft-distance small, .minecraft-place-name { display: block; }
 .minecraft-waypoint-form { border-top: 2px solid var(--mc-shadow); padding-top: 14px; }
 .minecraft-atlas textarea { min-height: 76px; resize: vertical; }
 .minecraft-distance, .minecraft-portal-coordinate { font-size: 18px; font-weight: 700; }
+
+/*
+ * Right-to-left. The map is a physical surface: Leaflet positions panes by pixel offsets, so the canvas
+ * stays left to right, and its names, scale and labels isolate their own direction. The floating overlays
+ * around it use logical insets and mirror; Leaflet's own control corner is moved to the start side to match.
+ */
+.minecraft-atlas-canvas { direction: ltr; }
+.minecraft-atlas-canvas :is(.leaflet-tooltip, .leaflet-popup-content) { unicode-bidi: plaintext; }
+/*
+ * The map interface text is English, and user text such as waypoint names has its own direction. Each block
+ * resolves its own direction from its first strong letter, so an English sentence keeps its full stop at its
+ * end and an ellipsis stays after its word inside a right-to-left page; text carrying dir="auto" already does.
+ */
+.minecraft-atlas :is(p, h2, h3, small, summary, legend, button, option, .minecraft-map-notice):not([dir]) { unicode-bidi: plaintext; }
+:root[dir="rtl"] .minecraft-atlas-canvas .leaflet-top.leaflet-left { left: auto; right: 12px; }
+:root[dir="rtl"] .minecraft-atlas-canvas .leaflet-top.leaflet-left .leaflet-control { float: right; }
+/* Numeric fields, coordinates, identifiers and the legend ramp read left to right and right-align under right-to-left labels. */
+.minecraft-atlas input:is([type="number"], [list]) { direction: ltr; }
+.minecraft-place-link small { unicode-bidi: isolate; direction: ltr; }
+.minecraft-map-key > span, .minecraft-height-legend { unicode-bidi: isolate; direction: ltr; }
+:root[dir="rtl"] .minecraft-atlas :is(input:is([type="number"], [list]), .minecraft-place-link small) { text-align: right; }
 
 @media (max-width: 767px) {
   .minecraft-atlas-canvas .leaflet-top.leaflet-left { top: 8px; left: 8px; }
@@ -147,24 +168,24 @@
   .minecraft-world-picker { padding: 0; border: 0; }
   .minecraft-world-picker > span { display: none; }
   .minecraft-atlas .minecraft-world-picker select { width: min(140px, 36vw); }
-  .minecraft-tool-tabs { right: 8px; top: 62px; gap: 5px; }
+  .minecraft-tool-tabs { inset-inline-end: 8px; top: 62px; gap: 5px; }
   .minecraft-tool-tabs button { min-height: 44px; width: 44px; }
-  .minecraft-map-menu { top: 62px; right: 59px; max-width: calc(100% - 67px); max-height: calc(100% - 110px); }
+  .minecraft-map-menu { top: 62px; inset-inline-end: 59px; max-width: calc(100% - 67px); max-height: calc(100% - 110px); }
   .minecraft-tool-scroll { max-height: calc(100dvh - var(--site-header-height) - var(--site-footer-height) - 114px); padding: 38px 10px 10px; }
-  .minecraft-selection-readout { left: 8px; bottom: 60px; padding: 5px 7px; }
+  .minecraft-selection-readout { inset-inline-start: 8px; bottom: 60px; padding: 5px 7px; }
   .minecraft-selection-readout > span { display: none; }
   .minecraft-selection-readout strong { font-size: 9px; }
   .minecraft-selection-readout small { margin: 0; }
   .minecraft-atlas button { min-height: 44px; }
   .minecraft-atlas input:not([type="checkbox"]), .minecraft-atlas select, .minecraft-atlas textarea { min-height: 44px; font-size: 16px; }
-  .minecraft-map-controls { top: 8px; right: 8px; left: 52px; gap: 5px; }
-  .minecraft-map-controls button { margin-left: auto; min-height: 44px; padding: 6px; }
-  .minecraft-refresh-status { top: 57px; left: 52px; max-width: calc(100% - 115px); font-size: 9px; }
-  .minecraft-inspection { left: 8px; bottom: calc(var(--mc-readout-space) + 60px); max-width: calc(100% - 16px); max-height: calc(100% - 144px); padding: 5px 8px; font-size: 9px; line-height: 1.5; }
+  .minecraft-map-controls { top: 8px; inset-inline-end: 8px; inset-inline-start: 52px; gap: 5px; }
+  .minecraft-map-controls button { margin-inline-start: auto; min-height: 44px; padding: 6px; }
+  .minecraft-refresh-status { top: 57px; inset-inline-start: 52px; max-width: calc(100% - 115px); font-size: 9px; }
+  .minecraft-inspection { inset-inline-start: 8px; bottom: calc(var(--mc-readout-space) + 60px); max-width: calc(100% - 16px); max-height: calc(100% - 144px); padding: 5px 8px; font-size: 9px; line-height: 1.5; }
   .minecraft-inspection > strong { font-size: 10px; }
   .minecraft-inspection-id { display: none; }
-  .minecraft-map-key { bottom: calc(var(--mc-readout-space) + 52px); right: 8px; gap: 8px; padding: 5px 7px; font-size: 8px; }
-  .minecraft-player-warning { bottom: 35px; right: 8px; max-width: calc(100% - 16px); }
+  .minecraft-map-key { bottom: calc(var(--mc-readout-space) + 52px); inset-inline-end: 8px; gap: 8px; padding: 5px 7px; font-size: 8px; }
+  .minecraft-player-warning { bottom: 35px; inset-inline-end: 8px; max-width: calc(100% - 16px); }
 }
 
 :root[data-motion="off"] :is(.minecraft-atlas *, .minecraft-atlas *::before, .minecraft-atlas *::after) { transition-duration: 0s !important; animation: none !important; }

@@ -15,15 +15,38 @@
 .minecraft-controls form { display: grid; gap: 0.4rem; margin-block: 0.75rem; }
 .minecraft-controls ul { list-style: none; margin: 0.5rem 0; padding: 0; }
 .minecraft-controls li, .minecraft-server-actions { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-block: 0.4rem; }
-.minecraft-admin button, .minecraft-admin input { border: 1px solid var(--line-strong); border-radius: 0.25rem; padding: 0.4rem 0.65rem; }
+.minecraft-admin input { border: 1px solid var(--line-strong); border-radius: 0.25rem; padding: 0.4rem 0.65rem; }
+/* Every button has one box in every language: the label wraps inside it instead of resizing it. */
+.minecraft-admin button, .minecraft-admin header a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  inline-size: 8.5rem;
+  block-size: 2.75rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.1rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+  overflow-x: clip;
+}
+.minecraft-admin header a { text-decoration: none; color: inherit; }
 .minecraft-admin button:disabled { opacity: 0.5; cursor: wait; }
+.minecraft-admin input { block-size: 2.75rem; line-height: 1.25rem; box-sizing: border-box; }
+.minecraft-controls li > span { min-inline-size: 0; overflow-wrap: anywhere; }
+/* Player names carry dir="auto"; align them with the page direction, not each name's own script. */
+.minecraft-controls li > span[dir="auto"] { text-align: left; }
+:root[dir="rtl"] .minecraft-controls li > span[dir="auto"] { text-align: right; }
 .minecraft-controls h3 { margin-top: 0.8rem; font-weight: 600; }
 .minecraft-controls [role="alert"] { color: var(--danger, #b42318); }
 
 
 .minecraft-admin header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .minecraft-controls input { min-width: 0; width: 100%; }
-.minecraft-admin button { min-height: 44px; }
 .minecraft-controls li { flex-wrap: wrap; }
 .minecraft-controls li > span { flex: 1 1 100%; }
 .minecraft-visibility { display: block; color: var(--ink-muted); }

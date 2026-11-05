@@ -89,7 +89,7 @@ export default function CpuStatsCard(props: {
           </h3>
         </div>
         <div class="stats-chart-value text-xl font-mono font-bold tabular-nums">
-          {latest() ? latest()!.cpu.toFixed(1) + "%" : "--%"}
+          <bdi dir="ltr">{latest() ? latest()!.cpu.toFixed(1) + "%" : "--%"}</bdi>
         </div>
       </div>
 

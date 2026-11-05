@@ -55,6 +55,7 @@ export default function ForumReplyComposer(props: ForumReplyComposerProps) {
       <textarea
         id={REPLY_COMPOSER_ID}
         class="forum-textarea"
+        dir="auto"
         value={props.value}
         placeholder={t("forum.reply.placeholder")}
         onInput={(event) => props.onInput(event.currentTarget.value)}

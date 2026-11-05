@@ -25,7 +25,7 @@ export default function DeleteMessageButton(props: {
   };
   return (
     <Show when={isSuperuser()}>
-      <button type="button" class={`${pageStyles.buttonGhost} text-danger`} disabled={busy()} onClick={() => void remove()}>
+      <button type="button" class={`${pageStyles.buttonGhost} live-chat-delete text-xs text-danger`} disabled={busy()} onClick={() => void remove()}>
         {t("common.delete")}
       </button>
       <Show when={failed()}><span role="alert" class="text-danger">{t("live_chat.delete_failed")}</span></Show>

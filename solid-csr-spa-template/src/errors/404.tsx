@@ -71,7 +71,7 @@ export default function NotFound() {
             <button
               type="button"
               onClick={openCommandPalette}
-              class={pageStyles.buttonSecondary}
+              class={`${pageStyles.buttonSecondary} ui-button--wide`}
             >
               {t("command_palette.open")}
             </button>

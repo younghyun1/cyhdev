@@ -5,6 +5,7 @@ import type {
   IsoLanguage,
 } from "../../generated";
 import { t } from "../../state/i18n";
+import { isolateAuto } from "../admin/operations/operationsFormat";
 import { pageStyles } from "../../styles/pageStyles";
 
 type ProfileLocationFieldsProps = {
@@ -55,7 +56,7 @@ export default function ProfileLocationFields(
           <For each={props.countries}>
             {(item) => (
               <option value={item.country_code}>
-                {item.country_flag} {item.country_eng_name}
+                {isolateAuto(`${item.country_flag} ${item.country_eng_name}`)}
               </option>
             )}
           </For>
@@ -80,7 +81,7 @@ export default function ProfileLocationFields(
           <For each={props.subdivisions}>
             {(item) => (
               <option value={item.subdivision_id}>
-                {item.subdivision_name}
+                {isolateAuto(item.subdivision_name)}
               </option>
             )}
           </For>
@@ -107,7 +108,7 @@ export default function ProfileLocationFields(
           <For each={props.languages}>
             {(item) => (
               <option value={item.language_code}>
-                {item.language_eng_name}
+                {isolateAuto(item.language_eng_name)}
               </option>
             )}
           </For>

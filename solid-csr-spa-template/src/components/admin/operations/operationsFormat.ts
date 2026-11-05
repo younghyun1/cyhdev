@@ -9,6 +9,20 @@ export function isUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
 }
 
+/**
+ * Wraps an identifier in a left-to-right isolate before it is interpolated into
+ * a translated sentence. Inside a right-to-left sentence the bidi algorithm
+ * treats hyphens and digits as neutral and reverses a UUID segment by segment.
+ */
+export function isolateLtr(value: string): string {
+  return `⁦${value}⁩`;
+}
+
+/** Isolates a formatted date so its own direction cannot reorder the sentence around it. */
+export function isolateAuto(value: string): string {
+  return `⁨${value}⁩`;
+}
+
 export function formatAdminTimestamp(value: string | null | undefined): string {
   if (value === null || value === undefined) return t("common.n_a");
   const parsed = new Date(value);

@@ -10,7 +10,7 @@ import {
 import CpuStatsCard from "./CpuStatsCard";
 import RamStatsCard from "./RamStatsCard";
 import type { HostStatsRaw, HostStatPoint } from "../dtos/shared/host_stats";
-import { t, tx } from "../state/i18n";
+import { locale, t, tx } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
 import { webSocketUrl } from "../utils/webSocketUrl";
 import { API_URL } from "../services/api";
@@ -200,7 +200,7 @@ export default function HostStatsDashboard(props: {
                       {t("stats.uptime")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
-                      {liveUptime()}
+                      <bdi dir="ltr">{liveUptime()}</bdi>
                     </div>
                   </div>
                   <div class="stats-summary">
@@ -208,7 +208,7 @@ export default function HostStatsDashboard(props: {
                       {t("stats.responses_handled")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.responses_handled.toLocaleString()}
+                      <bdi dir="ltr">{hs.responses_handled.toLocaleString(locale())}</bdi>
                     </div>
                   </div>
                   <div class="stats-summary">
@@ -216,7 +216,7 @@ export default function HostStatsDashboard(props: {
                       {t("stats.active_sessions")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.users_logged_in}
+                      <bdi dir="ltr">{hs.users_logged_in}</bdi>
                     </div>
                   </div>
                   <div class="stats-summary">
@@ -224,7 +224,7 @@ export default function HostStatsDashboard(props: {
                       {t("bottom_bar.db_latency")}
                     </div>
                     <div class="text-xl font-mono font-bold tabular-nums">
-                      {hs.db_latency}
+                      <bdi dir="ltr">{hs.db_latency}</bdi>
                     </div>
                   </div>
                 </>

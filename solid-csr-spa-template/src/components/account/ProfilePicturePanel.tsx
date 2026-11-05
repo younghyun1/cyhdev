@@ -231,7 +231,7 @@ export default function ProfilePicturePanel() {
                   style={{ width: `${progress()}%` }}
                 />
               </div>
-              <div class="mt-1 text-xs text-ink-muted">{progress()}%</div>
+              <div dir="ltr" class="mt-1 text-xs text-ink-muted rtl:text-right">{progress()}%</div>
             </div>
           </Show>
           <Show when={uploadError()}>

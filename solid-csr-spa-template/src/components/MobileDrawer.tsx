@@ -105,8 +105,8 @@ const MobileDrawer: ParentComponent<MobileDrawerProps> = (props) => (
               height="40"
             />
             <span class="min-w-0">
-              <strong>{user()?.user_info?.user_name}</strong>
-              <small>{user()?.user_info?.user_email}</small>
+              <strong dir="auto">{user()?.user_info?.user_name}</strong>
+              <small dir="ltr">{user()?.user_info?.user_email}</small>
             </span>
           </div>
           <a

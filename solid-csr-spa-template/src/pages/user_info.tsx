@@ -2,7 +2,8 @@ import { useParams } from "@solidjs/router";
 import { Loading, Show, createMemo } from "solid-js";
 import { userApi } from "../services/all_api";
 import { pageStyles } from "../styles/pageStyles";
-import { t, tx } from "../state/i18n";
+import { locale, t, tx } from "../state/i18n";
+import { isolateAuto } from "../components/admin/operations/operationsFormat";
 
 export default function UserInfoPage() {
   const params = useParams<{ userName: string }>();
@@ -46,7 +47,7 @@ export default function UserInfoPage() {
                     when={publicUser().user_profile_picture_url}
                     fallback={
                       <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono text-2xl font-bold uppercase text-ink-muted">
-                        {publicUser().user_name.slice(0, 1)}
+                        {Array.from(publicUser().user_name)[0] ?? ""}
                       </div>
                     }
                   >
@@ -57,7 +58,7 @@ export default function UserInfoPage() {
                     />
                   </Show>
                   <div class="min-w-0 max-w-full">
-                    <h1 class="user-info-name">
+                    <h1 class="user-info-name" dir="auto">
                       {publicUser().user_name}
                       <Show when={publicUser().user_country_flag}>
                         <span class="user-info-flag">{publicUser().user_country_flag}</span>
@@ -65,13 +66,16 @@ export default function UserInfoPage() {
                     </h1>
                     <p class={pageStyles.subtitle}>
                       {tx("user.joined", {
-                        date: new Date(
-                          publicUser().user_created_at,
-                        ).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }),
+                        // Isolated so the date cannot reorder the translated sentence around it.
+                        date: isolateAuto(
+                          new Date(
+                            publicUser().user_created_at,
+                          ).toLocaleDateString(locale(), {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }),
+                        ),
                       })}
                     </p>
                   </div>

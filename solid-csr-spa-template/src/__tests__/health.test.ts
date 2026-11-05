@@ -59,6 +59,6 @@ describe("formatIsoAge", () => {
 
   it("formats minutes and seconds ago", () => {
     const now = new Date("2025-01-01T00:02:15Z");
-    expect(formatIsoAge("2025-01-01T00:00:00Z", now)).toBe("2m 15s ago");
+    expect(formatIsoAge("2025-01-01T00:00:00Z", now)).toBe("2m ago");
   });
 });

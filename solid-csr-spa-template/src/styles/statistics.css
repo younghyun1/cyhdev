@@ -22,7 +22,17 @@
 }
 
 .stats-refresh {
-  padding: 0.5rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: none;
+  inline-size: 7.5rem;
+  block-size: 2.25rem;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
@@ -112,4 +122,10 @@
 
 @media (min-width: 1280px) {
   .stats-host-details { flex: 1; }
+}
+
+@media (max-width: 640px) {
+  .stats-refresh {
+    block-size: 2.75rem;
+  }
 }

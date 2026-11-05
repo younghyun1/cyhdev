@@ -69,3 +69,26 @@ for (const mode of ["superuser", "authenticated", "logged-out"] as const) {
     await expect(page.getByText(message.message_body)).toHaveCount(0);
   });
 }
+
+test.describe("chat message times", () => {
+  test.use({ timezoneId: "UTC" });
+
+  for (const [tag, expected] of [["en-US", "Sep 21, 2026, 12:00 PM"], ["de-DE", "21. Sept. 2026, 12:00"], ["ar", "21 سبتمبر 2026"]] as const) {
+    test(`show the full date in ${tag}`, async ({ page }) => {
+      await installApiMocks(page, "logged-out");
+      await setUiPreferences(page, tag, "light");
+      await page.routeWebSocket("**/ws/live-chat", (socket) => {
+        socket.send(JSON.stringify({
+          type: "hello", actor: { actor_key: { type: "guest", value: "0a1b2c3d4e5f60718293a4b5c6d7e8f9" },
+            sender_kind: 2, user_id: null, display_name: "Guest",
+            country_flag: null, user_profile_picture_url: null },
+          recent_messages: [message], connected_count: 1,
+        }));
+      });
+      await page.goto("/live-chat");
+      const time = page.locator("article time").first();
+      await expect(time).toContainText(expected);
+      await expect(time).toHaveAttribute("datetime", message.message_created_at);
+    });
+  }
+});

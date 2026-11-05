@@ -5,7 +5,7 @@ import type { MapInspection as Inspection } from "./mapInspectionState";
 /** Keep pointer-driven updates out of live regions and leave terrain gestures unobstructed. */
 export default function MapInspection(props: { readonly inspection: Inspection | null }) {
   return <Show when={props.inspection}>{inspection => <section class="minecraft-inspection" aria-label="Terrain inspection">
-    <strong>X {inspection().point.x} · Z {inspection().point.z}</strong>
+    <strong dir="ltr">X {inspection().point.x} · Z {inspection().point.z}</strong>
     <Show when={inspection().biome}>{biome => <>
       <p>{biome().source === "predicted" ? "Predicted" : "Observed"} biome: <b>{displayName(biome().name)}</b></p>
       <p class="minecraft-inspection-id">{biome().name}</p>

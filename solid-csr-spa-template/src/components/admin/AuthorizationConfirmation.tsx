@@ -24,16 +24,23 @@ export default function AuthorizationConfirmation(props: Props) {
     },
   );
 
-  const description = () => {
+  const roleChange = () => {
     const change = props.change;
-    if (change === null) return "";
-    if (change.kind === "role") {
-      return `${change.user.user_name}: ${change.user.role_name} → ${change.role.role_name}`;
-    }
+    return change !== null && change.kind === "role" ? change : null;
+  };
+
+  /** Permission grants and revocations; names are identifiers, so they stay left to right. */
+  const permissionDescription = () => {
+    const change = props.change;
+    if (change === null || change.kind === "role") return null;
     const action = change.enabled
       ? t("authorization.permission.grant")
       : t("authorization.permission.revoke");
-    return `${action}: ${change.role.role_name} / ${change.permission.permission_name}`;
+    return (
+      <>
+        {action}: <bdi dir="ltr">{change.role.role_name} / {change.permission.permission_name}</bdi>
+      </>
+    );
   };
 
   const submit = async (event: SubmitEvent) => {
@@ -56,13 +63,25 @@ export default function AuthorizationConfirmation(props: Props) {
           <h2 id="authorization-confirm-title">
             {t("authorization.confirm.title")}
           </h2>
-          <p class="authorization-dialog-change">{description()}</p>
+          <p class="authorization-dialog-change">
+            <Show when={roleChange()} fallback={permissionDescription()}>
+              {(change) => (
+                <>
+                  <bdi dir="auto">{change().user.user_name}</bdi>:{" "}
+                  <bdi dir="auto">{change().user.role_name}</bdi>{" "}
+                  <span class="authorization-change-arrow">→</span>{" "}
+                  <bdi dir="auto">{change().role.role_name}</bdi>
+                </>
+              )}
+            </Show>
+          </p>
           <form onSubmit={submit}>
             <label for="authorization-reason">
               {t("authorization.confirm.reason")}
             </label>
             <textarea
               id="authorization-reason"
+              dir="auto"
               value={reason()}
               maxlength={500}
               minlength={8}

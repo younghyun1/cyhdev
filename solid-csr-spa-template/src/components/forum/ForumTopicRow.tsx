@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 
 import type { ForumTopic } from "../../services/contracts/forum_types";
-import { t, tx } from "../../state/i18n";
+import { locale, t, tx } from "../../state/i18n";
 import { ForumAuthorName, ForumAvatar } from "./ForumAuthor";
 import ForumTime from "./ForumTime";
 
@@ -34,13 +34,14 @@ export default function ForumTopicRow(props: ForumTopicRowProps) {
             </Show>
             <a
               class="forum-topic-row__link"
+              dir="auto"
               href={`/forum/${encodeURIComponent(props.topic.topic_id)}`}
             >
               {title()}
             </a>
           </h3>
           <Show when={!masked() && props.topic.body}>
-            {(value) => <p class="forum-topic-row__preview">{value()}</p>}
+            {(value) => <p class="forum-topic-row__preview" dir="auto">{value()}</p>}
           </Show>
           <p class="forum-topic-row__byline">
             <ForumAuthorName author={props.topic.author} />
@@ -56,7 +57,7 @@ export default function ForumTopicRow(props: ForumTopicRowProps) {
       <p class="forum-topic-row__activity">
         <span class="sr-only">
           {tx("forum.topic.activity", {
-            date: new Date(props.topic.last_activity_at).toLocaleDateString(),
+            date: new Date(props.topic.last_activity_at).toLocaleDateString(locale()),
           })}
         </span>
         <span aria-hidden="true">

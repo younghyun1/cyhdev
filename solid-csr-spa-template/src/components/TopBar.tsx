@@ -13,11 +13,25 @@ import LanguageSelect from "./LanguageSelect";
 import ThemeToggle from "./ThemeToggle";
 import AppearanceMenu from "./AppearanceMenu";
 import CommandPaletteButton from "./CommandPaletteButton";
+import type { UiTextKey } from "../i18n/keys";
 import { t } from "../state/i18n";
 import AdminNavigation from "./AdminNavigation";
 import MobileDrawer from "./MobileDrawer";
 import PublicNavigation, { NAV_LINKS } from "./PublicNavigation";
 import { createMediaQuery } from "../utils/mediaQuery";
+
+/** Phone titles for routes outside the navigation; anything else shows the site title. */
+const ROUTE_TITLES: Readonly<Record<string, UiTextKey>> = {
+  login: "page.login.title",
+  register: "page.signup.title",
+  "find-password": "page.find_password.title",
+  "reset-password": "page.reset_password.title",
+  "verify-email": "page.verify_email.title",
+  "edit-profile": "page.edit_profile.title",
+  admin: "top_bar.admin.title",
+  "404": "page.not_found.title",
+  "under-construction": "not_found.title",
+};
 
 const TopBar = () => {
   const location = useLocation();
@@ -94,11 +108,7 @@ const TopBar = () => {
     const segment = pathname.replace(/^\/+/, "").split("/")[0] || "";
     const match = NAV_LINKS.find((link) => link.href === `/${segment}`);
     if (match) return t(match.labelKey);
-    return segment
-      .split("-")
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+    return t(ROUTE_TITLES[segment] ?? "top_bar.site_title");
   };
 
   return (
@@ -139,7 +149,7 @@ const TopBar = () => {
                 href="/"
                 class="site-header-brand min-w-0 shrink-0 font-mono text-lg sm:text-xl md:text-2xl font-bold tracking-tight whitespace-nowrap"
               >
-                <span class="site-header-mobile-title block md:hidden">
+                <span class="site-header-mobile-title block md:hidden" title={titleFromPath()}>
                   {titleFromPath()}
                 </span>
                 <span class="hidden md:block">{t("top_bar.site_title")}</span>
@@ -198,11 +208,12 @@ const TopBar = () => {
                 }
               >
                 <div class="flex items-center gap-2 sm:gap-3">
-                  <div class="site-header-identity hidden sm:flex flex-col items-end select-none" dir="auto">
-                    <span class="font-medium text-xs sm:text-sm">
+                  {/* The block follows the interface direction so it sits against the avatar; each line takes its own direction. */}
+                  <div class="site-header-identity hidden sm:flex flex-col items-end select-none">
+                    <span class="font-medium text-xs sm:text-sm" dir="auto">
                       {user()?.user_info?.user_name}
                     </span>
-                    <span class="text-[10px] sm:text-xs text-ink-faint">
+                    <span class="text-[10px] sm:text-xs text-ink-faint" dir="ltr">
                       {user()?.user_info?.user_email}
                     </span>
                   </div>
@@ -255,6 +266,7 @@ const TopBar = () => {
                           class="w-full text-start px-3 py-2 sm:px-4 sm:py-2 hover:bg-surface-2 rounded-sm flex items-center gap-2 text-xs sm:text-sm transition-colors duration-90"
                           onClick={() => void handleLogout()}
                         >
+                          {/* The exit arrow leaves toward the end edge, so it mirrors. */}
                           <svg
                             width="18"
                             height="18"
@@ -262,6 +274,7 @@ const TopBar = () => {
                             stroke="currentColor"
                             stroke-width="2"
                             viewBox="0 0 24 24"
+                            class="rtl:-scale-x-100"
                             aria-hidden="true"
                           >
                             <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2h-3a2 2 0 01-2-2V7a2 2 0 012-2h3a2 2 0 012 2v1" />

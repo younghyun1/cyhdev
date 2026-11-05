@@ -14,8 +14,7 @@
     display: block;
     position: fixed;
     top: var(--site-header-height);
-    left: 0;
-    right: 0;
+    inset-inline: 0;
     z-index: 30;
     height: 2px;
     pointer-events: none;
@@ -26,6 +25,12 @@
     animation: reading-progress linear both;
     animation-timeline: scroll(root block);
   }
+}
+
+/* The bar fills from the inline start edge. */
+:root[dir="rtl"] .reading-progress {
+  transform-origin: 100% 50%;
+  background: linear-gradient(270deg, var(--accent-strong), var(--accent));
 }
 
 @keyframes reading-progress {

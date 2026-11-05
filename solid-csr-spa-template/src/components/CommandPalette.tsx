@@ -22,6 +22,15 @@ type PaletteEntry = {
   readonly run: () => void;
 };
 
+/**
+ * Joins a section name and its page name. Each part is a bidi isolate so a Latin
+ * product name cannot reorder its neighbour. U+203A is Bidi_Mirrored, so the
+ * chevron points along the reading direction without a per-language swap.
+ */
+function breadcrumb(parent: string, child: string): string {
+  return `\u2068${parent}\u2069 \u203A \u2068${child}\u2069`;
+}
+
 const GROUP_LABELS: Readonly<Record<Group, UiTextKey>> = {
   pages: "command_palette.group.pages",
   sections: "command_palette.group.sections",
@@ -73,7 +82,7 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
       (link): PaletteEntry => ({
         id: `section:${link.href}`,
         group: "sections",
-        label: `${t(link.parentKey)} › ${t(link.labelKey)}`,
+        label: breadcrumb(t(link.parentKey), t(link.labelKey)),
         hint: link.href,
         run: go(link.href),
       }),
@@ -193,6 +202,7 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
         </span>
         <input
           class="cmdk-input"
+          dir="auto"
           type="text"
           role="combobox"
           aria-expanded="true"
@@ -210,7 +220,7 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
           }}
           onKeyDown={onKeyDown}
         />
-        <kbd class="cmdk-kbd">Esc</kbd>
+        <kbd class="cmdk-kbd" dir="ltr">Esc</kbd>
       </div>
       <ul
         id="cmdk-listbox"
@@ -244,8 +254,10 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
                         }}
                         onClick={() => item.entry.run()}
                       >
-                        <span class="cmdk-option-label">{item.entry.label}</span>
-                        <span class="cmdk-option-hint">{item.entry.hint}</span>
+                        <span class="cmdk-option-label" title={item.entry.label}>
+                          {item.entry.label}
+                        </span>
+                        <span class="cmdk-option-hint" dir="ltr">{item.entry.hint}</span>
                       </li>
                     )}
                   </For>

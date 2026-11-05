@@ -128,10 +128,11 @@ function ResetPasswordPage() {
 
             <input
               type="password"
+              dir="ltr"
               placeholder={t("auth.reset_password.new_password")}
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
-              class={`${pageStyles.input} mb-4`}
+              class={`${pageStyles.input} mb-4 rtl:text-right`}
               required
               minlength={8}
               maxlength={128}
@@ -140,10 +141,11 @@ function ResetPasswordPage() {
 
             <input
               type="password"
+              dir="ltr"
               placeholder={t("auth.reset_password.confirm_password")}
               value={confirmPassword()}
               onInput={(e) => setConfirmPassword(e.currentTarget.value)}
-              class={`${pageStyles.input} mb-4`}
+              class={`${pageStyles.input} mb-4 rtl:text-right`}
               required
               maxlength={128}
               autocomplete="new-password"

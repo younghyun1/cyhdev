@@ -123,3 +123,20 @@
   flex: none;
   font-size: 1rem;
 }
+
+/* Right to left: the page's faint grid, the accent rule under titles, and the
+   authentication card's top edge fade from the start side, which is the right. */
+:root[dir="rtl"] .app-page:not(.home-page)::before,
+:root[dir="rtl"] .forum-page::before {
+  mask-image: radial-gradient(ellipse 55% 95% at 82% 0%, #000 0%, transparent 75%);
+}
+
+:root[dir="rtl"] .page-title::after,
+:root[dir="rtl"] .page-title-small::after,
+:root[dir="rtl"] .forum-heading::after {
+  background: linear-gradient(270deg, var(--accent), transparent);
+}
+
+:root[dir="rtl"] .auth-card::before {
+  background: linear-gradient(270deg, var(--accent), transparent 70%);
+}

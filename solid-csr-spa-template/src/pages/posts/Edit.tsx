@@ -4,6 +4,7 @@ import { blogApi } from "../../services/all_api";
 import type { UpdatePostRequest } from "../../generated";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { pageStyles } from "../../styles/pageStyles";
+import "../../styles/blog.css";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { t } from "../../state/i18n";
@@ -158,6 +159,7 @@ export default function EditPostPage() {
                 onInput={(e) => setTitle(e.currentTarget.value)}
                 required
                 class={pageStyles.input}
+              dir="auto"
               />
               <input
                 type="text"
@@ -165,6 +167,7 @@ export default function EditPostPage() {
                 value={tags()}
                 onInput={(e) => setTags(e.currentTarget.value)}
                 class={pageStyles.input}
+              dir="auto"
               />
               <label class="flex items-center gap-2 text-sm text-ink-muted">
                 <input

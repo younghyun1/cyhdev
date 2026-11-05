@@ -16,7 +16,7 @@ import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
 import "../../styles/blog.css";
 import { UserBadge } from "../../components/UserBadge";
-import { t, tx } from "../../state/i18n";
+import { locale, t, tx } from "../../state/i18n";
 
 // Helper to normalize search param (can be string | string[] | undefined)
 const getParamString = (param: string | string[] | undefined): string => {
@@ -229,7 +229,8 @@ export default function PostsList() {
               placeholder={t("blog.search_placeholder")}
               value={searchQuery()}
               onInput={(e) => setSearchQuery(e.currentTarget.value)}
-              class={`${pageStyles.input} pr-10`}
+              class={`${pageStyles.input} pe-10`}
+              dir="auto"
             />
             <Show when={searchQuery()}>
               <button
@@ -238,7 +239,8 @@ export default function PostsList() {
                   setDebouncedQuery("");
                   setSearchParams({ q: undefined, type: undefined });
                 }}
-                class="absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-muted"
+                aria-label={t("common.close")}
+                class="blog-field-clear absolute end-2 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-muted"
               >
                 <svg
                   class="w-5 h-5"
@@ -256,11 +258,11 @@ export default function PostsList() {
               </button>
             </Show>
           </div>
-          <div class="flex rounded-sm border border-line overflow-hidden">
+          <div class="blog-search-type flex rounded-sm border border-line overflow-hidden">
             <button
               onClick={() => setSearchType("title")}
               class={[
-                "px-4 py-2 text-sm font-medium transition-colors",
+                "blog-search-type-button text-sm font-medium transition-colors",
                 searchType() === "title"
                   ? "bg-accent text-paper"
                   : "bg-surface text-ink-muted hover:bg-surface-2",
@@ -271,7 +273,7 @@ export default function PostsList() {
             <button
               onClick={() => setSearchType("tag")}
               class={[
-                "px-4 py-2 text-sm font-medium transition-colors border-l border-line",
+                "blog-search-type-button text-sm font-medium transition-colors border-s border-line",
                 searchType() === "tag"
                   ? "bg-accent text-paper"
                   : "bg-surface text-ink-muted hover:bg-surface-2",
@@ -298,11 +300,12 @@ export default function PostsList() {
                       addTag(tagInput());
                     }
                   }}
-                  class={`${pageStyles.input} pr-20`}
+                  class={`${pageStyles.input} pe-20`}
+                  dir="auto"
                 />
                 <button
                   onClick={() => addTag(tagInput())}
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-xs px-2 py-1 rounded-sm bg-surface-2 text-ink-muted hover:text-ink"
+                  class="blog-tag-action absolute end-2 top-1/2 -translate-y-1/2 text-xs rounded-sm bg-surface-2 text-ink-muted hover:text-ink"
                 >
                   {t("blog.add_tag")}
                 </button>
@@ -310,7 +313,7 @@ export default function PostsList() {
               <Show when={selectedTags().length > 0}>
                 <button
                   onClick={clearTags}
-                  class="text-xs px-2 py-1 rounded-sm border border-line text-ink-muted hover:bg-surface-2"
+                  class="blog-tag-action blog-tag-action--clear text-xs rounded-sm border border-line text-ink-muted hover:bg-surface-2"
                 >
                   {t("blog.clear_tags")}
                 </button>
@@ -322,6 +325,7 @@ export default function PostsList() {
                   {(tag) => (
                     <button
                       onClick={() => removeTag(tag)}
+                      dir="auto"
                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-xs font-medium bg-accent-soft text-accent hover:opacity-80 transition-opacity cursor-pointer"
                     >
                       #{tag}
@@ -386,11 +390,12 @@ export default function PostsList() {
                     <a
                       href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
                       class="blog-row-title"
+                      dir="auto"
                     >
                       {post.post_title}
                     </a>
                     <Show when={post.post_summary}>
-                      <p class="blog-row-summary">{post.post_summary}</p>
+                      <p class="blog-row-summary" dir="auto">{post.post_summary}</p>
                     </Show>
                     <div class="blog-row-meta">
                       <UserBadge
@@ -401,12 +406,13 @@ export default function PostsList() {
                       />
                       <span aria-hidden="true">·</span>
                       <span>
-                        {new Date(post.post_created_at).toLocaleDateString()}
+                        {new Date(post.post_created_at).toLocaleDateString(locale())}
                       </span>
                       <span aria-hidden="true">·</span>
-                      <span>
+                      {/* A signed number stays in one piece beside right-to-left text. */}
+                      <bdi dir="ltr">
                         {score() > 0 ? `+${score()}` : score()}
-                      </span>
+                      </bdi>
                       <span aria-hidden="true">·</span>
                       <span>
                         {post.post_view_count ?? 0} {t("common.views")}
@@ -429,6 +435,7 @@ export default function PostsList() {
                                   searchByTag(tag);
                                 }}
                                 class="blog-row-tag"
+                                dir="auto"
                               >
                                 #{tag}
                               </button>

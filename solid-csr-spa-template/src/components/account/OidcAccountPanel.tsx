@@ -131,8 +131,9 @@ export default function OidcAccountPanel() {
               </label>
               <input
                 id="oidc-link-password"
-                class={`${pageStyles.input} mb-3`}
+                class={`${pageStyles.input} mb-3 rtl:text-right`}
                 type="password"
+                dir="ltr"
                 autocomplete="current-password"
                 maxlength={128}
                 value={currentPassword()}
@@ -143,7 +144,7 @@ export default function OidcAccountPanel() {
               />
               <button
                 type="submit"
-                class={pageStyles.buttonPrimary}
+                class={`${pageStyles.buttonPrimary} ui-button--wide`}
                 disabled={pending()}
               >
                 {pending() ? t("profile.oidc.linking") : t("profile.oidc.link")}
@@ -157,8 +158,9 @@ export default function OidcAccountPanel() {
             </label>
             <input
               id="oidc-unlink-password"
-              class={`${pageStyles.input} mb-3`}
+              class={`${pageStyles.input} mb-3 rtl:text-right`}
               type="password"
+              dir="ltr"
               autocomplete="current-password"
               maxlength={128}
               value={currentPassword()}
@@ -167,7 +169,7 @@ export default function OidcAccountPanel() {
             />
             <button
               type="submit"
-              class={pageStyles.buttonSecondary}
+              class={`${pageStyles.buttonSecondary} ui-button--wide`}
               disabled={pending()}
             >
               {pending()

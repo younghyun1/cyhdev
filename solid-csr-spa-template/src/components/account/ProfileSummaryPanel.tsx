@@ -191,8 +191,10 @@ export default function ProfileSummaryPanel() {
             {t("common.email")}
           </span>
           <input
-            class={`${pageStyles.input} bg-surface-2`}
+            class={`${pageStyles.input} bg-surface-2 rtl:text-right`}
             value={initial?.user_email ?? ""}
+            title={initial?.user_email ?? ""}
+            dir="ltr"
             readonly
             aria-readonly="true"
           />
@@ -202,8 +204,9 @@ export default function ProfileSummaryPanel() {
             {t("profile.display_name")}
           </span>
           <input
-            class={pageStyles.input}
+            class={`${pageStyles.input} rtl:text-right`}
             value={userName()}
+            dir="auto"
             maxlength={20}
             onInput={(event) => {
               setUserName(event.currentTarget.value);
@@ -249,8 +252,9 @@ export default function ProfileSummaryPanel() {
             {t("profile.update.current_password")}
           </span>
           <input
-            class={pageStyles.input}
+            class={`${pageStyles.input} rtl:text-right`}
             type="password"
+            dir="ltr"
             autocomplete="current-password"
             value={currentPassword()}
             onInput={(event) => {

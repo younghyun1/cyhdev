@@ -3,7 +3,8 @@ import { useNavigate } from "@solidjs/router";
 
 import type { VerifyUserEmailResponse } from "../generated";
 import { authApi } from "../services/all_api";
-import { t, tx } from "../state/i18n";
+import { isolateAuto } from "../components/admin/operations/operationsFormat";
+import { locale, t, tx } from "../state/i18n";
 import { pageStyles } from "../styles/pageStyles";
 import {
   consumeEmailVerificationFragment,
@@ -112,7 +113,7 @@ function VerifyEmailPage() {
         </Show>
         <Show when={error()}>
           {(message) => (
-            <div class={`${pageStyles.alertError} mb-4`} role="alert">
+            <div class={`${pageStyles.alertError} mb-4`} role="alert" dir="auto">
               {message()}
             </div>
           )}
@@ -121,7 +122,10 @@ function VerifyEmailPage() {
           {(verified) => (
             <p class={`${pageStyles.muted} mb-4`}>
               {tx("auth.verify_email.verified_at", {
-                date: new Date(verified().verified_at).toLocaleString(),
+                // Isolated so the date cannot reorder the translated sentence around it.
+                date: isolateAuto(
+                  new Date(verified().verified_at).toLocaleString(locale()),
+                ),
               })}
             </p>
           )}

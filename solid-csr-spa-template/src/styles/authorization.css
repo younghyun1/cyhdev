@@ -9,6 +9,7 @@
     width: min(100%, 88rem);
     margin: 0 auto;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
 }
 
@@ -58,6 +59,10 @@
     width: min(22rem, 55vw);
 }
 
+.authorization-search > button {
+    flex: none;
+}
+
 .authorization-page button,
 .authorization-page input,
 .authorization-page select,
@@ -73,7 +78,20 @@
 
 .authorization-page button,
 .authorization-dialog button {
-    padding: 0.55rem 0.8rem;
+    /* A button keeps one size in every language; the label wraps inside it. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    flex: none;
+    width: 9rem;
+    height: 2.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+    overflow-x: clip;
     cursor: pointer;
 }
 
@@ -86,7 +104,19 @@
 .authorization-page input,
 .authorization-page select,
 .authorization-dialog textarea {
+    box-sizing: border-box;
     padding: 0.55rem 0.65rem;
+    line-height: 1.25;
+}
+
+.authorization-page input,
+.authorization-page select {
+    height: 2.75rem;
+    padding-block: 0.25rem;
+}
+
+.authorization-table select {
+    width: 12rem;
 }
 
 .authorization-primary-button,
@@ -104,20 +134,65 @@
 .authorization-table {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
+    table-layout: fixed;
+    text-align: start;
+}
+
+/* Fixed columns: widths never depend on a translated header or cell. */
+.authorization-users-table th:nth-child(3) {
+    width: 14rem;
+}
+
+.authorization-users-table th:nth-child(4) {
+    width: 11.5rem;
+}
+
+.authorization-audit-table th:nth-child(1) {
+    width: 12rem;
+}
+
+.authorization-audit-table th:nth-child(2) {
+    width: 14rem;
+}
+
+.authorization-audit-table th:nth-child(4) {
+    width: 14rem;
+}
+
+.authorization-audit-table th:nth-child(5) {
+    width: 10rem;
+}
+
+.authorization-permission-table th:first-child {
+    width: 20rem;
+}
+
+.authorization-permission-table th:not(:first-child) {
+    width: 11rem;
 }
 
 .authorization-table th,
 .authorization-table td {
     padding: 0.75rem;
+    overflow-wrap: anywhere;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
 }
 
 .authorization-table thead th {
+    height: 2.5rem;
     color: var(--ink-muted);
     font: 600 0.75rem/1.2 var(--font-mono);
+    text-align: start;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow-x: clip;
+}
+
+.authorization-table tbody th[scope="row"] {
+    text-align: start;
+    overflow-wrap: anywhere;
 }
 
 .authorization-table small {
@@ -125,10 +200,6 @@
     margin-top: 0.25rem;
     color: var(--ink-muted);
     font-family: var(--font-mono);
-}
-
-.authorization-permission-table th:first-child {
-    min-width: 18rem;
 }
 
 .authorization-empty,
@@ -197,7 +268,9 @@
     border: 0;
 }
 
-@media (max-width: 48rem) {
+/* Stacked until the column beside the sidebar can hold any language's heading next
+   to the search row; otherwise the row overflows or wraps only in some languages. */
+@media (max-width: 72rem) {
     .authorization-page-header,
     .authorization-panel-heading {
         align-items: stretch;
@@ -233,7 +306,6 @@
     .authorization-table select,
     .authorization-table button {
         width: 100%;
-        min-height: 44px;
     }
 
     .authorization-table-wrap {
@@ -250,12 +322,7 @@
     }
 
     .authorization-table thead {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
+        display: none;
     }
 
     .authorization-table tr {
@@ -289,8 +356,9 @@
         text-transform: uppercase;
     }
 
-    .authorization-permission-table th:first-child {
-        min-width: 0;
+    .authorization-permission-table th:first-child,
+    .authorization-permission-table th:not(:first-child) {
+        width: 100%;
     }
 
     .authorization-dialog-backdrop {
@@ -310,4 +378,31 @@
         align-items: stretch;
         flex-direction: column-reverse;
     }
+
+    .authorization-dialog-actions button,
+    .authorization-panel-heading > button,
+    .authorization-page-header > button {
+        width: 100%;
+    }
+}
+
+/* Old-to-new arrow in role changes: it points along the reading direction, so it flips in right-to-left languages. */
+.authorization-change-arrow {
+    display: inline-block;
+}
+
+:root[dir="rtl"] .authorization-change-arrow {
+    transform: scaleX(-1);
+}
+
+/* Free-form text from users is a block so it takes its own paragraph direction and alignment, while the table cell keeps the interface direction. */
+.authorization-user-text {
+    display: block;
+}
+
+/* Arabic-script marks reach above and below the Latin line box; keep the fixed button height and give two wrapped lines more room. */
+:root[dir="rtl"] .authorization-page button,
+:root[dir="rtl"] .authorization-dialog button {
+    padding-block: 0.1rem;
+    line-height: 1.3;
 }

@@ -26,7 +26,7 @@ import { createKeyedStore } from "../../state/keyed_store";
 import { mergeCommentPages } from "../../utils/commentPages";
 import { isSuperuser, user } from "../../state/auth";
 import { pageStyles } from "../../styles/pageStyles";
-import { t } from "../../state/i18n";
+import { locale, t } from "../../state/i18n";
 import { UserBadge } from "../UserBadge";
 import type {
   CommentCursorResponse,
@@ -385,7 +385,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
         const deleted = () => Boolean(comment().photograph_comment_deleted_at);
         return (
           <div
-            class="threaded-comment mt-2 pl-3 border-l border-line"
+            class="threaded-comment mt-2 ps-3 border-s border-line"
             style={{
               "--comment-depth": depth,
               "--mobile-comment-indent":
@@ -399,10 +399,11 @@ function PhotographSocialSession(props: PhotographSocialProps) {
                 countryFlag={comment().user_country_flag}
                 size="sm"
               />
-              <span class="ml-2">
+              {/* Browser-formatted dates are left-to-right; isolate the run so its comma and time keep order. */}
+              <span dir="ltr" class="ms-2">
                 {new Date(
                   comment().photograph_comment_created_at,
-                ).toLocaleString()}
+                ).toLocaleString(locale())}
               </span>
             </div>
 
@@ -415,7 +416,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
               when={!deleted() && editOpen[id()]}
               fallback={
                 <Show when={!deleted()}>
-                  <div class="text-ink whitespace-pre-wrap text-sm">
+                  <div dir="auto" class="text-ink whitespace-pre-wrap text-sm">
                     {comment().photograph_comment_content}
                   </div>
                 </Show>
@@ -423,6 +424,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
             >
               <div class="mt-1">
                 <textarea
+                  dir="auto"
                   class={`${pageStyles.textarea} min-h-20`}
                   value={editText[id()] ?? ""}
                   onInput={(e) => setEditText(id(), e.currentTarget.value)}
@@ -476,10 +478,10 @@ function PhotographSocialSession(props: PhotographSocialProps) {
                 </button>
               </div>
 
-              <div class="mt-1 flex gap-3">
+              <div class="mt-1 flex flex-wrap gap-x-3">
                 <Show when={meId()}>
                   <button
-                    class={`${pageStyles.link} text-xs`}
+                    class={`${pageStyles.link} photo-comment-action text-xs`}
                     onClick={() => setReplyOpen(id(), !replyOpen[id()])}
                   >
                     {t("blog.comments.reply")}
@@ -487,7 +489,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
                 </Show>
                 <Show when={canModify(comment().user_id)}>
                   <button
-                    class={`${pageStyles.link} text-xs`}
+                    class={`${pageStyles.link} photo-comment-action text-xs`}
                     onClick={() => {
                       setEditText(id(), comment().photograph_comment_content);
                       setEditOpen(id(), true);
@@ -496,7 +498,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
                     {t("common.edit")}
                   </button>
                   <button
-                    class="text-xs text-danger hover:underline"
+                    class="photo-comment-action text-xs text-danger hover:underline"
                     onClick={() => removeComment(id())}
                   >
                     {t("common.delete")}
@@ -508,6 +510,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
             <Show when={replyOpen[id()]}>
               <div class="mt-2">
                 <textarea
+                  dir="auto"
                   class={`${pageStyles.textarea} min-h-20`}
                   value={replyText[id()] ?? ""}
                   onInput={(e) => setReplyText(id(), e.currentTarget.value)}
@@ -589,6 +592,7 @@ function PhotographSocialSession(props: PhotographSocialProps) {
               {t("blog.comments.add")}
             </h3>
             <textarea
+              dir="auto"
               class={pageStyles.textarea}
               value={commentValue()}
               onInput={(e) => setCommentValue(e.currentTarget.value)}

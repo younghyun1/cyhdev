@@ -10,6 +10,7 @@ import type {
 } from "../generated";
 import { pageStyles } from "../styles/pageStyles";
 import { t } from "../state/i18n";
+import { isolateAuto } from "../components/admin/operations/operationsFormat";
 
 function SignupPage() {
   // ––––– form state (all dropdowns as strings!)
@@ -166,7 +167,9 @@ function SignupPage() {
     return primary ? [primary, ...rest] : rest;
   };
 
-  const fieldClasses = `${pageStyles.input} mb-4`;
+  // Left-to-right fields (email, password) keep their text direction, but in a right-to-left
+  // form their text and placeholder sit against the end edge with the labels and selects.
+  const fieldClasses = `${pageStyles.input} mb-4 rtl:text-right`;
 
   return (
     <div
@@ -195,6 +198,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="text"
+              dir="auto"
               placeholder={t("common.username")}
               value={userName()}
               onInput={(e) => setUserName(e.currentTarget.value)}
@@ -204,6 +208,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="email"
+              dir="ltr"
               placeholder={t("common.email")}
               autocomplete="username email"
               value={userEmail()}
@@ -214,6 +219,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="password"
+              dir="ltr"
               placeholder={t("common.password")}
               autocomplete="new-password"
               value={userPassword()}
@@ -225,6 +231,7 @@ function SignupPage() {
             <input
               class={fieldClasses}
               type="password"
+              dir="ltr"
               placeholder={t("auth.signup.reenter_password")}
               autocomplete="new-password"
               value={confirmPassword()}
@@ -249,8 +256,8 @@ function SignupPage() {
               <option value="">{t("auth.signup.select_country")}</option>
               <For each={countries()}>{(c) => (
                 <option value={c.country_code}>
-                  {c.country_flag ? c.country_flag + " " : ""}
-                  {c.country_eng_name}
+                  {/* English names are isolated so trailing parentheses stay put in right-to-left lists. */}
+                  {isolateAuto(`${c.country_flag ? c.country_flag + " " : ""}${c.country_eng_name}`)}
                 </option>
               )}</For>
             </select>
@@ -263,7 +270,7 @@ function SignupPage() {
             >
               <option value="">{t("auth.signup.select_language")}</option>
               <For each={sortedLanguages()}>{(l) => (
-                <option value={l.language_code}>{l.language_eng_name}</option>
+                <option value={l.language_code}>{isolateAuto(l.language_eng_name)}</option>
               )}</For>
             </select>
 
@@ -275,7 +282,7 @@ function SignupPage() {
             >
               <option value="">{t("auth.signup.no_subdivision")}</option>
               <For each={subdivisions()}>{(s) => (
-                <option value={s.subdivision_id}>{s.subdivision_name}</option>
+                <option value={s.subdivision_id}>{isolateAuto(s.subdivision_name)}</option>
               )}</For>
             </select>
 

@@ -114,12 +114,12 @@ export default function RamStatsCard(props: {
             {t("stats.memory_usage")}
           </h3>
         </div>
-        <div class="stats-chart-value text-xl font-bold font-mono text-right tabular-nums">
-          {latest()
+        <div class="stats-chart-value text-xl font-bold font-mono text-end tabular-nums">
+          <bdi dir="ltr">{latest()
             ? `${formatMem(latest()!.memT - latest()!.memF)} / ${formatMem(
                 latest()!.memT,
               )}`
-            : "--/--"}
+            : "--/--"}</bdi>
         </div>
       </div>
 

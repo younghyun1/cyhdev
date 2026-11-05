@@ -426,8 +426,10 @@ export default function Photographs(props: RouteSectionProps) {
           ) {
             return;
           }
-          if (e.key === "ArrowLeft") void navigatePhoto("prev");
-          if (e.key === "ArrowRight") void navigatePhoto("next");
+          // Arrow keys are physical, so they swap in right-to-left languages.
+          const rtl = document.documentElement.dir === "rtl";
+          if (e.key === "ArrowLeft") void navigatePhoto(rtl ? "next" : "prev");
+          if (e.key === "ArrowRight") void navigatePhoto(rtl ? "prev" : "next");
         });
 
       window.addEventListener("keydown", handleKeyDown);
@@ -458,14 +460,14 @@ export default function Photographs(props: RouteSectionProps) {
               >
                 {t("photos.processing")}
                 <Show when={activeBatchCount() > 0}>
-                  <span class="ml-2 inline-flex items-center justify-center rounded-full bg-accent text-paper text-xs font-bold h-5 min-w-5 px-1">
+                  <span class="ms-2 inline-flex items-center justify-center rounded-full bg-accent text-paper text-xs font-bold h-5 min-w-5 px-1">
                     {activeBatchCount()}
                   </span>
                 </Show>
               </button>
             </Show>
 
-            <div class="photographs-selection-actions flex gap-2 ml-4">
+            <div class="photographs-selection-actions flex gap-2 ms-4">
               <Show when={isSuperuser()}>
                 <Show
                   when={isSelectionMode()}
@@ -586,7 +588,7 @@ export default function Photographs(props: RouteSectionProps) {
                                 >
                                   <div
                                     class={[
-                                      "absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center",
+                                      "absolute top-2 end-2 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center",
                                       selectedForDeletion().has(
                                         photo.photograph_id,
                                       )
@@ -694,7 +696,7 @@ export default function Photographs(props: RouteSectionProps) {
               data-photo-close
               type="button"
               onClick={() => closePhoto()}
-              class="details-close-button absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+              class="details-close-button absolute top-4 end-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
               aria-label={t("common.close")}
             >
               ✕
@@ -712,7 +714,9 @@ export default function Photographs(props: RouteSectionProps) {
                 if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY)) {
                   return;
                 }
-                void navigatePhoto(deltaX > 0 ? "prev" : "next");
+                // Swiping toward the reading end advances; right-to-left reverses the screen direction.
+                const towardStart = document.documentElement.dir === "rtl" ? deltaX < 0 : deltaX > 0;
+                void navigatePhoto(towardStart ? "prev" : "next");
               }}
             >
               {/* --- PREV BUTTON --- */}
@@ -723,7 +727,7 @@ export default function Photographs(props: RouteSectionProps) {
                     navigatePhoto("prev");
                   }}
                   // ADDED: nav-btn class
-                  class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
+                  class="nav-btn absolute start-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
                   title={t("photos.previous")}
                 >
                   <svg
@@ -732,7 +736,7 @@ export default function Photographs(props: RouteSectionProps) {
                     viewBox="0 0 24 24"
                     stroke-width="2"
                     stroke="currentColor"
-                    class="w-6 h-6"
+                    class="w-6 h-6 rtl:-scale-x-100"
                   >
                     <path
                       stroke-linecap="round"
@@ -762,7 +766,7 @@ export default function Photographs(props: RouteSectionProps) {
                     navigatePhoto("next");
                   }}
                   // ADDED: nav-btn class
-                  class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
+                  class="nav-btn absolute end-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 text-white rounded-full z-20 backdrop-blur-sm transition-all hover:scale-110"
                   title={t("photos.next")}
                 >
                   {/* Optional: Show spinner if loading next page while hovering next button */}
@@ -777,7 +781,7 @@ export default function Photographs(props: RouteSectionProps) {
                         viewBox="0 0 24 24"
                         stroke-width="2"
                         stroke="currentColor"
-                        class="w-6 h-6"
+                        class="w-6 h-6 rtl:-scale-x-100"
                       >
                         <path
                           stroke-linecap="round"
@@ -818,7 +822,7 @@ export default function Photographs(props: RouteSectionProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 // ADDED: nav-btn class (optional, if you want this to fade too)
-                class="nav-btn absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm transition-colors"
+                class="nav-btn absolute top-4 end-4 p-2 bg-black/40 hover:bg-black/60 text-white rounded-full backdrop-blur-sm transition-colors"
                 title={t("photos.open_original")}
                 aria-label={t("photos.open_original_aria")}
               >
@@ -849,7 +853,7 @@ export default function Photographs(props: RouteSectionProps) {
                 <h3 class="text-lg font-bold text-ink">
                   {t("photos.comments")}
                 </h3>
-                <p class="text-ink-muted mt-1 whitespace-pre-wrap">
+                <p dir="auto" class="text-ink-muted mt-1 whitespace-pre-wrap">
                   {selectedPhoto()!.photograph_comments}
                 </p>
               </div>
@@ -859,11 +863,17 @@ export default function Photographs(props: RouteSectionProps) {
                   {t("photos.taken_at")}
                 </h3>
                 <p class="text-ink">
-                  {selectedPhoto()!.photograph_shot_at
-                    ? new Date(
+                  {selectedPhoto()!.photograph_shot_at ? (
+                    // Browser-formatted dates are left-to-right runs; isolate them so
+                    // the comma and time stay in order inside a right-to-left line.
+                    <span dir="ltr" class="inline-block">
+                      {new Date(
                         selectedPhoto()!.photograph_shot_at!,
-                      ).toLocaleString()
-                    : t("common.unknown_date")}
+                      ).toLocaleString(locale())}
+                    </span>
+                  ) : (
+                    t("common.unknown_date")
+                  )}
                 </p>
               </div>
 
@@ -872,8 +882,10 @@ export default function Photographs(props: RouteSectionProps) {
                   {t("geo.coordinates")}
                 </h3>
                 <p class="font-mono text-sm text-ink">
-                  {selectedPhoto()!.photograph_lat.toFixed(6)},{" "}
-                  {selectedPhoto()!.photograph_lon.toFixed(6)}
+                  <span dir="ltr" class="inline-block">
+                    {selectedPhoto()!.photograph_lat.toFixed(6)},{" "}
+                    {selectedPhoto()!.photograph_lon.toFixed(6)}
+                  </span>
                 </p>
               </div>
 
@@ -904,7 +916,7 @@ export default function Photographs(props: RouteSectionProps) {
                       </svg>
                     </button>
                     <Show when={showMapLinks()}>
-                      <div class="absolute right-0 top-full mt-1 bg-surface border border-line rounded-sm shadow-lg z-50 min-w-40 py-1">
+                      <div class="absolute end-0 top-full mt-1 bg-surface border border-line rounded-sm shadow-lg z-50 min-w-40 py-1">
                         <a
                           href={getGoogleMapsUrl(
                             selectedPhoto()!.photograph_lat,

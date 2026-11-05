@@ -303,7 +303,10 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
           onTouchStart={(e) => (touchStartX = e.touches[0]?.clientX ?? 0)}
           onTouchEnd={(e) => {
             const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX;
-            if (Math.abs(dx) > SWIPE_THRESHOLD_PX) go(dx < 0 ? 1 : -1);
+            if (Math.abs(dx) > SWIPE_THRESHOLD_PX) {
+              const rtl = document.documentElement.dir === "rtl";
+              go((dx < 0) !== rtl ? 1 : -1);
+            }
           }}
         >
           <img
@@ -314,17 +317,18 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
           <Show when={index() > 0}>
             <button
               type="button"
-              class="absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white text-2xl leading-none transition"
+              class="absolute start-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white text-2xl leading-none transition"
               onClick={() => go(-1)}
               aria-label={t("photos.previous")}
             >
+              {/* Single guillemets are bidi-mirrored, so they already point along reading direction. */}
               ‹
             </button>
           </Show>
           <Show when={index() < entries().length - 1}>
             <button
               type="button"
-              class="absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white text-2xl leading-none transition"
+              class="absolute end-2 top-1/2 -translate-y-1/2 h-9 w-9 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white text-2xl leading-none transition"
               onClick={() => go(1)}
               aria-label={t("photos.next")}
             >
@@ -342,6 +346,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
           value={current()!.comment}
           onInput={(e) => updateComment(e.currentTarget.value)}
           rows={2}
+          dir="auto"
           class={pageStyles.textarea}
           placeholder={t("photos.comment_placeholder")}
         />
@@ -358,8 +363,9 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
               fallback={t("photos.select_location")}
             >
               {tx("photos.selected", {
-                lat: current()!.lat?.toFixed(5) ?? "",
-                lon: current()!.lon?.toFixed(5) ?? "",
+                // Isolates keep the sign and decimals in order inside a right-to-left sentence.
+                lat: `\u2066${current()!.lat?.toFixed(5) ?? ""}\u2069`,
+                lon: `\u2066${current()!.lon?.toFixed(5) ?? ""}\u2069`,
               })}
             </Show>
           </p>
@@ -408,7 +414,7 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
               style={{ width: `${props.progress}%` }}
             />
           </div>
-          <p class={`mt-1 text-xs ${pageStyles.muted} text-right`}>
+          <p class={`mt-1 text-xs ${pageStyles.muted} text-end`}>
             {props.progress}%
           </p>
         </div>

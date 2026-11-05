@@ -86,7 +86,20 @@
 
 .operations-page button,
 .operations-dialog button {
-    padding: 0.55rem 0.8rem;
+    /* A button keeps one size in every language; the label wraps inside it. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    flex: none;
+    width: 10rem;
+    height: 2.75rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+    overflow-x: clip;
     cursor: pointer;
 }
 
@@ -96,9 +109,25 @@
     opacity: 0.5;
 }
 
-.operations-page input,
-.operations-dialog input {
-    padding: 0.55rem 0.65rem;
+.operations-page input:not([type="checkbox"]),
+.operations-dialog input:not([type="checkbox"]) {
+    box-sizing: border-box;
+    width: 100%;
+    height: 2.75rem;
+    padding: 0.25rem 0.65rem;
+    line-height: 1.25;
+}
+
+.operations-page input[type="checkbox"],
+.operations-dialog input[type="checkbox"] {
+    box-sizing: border-box;
+    width: 1.1rem;
+    height: 1.1rem;
+    padding: 0;
+}
+
+.operations-purge-form > button {
+    justify-self: start;
 }
 
 .operations-primary-button,
@@ -116,7 +145,21 @@
 .operations-table {
     width: 100%;
     border-collapse: collapse;
-    text-align: left;
+    table-layout: fixed;
+    text-align: start;
+}
+
+/* Fixed columns: widths never depend on a translated header or cell. */
+.operations-table th:nth-child(2) {
+    width: 16rem;
+}
+
+.operations-table th:nth-child(3) {
+    width: 11rem;
+}
+
+.operations-table th:last-child {
+    width: 12rem;
 }
 
 .operations-table th,
@@ -127,9 +170,14 @@
 }
 
 .operations-table thead th {
+    height: 2.5rem;
     color: var(--ink-muted);
     font: 600 0.75rem/1.2 var(--font-mono);
+    text-align: start;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow-x: clip;
 }
 
 .operations-table small,
@@ -250,12 +298,7 @@
     }
 
     .operations-table thead {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
+        display: none;
     }
 
     .operations-table tr {
@@ -289,11 +332,25 @@
 
     .operations-table button {
         width: 100%;
-        min-height: 44px;
+        height: 2.75rem;
     }
 
     .operations-pagination {
         align-items: stretch;
         flex-direction: column;
     }
+}
+
+/* Identifiers and dates inside translated sentences stay one unit in every direction instead of splitting across lines in reversed order. */
+.operations-isolate {
+    display: inline-block;
+    max-inline-size: 100%;
+    overflow-wrap: anywhere;
+}
+
+/* Arabic-script marks reach above and below the Latin line box; keep the fixed button height and give two wrapped lines more room. */
+:root[dir="rtl"] .operations-page button,
+:root[dir="rtl"] .operations-dialog button {
+    padding-block: 0.1rem;
+    line-height: 1.3;
 }

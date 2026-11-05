@@ -46,7 +46,7 @@ export function VideoTile(props: VideoTileProps) {
             when={props.profilePictureUrl}
             fallback={
               <span class={pageStyles.callAvatar}>
-                {props.label.slice(0, 1)}
+                {Array.from(props.label)[0] ?? ""}
               </span>
             }
           >
@@ -59,7 +59,7 @@ export function VideoTile(props: VideoTileProps) {
         </div>
       </Show>
       <div class={pageStyles.callTileOverlay}>
-        <span class="truncate">
+        <span class="truncate" dir="auto" title={props.label}>
           {props.label}
           <Show when={props.countryFlag}> {props.countryFlag}</Show>
         </span>

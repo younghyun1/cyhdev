@@ -39,6 +39,16 @@ export default function HardPurgePanel(props: Props) {
 
   const normalizedUserId = () => userId().trim().toLowerCase();
   const expectedConfirmation = () => `PURGE ${normalizedUserId()}`;
+  /**
+   * The phrase embeds a UUID, which a right-to-left sentence would reverse
+   * segment by segment, so it renders in its own left-to-right isolate.
+   */
+  const confirmationLabel = () => {
+    const [before = "", after = ""] = tx("operations.purge.confirmation", {
+      phrase: "\u0000",
+    }).split("\u0000");
+    return { before, after };
+  };
   const valid = () =>
     isUuid(normalizedUserId()) &&
     confirmation() === expectedConfirmation() &&
@@ -80,6 +90,7 @@ export default function HardPurgePanel(props: Props) {
         <label for="hard-purge-user-id">{t("operations.purge.user_id")}</label>
         <input
           id="hard-purge-user-id"
+          dir="ltr"
           value={userId()}
           inputmode="text"
           autocomplete="off"
@@ -102,12 +113,13 @@ export default function HardPurgePanel(props: Props) {
           </p>
         </Show>
         <label for="hard-purge-confirmation">
-          {tx("operations.purge.confirmation", {
-            phrase: expectedConfirmation(),
-          })}
+          {confirmationLabel().before}
+          <bdi class="operations-isolate" dir="ltr">{expectedConfirmation()}</bdi>
+          {confirmationLabel().after}
         </label>
         <input
           id="hard-purge-confirmation"
+          dir="ltr"
           value={confirmation()}
           autocomplete="off"
           spellcheck="false"
@@ -158,7 +170,7 @@ export default function HardPurgePanel(props: Props) {
             <dl class="operations-details operations-receipt-details">
               <div>
                 <dt>{t("operations.purge.user_id")}</dt>
-                <dd>{value().user_id}</dd>
+                <dd><bdi dir="ltr">{value().user_id}</bdi></dd>
               </div>
               <div>
                 <dt>{t("operations.purge.purged_at")}</dt>
@@ -183,8 +195,8 @@ export default function HardPurgePanel(props: Props) {
                 <For each={value().profile_cleanup_failures}>
                   {(failure) => (
                     <li>
-                      <strong>{failure.profile_picture_id}</strong>
-                      <span>{failure.reason}</span>
+                      <strong dir="ltr">{failure.profile_picture_id}</strong>
+                      <span dir="auto">{failure.reason}</span>
                       <small>
                         {failure.retryable
                           ? t("operations.purge.retryable")

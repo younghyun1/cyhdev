@@ -214,13 +214,13 @@ export default function ForumTopicPage() {
     <main class="forum-page">
       <div class="forum-shell">
         <nav class="forum-breadcrumb" aria-label={t("forum.breadcrumb")}>
-          <a href="/forum">{t("page.forum.title")}</a>
+          <a class="ui-clip" href="/forum" title={t("page.forum.title")}>{t("page.forum.title")}</a>
           <span aria-hidden="true">/</span>
-          <span class="forum-breadcrumb__current" aria-current="page">
+          <span class="forum-breadcrumb__current" aria-current="page" dir="auto">
             {topic() ? (topic()?.title ?? t("forum.topic.masked")) : loading() ? t("forum.loading") : ""}
           </span>
           <Show when={capabilities()?.authenticated}>
-            <a class="forum-breadcrumb__end" href="/forum/notifications">
+            <a class="forum-breadcrumb__end ui-clip" href="/forum/notifications" title={t("forum.notifications")}>
               {t("forum.notifications")}
             </a>
           </Show>

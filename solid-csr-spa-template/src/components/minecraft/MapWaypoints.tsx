@@ -56,7 +56,7 @@ export default function MapWaypoints(props: Props) {
     finally { pending = false; if (active) setBusy(false); }
   };
   const remove = async (waypoint: MinecraftWaypoint) => {
-    if (pending || isSuperuser() !== true || !window.confirm(`Delete the public waypoint “${waypoint.name}”?`)) return;
+    if (pending || isSuperuser() !== true || !window.confirm(`Delete the public waypoint “\u2068${waypoint.name}\u2069”?`)) return;
     pending = true; setBusy(true); setError("");
     try {
       await contractApi.deleteMinecraftMapWaypoint({ path: { waypoint_id: waypoint.id } });
@@ -72,14 +72,14 @@ export default function MapWaypoints(props: Props) {
     <div class="minecraft-button-row"><button type="button" disabled={busy() || loading()} onClick={() => void load()}>Refresh waypoints</button><Show when={isSuperuser() === true}><button type="button" disabled={busy() || loading()} onClick={() => edit()}>Add waypoint</button></Show></div>
     <Show when={loading()}><p>Loading waypoints…</p></Show>
     <ul class="minecraft-result-list"><For each={items()} fallback={<Show when={!loading()}><li>No waypoints in this dimension.</li></Show>}>{item => <li>
-      <button type="button" class="minecraft-place-link" onClick={() => props.onNavigate(item)}>{item.name}<small>{item.x}, {item.y}, {item.z}</small></button>
-      <Show when={item.description}><p>{item.description}</p></Show>
+      <button type="button" class="minecraft-place-link" onClick={() => props.onNavigate(item)}><span dir="auto" class="minecraft-place-name">{item.name}</span><small>{item.x}, {item.y}, {item.z}</small></button>
+      <Show when={item.description}><p dir="auto">{item.description}</p></Show>
       <Show when={isSuperuser() === true}><div class="minecraft-button-row"><button type="button" disabled={busy()} onClick={() => edit(item)} aria-label={`Edit waypoint ${item.name}`}>Edit</button><button type="button" disabled={busy()} onClick={() => void remove(item)} aria-label={`Delete waypoint ${item.name}`}>Delete</button></div></Show>
     </li>}</For></ul>
     <Show when={editor() && isSuperuser() === true}><form class="minecraft-waypoint-form" onSubmit={event => { event.preventDefault(); void save(); }}>
       <h3>{editing() ? "Edit waypoint" : "Add a public waypoint"}</h3>
-      <label>Name<input value={name()} maxlength={80} required disabled={busy()} onInput={event => setName(event.currentTarget.value)} /></label>
-      <label>Description<textarea value={description()} maxlength={500} disabled={busy()} onInput={event => setDescription(event.currentTarget.value)} /></label>
+      <label>Name<input dir="auto" value={name()} maxlength={80} required disabled={busy()} onInput={event => setName(event.currentTarget.value)} /></label>
+      <label>Description<textarea dir="auto" value={description()} maxlength={500} disabled={busy()} onInput={event => setDescription(event.currentTarget.value)} /></label>
       <div class="minecraft-coordinate-fields">
         <label>X<input type="number" value={x()} min={-WORLD_LIMIT} max={WORLD_LIMIT} step="1" required disabled={busy()} onInput={event => setX(event.currentTarget.value)} /></label>
         <label>Y<input type="number" value={y()} min={props.minY} max={props.maxY} step="1" required disabled={busy()} onInput={event => setY(event.currentTarget.value)} /></label>

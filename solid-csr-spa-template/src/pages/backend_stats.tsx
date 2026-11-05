@@ -33,7 +33,9 @@ export default function BackendStats() {
 
         <Loading>
           <Show when={fastfetch()}>
+            {/* Terminal output is a left-to-right island, including where its horizontal scroll starts. */}
             <div
+              dir="ltr"
               class="stats-panel stats-host-details max-w-7xl"
             >
               {/* eslint-disable-next-line solid/no-innerhtml -- value is DOMPurify-sanitized in cleanFastfetch(). */}

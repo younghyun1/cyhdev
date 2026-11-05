@@ -191,6 +191,32 @@
     background: var(--surface);
     color: var(--ink);
     box-shadow: 1rem 0 3rem color-mix(in srgb, #000 35%, transparent);
+    animation: mobile-drawer-in 0.22s cubic-bezier(0.2, 0.75, 0.2, 1) both;
+  }
+
+  :root[dir="rtl"] .mobile-drawer {
+    box-shadow: -1rem 0 3rem color-mix(in srgb, #000 35%, transparent);
+  }
+
+  /* The drawer enters from the inline start edge, mirrored in right-to-left. */
+  @keyframes mobile-drawer-in {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+
+  :root[dir="rtl"] .mobile-drawer {
+    animation-name: mobile-drawer-in-rtl;
+  }
+
+  @keyframes mobile-drawer-in-rtl {
+    from {
+      transform: translateX(100%);
+    }
+  }
+
+  :root[data-motion="off"] .mobile-drawer {
+    animation: none;
   }
 
   .mobile-drawer-header {
@@ -199,7 +225,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.25rem 0.75rem 0.25rem 1rem;
+    padding-block: 0.25rem;
+    padding-inline: 1rem 0.75rem;
     border-bottom: 1px solid var(--line);
   }
 
@@ -253,6 +280,17 @@
     justify-content: space-between;
     gap: 1rem;
     font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  /* The label wraps inside the row; the control keeps its own size. */
+  .mobile-drawer-control-row > span {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-drawer-control-row > :not(span) {
+    flex: none;
   }
 
   .mobile-drawer-control-row button,
@@ -260,9 +298,12 @@
     min-height: 44px;
   }
 
-  /* The accent choices need the row's width once the custom fields show. */
+  /* The accent choices sit under their label in every language, so the row height never depends on label length. */
   .mobile-drawer-control-row:has(.accent-controls) {
-    flex-wrap: wrap;
+    display: grid;
+    justify-content: stretch;
+    justify-items: start;
+    gap: 0.5rem;
     padding-block: 0.5rem;
   }
 
@@ -285,13 +326,17 @@
   }
 
   .mobile-drawer-control-row .motion-switch-thumb {
-    left: 0.25rem;
+    inset-inline-start: 0.25rem;
     width: 1.125rem;
     height: 1.125rem;
   }
 
   .mobile-drawer-control-row .motion-switch[aria-checked="true"] .motion-switch-thumb {
     transform: translate(1.25rem, -50%);
+  }
+
+  :root[dir="rtl"] .mobile-drawer-control-row .motion-switch[aria-checked="true"] .motion-switch-thumb {
+    transform: translate(-1.25rem, -50%);
   }
 
   .mobile-drawer-action {
@@ -303,7 +348,8 @@
     border-radius: 0.2rem;
     padding: 0.5rem 0.75rem;
     color: var(--ink);
-    text-align: left;
+    line-height: 1.25rem;
+    text-align: start;
   }
 
   .mobile-drawer-action:hover {
@@ -361,9 +407,11 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     border: 1px solid var(--line);
-    border-bottom: 0;
-    border-radius: 0.5rem 0.5rem 0 0;
-    padding: 1rem max(1rem, var(--safe-area-right)) calc(1rem + var(--safe-area-bottom)) max(1rem, var(--safe-area-left));
+    border-block-end: 0;
+    border-start-start-radius: 0.5rem;
+    border-start-end-radius: 0.5rem;
+    padding-block: 1rem calc(1rem + var(--safe-area-bottom));
+    padding-inline: max(1rem, var(--safe-area-left)) max(1rem, var(--safe-area-right));
     background: var(--surface);
     box-shadow: 0 -1rem 3rem color-mix(in srgb, #000 35%, transparent);
   }
@@ -383,7 +431,7 @@
   }
 
   .about-page ul.list-inside {
-    padding-left: 0.35rem;
+    padding-inline-start: 0.35rem;
   }
 
   .about-page .list-none > li {
@@ -473,8 +521,8 @@
     gap: 0.5rem;
     margin: 0;
     padding: 0;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--line);
   }
 
   .blog-post-title-group {
@@ -492,7 +540,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
     width: 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .blog-post-actions .ui-button {
@@ -531,7 +579,7 @@
   }
 
   .threaded-comment {
-    margin-left: var(--mobile-comment-indent, 0) !important;
+    margin-inline-start: var(--mobile-comment-indent, 0) !important;
     overflow-wrap: anywhere;
   }
 
@@ -600,7 +648,7 @@
 
   .photographs-selection-actions {
     width: 100%;
-    margin-left: 0;
+    margin-inline-start: 0;
   }
 
   .masonry-grid {
@@ -649,8 +697,7 @@
   .modal-content.upload-modal,
   .modal-content.processing-modal {
     overflow-y: auto;
-    padding-right: max(1rem, var(--safe-area-right)) !important;
-    padding-left: max(1rem, var(--safe-area-left)) !important;
+    padding-inline: max(1rem, var(--safe-area-left)) max(1rem, var(--safe-area-right)) !important;
   }
 
   .modal-content.details-modal {
@@ -673,8 +720,8 @@
   }
 
   .details-close-button {
-    right: auto !important;
-    left: max(1rem, var(--safe-area-left));
+    inset-inline-end: auto !important;
+    inset-inline-start: max(1rem, var(--safe-area-left));
   }
 
   .details-info {

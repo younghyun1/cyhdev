@@ -3,7 +3,8 @@ import type {
   DeleteProfilePictureResponse,
   ProfilePictureHistoryItem,
 } from "../../generated";
-import { t, tx } from "../../state/i18n";
+import { locale, t, tx } from "../../state/i18n";
+import { isolateAuto } from "../admin/operations/operationsFormat";
 import { pageStyles } from "../../styles/pageStyles";
 
 const MAX_VISIBLE_HISTORY = 8;
@@ -23,7 +24,15 @@ function formatCreatedAt(value: string): string {
   const createdAt = new Date(value);
   return Number.isNaN(createdAt.getTime())
     ? value
-    : createdAt.toLocaleString();
+    : createdAt.toLocaleString(locale());
+}
+
+/** Date only, so the label fits a narrow thumbnail card; the title attribute carries the time. */
+function formatCreatedDate(value: string): string {
+  const createdAt = new Date(value);
+  return Number.isNaN(createdAt.getTime())
+    ? value
+    : createdAt.toLocaleDateString(locale());
 }
 
 export default function ProfilePictureHistory(
@@ -59,7 +68,7 @@ export default function ProfilePictureHistory(
     if (pendingId() !== null) return;
     const confirmed = window.confirm(
       tx("profile.picture_history.delete_confirmation", {
-        date: formatCreatedAt(item.created_at),
+        date: isolateAuto(formatCreatedAt(item.created_at)),
       }),
     );
     if (!confirmed) return;
@@ -98,12 +107,12 @@ export default function ProfilePictureHistory(
         </span>
       </div>
       <Show when={props.loadError !== null}>
-        <div class={`${pageStyles.alertError} mt-3`} role="alert">
+        <div class={`${pageStyles.alertError} mt-3`} role="alert" dir="auto">
           {props.loadError}
         </div>
       </Show>
       <Show when={error()}>
-        <div class={`${pageStyles.alertError} mt-3`} role="alert">
+        <div class={`${pageStyles.alertError} mt-3`} role="alert" dir="auto">
           {error()}
         </div>
       </Show>
@@ -128,9 +137,13 @@ export default function ProfilePictureHistory(
                     loading="lazy"
                   />
                   <div class="space-y-2 p-2">
-                    <div class="flex min-h-5 items-center justify-between gap-1">
-                      <span class="truncate text-xs text-ink-muted">
-                        {formatCreatedAt(item.created_at)}
+                    <div class="flex min-h-5 flex-wrap items-center justify-between gap-x-1 gap-y-0.5">
+                      <span
+                        dir="auto"
+                        class="truncate text-xs text-ink-muted"
+                        title={formatCreatedAt(item.created_at)}
+                      >
+                        {formatCreatedDate(item.created_at)}
                       </span>
                       <Show when={item.is_active}>
                         <span class={pageStyles.badge}>

@@ -62,7 +62,10 @@ export default function AboutBlog() {
         basePath="/about-blog"
       >
         <Show when={pageId() === "overview"}>
-          <RepositorySourceMap />
+          {/* The source map is English in every locale, so it reads left to right. */}
+          <div lang="en" dir="ltr">
+            <RepositorySourceMap />
+          </div>
         </Show>
       </ContentPage>
     </Show>

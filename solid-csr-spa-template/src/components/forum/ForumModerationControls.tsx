@@ -134,6 +134,7 @@ export default function ForumModerationControls(
         <textarea
           id={`${props.idPrefix}-reason`}
           class="forum-textarea forum-textarea--compact"
+          dir="auto"
           value={reason()}
           onInput={(event) => setReason(event.currentTarget.value)}
           minlength={8}

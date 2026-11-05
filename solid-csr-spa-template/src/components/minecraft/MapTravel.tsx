@@ -35,7 +35,7 @@ export default function MapTravel(props: Props) {
     <Show when={copied()}><p role="status">{copied()} <a href={shareLink()}>Open this location</a></p></Show>
     <h3>Distance ruler</h3>
     <button type="button" aria-pressed={props.measuring ? "true" : "false"} onClick={() => props.onMeasure(!props.measuring)}>{props.measuring ? "Clear measurement" : "Measure from here"}</button>
-    <Show when={props.start && props.measuring}><p class="minecraft-distance">{distance(props.start ?? props.explorer.point(), props.explorer.point()).toFixed(1)} blocks<small>Horizontal, straight-line distance</small></p></Show>
+    <Show when={props.start && props.measuring}><p class="minecraft-distance" dir="auto">{distance(props.start ?? props.explorer.point(), props.explorer.point()).toFixed(1)} blocks<small>Horizontal, straight-line distance</small></p></Show>
     <Show when={isNether() || isOverworld()}><h3>{isNether() ? "Overworld" : "Nether"} coordinates</h3><p class="minecraft-portal-coordinate">X {converted().x} · Z {converted().z}</p></Show>
   </section>;
 }

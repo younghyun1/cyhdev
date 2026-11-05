@@ -57,6 +57,8 @@ export default function VisitorBoard() {
         markers = pairs.map((pair) => {
           const [[lat, lng], count] = pair;
           const popup = document.createElement("span");
+          // The map is left-to-right, but the popup sentence follows its own language.
+          popup.dir = "auto";
           popup.textContent = visitorPopupText(tx("visitor.popup", { count }));
           return L.marker([lat ?? 0, lng ?? 0], { icon: emojiIcon })
             .addTo(map!)
@@ -77,8 +79,10 @@ export default function VisitorBoard() {
         if (disposed) return;
         if (map && map.remove) map.remove();
         map = null;
-        if (mapDiv)
+        if (mapDiv) {
+          mapDiv.dir = "auto";
           mapDiv.textContent = t("visitor.load_failed");
+        }
       }
     }
     loadVisitorBoard();
@@ -101,6 +105,7 @@ export default function VisitorBoard() {
     () => {
       markers.forEach((marker, i) => {
         const popup = document.createElement("span");
+        popup.dir = "auto";
         popup.textContent = visitorPopupText(tx("visitor.popup", { count: markerCounts[i] ?? 0 }));
         marker.setPopupContent(popup);
       });
@@ -111,7 +116,7 @@ export default function VisitorBoard() {
     <main class={`${pageStyles.page} flex flex-col`}>
       <div class="visitor-board-center-outer">
         <div class="visitor-board-wrapper">
-          <div ref={(el) => (mapDiv = el)} id="map" class="visitor-board-map" />
+          <div ref={(el) => (mapDiv = el)} id="map" dir="ltr" class="visitor-board-map" />
         </div>
       </div>
       <p class="pb-4 text-center text-xs text-ink-faint">

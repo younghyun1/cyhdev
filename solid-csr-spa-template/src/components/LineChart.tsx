@@ -71,5 +71,5 @@ export default function LineChart(props: LineChartProps) {
     },
   );
 
-  return <canvas ref={canvasRef} role="img" aria-label={props.label} />;
+  return <canvas ref={canvasRef} dir="ltr" role="img" aria-label={props.label} />;
 }

@@ -206,7 +206,7 @@ export default function Home() {
                 <For each={posts()?.data?.posts}>
                   {(post) => (
                     <article class="home-post">
-                      <h3 class="home-post-title">
+                      <h3 class="home-post-title" dir="auto">
                         <a
                           href={`/blog/${encodeURIComponent(post.post_slug || post.post_id)}`}
                         >
@@ -289,7 +289,11 @@ export default function Home() {
             <For each={SHOWCASE}>
               {(item) => (
                 <li class="home-showcase-card">
-                  <p class="home-showcase-kicker">{t(`home.showcase.${item.id}.kicker`)}</p>
+                  {/* Readouts such as "+20.1% req/s" or "1.1 GB → 67 MB" carry numbers
+                      and units; isolating them keeps their order in right-to-left text. */}
+                  <p class="home-showcase-kicker">
+                    <bdi dir="auto">{t(`home.showcase.${item.id}.kicker`)}</bdi>
+                  </p>
                   <h3 class="home-showcase-title">
                     <a href={item.href} class="home-showcase-link">
                       {t(`home.showcase.${item.id}.title`)}

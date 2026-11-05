@@ -119,9 +119,9 @@ export default function ProcessingModal(props: ProcessingModalProps) {
                             class={chipClass(item().status.status)}
                             title={processingItemTitle(item())}
                           >
-                            {(item().file_name ?? item().item_id.slice(0, 8)) +
-                              " · " +
-                              t(STATUS_LABEL[item().status.status])}
+                            {/* The file name has its own direction; isolating it keeps the separator and status in order. */}
+                            <bdi>{item().file_name ?? item().item_id.slice(0, 8)}</bdi>
+                            {" · " + t(STATUS_LABEL[item().status.status])}
                           </span>
                         )}
                       </Key>

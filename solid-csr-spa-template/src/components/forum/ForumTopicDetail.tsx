@@ -99,7 +99,7 @@ export default function ForumTopicDetailCard(props: ForumTopicDetailProps) {
               <span class="forum-badge">{t("forum.topic.locked")}</span>
             </Show>
           </div>
-          <h1 class="forum-topic-header__title">
+          <h1 class="forum-topic-header__title" dir="auto">
             {props.topic.title ?? t("forum.topic.masked")}
           </h1>
           <p class="forum-topic-header__meta">

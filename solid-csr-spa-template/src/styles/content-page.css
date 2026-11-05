@@ -55,14 +55,22 @@
 /* Tabs scroll; they must not shrink into each other when space runs out. */
 .cp-tab-list > li {
   flex: none;
+  width: 10.5rem;
 }
 
 .cp-tab {
   position: relative;
-  display: block;
-  padding: 0.625rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: 2.75rem;
+  padding: 0.25rem 0.75rem;
+  overflow-x: clip;
   color: var(--ink-muted);
-  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
   text-decoration: none;
   transition: color 90ms ease;
 }
@@ -78,8 +86,7 @@
 .cp-tab[aria-current="page"]::after {
   content: "";
   position: absolute;
-  left: 0.5rem;
-  right: 0.5rem;
+  inset-inline: 0.5rem;
   bottom: -1px;
   height: 2px;
   background: var(--accent);
@@ -158,6 +165,19 @@
   height: 3px;
   margin-top: 1rem;
   background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+/* Decorative layers sit on the start side, so they mirror with the page. */
+.cp-page[dir="rtl"] .cp-hero::before {
+  mask-image: radial-gradient(ellipse 70% 90% at 85% 0%, #000 0%, transparent 75%);
+}
+
+.cp-page[dir="rtl"] .cp-hero::after {
+  inset: -2rem -6rem auto auto;
+}
+
+.cp-page[dir="rtl"] .cp-title::after {
+  background: linear-gradient(270deg, var(--accent), transparent);
 }
 
 .cp-lede {
@@ -243,6 +263,10 @@
 
 .cp-toc-link {
   display: block;
+  box-sizing: border-box;
+  inline-size: 9rem;
+  block-size: 2rem;
+  line-height: 1.25rem;
   padding: 0.25rem 0.625rem;
   border: 1px solid var(--line);
   border-radius: 9999px;
@@ -285,26 +309,32 @@
 
   .cp-toc-list {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    border-left: 1px solid var(--line);
+    border-inline-start: 1px solid var(--line);
   }
 
   .cp-toc-link {
-    margin-left: -1px;
-    padding: 0.375rem 0 0.375rem 0.875rem;
+    inline-size: auto;
+    block-size: 1.75rem;
+    line-height: 1rem;
+    margin-inline-start: -1px;
+    padding-block: 0.375rem;
+    padding-inline: 0.875rem 0;
     border: 0;
-    border-left: 2px solid transparent;
+    border-inline-start: 2px solid transparent;
     border-radius: 0;
   }
 
   .cp-toc-link[data-active] {
-    border-left-color: var(--accent);
+    border-inline-start-color: var(--accent);
     color: var(--ink);
   }
 }
 
 .cp-body {
   min-width: 0;
+  overflow-wrap: break-word;
   counter-reset: cp-section;
 }
 
@@ -341,7 +371,7 @@
 
 .cp-anchor {
   position: absolute;
-  left: -1.25rem;
+  inset-inline-start: -1.25rem;
   color: var(--ink-faint);
   text-decoration: none;
   opacity: 0;
@@ -373,7 +403,11 @@
   text-decoration-color: var(--accent);
 }
 
+/* Code is always left to right and isolated, so a leading or trailing dot,
+   hyphen, or underscore stays where it was typed inside right-to-left prose. */
 .cp-code {
+  direction: ltr;
+  unicode-bidi: isolate;
   padding: 0.05em 0.35em;
   border: 1px solid var(--line);
   border-radius: 2px;
@@ -402,7 +436,7 @@
 
 .cp-bullets > li {
   position: relative;
-  padding-left: 1.25rem;
+  padding-inline-start: 1.25rem;
   line-height: 1.65;
   text-wrap: pretty;
 }
@@ -410,7 +444,7 @@
 .cp-bullets > li::before {
   content: "";
   position: absolute;
-  left: 0.2rem;
+  inset-inline-start: 0.2rem;
   top: 0.62em;
   width: 0.375rem;
   height: 0.375rem;
@@ -422,7 +456,7 @@
   margin: 1rem 0;
   padding: 1rem 1.25rem;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--accent);
+  border-inline-start: 3px solid var(--accent);
   background: color-mix(in oklab, var(--accent-soft) 45%, var(--surface));
   line-height: 1.65;
 }
@@ -468,6 +502,10 @@
   transition: transform 0.4s cubic-bezier(0.2, 0.75, 0.2, 1);
 }
 
+.cp-page[dir="rtl"] .cp-stat::before {
+  background: linear-gradient(270deg, var(--accent), transparent);
+}
+
 .cp-stat:hover::before {
   transform: scaleX(1);
 }
@@ -480,6 +518,12 @@
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+
+/* A readout such as "~150 µs" is a left-to-right island, so a right-to-left
+   page keeps it on the start (right) edge by physical alignment. */
+.cp-page[dir="rtl"] .cp-stat-value {
+  text-align: right;
 }
 
 .cp-stat-label {
@@ -576,14 +620,15 @@
   display: grid;
   gap: 1.25rem;
   margin: 1rem 0;
-  padding: 0 0 0 1.75rem;
+  padding: 0;
+  padding-inline-start: 1.75rem;
   list-style: none;
 }
 
 .cp-timeline::before {
   content: "";
   position: absolute;
-  left: 0.4375rem;
+  inset-inline-start: 0.4375rem;
   top: 0.75rem;
   bottom: 0.75rem;
   width: 1px;
@@ -596,7 +641,7 @@
 
 .cp-role-node {
   position: absolute;
-  left: -1.75rem;
+  inset-inline-start: -1.75rem;
   top: 1.4rem;
   width: 0.875rem;
   height: 0.875rem;
@@ -653,7 +698,7 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: end;
   color: var(--ink-muted);
 }
 
@@ -767,12 +812,20 @@
 
 .cp-card-arrow {
   display: inline-block;
-  margin-left: 0.375rem;
+  margin-inline-start: 0.375rem;
   transition: transform 0.2s ease;
 }
 
 .cp-card:hover .cp-card-arrow {
   transform: translate(3px, 0);
+}
+
+.cp-page[dir="rtl"] .cp-card:hover .cp-card-arrow {
+  transform: translate(-3px, 0) scaleX(-1);
+}
+
+.cp-page[dir="rtl"] .cp-card-arrow {
+  transform: scaleX(-1);
 }
 
 .cp-card-text {
@@ -801,7 +854,7 @@
 .cp-pipeline::before {
   content: "";
   position: absolute;
-  left: 1.25rem;
+  inset-inline-start: 1.25rem;
   top: 1rem;
   bottom: 1rem;
   width: 1px;
@@ -811,7 +864,7 @@
 .cp-pipeline::after {
   content: "";
   position: absolute;
-  left: calc(1.25rem - 3px);
+  inset-inline-start: calc(1.25rem - 3px);
   top: -3rem;
   width: 7px;
   height: calc(100% + 3rem);
@@ -929,9 +982,18 @@
   transform-origin: left;
 }
 
+.cp-page[dir="rtl"] .cp-bar-fill,
+.cp-page[dir="rtl"] .cp-stat::before {
+  transform-origin: right;
+}
+
 .cp-bar-emphasis .cp-bar-fill {
   background: linear-gradient(90deg, color-mix(in oklab, var(--accent) 35%, transparent), var(--accent));
   box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.cp-page[dir="rtl"] .cp-bar-emphasis .cp-bar-fill {
+  background: linear-gradient(270deg, color-mix(in oklab, var(--accent) 35%, transparent), var(--accent));
 }
 
 .cp-bar-emphasis .cp-bar-label,
@@ -940,10 +1002,13 @@
   font-weight: 700;
 }
 
+/* Figures such as "-12%" or "2.38 ms" are left-to-right islands; without the
+   isolate a sign or percent mark jumps to the wrong side in right-to-left text. */
 .cp-bar-value {
+  unicode-bidi: isolate;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: end;
 }
 
 @supports (animation-timeline: view()) {
@@ -975,7 +1040,9 @@
 }
 
 .cp-table {
+  table-layout: fixed;
   width: 100%;
+  min-width: calc(var(--cp-cols, 2) * 8rem);
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -984,7 +1051,7 @@
   caption-side: bottom;
   padding: 0.5rem 0.75rem;
   border-top: 1px solid var(--line);
-  text-align: left;
+  text-align: start;
   font-size: 0.75rem;
   color: var(--ink-muted);
 }
@@ -993,7 +1060,10 @@
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
-  text-align: left;
+  text-align: start;
+  block-size: 2.25rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 500;
@@ -1019,6 +1089,7 @@
 
 .cp-table .cp-numeric {
   text-align: right;
+  direction: ltr;
   white-space: nowrap;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -1041,8 +1112,11 @@
   padding: 1rem;
   border: 1px solid var(--line);
   border-radius: 2px;
+  box-sizing: border-box;
+  block-size: 5rem;
   background: var(--surface);
   color: var(--ink);
+  line-height: 1.25rem;
   text-decoration: none;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
@@ -1054,7 +1128,12 @@
 
 .cp-pager-next {
   grid-column: 2;
-  text-align: right;
+  text-align: end;
+}
+
+.cp-page[dir="rtl"] .cp-pager-arrow {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 .cp-pager-direction {
@@ -1128,20 +1207,17 @@
   }
 
   .cp-tab {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
+    block-size: 2.75rem;
   }
 
   .cp-toc-link {
-    min-height: 32px;
-    display: flex;
-    align-items: center;
+    block-size: 2.75rem;
+    line-height: 2.25rem;
   }
 
   .cp-role-meta {
     align-items: flex-start;
-    text-align: left;
+    text-align: start;
   }
 
   .cp-pipeline-step {

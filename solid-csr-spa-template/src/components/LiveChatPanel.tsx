@@ -23,6 +23,8 @@ import { pageStyles } from "../styles/pageStyles";
 import "../styles/live-chat.css";
 import type { UiTextKey } from "../i18n/keys";
 import { locale, t, tx } from "../state/i18n";
+import { localeDirection } from "../i18n/locales";
+import { messageDirection } from "./chat/messageDirection";
 import {
   type LiveChatConnectionState,
   useLiveChatSocket,
@@ -287,15 +289,35 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
   const visibleMessages = createMemo(() =>
     isFull() ? messages() : messages().slice(-COMPACT_VISIBLE_MESSAGES),
   );
-  const inputCharCount = createMemo(() => Array.from(input()).length);
+  // Built once per language: the list can hold many messages and formatters are slow to create.
+  const messageTimeFormat = createMemo(
+    () =>
+      new Intl.DateTimeFormat(locale(), {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+  );
+  const typingListFormat = createMemo(
+    () => new Intl.ListFormat(locale(), { type: "conjunction", style: "narrow" }),
+  );
+  const inputCharCount =createMemo(() => Array.from(input()).length);
   const typingText = createMemo(() => {
     const currentKey = actor() ? actorKey(actor()!) : null;
     const names = typingActors()
       .filter((typingActor) => actorKey(typingActor) !== currentKey)
-      .map(actorLabel);
+      // Names are user text of unknown direction; isolating each keeps its
+      // trailing punctuation and Latin letters from reordering the sentence.
+      .map((typingActor) => `\u2068${actorLabel(typingActor)}\u2069`);
     if (names.length === 0) return "";
     if (names.length === 1) return tx("live_chat.typing_one", { name: names[0]! });
-    return tx("live_chat.typing_many", { names: names.slice(0, 2).join(", ") });
+    // The list separator is language data: Arabic, Persian, and Urdu join with
+    // their own comma and conjunction, not an ASCII ", ".
+    return tx("live_chat.typing_many", {
+      names: typingListFormat().format(names.slice(0, 2)),
+    });
   });
 
   const scheduleTypingExpiry = (expiresAt: string) => {
@@ -699,10 +721,11 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
               data-delivery={message.kind === "pending" ? message.status : "sent"}
             >
               <div class="live-chat-message-head">
+                {/* The row follows the page direction so the name and the Delete button keep one order; only the name text is isolated with dir=auto, because the first strong character of the row would be the Delete label or an avatar initial rather than the name. */}
                 <span class="live-chat-sender">
                   <Show
                     when={messageUserId(message)}
-                    fallback={pendingMessageSenderLabel(message)}
+                    fallback={<bdi dir="auto" class="live-chat-name">{pendingMessageSenderLabel(message)}</bdi>}
                   >
                     <UserBadge
                       userName={messageSenderName(message)}
@@ -717,14 +740,12 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
                     {(id) => <DeleteMessageButton messageId={id()} onDeleted={removeMessage} />}
                   </Show>
                 </span>
-                <time class="live-chat-time">
-                  {new Date(messageCreatedAt(message)).toLocaleTimeString(locale(), {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                {/* Month names follow the language, so right-to-left dates must not be forced left to right. */}
+                <time class="live-chat-time" dir="auto" datetime={messageCreatedAt(message)}>
+                  {messageTimeFormat().format(new Date(messageCreatedAt(message)))}
                 </time>
               </div>
-              <p class="live-chat-body">{messageBody(message)}</p>
+              <p class="live-chat-body" dir={messageDirection(messageBody(message))}>{messageBody(message)}</p>
             </article>
           )}
         </For>
@@ -735,20 +756,23 @@ export default function LiveChatPanel(props: { mode: LiveChatPanelMode }) {
       </Show>
 
       <Show when={error()}>
-        <div class="live-chat-note live-chat-note--error">{error()}</div>
+        <div class="live-chat-note live-chat-note--error" dir="auto">{error()}</div>
       </Show>
 
       <form class="live-chat-composer" onSubmit={sendMessage}>
         <div class="live-chat-composer-field">
           <input
             class={pageStyles.input}
+            // An empty field has no strong character, and dir=auto then reads as
+            // left to right, which would left-align an Arabic placeholder.
+            dir={input() ? messageDirection(input()) : localeDirection(locale())}
             maxlength={LIVE_CHAT_MAX_MESSAGE_CHARS}
             value={input()}
             onInput={(event) => handleInput(event.currentTarget.value)}
             placeholder={t("live_chat.message_placeholder")}
             aria-label={t("live_chat.message_placeholder")}
           />
-          <div class="live-chat-counter">
+          <div class="live-chat-counter" dir="ltr">
             {inputCharCount()}/{LIVE_CHAT_MAX_MESSAGE_CHARS}
           </div>
         </div>

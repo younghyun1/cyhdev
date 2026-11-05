@@ -50,10 +50,11 @@ function FindPasswordPage() {
           </p>
           <input
             type="email"
+            dir="ltr"
             placeholder={t("common.email")}
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
-            class={`${pageStyles.input} mb-4`}
+            class={`${pageStyles.input} mb-4 rtl:text-right`}
             autocomplete="email"
             required
             maxlength={254}

@@ -7,7 +7,8 @@ import {
   setSuperuser,
   setUser,
 } from "../../state/auth";
-import { t, tx } from "../../state/i18n";
+import { locale, t, tx } from "../../state/i18n";
+import { isolateAuto } from "../admin/operations/operationsFormat";
 import { pageStyles } from "../../styles/pageStyles";
 
 const REDIRECT_DELAY_MS = 5_000;
@@ -16,10 +17,13 @@ function formatDeadline(value: string | undefined): string {
   if (value === undefined) return t("common.unknown_date");
   const deadline = new Date(value);
   if (Number.isNaN(deadline.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "long",
-    timeStyle: "long",
-  }).format(deadline);
+  // Isolated so the date cannot reorder the translated sentence around it.
+  return isolateAuto(
+    new Intl.DateTimeFormat(locale(), {
+      dateStyle: "long",
+      timeStyle: "long",
+    }).format(deadline),
+  );
 }
 
 export default function AccountDeletionPanel() {
@@ -118,8 +122,9 @@ export default function AccountDeletionPanel() {
               {t("profile.delete_account.current_password")}
             </span>
             <input
-              class={pageStyles.input}
+              class={`${pageStyles.input} rtl:text-right`}
               type="password"
+              dir="ltr"
               autocomplete="current-password"
               value={currentPassword()}
               onInput={(event) => setCurrentPassword(event.currentTarget.value)}
@@ -140,12 +145,12 @@ export default function AccountDeletionPanel() {
             <span>{t("profile.delete_account.confirmation")}</span>
           </label>
           <Show when={error()}>
-            <div class={pageStyles.alertError} role="alert">
+            <div class={pageStyles.alertError} role="alert" dir="auto">
               {error()}
             </div>
           </Show>
           <button
-            class={pageStyles.buttonDanger}
+            class={`${pageStyles.buttonDanger} ui-button--wide`}
             type="submit"
             disabled={
               pending() || !confirmed() || currentPassword().length === 0

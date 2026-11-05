@@ -7,7 +7,7 @@ import {
   parseUptimeToMs,
 } from "../state/health";
 import { t } from "../state/i18n";
-import BuildDetails from "./BuildDetails";
+import BuildDetails, { Ltr } from "./BuildDetails";
 import { postgresVersion } from "../utils/statusMetadata";
 
 export function createLiveUptime(): Accessor<string> {
@@ -32,6 +32,8 @@ export default function SystemStatusDetails() {
   const liveUptime = createLiveUptime();
 
   return (
+    // Labels are translated, so the block follows the interface direction; each
+    // value is its own left-to-right island so versions and latencies keep their order.
     <div class="system-status-details font-mono tabular-nums text-[11px] text-ink">
       <div class="space-y-1">
         <BuildDetails />
@@ -44,21 +46,21 @@ export default function SystemStatusDetails() {
           {(health) => (
             <>
               <div>
-                {t("bottom_bar.up")} {liveUptime()} ·{" "}
-                {t("bottom_bar.handled")} {health().responses_handled}{" "}
+                {t("bottom_bar.up")} <Ltr>{liveUptime()}</Ltr> ·{" "}
+                {t("bottom_bar.handled")} <Ltr>{health().responses_handled}</Ltr>{" "}
                 {t("bottom_bar.responses")} · {t("bottom_bar.sessions")}{" "}
-                {health().users_logged_in}
+                <Ltr>{health().users_logged_in}</Ltr>
               </div>
               <div>
-                {postgresVersion(health().db_version)} ·{" "}
-                {t("bottom_bar.db_latency")} {health().db_latency}
+                <Ltr>{postgresVersion(health().db_version)}</Ltr> ·{" "}
+                {t("bottom_bar.db_latency")} <Ltr>{health().db_latency}</Ltr>
               </div>
               <div>
-                {t("bottom_bar.time_to_report")}: {health().time_to_process ?? "?"}{" "}
+                {t("bottom_bar.time_to_report")}: <Ltr>{health().time_to_process ?? "?"}</Ltr>{" "}
                 · {t("bottom_bar.net")}{" "}
-                {health().client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
+                <Ltr>{health().client_latency_ms?.toFixed(1) ?? "?"}ms</Ltr> ·{" "}
                 {t("bottom_bar.state_age")}{" "}
-                {formatIsoAge(health().timestamp, clientNow())}
+                <Ltr>{formatIsoAge(health().timestamp, clientNow())}</Ltr>
               </div>
             </>
           )}

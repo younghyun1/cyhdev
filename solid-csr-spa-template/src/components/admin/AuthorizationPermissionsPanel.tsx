@@ -43,8 +43,8 @@ export default function AuthorizationPermissionsPanel(props: Props) {
         <table class="authorization-table authorization-permission-table">
           <thead>
             <tr>
-              <th>{t("authorization.permission")}</th>
-              <For each={props.roles}>{(role) => <th>{role.role_name}</th>}</For>
+              <th title={t("authorization.permission")}>{t("authorization.permission")}</th>
+              <For each={props.roles}>{(role) => <th title={role.role_name}>{role.role_name}</th>}</For>
             </tr>
           </thead>
           <tbody>
@@ -56,7 +56,7 @@ export default function AuthorizationPermissionsPanel(props: Props) {
                     data-label={t("authorization.permission")}
                   >
                     <span>{permission.permission_name}</span>
-                    <small>{permission.description ?? ""}</small>
+                    <small dir="auto">{permission.description ?? ""}</small>
                   </th>
                   <For each={props.roles}>
                     {(role) => {

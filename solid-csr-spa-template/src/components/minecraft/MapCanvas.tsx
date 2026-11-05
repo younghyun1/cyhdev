@@ -51,6 +51,20 @@ function label(value: string): HTMLElement {
   return node;
 }
 
+/** A popup whose name sets the block direction; the description follows its own script and the coordinates stay left to right. */
+function waypointPopup(waypoint: { name: string; x: number; y: number; z: number; description?: string | null }): HTMLElement {
+  const root = document.createElement("div");
+  root.style.unicodeBidi = "plaintext";
+  const part = (text: string, dir: "auto" | "ltr") => {
+    if (root.childNodes.length > 0) root.append(" · ");
+    const run = document.createElement("span"); run.dir = dir; run.textContent = text; root.append(run);
+  };
+  // The name stays a plain text node: it sets the popup's own direction (isolated runs are skipped when a block picks one).
+  root.append(waypoint.name); part(`${waypoint.x}, ${waypoint.y}, ${waypoint.z}`, "ltr");
+  if (waypoint.description) part(waypoint.description, "auto");
+  return root;
+}
+
 export default function MapCanvas(props: Props) {
   let element: HTMLDivElement | undefined;
   let map: L.Map | undefined;
@@ -219,7 +233,7 @@ export default function MapCanvas(props: Props) {
       .bindTooltip(label(`Block · ${match.x}, ${match.y}, ${match.z}`)).addTo(markers);
     for (const waypoint of waypoints) L.circleMarker(position(waypoint), { pane: "minecraft-waypoints", renderer: waypointRenderer, className: "minecraft-waypoint-marker", radius: 7, color: "#20130d", weight: 2, fillColor: "#ffcd6e", fillOpacity: 1 })
       .bindTooltip(label(waypoint.name), { permanent: true, direction: "right", offset: [9, 0], pane: "minecraft-waypoints", className: "minecraft-waypoint-nameplate", opacity: 1 })
-      .bindPopup(label(`${waypoint.name} · ${waypoint.x}, ${waypoint.y}, ${waypoint.z}${waypoint.description ? ` · ${waypoint.description}` : ""}`), { className: "minecraft-waypoint-popup" }).addTo(markers);
+      .bindPopup(waypointPopup(waypoint), { className: "minecraft-waypoint-popup" }).addTo(markers);
   });
   createEffect(() => [ready(), props.players] as const, ([mounted, players]) => {
     if (!mounted) return;

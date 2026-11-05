@@ -14,7 +14,7 @@ import {
   refreshHealthStateIfStale,
   formatIsoAge,
 } from "../state/health";
-import BuildDetails from "./BuildDetails";
+import BuildDetails, { Ltr } from "./BuildDetails";
 import { postgresVersion } from "../utils/statusMetadata";
 import { t } from "../state/i18n";
 import { createMediaQuery } from "../utils/mediaQuery";
@@ -115,7 +115,10 @@ const BottomBar: Component = () => {
   const mobileSummary = createMemo(() => {
     const health = healthState();
     if (!health) return `${t("bottom_bar.site_status")}: …`;
-    return `${t("bottom_bar.up")} ${liveUptime()} · ${health.responses_handled} ${t("bottom_bar.responses")} · ${health.users_logged_in} ${t("bottom_bar.sessions")}`;
+    // Each value is a left-to-right isolate (LRI ... PDI) so digits and units keep their
+    // order beside translated labels in a right-to-left sentence.
+    const value = (text: string | number) => `\u2066${text}\u2069`;
+    return `${t("bottom_bar.up")} ${value(liveUptime())} · ${value(health.responses_handled)} ${t("bottom_bar.responses")} · ${value(health.users_logged_in)} ${t("bottom_bar.sessions")}`;
   });
 
   return (
@@ -178,14 +181,14 @@ const BottomBar: Component = () => {
                 return (
                   <>
                     <div>
-                      {t("bottom_bar.up")} {liveUptime()} ·{" "}
-                      {t("bottom_bar.handled")} {health.responses_handled}{" "}
+                      {t("bottom_bar.up")} <Ltr>{liveUptime()}</Ltr> ·{" "}
+                      {t("bottom_bar.handled")} <Ltr>{health.responses_handled}</Ltr>{" "}
                       {t("bottom_bar.responses")} · {t("bottom_bar.sessions")}{" "}
-                      {health.users_logged_in}
+                      <Ltr>{health.users_logged_in}</Ltr>
                     </div>
                     <div>
-                      {postgresVersion(health.db_version)} ·{" "}
-                      {t("bottom_bar.db_latency")} {health.db_latency}
+                      <Ltr>{postgresVersion(health.db_version)}</Ltr> ·{" "}
+                      {t("bottom_bar.db_latency")} <Ltr>{health.db_latency}</Ltr>
                     </div>
                   </>
                 );
@@ -198,9 +201,9 @@ const BottomBar: Component = () => {
           <div class="site-status-timing text-ink-muted leading-tight text-end">
             <Show when={healthState()}>
               {(health) => <>
-                {t("bottom_bar.time_to_report")}: {health().time_to_process ?? "?"}{" "}
-                · {t("bottom_bar.net")} {health().client_latency_ms?.toFixed(1) ?? "?"}ms ·{" "}
-                {t("bottom_bar.state_age")} {formatIsoAge(health().timestamp, clientNow())}
+                {t("bottom_bar.time_to_report")}: <Ltr>{health().time_to_process ?? "?"}</Ltr>{" "}
+                · {t("bottom_bar.net")} <Ltr>{health().client_latency_ms?.toFixed(1) ?? "?"}ms</Ltr> ·{" "}
+                {t("bottom_bar.state_age")} <Ltr>{formatIsoAge(health().timestamp, clientNow())}</Ltr>
               </>}
             </Show>
           </div>
@@ -216,8 +219,8 @@ const BottomBar: Component = () => {
             </span>
           </button>
           <div class="site-copyright">
-            <span>© 2025-{copyrightYear} Young Hyun Chi.</span>
-            <span><a href="https://github.com/younghyun1/cyhdev" target="_blank" rel="noopener noreferrer">Code</a> licensed under the MIT License.</span>
+            <span dir="ltr">© 2025-{copyrightYear} Young Hyun Chi.</span>
+            <span dir="ltr"><a href="https://github.com/younghyun1/cyhdev" target="_blank" rel="noopener noreferrer">Code</a> licensed under the MIT License.</span>
           </div>
         </div>
       </footer>

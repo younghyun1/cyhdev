@@ -141,20 +141,22 @@ function LoginPage() {
         <form onSubmit={handleLogin} class="w-full flex flex-col items-center">
           <input
             type="email"
+            dir="ltr"
             placeholder={t("common.email")}
             value={email()}
             onInput={(e) => setEmail(e.currentTarget.value)}
-            class={`${pageStyles.input} mb-4`}
+            class={`${pageStyles.input} mb-4 rtl:text-right`}
             autocomplete="username"
             maxlength={254}
             required
           />
           <input
             type="password"
+            dir="ltr"
             placeholder={t("common.password")}
             value={password()}
             onInput={(e) => setPassword(e.currentTarget.value)}
-            class={`${pageStyles.input} mb-6`}
+            class={`${pageStyles.input} mb-6 rtl:text-right`}
             autocomplete="current-password"
             maxlength={128}
             required
@@ -205,7 +207,12 @@ function LoginPage() {
             >
               {loading()
                 ? t("auth.oidc.starting")
-                : `${t("auth.oidc.login")} ${oidcStatus()?.provider_name ?? "OIDC"}`}
+                : (
+                    <>
+                      {t("auth.oidc.login")}{" "}
+                      <bdi>{oidcStatus()?.provider_name ?? "OIDC"}</bdi>
+                    </>
+                  )}
             </button>
           </Show>
           <button

@@ -6,9 +6,10 @@ import {
   adminOperationsApi,
   MEDIA_CLEANUP_BUCKET,
 } from "../../../services/contracts/admin_operations";
-import { t, tx } from "../../../state/i18n";
+import { t } from "../../../state/i18n";
 import { ADMIN_OPERATION_SECTION_IDS } from "../navigation";
 import { MobileDialog } from "../../MobileDialog";
+import { IsolatedMessage } from "./IsolatedMessage";
 import {
   formatAdminTimestamp,
   operationErrorMessage,
@@ -137,7 +138,11 @@ export default function MediaCleanupPanel(props: Props) {
       <Show when={receiptId()}>
         {(cleanupId) => (
           <p class="operations-receipt" role="status">
-            {tx("operations.media.success", { cleanup_id: cleanupId() })}
+            <IsolatedMessage
+              textKey="operations.media.success"
+              params={{ cleanup_id: cleanupId() }}
+              ltr={["cleanup_id"]}
+            />
           </p>
         )}
       </Show>
@@ -151,11 +156,13 @@ export default function MediaCleanupPanel(props: Props) {
               <article class="operations-record">
                 <div class="operations-record-heading">
                   <div>
-                    <strong>{record.cleanup_id}</strong>
+                    <strong dir="ltr">{record.cleanup_id}</strong>
                     <small>
-                      {tx("operations.media.created", {
-                        timestamp: formatAdminTimestamp(record.created_at),
-                      })}
+                      <IsolatedMessage
+                        textKey="operations.media.created"
+                        params={{ timestamp: formatAdminTimestamp(record.created_at) }}
+                        auto={["timestamp"]}
+                      />
                     </small>
                   </div>
                   <button
@@ -169,16 +176,16 @@ export default function MediaCleanupPanel(props: Props) {
                 <dl class="operations-details">
                   <div>
                     <dt>{t("operations.media.source_id")}</dt>
-                    <dd>{record.source_id}</dd>
+                    <dd><bdi dir="ltr">{record.source_id}</bdi></dd>
                   </div>
                   <div>
                     <dt>{t("operations.media.reason")}</dt>
-                    <dd>{record.reason}</dd>
+                    <dd dir="auto">{record.reason}</dd>
                   </div>
                   <div>
                     <dt>{t("operations.media.original_url")}</dt>
                     <dd>
-                      <code class="operations-inert-url">
+                      <code class="operations-inert-url" dir="ltr">
                         {record.original_url}
                       </code>
                     </dd>
@@ -208,12 +215,12 @@ export default function MediaCleanupPanel(props: Props) {
               <dl class="operations-details operations-dialog-resource">
                 <div>
                   <dt>{t("operations.media.cleanup_id")}</dt>
-                  <dd>{record().cleanup_id}</dd>
+                  <dd><bdi dir="ltr">{record().cleanup_id}</bdi></dd>
                 </div>
                 <div>
                   <dt>{t("operations.media.original_url")}</dt>
                   <dd>
-                    <code class="operations-inert-url">
+                    <code class="operations-inert-url" dir="ltr">
                       {record().original_url}
                     </code>
                   </dd>
@@ -225,12 +232,14 @@ export default function MediaCleanupPanel(props: Props) {
                 </label>
                 <input
                   id="cleanup-bucket"
+                  dir="ltr"
                   value={MEDIA_CLEANUP_BUCKET}
                   readonly
                 />
                 <label for="cleanup-key">{t("operations.media.key")}</label>
                 <input
                   id="cleanup-key"
+                  dir="ltr"
                   value={objectKey()}
                   maxlength={1024}
                   autocomplete="off"

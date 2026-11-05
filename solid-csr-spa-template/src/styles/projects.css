@@ -28,6 +28,11 @@
   transition: transform 0.45s cubic-bezier(0.2, 0.75, 0.2, 1);
 }
 
+:root[dir="rtl"] .project-card::before {
+  background: linear-gradient(to left, var(--accent), transparent);
+  transform-origin: right;
+}
+
 .project-card:hover,
 .project-card:focus-within {
   border-color: var(--line-strong);
@@ -54,6 +59,7 @@
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 .project-description {
@@ -64,6 +70,7 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* Modal styles */
@@ -175,17 +182,27 @@
 
 .project-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
 .action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: 7rem;
+  block-size: 2.25rem;
+  line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
   border-radius: 0.25rem;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.35rem 0.6rem;
+  padding: 0.2rem 0.4rem;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
@@ -250,4 +267,16 @@
   height: 100%;
   background: var(--accent);
   transition: width 0.2s ease;
+}
+
+/* File extensions in help text are left-to-right islands. */
+.form-help-code {
+  display: inline-block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  unicode-bidi: isolate;
+}
+
+/* Empty dir="auto" fields fall back to left-to-right; keep translated placeholders at the start. */
+:root[dir="rtl"] .admin-modal :is(input, textarea)[dir="auto"]:placeholder-shown {
+  direction: rtl;
 }

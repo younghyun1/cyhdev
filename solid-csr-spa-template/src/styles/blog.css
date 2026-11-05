@@ -76,7 +76,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0 0.625rem;
-  margin-left: 0.25rem;
+  margin-inline-start: 0.25rem;
 }
 
 .blog-row-tag {
@@ -90,7 +90,149 @@
 }
 
 .blog-row-delete {
-  margin-left: auto;
+  margin-inline-start: auto;
   padding-block: 0.125rem;
   color: var(--danger);
+}
+
+/* Search controls keep one size in every language; labels wrap inside. */
+.blog-search-type-button {
+  box-sizing: border-box;
+  inline-size: 7rem;
+  block-size: 2.5rem;
+  padding: 0 0.5rem;
+  overflow-x: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.blog-search-type {
+  flex: none;
+}
+
+.blog-tag-action {
+  box-sizing: border-box;
+  inline-size: 4.5rem;
+  block-size: 1.75rem;
+  padding: 0 0.25rem;
+  overflow-x: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.blog-tag-action--clear {
+  position: static;
+  inline-size: 6rem;
+  block-size: 2rem;
+}
+
+.blog-field-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+}
+
+@media (max-width: 767px) {
+  .blog-search-type {
+    inline-size: 100%;
+  }
+
+  .blog-search-type-button {
+    flex: 1 1 0;
+    min-block-size: 44px;
+  }
+
+  .blog-tag-action--clear {
+    min-block-size: 44px;
+  }
+}
+
+/* A very long unbroken word, such as a URL or an Arabic run without spaces,
+   must wrap inside its column. In a right-to-left page the overflow would
+   run off the left edge, where it cannot be scrolled to. The flex children
+   need min-inline-size: 0 or they grow to the width of the word. */
+.blog-post-layout {
+  overflow-wrap: anywhere;
+}
+
+.blog-post-layout > *,
+.blog-post-shell > *,
+.blog-post-layout .threaded-comment {
+  min-inline-size: 0;
+}
+
+/* Reply, edit, and delete keep one size whatever the label. */
+.blog-comment-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  inline-size: 5rem;
+  block-size: 1.75rem;
+  padding: 0 0.25rem;
+  overflow-x: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.blog-sort-select {
+  flex: none;
+  inline-size: 9rem;
+  block-size: 2.5rem;
+  line-height: 1.25;
+}
+
+/* MarkdownEditor gives the editing surface and each preview block a direction.
+   Each source line is also ordered by its own script, so Arabic words and Latin
+   words in one line read correctly whichever way the surface is aligned. */
+.blog-editor .ProseMirror > * {
+  unicode-bidi: plaintext;
+}
+
+/* The preview library draws list markers and the quote rule with physical
+   offsets from the left edge; blocks that read right to left mirror them. */
+.blog-editor .toastui-editor-contents :is(ul, ol)[dir="rtl"] {
+  padding-left: 0;
+  padding-right: 24px;
+}
+
+.blog-editor .toastui-editor-contents :is(ul, ol)[dir="rtl"] > li::before {
+  margin-left: 0;
+}
+
+.blog-editor .toastui-editor-contents ul[dir="rtl"] > li::before {
+  margin-right: -17px;
+}
+
+.blog-editor .toastui-editor-contents ol[dir="rtl"] > li::before {
+  margin-right: -28px;
+  text-align: left;
+}
+
+.blog-editor .toastui-editor-contents blockquote[dir="rtl"] {
+  border-left: 0;
+  border-right: 4px solid var(--line-strong);
+}
+
+@media (max-width: 767px) {
+  .blog-comment-action {
+    min-block-size: 44px;
+  }
+
+  .blog-sort-select {
+    inline-size: 100%;
+  }
+
+  /* The label sits above the full-width select; beside it, the select would
+     push the label text out of its box. */
+  .blog-comments-heading label {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
 }

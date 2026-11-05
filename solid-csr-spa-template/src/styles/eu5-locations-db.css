@@ -5,9 +5,8 @@
 
   position: fixed;
   top: calc(var(--eu5-top-bar-offset) + var(--eu5-viewport-margin));
-  right: var(--eu5-viewport-margin);
+  inset-inline: var(--eu5-viewport-margin);
   bottom: calc(var(--eu5-bottom-bar-offset) + var(--eu5-viewport-margin));
-  left: var(--eu5-viewport-margin);
   background: #11161d;
 }
 

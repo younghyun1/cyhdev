@@ -87,6 +87,19 @@ export default function ContentPage<Id extends string>(
   );
   const [activeSection, setActiveSection] = createSignal<string | null>(null);
 
+  // The tab strip scrolls sideways on a phone. Bring the current tab into view
+  // by moving only the strip, never the page; `scrollBy` takes the same
+  // physical delta in either direction, so this also holds right to left.
+  onSettled(() => {
+    const strip = document.querySelector<HTMLElement>(".cp-tab-list");
+    const current = strip?.querySelector<HTMLElement>('.cp-tab[aria-current="page"]');
+    if (!strip || !current) return;
+    const stripBox = strip.getBoundingClientRect();
+    const tabBox = current.getBoundingClientRect();
+    if (tabBox.left < stripBox.left) strip.scrollBy({ left: tabBox.left - stripBox.left, behavior: "instant" });
+    else if (tabBox.right > stripBox.right) strip.scrollBy({ left: tabBox.right - stripBox.right, behavior: "instant" });
+  });
+
   // Scroll-spy for the table of contents. The observer watches only this
   // page's sections and is disconnected when the page unmounts.
   onSettled(() => {
@@ -130,6 +143,7 @@ export default function ContentPage<Id extends string>(
                   <a
                     href={hrefFor(id)}
                     class="cp-tab"
+                    title={labelFor(id)}
                     aria-current={id === props.pageId ? "page" : undefined}
                   >
                     {labelFor(id)}
@@ -174,7 +188,8 @@ export default function ContentPage<Id extends string>(
                   <li>
                     <a
                       href={`#${section.id}`}
-                      class="cp-toc-link"
+                      class="cp-toc-link ui-clip"
+                      title={section.heading}
                       data-active={activeSection() === section.id ? "" : undefined}
                     >
                       {section.heading}
@@ -213,16 +228,24 @@ export default function ContentPage<Id extends string>(
               <Show when={previous()} fallback={<span />}>
                 {(id) => (
                   <a href={hrefFor(id())} class="cp-pager-link" rel="prev">
-                    <span class="cp-pager-direction">← {props.content.chrome.previous}</span>
-                    <span class="cp-pager-title">{labelFor(id())}</span>
+                    <span class="cp-pager-direction ui-clip">
+                      <span class="cp-pager-arrow" aria-hidden="true">←</span> {props.content.chrome.previous}
+                    </span>
+                    <span class="cp-pager-title ui-clip" title={labelFor(id())}>
+                      {labelFor(id())}
+                    </span>
                   </a>
                 )}
               </Show>
               <Show when={next()}>
                 {(id) => (
                   <a href={hrefFor(id())} class="cp-pager-link cp-pager-next" rel="next">
-                    <span class="cp-pager-direction">{props.content.chrome.next} →</span>
-                    <span class="cp-pager-title">{labelFor(id())}</span>
+                    <span class="cp-pager-direction ui-clip">
+                      {props.content.chrome.next} <span class="cp-pager-arrow" aria-hidden="true">→</span>
+                    </span>
+                    <span class="cp-pager-title ui-clip" title={labelFor(id())}>
+                      {labelFor(id())}
+                    </span>
                   </a>
                 )}
               </Show>

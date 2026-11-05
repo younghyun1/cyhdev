@@ -66,14 +66,20 @@
 .post-outline {
   margin: 0 0 1.25rem;
   border: 1px solid var(--line);
-  border-left: 2px solid var(--accent);
+  border-inline-start: 2px solid var(--accent);
   background: var(--surface);
   font-size: 0.875rem;
 }
 
 .post-outline summary {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  block-size: 2.25rem;
+  overflow-x: clip;
+  line-height: 1.25;
   cursor: pointer;
-  padding: 0.5rem 0.875rem;
+  padding: 0 0.875rem;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
@@ -83,13 +89,14 @@
 
 .post-outline ol {
   margin: 0;
-  padding: 0 0.875rem 0.75rem 1.75rem;
+  padding-block: 0 0.75rem;
+  padding-inline: 1.75rem 0.875rem;
   display: grid;
   gap: 0.25rem;
 }
 
 .post-outline li[data-level="3"] {
-  margin-left: 1rem;
+  margin-inline-start: 1rem;
   list-style-type: circle;
 }
 
@@ -102,4 +109,38 @@
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Post bodies, code, tables, and lists follow the reading direction; code and
+   block quotes keep their own handling. */
+.prose :where(pre, code, kbd, samp) {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+.prose :where(pre) {
+  text-align: left;
+}
+.prose :where(blockquote) {
+  border-left-width: 0;
+  border-right-width: 0;
+  border-inline-start-width: 0.25rem;
+  border-inline-start-style: solid;
+  border-inline-start-color: var(--tw-prose-quote-borders);
+  padding-inline-start: 1em;
+  padding-inline-end: 0;
+}
+/* Room for markers on both sides: a post can hold an item written in the other
+   direction, whose marker sits at the opposite edge. */
+.prose :where(ol, ul) {
+  padding-inline: 1.625em;
+}
+.prose :where(th, td) {
+  text-align: start;
+}
+/* Arabic, Persian, and Urdu are never slanted; a synthetic oblique breaks the
+   joins between letters. */
+.prose :where(blockquote, em, i, cite, dfn)[dir="rtl"],
+:root[dir="rtl"] .prose :where(em, i, cite, dfn) {
+  font-style: normal;
 }

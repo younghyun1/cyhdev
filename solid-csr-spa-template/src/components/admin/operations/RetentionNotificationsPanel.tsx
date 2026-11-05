@@ -9,6 +9,7 @@ import { adminOperationsApi } from "../../../services/contracts/admin_operations
 import { t, tx } from "../../../state/i18n";
 import { ADMIN_OPERATION_SECTION_IDS } from "../navigation";
 import { MobileDialog } from "../../MobileDialog";
+import { IsolatedMessage } from "./IsolatedMessage";
 import {
   formatAdminTimestamp,
   operationErrorMessage,
@@ -128,10 +129,15 @@ export default function RetentionNotificationsPanel(props: Props) {
       <Show when={receipt()}>
         {(value) => (
           <p class="operations-receipt" role="status">
-            {tx("operations.retention.retry_success", {
-              notification_id: value().notification_id,
-              next_attempt_at: formatAdminTimestamp(value().next_attempt_at),
-            })}
+            <IsolatedMessage
+              textKey="operations.retention.retry_success"
+              params={{
+                notification_id: value().notification_id,
+                next_attempt_at: formatAdminTimestamp(value().next_attempt_at),
+              }}
+              ltr={["notification_id"]}
+              auto={["next_attempt_at"]}
+            />
           </p>
         )}
       </Show>
@@ -143,10 +149,10 @@ export default function RetentionNotificationsPanel(props: Props) {
           <table class="operations-table">
             <thead>
               <tr>
-                <th>{t("operations.retention.notification")}</th>
-                <th>{t("operations.retention.schedule")}</th>
-                <th>{t("operations.retention.status")}</th>
-                <th>{t("authorization.action")}</th>
+                <th title={t("operations.retention.notification")}>{t("operations.retention.notification")}</th>
+                <th title={t("operations.retention.schedule")}>{t("operations.retention.schedule")}</th>
+                <th title={t("operations.retention.status")}>{t("operations.retention.status")}</th>
+                <th title={t("authorization.action")}>{t("authorization.action")}</th>
               </tr>
             </thead>
             <tbody>
@@ -155,19 +161,25 @@ export default function RetentionNotificationsPanel(props: Props) {
                   <tr>
                     <td data-label={t("operations.retention.notification")}>
                       <strong>{t(retentionStageKey(item.stage))}</strong>
-                      <small>{item.notification_id}</small>
+                      <small><bdi dir="ltr">{item.notification_id}</bdi></small>
                       <small>
-                        {tx("operations.retention.user", {
-                          user_id: item.user_id,
-                        })}
+                        <IsolatedMessage
+                          textKey="operations.retention.user"
+                          params={{ user_id: item.user_id }}
+                          ltr={["user_id"]}
+                        />
                       </small>
                     </td>
                     <td data-label={t("operations.retention.schedule")}>
                       {formatAdminTimestamp(item.scheduled_for)}
                       <small>
-                        {tx("operations.retention.next_attempt", {
-                          timestamp: formatAdminTimestamp(item.next_attempt_at),
-                        })}
+                        <IsolatedMessage
+                          textKey="operations.retention.next_attempt"
+                          params={{
+                            timestamp: formatAdminTimestamp(item.next_attempt_at),
+                          }}
+                          auto={["timestamp"]}
+                        />
                       </small>
                       <small>
                         {tx("operations.retention.attempts", {
@@ -181,7 +193,7 @@ export default function RetentionNotificationsPanel(props: Props) {
                       </span>
                       <Show when={item.last_error}>
                         {(message) => (
-                          <small class="operations-failure-detail">
+                          <small class="operations-failure-detail" dir="auto">
                             {message()}
                           </small>
                         )}
@@ -241,11 +253,15 @@ export default function RetentionNotificationsPanel(props: Props) {
                 {t("operations.retention.retry_confirm_title")}
               </h3>
               <p>
-                {tx("operations.retention.retry_confirm_description", {
-                  notification_id: item().notification_id,
-                  user_id: item().user_id,
-                  stage: t(retentionStageKey(item().stage)),
-                })}
+                <IsolatedMessage
+                  textKey="operations.retention.retry_confirm_description"
+                  params={{
+                    notification_id: item().notification_id,
+                    user_id: item().user_id,
+                    stage: t(retentionStageKey(item().stage)),
+                  }}
+                  ltr={["notification_id", "user_id"]}
+                />
               </p>
               <label class="operations-confirm-checkbox">
                 <input

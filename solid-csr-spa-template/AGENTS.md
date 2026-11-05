@@ -8,6 +8,7 @@ The application uses Solid 2 prereleases, not Solid 1 or React semantics. `packa
 - `src/index.tsx` mounts the router; `src/routes.ts` owns routes; `src/app.tsx` owns the shell. Extend `src/pages/`, `src/components/`, and existing `src/state/` owners. Read nearby Solid 2 examples before changing effects, async reads, or synchronous read-after-write behavior.
 - Use strict TypeScript, the Solid router, and context for new shared state where appropriate. Preserve existing state ownership instead of introducing competing stores. JSX types come from `@solidjs/web` in this stack.
 - Centralize styles in `src/index.css` and `src/styles/`; follow [design system](../docs/design/fe/design-system.md) and [mobile design](../docs/design/fe/mobile.md). Preserve route-level lazy loading; `build/initialAssetReport.ts` reports the initial asset size in each build, with no enforced limit.
+- Controls never take their size from their label, and layout uses logical CSS so right-to-left languages mirror on their own; see [control sizing](../docs/design/fe/design-system.md) and [localization](../docs/design/fe/localization.md). `npm --prefix solid-csr-spa-template run test:e2e:layout` enforces sizing in every language.
 - Read the corresponding document under `docs/design/fe/` for account, admin, forum, and call UI changes. Check keyboard interaction, narrow layouts, loading/error states, and authorization-dependent controls.
 
 ## API ownership

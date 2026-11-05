@@ -6,6 +6,21 @@ import { t } from "../state/i18n";
 import { theme } from "../state/theme";
 import { deriveCustomAccent, formatRgb, parseRgbInput } from "../utils/customAccent";
 
+/** Color values quoted inside a translated note: `255, 120, 40` and `#ff7828`. */
+const COLOR_EXAMPLE = /(#[0-9a-fA-F]{3,8}|\d{1,3}(?:,\s*\d{1,3}){2})/;
+
+/**
+ * Wraps each quoted color value in a left-to-right island. In a right-to-left
+ * sentence the bidi rules would otherwise put the `#` after its digits and
+ * reverse the order of the three numbers, so the example would not match what
+ * the field accepts.
+ */
+function isolateColorExamples(text: string): Array<string | JSX.Element> {
+  return text
+    .split(COLOR_EXAMPLE)
+    .map((part, index) => (index % 2 === 1 ? <bdi dir="ltr">{part}</bdi> : part));
+}
+
 /**
  * The visitor's own color: a native picker and a typed RGB value. A value is
  * applied as soon as it parses; a complaint waits until the field is left, so
@@ -35,6 +50,7 @@ export default function CustomAccentFields(): JSX.Element {
         />
         <input
           class="accent-custom-text"
+          dir="ltr"
           type="text"
           value={draft()}
           maxlength={24}
@@ -55,11 +71,11 @@ export default function CustomAccentFields(): JSX.Element {
       </div>
       <Show when={invalid()}>
         <p class="accent-custom-note accent-custom-note--error" role="alert">
-          {t("accent.custom_invalid")}
+          {isolateColorExamples(t("accent.custom_invalid"))}
         </p>
       </Show>
       <Show when={!invalid() && adjusted()}>
-        <p class="accent-custom-note">{t("accent.custom_adjusted")}</p>
+        <p class="accent-custom-note">{isolateColorExamples(t("accent.custom_adjusted"))}</p>
       </Show>
     </>
   );

@@ -31,7 +31,7 @@ function trackSpotlight(event: PointerEvent): void {
 function Stat(props: { item: StatItem }): JSX.Element {
   return (
     <div class="cp-stat">
-      <dt class="cp-stat-value">
+      <dt class="cp-stat-value" dir="ltr">
         <span class="sr-only">{props.item.value}</span>
         <Show
           when={props.item.count !== undefined}
@@ -279,7 +279,7 @@ function renderBlock(block: ContentBlock): JSX.Element {
       const numeric = new Set(block.numericColumns ?? []);
       return (
         <div class="cp-table-wrap">
-          <table class="cp-table">
+          <table class="cp-table" style={{ "--cp-cols": String(block.columns.length) }}>
             <Show when={block.caption}>
               {(caption) => (
                 <caption>
@@ -291,7 +291,12 @@ function renderBlock(block: ContentBlock): JSX.Element {
               <tr>
                 <For each={block.columns}>
                   {(column, index) => (
-                    <th scope="col" class={numeric.has(index()) ? "cp-numeric" : undefined}>
+                    <th
+                      scope="col"
+                      class={numeric.has(index()) ? "cp-numeric ui-clip" : "ui-clip"}
+                      title={column}
+                      dir={numeric.has(index()) ? "ltr" : undefined}
+                    >
                       {column}
                     </th>
                   )}
@@ -304,7 +309,10 @@ function renderBlock(block: ContentBlock): JSX.Element {
                   <tr>
                     <For each={row}>
                       {(cell, index) => (
-                        <td class={numeric.has(index()) ? "cp-numeric" : undefined}>
+                        <td
+                          class={numeric.has(index()) ? "cp-numeric" : undefined}
+                          dir={numeric.has(index()) ? "ltr" : undefined}
+                        >
                           <InlineText text={cell} />
                         </td>
                       )}

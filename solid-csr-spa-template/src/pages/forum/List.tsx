@@ -2,6 +2,7 @@ import { For, Show, createEffect, createMemo, createSignal, onSettled, untrack }
 import { useSearchParams } from "@solidjs/router";
 
 import ForumTopicRow from "../../components/forum/ForumTopicRow";
+import { isolateUserText } from "../../components/forum/isolate";
 import { forumApi } from "../../services/contracts/forum";
 import type {
   ForumCapabilitiesResponse,
@@ -161,6 +162,7 @@ export default function ForumListPage() {
             id="forum-search"
             class="forum-input"
             type="search"
+            dir="auto"
             value={searchInput()}
             placeholder={t("forum.search.placeholder")}
             onInput={(event) => setSearchInput(event.currentTarget.value)}
@@ -186,7 +188,7 @@ export default function ForumListPage() {
         </Show>
         <Show when={activeSearch()}>
           <div class="forum-search-summary">
-            <span>{tx("forum.search.results", { query: activeSearch() })}</span>
+            <span>{tx("forum.search.results", { query: isolateUserText(activeSearch()) })}</span>
             <button
               class="forum-text-button"
               type="button"
@@ -199,9 +201,9 @@ export default function ForumListPage() {
 
         <div class="forum-board" aria-busy={loading() ? "true" : "false"}>
           <div class="forum-board__head" aria-hidden="true">
-            <span>{t("forum.table.topic")}</span>
-            <span>{t("forum.table.replies")}</span>
-            <span>{t("forum.table.activity")}</span>
+            <span class="ui-clip" title={t("forum.table.topic")}>{t("forum.table.topic")}</span>
+            <span class="ui-clip" title={t("forum.table.replies")}>{t("forum.table.replies")}</span>
+            <span class="ui-clip" title={t("forum.table.activity")}>{t("forum.table.activity")}</span>
           </div>
           <Show when={showSkeleton()}>
             <p class="sr-only" role="status">{t("forum.loading")}</p>

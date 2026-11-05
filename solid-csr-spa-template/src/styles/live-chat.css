@@ -57,6 +57,9 @@
 
 .live-chat-open {
   flex: none;
+  line-height: 1.25;
+  max-inline-size: 9rem;
+  text-align: end;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--accent);
@@ -129,9 +132,16 @@
   font-weight: 600;
 }
 
+/* A guest name is one unbroken token such as an underscore-joined handle; it
+   must shrink and wrap instead of running under the Delete button. */
+.live-chat-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .live-chat-time {
   flex: none;
-  margin-left: auto;
+  margin-inline-start: auto;
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
@@ -171,11 +181,23 @@
 
 .live-chat-counter {
   margin-top: 0.125rem;
-  text-align: right;
+  text-align: end;
   font-family: var(--font-mono);
   font-size: 0.625rem;
   font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
+}
+
+/* The per-message moderation button keeps one compact box in every language. */
+.live-chat-delete.ui-button {
+  flex: none;
+  inline-size: 6rem;
+  block-size: 2rem;
+  font-size: 0.75rem;
+}
+
+.live-chat-composer .ui-button {
+  flex: none;
 }
 
 /* The call panel keeps its own controls; pad it to match the rows. */

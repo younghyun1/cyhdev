@@ -38,10 +38,11 @@ export function UserBadge(props: UserBadgeProps) {
           class={`${sizeClasses().img} inline-flex shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 font-mono font-semibold uppercase text-ink-muted ${sizeClasses().text}`}
           aria-hidden="true"
         >
-          {props.userName.slice(0, 1)}
+          {Array.from(props.userName)[0] ?? ""}
         </span>
       </Show>
       <span
+        dir="auto"
         class={`min-w-0 [overflow-wrap:anywhere] font-medium text-ink ${sizeClasses().text}`}
       >
         {props.userName}

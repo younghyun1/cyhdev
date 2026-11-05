@@ -56,6 +56,7 @@ export default function AuthorizationUsersPanel(props: Props) {
           <input
             id="authorization-user-search"
             type="search"
+            dir="auto"
             maxlength={100}
             value={search()}
             placeholder={t("authorization.users.search")}
@@ -67,21 +68,21 @@ export default function AuthorizationUsersPanel(props: Props) {
         </form>
       </div>
       <div class="authorization-table-wrap">
-        <table class="authorization-table">
+        <table class="authorization-table authorization-users-table">
           <thead>
             <tr>
-              <th>{t("common.username")}</th>
-              <th>{t("common.email")}</th>
-              <th>{t("authorization.role")}</th>
-              <th>{t("authorization.action")}</th>
+              <th title={t("common.username")}>{t("common.username")}</th>
+              <th title={t("common.email")}>{t("common.email")}</th>
+              <th title={t("authorization.role")}>{t("authorization.role")}</th>
+              <th title={t("authorization.action")}>{t("authorization.action")}</th>
             </tr>
           </thead>
           <tbody>
             <For each={props.users}>
               {(user) => (
                 <tr>
-                  <td data-label={t("common.username")}>{user.user_name}</td>
-                  <td data-label={t("common.email")}>{user.user_email}</td>
+                  <td data-label={t("common.username")}><bdi dir="auto">{user.user_name}</bdi></td>
+                  <td data-label={t("common.email")}><bdi dir="ltr">{user.user_email}</bdi></td>
                   <td data-label={t("authorization.role")}>
                     <select
                       aria-label={`${t("authorization.role")}: ${user.user_name}`}

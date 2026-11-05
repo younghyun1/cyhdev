@@ -49,7 +49,7 @@ export function CallPanel() {
       </Show>
 
       <Show when={rtc.callError()}>
-        <div class={pageStyles.callError}>{rtc.callError()}</div>
+        <div class={pageStyles.callError} dir="auto">{rtc.callError()}</div>
       </Show>
 
       <CallControls />

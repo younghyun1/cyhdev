@@ -44,7 +44,7 @@ export default function NewForumTopicPage() {
     <main class="forum-page">
       <div class="forum-shell forum-shell--narrow">
         <nav class="forum-breadcrumb" aria-label={t("forum.breadcrumb")}>
-          <a href="/forum">{t("page.forum.title")}</a>
+          <a class="ui-clip" href="/forum" title={t("page.forum.title")}>{t("page.forum.title")}</a>
           <span aria-hidden="true">/</span>
           <span class="forum-breadcrumb__current" aria-current="page">
             {t("forum.new_topic")}

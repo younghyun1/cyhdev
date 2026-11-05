@@ -58,6 +58,7 @@ export default function ForumTopicForm(props: ForumTopicFormProps) {
         <input
           id={`${props.idPrefix}-title`}
           class="forum-input"
+          dir="auto"
           value={title()}
           onInput={(event) => setTitle(event.currentTarget.value)}
           minlength={3}
@@ -72,6 +73,7 @@ export default function ForumTopicForm(props: ForumTopicFormProps) {
         <textarea
           id={`${props.idPrefix}-body`}
           class="forum-textarea"
+          dir="auto"
           value={body()}
           onInput={(event) => setBody(event.currentTarget.value)}
           maxlength={40_000}

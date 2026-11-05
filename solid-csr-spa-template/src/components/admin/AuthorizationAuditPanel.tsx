@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js";
 
-import { t } from "../../state/i18n";
+import { locale, t } from "../../state/i18n";
 import type {
   AuthorizationAuditCursorItem,
   AuthorizationAuditItem,
@@ -23,14 +23,14 @@ export default function AuthorizationAuditPanel(props: Props) {
         </div>
       </div>
       <div class="authorization-table-wrap">
-        <table class="authorization-table">
+        <table class="authorization-table authorization-audit-table">
           <thead>
             <tr>
-              <th>{t("authorization.audit.time")}</th>
-              <th>{t("authorization.audit.actor")}</th>
-              <th>{t("authorization.audit.change")}</th>
-              <th>{t("authorization.audit.reason")}</th>
-              <th>{t("authorization.audit.request")}</th>
+              <th title={t("authorization.audit.time")}>{t("authorization.audit.time")}</th>
+              <th title={t("authorization.audit.actor")}>{t("authorization.audit.actor")}</th>
+              <th title={t("authorization.audit.change")}>{t("authorization.audit.change")}</th>
+              <th title={t("authorization.audit.reason")}>{t("authorization.audit.reason")}</th>
+              <th title={t("authorization.audit.request")}>{t("authorization.audit.request")}</th>
             </tr>
           </thead>
           <tbody>
@@ -38,24 +38,26 @@ export default function AuthorizationAuditPanel(props: Props) {
               {(event) => (
                 <tr>
                   <td data-label={t("authorization.audit.time")}>
-                    {new Date(event.created_at).toLocaleString()}
+                    <bdi dir="auto">{new Date(event.created_at).toLocaleString(locale())}</bdi>
                   </td>
                   <td data-label={t("authorization.audit.actor")}>
-                    <span>{event.actor_display_name}</span>
-                    <small>{event.actor_user_id}</small>
+                    <span dir="auto">{event.actor_display_name}</span>
+                    <small><bdi dir="ltr">{event.actor_user_id}</bdi></small>
                   </td>
                   <td data-label={t("authorization.audit.change")}>
                     <span>{event.kind}</span>
                     <small>
-                      {event.target_display_name ?? event.role_name}: {event.old_value} →{" "}
-                      {event.new_value}
+                      <bdi dir="auto">{event.target_display_name ?? event.role_name}</bdi>:{" "}
+                      <bdi dir="auto">{event.old_value}</bdi>{" "}
+                      <span class="authorization-change-arrow">→</span>{" "}
+                      <bdi dir="auto">{event.new_value}</bdi>
                     </small>
                   </td>
                   <td data-label={t("authorization.audit.reason")}>
-                    {event.reason}
+                    <span class="authorization-user-text" dir="auto">{event.reason}</span>
                   </td>
                   <td data-label={t("authorization.audit.request")}>
-                    {event.request_id ?? t("common.n_a")}
+                    <bdi dir="ltr">{event.request_id ?? t("common.n_a")}</bdi>
                   </td>
                 </tr>
               )}

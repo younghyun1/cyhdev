@@ -6,6 +6,8 @@ import {
   type InlineSegment,
 } from "../../utils/inlineMarkup";
 
+const ARABIC_SCRIPT = /\p{Script=Arabic}/u;
+
 function renderLabel(part: InlineLabelSegment): JSX.Element {
   return part.kind === "code" ? <code class="cp-code">{part.text}</code> : part.text;
 }
@@ -22,9 +24,15 @@ function renderSegment(segment: InlineSegment): JSX.Element {
       // mailto links open the mail client in place; other external links get
       // a new browsing context without an opener or referrer.
       const newContext = segment.external && !segment.href.startsWith("mailto:");
+      // A label with no Arabic-script letters, such as an email address or a
+      // URL, is a left-to-right island: isolating it keeps trailing slashes
+      // and dots in place inside right-to-left prose. Mixed labels follow the
+      // surrounding text.
+      const latinOnly = !segment.label.some((part) => ARABIC_SCRIPT.test(part.text));
       return (
         <a
           href={segment.href}
+          dir={latinOnly ? "ltr" : undefined}
           class="cp-link"
           target={newContext ? "_blank" : undefined}
           rel={segment.external ? "noopener noreferrer" : undefined}

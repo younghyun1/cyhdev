@@ -103,7 +103,7 @@ export function RepositorySourceMap() {
                         <span class={pageStyles.sourceLinkLabel}>
                           {reference.label}
                         </span>
-                        <code class={pageStyles.sourceLinkPath}>
+                        <code class={pageStyles.sourceLinkPath} dir="ltr">
                           {reference.path}
                         </code>
                       </>

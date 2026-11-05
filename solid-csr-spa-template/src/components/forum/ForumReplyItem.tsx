@@ -141,6 +141,7 @@ export default function ForumReplyItem(props: ForumReplyItemProps) {
             <textarea
               id={`forum-reply-${props.reply.reply_id}-body`}
               class="forum-textarea"
+              dir="auto"
               value={body()}
               onInput={(event) => setBody(event.currentTarget.value)}
               maxlength={40_000}

@@ -141,6 +141,12 @@
   :root {
     --site-nav-font-size: 0.75rem;
   }
+
+  /* The last cells sit near the end edge of the bar, where a panel opening toward
+     the end would leave the screen; those open back toward the start instead. */
+  .site-nav-cell:nth-last-child(-n + 2) > .site-nav-panel {
+    inset-inline: auto 0;
+  }
 }
 
 @media (min-width: 768px) and (max-width: 1599px) {

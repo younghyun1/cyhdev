@@ -38,10 +38,11 @@ export function ForumAuthorName(props: ForumAuthorProps) {
   return (
     <Show
       when={!props.author.is_deleted}
-      fallback={<span class="forum-author-name">{props.author.display_name}</span>}
+      fallback={<span class="forum-author-name" dir="auto">{props.author.display_name}</span>}
     >
       <a
         class="forum-author-name"
+        dir="auto"
         href={`/users/${encodeURIComponent(props.author.display_name)}`}
       >
         {props.author.display_name}

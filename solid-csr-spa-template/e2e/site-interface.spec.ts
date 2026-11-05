@@ -305,7 +305,9 @@ test.describe("appearance controls", () => {
     await page.goto("/");
     await page.locator("#mobile-navigation-trigger").click();
     const dialog = page.getByRole("dialog");
-    await dialog.getByRole("radio", { name: "Custom" }).check({ force: true });
+    // The visible swatch, not its hidden radio: a click on it waits out the drawer's slide.
+    await dialog.locator('.accent-swatch[data-swatch="custom"]').click();
+    await expect(dialog.getByRole("radio", { name: "Custom" })).toBeChecked();
     const field = dialog.getByRole("textbox", { name: "RGB value" });
     await field.fill("255, 255, 0");
     await expect(dialog.locator(".accent-custom-note")).toBeVisible();

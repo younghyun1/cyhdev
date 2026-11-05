@@ -18,6 +18,25 @@ import { t, tx } from "../state/i18n";
 import { MobileDialog } from "../components/MobileDialog";
 import "../styles/projects.css";
 
+/**
+ * Renders catalog help text, turning `backtick` spans (file extensions) into
+ * left-to-right code runs so ".html.gz" keeps its dots in a right-to-left line.
+ */
+function HelpWithCode(props: { text: string }) {
+  // Splitting on a capture group puts the code runs at the odd positions.
+  const parts = () =>
+    props.text.split(/`([^`]+)`/).map((text, position) => ({ text, code: position % 2 === 1 }));
+  return (
+    <For each={parts()}>
+      {(part) => (
+        <Show when={part.code} fallback={part.text}>
+          <code dir="ltr" class="form-help-code">{part.text}</code>
+        </Show>
+      )}
+    </For>
+  );
+}
+
 export default function Projects() {
   const [modules, setModules] = createSignal<ReadonlyArray<WasmModuleItem>>([]);
   const [loading, setLoading] = createSignal(true);
@@ -318,8 +337,8 @@ export default function Projects() {
                     loading="lazy"
                   />
                   <div class="project-info">
-                    <h3 class="project-title">{module.wasm_module_title}</h3>
-                    <p class="project-description">
+                    <h3 dir="auto" class="project-title">{module.wasm_module_title}</h3>
+                    <p dir="auto" class="project-description">
                       {module.wasm_module_description}
                     </p>
                     <Show when={isSuperuser()}>
@@ -367,7 +386,7 @@ export default function Projects() {
           initialFocusSelector="[data-project-close]"
         >
             <div class="wasm-modal-header">
-              <h2 id="wasm-modal-title" class="wasm-modal-title">
+              <h2 id="wasm-modal-title" dir="auto" class="wasm-modal-title">
                 {selectedModule()!.wasm_module_title}
               </h2>
               <a
@@ -425,6 +444,7 @@ export default function Projects() {
                   </label>
                   <input
                     id="wasm-title"
+                    dir="auto"
                     class={pageStyles.input}
                     value={uploadTitle()}
                     onInput={(e) => setUploadTitle(e.currentTarget.value)}
@@ -438,6 +458,7 @@ export default function Projects() {
                   </label>
                   <textarea
                     id="wasm-description"
+                    dir="auto"
                     class={pageStyles.textarea}
                     value={uploadDescription()}
                     onInput={(e) => setUploadDescription(e.currentTarget.value)}
@@ -459,7 +480,7 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    {t("projects.bundle_help")}
+                    <HelpWithCode text={t("projects.bundle_help")} />
                   </span>
                 </div>
 
@@ -546,6 +567,7 @@ export default function Projects() {
                   </label>
                   <input
                     id="edit-title"
+                    dir="auto"
                     class={pageStyles.input}
                     value={editTitle()}
                     onInput={(e) => setEditTitle(e.currentTarget.value)}
@@ -557,6 +579,7 @@ export default function Projects() {
                   </label>
                   <textarea
                     id="edit-description"
+                    dir="auto"
                     class={pageStyles.textarea}
                     value={editDescription()}
                     onInput={(e) => setEditDescription(e.currentTarget.value)}
@@ -576,7 +599,7 @@ export default function Projects() {
                     }
                   />
                   <span class="form-help">
-                    {t("projects.bundle_help")}
+                    <HelpWithCode text={t("projects.bundle_help")} />
                   </span>
                 </div>
                 <div class="form-field">
