@@ -1,6 +1,27 @@
 // Generated from rust-be-template OpenAPI. Do not edit by hand.
 
 export * from "./api-response";
+export * from "./archive-bucket";
+export * from "./archive-category-facet";
+export * from "./archive-copy-link";
+export * from "./archive-document-response";
+export * from "./archive-facets";
+export * from "./archive-histogram-bucket";
+export * from "./archive-histogram-response";
+export * from "./archive-language";
+export * from "./archive-language-facet";
+export * from "./archive-precision";
+export * from "./archive-search-item";
+export * from "./archive-search-response";
+export * from "./archive-service-state";
+export * from "./archive-snapshot-status";
+export * from "./archive-source";
+export * from "./archive-source-facet";
+export * from "./archive-status-response";
+export * from "./archive-text-segment";
+export * from "./archive-translation-link";
+export * from "./archive-trend-series";
+export * from "./archive-trends-response";
 export * from "./assign-role-request";
 export * from "./authorization-audit-cursor-item";
 export * from "./authorization-audit-item";

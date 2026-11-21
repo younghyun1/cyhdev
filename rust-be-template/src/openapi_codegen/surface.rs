@@ -35,6 +35,16 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     ),
     operation!("minecraft", "GET", "/api/admin/minecraft"),
     operation!("minecraft", "POST", "/api/admin/minecraft/actions"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/search"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/histogram"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/trends"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/status"),
+    operation!(
+        "kcna-archive",
+        "GET",
+        "/api/admin/kcna-archive/documents/{document_id}"
+    ),
+    operation!("kcna-archive", "POST", "/api/admin/kcna-archive/reload"),
     operation!("authorization", "GET", "/api/admin/authorization/users"),
     operation!("authorization", "GET", "/api/admin/authorization/roles"),
     operation!(

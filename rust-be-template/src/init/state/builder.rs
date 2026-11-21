@@ -26,6 +26,7 @@ use crate::features::geo::{
 use crate::features::i18n::{
     repository::i18n_repository::I18nRepository, service::i18n_service::I18nService,
 };
+use crate::features::kcna_archive::service::archive_service::KcnaArchiveService;
 use crate::features::live_chat::{
     repository::live_chat_repository::LiveChatRepository,
     service::{
@@ -264,6 +265,7 @@ impl ServerStateBuilder {
             rtc_service,
         )?);
 
+        let kcna_archive_service = Arc::new(KcnaArchiveService::start_from_environment().await);
         let minecraft_waypoint_service = Arc::new(
             crate::features::minecraft::service::waypoints::WaypointService::new(
                 crate::features::minecraft::repository::waypoints::WaypointRepository::new(
@@ -280,6 +282,7 @@ impl ServerStateBuilder {
             forum_service,
             geo_service,
             i18n_service,
+            kcna_archive_service,
             live_chat_service,
             photography_service,
             reference_data_service,

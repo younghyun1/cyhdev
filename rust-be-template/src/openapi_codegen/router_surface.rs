@@ -26,6 +26,9 @@ pub fn validate(spec: &Value) -> Result<(), CodegenError> {
     router.extend(parse_router_operations(include_str!(
         "../features/minecraft/api/map.rs"
     ))?);
+    router.extend(parse_router_operations(include_str!(
+        "../features/kcna_archive/api/routes.rs"
+    ))?);
     let openapi = openapi_operations(spec)?;
     let undocumented = router.difference(&openapi).cloned().collect::<Vec<_>>();
     let unregistered = openapi.difference(&router).cloned().collect::<Vec<_>>();

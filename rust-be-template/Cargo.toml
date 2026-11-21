@@ -34,6 +34,8 @@ test = false
 
 [dependencies]
 minecraft-seed = { path = "../tools/minecraft-seed" }
+# Read-only archive snapshot loader and search service for the admin archive routes.
+kcna-archive-core = { path = "../kcna-archive/core" }
 # web framework
 axum = { version = "0.8.9", features = [
     "http2",

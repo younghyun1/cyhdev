@@ -24,6 +24,10 @@
 !rust-be-template/src/routers/main_router/static_asset_fixtures/eu5-locations-db/app/pkg/
 !rust-be-template/src/routers/main_router/static_asset_fixtures/eu5-locations-db/app/pkg/*
 rust-be-template/fe/
+# Backend runtime data, including the archive snapshot the admin page serves.
+rust-be-template/data/
+# The archive corpus is large and its text is not released under this license.
+kcna-archive/data/
 solid-csr-spa-template/public/eu5-locations-db/app/
 
 # Generated source

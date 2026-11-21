@@ -36,7 +36,10 @@ function contractErrorMessage(status: number, body: string): string {
 }
 
 export type ParameterValue = string | number | boolean;
-export type QueryParameterValue = ParameterValue | null;
+export type QueryParameterValue =
+  | ParameterValue
+  | null
+  | ReadonlyArray<ParameterValue>;
 
 export function interpolatePath(
   template: string,
@@ -54,7 +57,10 @@ export function appendQuery(
   if (values === undefined) return path;
   const query = new URLSearchParams();
   for (const [name, value] of Object.entries(values)) {
-    if (value !== undefined && value !== null) query.append(name, String(value));
+    if (value === undefined || value === null) continue;
+    // An array parameter repeats its key: `term=a&term=b`.
+    const items: ReadonlyArray<unknown> = Array.isArray(value) ? value : [value];
+    for (const item of items) query.append(name, String(item));
   }
   const encoded = query.toString();
   return encoded ? `${path}?${encoded}` : path;

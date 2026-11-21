@@ -1,0 +1,9 @@
+DROP TABLE kcna_document_retrievals;
+DROP TABLE kcna_retrievals;
+DROP TABLE kcna_documents;
+DROP FUNCTION kcna_retrievals_assign_uuidv7();
+DROP FUNCTION kcna_documents_assign_uuidv7();
+DROP FUNCTION kcna_uuidv7_at(timestamptz);
+DROP TYPE kcna_publication_precision;
+DROP TYPE kcna_language;
+DROP TYPE kcna_source;

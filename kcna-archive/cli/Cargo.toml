@@ -1,0 +1,45 @@
+[package]
+name = "kcna-archive"
+version.workspace = true
+edition.workspace = true
+license = "MIT"
+description = "Resumable collector, PostgreSQL importer, and snapshot writer for public KCNA archives"
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "kcna-archive"
+path = "src/main.rs"
+
+[dependencies]
+kcna-archive-core = { path = "../core", features = ["diesel"] }
+clap = { version = "4.6.9", default-features = false, features = ["derive", "error-context", "help", "std", "usage"] }
+# postgres_backend, not postgres: the importer talks to PostgreSQL through
+# diesel-async and needs no libpq of its own. `without-deprecated` is left
+# off on purpose: Cargo unifies features across a workspace build, and that
+# one removes items the website backend still imports.
+diesel = { version = "2.4.0", default-features = false, features = ["32-column-tables", "postgres_backend", "serde_json", "time", "uuid"] }
+diesel-async = { version = "0.10.0", default-features = false, features = ["bb8", "migrations", "postgres"] }
+diesel-derive-enum = { version = "2.1.0", default-features = false, features = ["postgres"] }
+diesel_migrations = { version = "2.4.0", default-features = false, features = ["postgres"] }
+encoding_rs = "0.8.44"
+futures = { version = "0.3.34", default-features = false, features = ["async-await", "std"] }
+hex = "0.4.3"
+jiff = { version = "1.0.1", features = ["serde"] }
+mimalloc.workspace = true
+nutype = { version = "0.8.0", default-features = false, features = ["serde", "std"] }
+regex = "1.13.2"
+reqwest = { version = "0.13.5", default-features = false, features = ["brotli", "charset", "cookies", "deflate", "form", "gzip", "hickory-dns", "http2", "rustls", "zstd"] }
+scraper = { version = "0.29.0", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json.workspace = true
+sha2 = "0.11.1"
+tantivy = { version = "0.27.0", default-features = false, features = ["lz4-compression", "mmap", "zstd-compression"] }
+thiserror = "2.0.21"
+time = { version = "0.3.55", default-features = false, features = ["formatting", "macros", "parsing", "std"] }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "parking_lot", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = { workspace = true, features = ["release_max_level_info"] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "json", "parking_lot", "smallvec"] }
+url = "2.5.9"
+uuid = { version = "1.29.3", default-features = false, features = ["serde", "std"] }

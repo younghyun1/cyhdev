@@ -3,6 +3,7 @@ pub mod blog;
 pub mod forum;
 pub mod geo;
 pub mod i18n;
+pub mod kcna_archive;
 pub mod live_chat;
 pub mod minecraft;
 pub mod photography;

@@ -1,0 +1,33 @@
+[package]
+name = "kcna-archive-core"
+version.workspace = true
+edition.workspace = true
+license = "MIT"
+description = "Search index, snapshot format, and read-only service of the KCNA research archive"
+
+[lints]
+workspace = true
+
+[features]
+# Maps the corpus enums to their PostgreSQL types. Only the collector's
+# importer needs this; the website serves from a snapshot and has no tables.
+diesel = ["dep:diesel", "dep:diesel-derive-enum"]
+
+[dependencies]
+diesel = { version = "2.4.0", default-features = false, features = ["postgres_backend"], optional = true }
+diesel-derive-enum = { version = "2.1.0", default-features = false, features = ["postgres"], optional = true }
+# Already in the tree through Tantivy; used to copy index files into memory
+# without a second transient heap copy of each file.
+memmap2 = "0.9.12"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json.workspace = true
+# zstd-compression is the stored-text codec of the snapshot; lz4 stays enabled
+# so an index written before the snapshot format can still be opened and
+# recognized as stale instead of failing to parse.
+tantivy = { version = "0.27.0", default-features = false, features = ["lz4-compression", "mmap", "zstd-compression"] }
+thiserror = "2.0.21"
+time = { version = "0.3.55", default-features = false, features = ["formatting", "macros", "parsing", "std"] }
+uuid = { version = "1.29.3", default-features = false, features = ["serde", "std"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"

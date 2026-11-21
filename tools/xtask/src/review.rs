@@ -19,6 +19,10 @@ pub(crate) fn run_format_check(root: &Path) -> TaskResult<()> {
                 "xtask",
                 "--package",
                 "minecraft-seed",
+                "--package",
+                "kcna-archive",
+                "--package",
+                "kcna-archive-core",
                 "--",
                 "--check",
             ])

@@ -8,6 +8,7 @@ use crate::features::blog::service::blog_service::BlogService;
 use crate::features::forum::service::forum_service::ForumService;
 use crate::features::geo::service::geo_service::GeoService;
 use crate::features::i18n::service::i18n_service::I18nService;
+use crate::features::kcna_archive::service::archive_service::KcnaArchiveService;
 use crate::features::live_chat::service::live_chat_service::LiveChatService;
 use crate::features::photography::service::photography_service::PhotographyService;
 use crate::features::reference_data::service::reference_data_service::ReferenceDataService;
@@ -26,6 +27,7 @@ pub struct ServerState {
     pub(crate) forum_service: Arc<ForumService>,
     pub(crate) geo_service: Arc<GeoService>,
     pub(crate) i18n_service: Arc<I18nService>,
+    pub(crate) kcna_archive_service: Arc<KcnaArchiveService>,
     pub(crate) live_chat_service: Arc<LiveChatService>,
     pub(crate) photography_service: Arc<PhotographyService>,
     pub(crate) reference_data_service: Arc<ReferenceDataService>,

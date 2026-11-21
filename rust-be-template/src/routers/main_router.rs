@@ -322,6 +322,7 @@ pub fn build_router(
         .merge(media_cleanup_admin_router)
         .merge(crate::features::minecraft::api::controls::router(&state)?)
         .merge(crate::features::minecraft::api::map::admin_router(&state))
+        .merge(crate::features::kcna_archive::api::routes::router(&state))
         .layer(require_superuser_middleware)
         .layer(auth_middleware);
 

@@ -30,6 +30,9 @@ solid-csr-spa-template/public/eu5-locations-db/
 
 # Backend runtime data and deployment output from local runs.
 rust-be-template/data
+# The archive corpus is large, its text is not redistributable, and the backend
+# image never contains it; the snapshot is mounted at runtime.
+kcna-archive/data
 rust-be-template/fe
 rust-be-template/images
 rust-be-template/wasm

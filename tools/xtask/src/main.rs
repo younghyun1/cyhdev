@@ -11,6 +11,9 @@ mod eu5_web;
 mod eu5_web_tests;
 mod evidence_manifest;
 mod evidence_runtime;
+mod kcna_archive;
+#[cfg(test)]
+mod kcna_archive_tests;
 #[cfg(test)]
 mod main_tests;
 mod optimization;
@@ -95,6 +98,8 @@ fn run() -> TaskResult<()> {
         "frontend-check" => review::run_frontend_checks(&root),
         "image" => run_image(&root),
         "image-smoke" => review::run_image_smoke(&root),
+        "kcna-snapshot" => kcna_archive::run_snapshot(&root, &forwarded),
+        "kcna-snapshot-push" => kcna_archive::run_push(&root, &forwarded),
         "migration-rollback" => database_review::run_migration_rollback(&root),
         "openapi" => review::run_openapi_drift_check(&root),
         "optimize" => optimization::campaign::run(&root, &forwarded),
@@ -276,6 +281,6 @@ fn print_help() {
         "Optimization: cargo xtask optimize inventory OUTPUT_DIR | plan CONFIG.json | run CONFIG.json | rebenchmark CONFIG.json RUN_DIR"
     );
     println!(
-        "Commands:\n  backend             Run the backend\n  build               Build the optimized host-side backend artifact\n  build-dev           Build native workspace packages in the development profile\n  clippy              Run the implementation stage gate\n  db-integration      Run ignored PostgreSQL integration cases\n  eu5-web-stage       Stage the EU5 browser package for frontend development\n  evidence            Validate W3/W8 registrations and evidence\n  final-review        Run every deferred review gate and aggregate failures\n  fmt                 Check Rust formatting\n  frontend            Run the frontend development server\n  frontend-build      Install locked frontend dependencies and build assets\n  frontend-check      Run frontend type, lint, and unit checks\n  image               Build the optimized deployment image from locked inputs\n  image-smoke         Build the non-release Docker smoke target\n  migration-rollback  Revert and reapply every embedded migration\n  openapi              Check generated frontend contracts for drift\n  secret-scan          Scan the current tree and all Git refs with redacted reports\n  test, unit           Run native unit and non-database tests\n  throughput          Replay the recorded workload and enforce thresholds\n  wasm-build          Build WebAssembly packages for release\n  wasm-clippy         Check the WebAssembly packages for their target"
+        "Commands:\n  backend             Run the backend\n  build               Build the optimized host-side backend artifact\n  build-dev           Build native workspace packages in the development profile\n  clippy              Run the implementation stage gate\n  db-integration      Run ignored PostgreSQL integration cases\n  eu5-web-stage       Stage the EU5 browser package for frontend development\n  evidence            Validate W3/W8 registrations and evidence\n  final-review        Run every deferred review gate and aggregate failures\n  fmt                 Check Rust formatting\n  frontend            Run the frontend development server\n  frontend-build      Install locked frontend dependencies and build assets\n  frontend-check      Run frontend type, lint, and unit checks\n  image               Build the optimized deployment image from locked inputs\n  image-smoke         Build the non-release Docker smoke target\n  kcna-snapshot       Write the KCNA archive snapshot from the corpus database\n  kcna-snapshot-push  Copy the snapshot to an rsync destination such as host:dist/data/kcna_archive/\n  migration-rollback  Revert and reapply every embedded migration\n  openapi              Check generated frontend contracts for drift\n  secret-scan          Scan the current tree and all Git refs with redacted reports\n  test, unit           Run native unit and non-database tests\n  throughput          Replay the recorded workload and enforce thresholds\n  wasm-build          Build WebAssembly packages for release\n  wasm-clippy         Check the WebAssembly packages for their target"
     );
 }

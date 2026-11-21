@@ -261,6 +261,13 @@ RUN mkdir -p /runtime/tmp /runtime/bin/logs /runtime/bin/data/search_index \
     && chmod 1777 /runtime/tmp \
     && chown 65532:65532 /runtime/bin/logs /runtime/bin/data/search_index \
     && chmod 0700 /runtime/bin/logs /runtime/bin/data/search_index
+# Mount point for the KCNA archive snapshot, the default of KCNA_ARCHIVE_DIR
+# (data/kcna_archive under WORKDIR /bin). The snapshot is deployed as data and is
+# never baked into the image; the backend only reads it, so the directory is
+# root-owned and read-only. Left empty, the archive routes report it as not
+# installed.
+RUN mkdir -p /runtime/bin/data/kcna_archive \
+    && chmod 0555 /runtime/bin/data/kcna_archive
 
 # --- Final Stage ---
 FROM scratch AS final
