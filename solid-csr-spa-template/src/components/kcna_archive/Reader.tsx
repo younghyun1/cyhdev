@@ -19,6 +19,8 @@ interface ReaderProps {
   readonly besideLanguage: ArchiveLanguage | undefined;
   /** Link that opens another language edition in place of this one. */
   readonly hrefFor: (id: string) => string;
+  /** The other edition replaces this one in the same pane, so the page must not move. */
+  readonly keepScroll?: boolean;
   readonly onBeside: (language: ArchiveLanguage | undefined) => void;
 }
 
@@ -89,6 +91,7 @@ const Reader: Component<ReaderProps> = (props) => {
                     <a
                       class="kcna-translation-link"
                       href={props.hrefFor(translation.id)}
+                      noscroll={props.keepScroll === true}
                       title={translation.title}
                     >
                       <span class="kcna-translation-language">{t(languageKey(translation.language))}</span>

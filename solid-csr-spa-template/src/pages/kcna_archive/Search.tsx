@@ -132,7 +132,7 @@ const KcnaArchiveSearch: Component = () => {
         const index = list.findIndex((item) => item.id === documentId());
         const target = list[action === "next" ? index + 1 : Math.max(0, index - 1)];
         if (target === undefined) return false;
-        navigate(hrefFor(target.id), { replace: true });
+        navigate(hrefFor(target.id), { replace: true, scroll: false });
         document
           .querySelector(`.kcna-row-item[data-id="${CSS.escape(target.id)}"]`)
           ?.scrollIntoView({ block: "nearest" });
@@ -228,6 +228,7 @@ const KcnaArchiveSearch: Component = () => {
                 loadingMore={laterPages().loading}
                 failure={laterPages().failure}
                 hrefFor={(item) => hrefFor(item.id)}
+                keepScroll={!stacked()}
                 onLoadMore={() => void loadMore()}
               />
             </Loading>
@@ -257,6 +258,7 @@ const KcnaArchiveSearch: Component = () => {
                     beside={beside() ?? undefined}
                     besideLanguage={besideLanguage()}
                     hrefFor={(id) => searchHref(query(), { doc: id })}
+                    keepScroll
                     onBeside={(language) => setParams({ with: language })}
                   />
                 )}

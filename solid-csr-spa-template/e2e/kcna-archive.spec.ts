@@ -109,6 +109,31 @@ test.describe("search", () => {
     await expect(page.locator(".kcna-parallel-row")).toHaveCount(0);
   });
 
+  test("opening a result beside the list keeps the page where it was", async ({ page }) => {
+    // A short window, so the list is taller than the page and the page scrolls.
+    await page.setViewportSize({ width: 1440, height: 420 });
+    await installApiMocks(page, "superuser");
+    await setUiPreferences(page, "en-US", "light");
+    await page.goto(`${ROOT}?q=bridge`);
+    const row = page.locator(".kcna-row").nth(5);
+    await row.scrollIntoViewIfNeeded();
+    const before = await page.evaluate(() => window.scrollY);
+    expect(before).toBeGreaterThan(100);
+    await row.click();
+    await expect(page).toHaveURL(/doc=/);
+    await expect(page.locator(".kcna-document-title")).toBeVisible();
+    // The click itself may nudge a row out from under the sticky header;
+    // what must not happen is the jump back to the top of the page.
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - before)).toBeLessThanOrEqual(40);
+
+    // The keyboard and the links between language editions hold it too.
+    await page.keyboard.press("j");
+    await expect(page.locator(".kcna-row").nth(6)).toHaveAttribute("aria-current", "true");
+    await page.locator(".kcna-translation-link").first().click();
+    await expect(page).toHaveURL(new RegExp(`doc=${KCNA_ENGLISH_ID}`));
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+  });
+
   test("a month histogram drag sets the date range in the URL", async ({ page }) => {
     await visit(page, ROOT);
     const chart = page.locator(".kcna-histogram-chart");

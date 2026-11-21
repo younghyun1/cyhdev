@@ -68,6 +68,23 @@ describe("archive text rendering", () => {
     expect(source?.getAttribute("target")).toBe("_blank");
   });
 
+  it("keeps the page still for links between editions only when the reader is beside the list", () => {
+    const link = (keepScroll: boolean | undefined): Element | null =>
+      render(() => (
+        <Reader
+          document={document_}
+          beside={undefined}
+          besideLanguage={undefined}
+          hrefFor={(id) => `/x/${id}`}
+          keepScroll={keepScroll}
+          onBeside={() => {}}
+        />
+      )).container.querySelector(".kcna-translation-link");
+    expect(link(true)?.hasAttribute("noscroll")).toBe(true);
+    cleanup();
+    expect(link(undefined)?.hasAttribute("noscroll")).toBe(false);
+  });
+
   it("shows both editions in rows when a translation is open, each in its language", () => {
     const beside: ArchiveDocumentResponse = {
       ...document_,

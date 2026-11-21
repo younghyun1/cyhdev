@@ -17,6 +17,8 @@ interface ResultListProps {
   /** Why loading a later page failed, if it did. */
   readonly failure: FailureKind | undefined;
   readonly hrefFor: (item: ArchiveSearchItem) => string;
+  /** The result opens beside the list, so following it must not move the page. */
+  readonly keepScroll: boolean;
   readonly onLoadMore: () => void;
 }
 
@@ -65,6 +67,7 @@ const ResultList: Component<ResultListProps> = (props) => {
               <a
                 class="kcna-row"
                 href={props.hrefFor(item)}
+                noscroll={props.keepScroll}
                 aria-current={props.selectedId === item.id ? "true" : undefined}
               >
                 <span class="kcna-row-meta">
