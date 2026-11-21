@@ -98,6 +98,7 @@ pub async fn prepare(runtime: &Path) -> anyhow::Result<()> {
         })
         .await?;
     drop(connection);
+    let parameters = crate::kcna::with_parameters(parameters)?;
     let inputs = files::inputs(runtime)?;
     let inputs_sha256 = files::digest(&serde_json::to_vec(&inputs)?);
     let fixture = Fixture {
@@ -150,6 +151,7 @@ pub async fn reset(runtime: &Path) -> anyhow::Result<()> {
     );
     fs::remove_dir_all(&search)?;
     fs::create_dir(&search)?;
+    crate::kcna::write(runtime)?;
     let response = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()?

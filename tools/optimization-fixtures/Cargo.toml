@@ -8,6 +8,7 @@ workspace = true
 
 [dependencies]
 rust-be-template = { path = "../../rust-be-template" }
+kcna-archive-core = { path = "../../kcna-archive/core" }
 anyhow.workspace = true
 chrono.workspace = true
 serde_json.workspace = true
@@ -27,3 +28,8 @@ sha2 = "0.11.1"
 futures-util = { version = "0.3.34", features = ["sink"] }
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 reqwest = { version = "0.13.5", features = ["json"] }
+time = { version = "0.3.55", default-features = false }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+utoipa = "6.0.0"

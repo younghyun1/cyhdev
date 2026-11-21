@@ -12,6 +12,8 @@ describe("live optimization inventory", () => {
     expect(currentRoutes().map(({ pattern }) => pattern).sort()).toEqual([...policy.pages].sort());
     expect(currentRoutes().find(({ pattern }) => pattern === "/admin/minecraft")?.actor).toBe("admin");
     expect(currentRoutes().find(({ pattern }) => pattern === "/blog/new")?.actor).toBe("member");
+    for (const pattern of ["/projects/kcna-archive", "/projects/kcna-archive/documents/:documentId", "/projects/kcna-archive/trends", "/projects/kcna-archive/status"])
+      expect(currentRoutes().find((route) => route.pattern === pattern)?.actor).toBe("admin");
   });
   it("joins nested paths and preserves parent gallery access", () => {
     expect(routes(`defineRoutes([{path:"/items",component: withAuth(Page),children:[{path:"/",component:Index},{path:"/:id",component:Detail}]}]);`))
@@ -21,6 +23,9 @@ describe("live optimization inventory", () => {
     expect(() => pagePath("/blog/:post_id", {})).toThrow();
     expect(pagePath("/users/:userName", { userName: "a/b" })).toBe("/users/a%2Fb");
     expect(pagePath("*404", {})).toBe("/optimization-unmatched-page");
+    expect(pagePath("/projects/kcna-archive/documents/:documentId", { documentId: "01990000-0000-7000-8000-000000000101" }))
+      .toBe("/projects/kcna-archive/documents/01990000-0000-7000-8000-000000000101");
+    expect(() => pagePath("/projects/kcna-archive/documents/:documentId", {})).toThrow();
   });
 });
 
@@ -31,6 +36,8 @@ describe("disposable runtime admission", () => {
     AWS_SES_SMTP_USERNAME: "optimization-fixture-user", AWS_SES_SMTP_ACCESS_KEY: "optimization-fixture-password" });
   it("admits explicitly synthetic loopback services", () => {
     expect(() => validateEnvironment(fixture(), "/tmp/disposable-runtime")).not.toThrow();
+    const archive = fixture(); archive.KCNA_ARCHIVE_DIR = "/tmp/disposable-runtime/data/kcna_archive";
+    expect(() => validateEnvironment(archive, "/tmp/disposable-runtime")).not.toThrow();
   });
   it("rejects real databases, SMTP, object stores and OIDC", () => {
     for (const [key, value] of [["DB_URL", "postgresql://fixture:fixture@127.0.0.1/cyhdev"], ["DB_URL", "postgresql://fixture:fixture@db.example/cyhdev_optimization_test"],
@@ -40,7 +47,7 @@ describe("disposable runtime admission", () => {
     }
   });
   it("rejects DB URL bypass, inherited real keys, and production socket paths", () => {
-    for (const [key, value] of [["DB_HOST", "/run/postgresql"], ["AWS_IMAGE_UPLOAD_KEY", "real-key"], ["MINECRAFT_WORLD_SOCKET", "/run/world.sock"], ["SQUAREMAP_WEB_DIR", "/srv/map"]]) {
+    for (const [key, value] of [["DB_HOST", "/run/postgresql"], ["AWS_IMAGE_UPLOAD_KEY", "real-key"], ["MINECRAFT_WORLD_SOCKET", "/run/world.sock"], ["SQUAREMAP_WEB_DIR", "/srv/map"], ["KCNA_ARCHIVE_DIR", "/srv/kcna"]]) {
       const env = fixture(); env[key!] = value;
       expect(() => validateEnvironment(env, "/tmp/disposable-runtime")).toThrow();
     }

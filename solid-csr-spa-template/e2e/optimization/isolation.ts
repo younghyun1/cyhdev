@@ -22,7 +22,7 @@ export function validateEnvironment(env: NodeJS.ProcessEnv, runtime: string): vo
     throw new Error("S3 endpoint overrides must agree with the fixture endpoint");
   for (const name of ["AWS_IMAGE_UPLOAD_KEY", "AWS_IMAGE_UPLOAD_SECRET_KEY", "AWS_SES_SMTP_USERNAME", "AWS_SES_SMTP_ACCESS_KEY"])
     if (!env[name]?.startsWith("optimization-fixture-")) throw new Error(`${name} must use explicitly synthetic credentials`);
-  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR", "SEARCH_INDEX_PATH","LOCAL_SMTP_CA_PEM"])
+  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR", "SEARCH_INDEX_PATH", "KCNA_ARCHIVE_DIR", "LOCAL_SMTP_CA_PEM"])
     if (env[name]) {
       const path = resolve(env[name]!);
       if (!path.startsWith(`${resolve(runtime)}${sep}`)) throw new Error(`${name} must remain under the disposable runtime directory`);
@@ -30,7 +30,7 @@ export function validateEnvironment(env: NodeJS.ProcessEnv, runtime: string): vo
 }
 export function validateFixturePaths(env: NodeJS.ProcessEnv, runtime: string): void {
   const root = realpathSync(runtime);
-  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR","LOCAL_SMTP_CA_PEM"])
+  for (const name of ["MINECRAFT_WORLD_SOCKET", "MINECRAFT_MAP_CONTROL_SOCKET", "SQUAREMAP_WEB_DIR", "KCNA_ARCHIVE_DIR", "LOCAL_SMTP_CA_PEM"])
     if (env[name] && !realpathSync(env[name]!).startsWith(`${root}${sep}`))
       throw new Error(`${name} resolves outside the disposable runtime directory`);
 }

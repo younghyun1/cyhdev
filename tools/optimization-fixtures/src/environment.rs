@@ -69,6 +69,7 @@ pub fn write(runtime: &Path) -> anyhow::Result<()> {
         ("MINECRAFT_MAP_CONTROL_SOCKET", "control.sock"),
         ("SQUAREMAP_WEB_DIR", "squaremap"),
         ("SEARCH_INDEX_PATH", "data/search_index"),
+        ("KCNA_ARCHIVE_DIR", "data/kcna_archive"),
     ] {
         values.push((name, format!("{root}/{path}")));
     }

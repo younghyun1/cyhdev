@@ -195,6 +195,38 @@ fn optimization_builder_preserves_the_unstripped_host_contract() {
     assert!(serde_json::from_str::<config::Config>(config).is_ok());
 }
 
+#[test]
+fn checked_in_policy_lists_each_page_and_scenario_once_including_the_archive()
+-> Result<(), Box<dyn std::error::Error>> {
+    let raw: serde_json::Value =
+        serde_json::from_str(include_str!("../../../../tools/optimization/coverage.json"))?;
+    for key in ["pages", "scenarios"] {
+        let listed: Vec<&str> = raw[key]
+            .as_array()
+            .ok_or("policy list missing")?
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .collect();
+        // A set silently merges duplicates, so compare against the raw list.
+        assert_eq!(
+            listed.iter().collect::<BTreeSet<_>>().len(),
+            listed.len(),
+            "{key}"
+        );
+    }
+    let policy: Policy = serde_json::from_value(raw)?;
+    for page in [
+        "/projects/kcna-archive",
+        "/projects/kcna-archive/documents/:documentId",
+        "/projects/kcna-archive/trends",
+        "/projects/kcna-archive/status",
+    ] {
+        assert!(policy.pages.contains(page), "{page}");
+    }
+    assert!(policy.scenarios.contains("kcna.search-read-trends-reload"));
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn driver_failure_and_timeout_are_errors() {
