@@ -51,10 +51,11 @@ for (const viewport of [{ width: 7200, height: 4050 }, { width: 10800, height: 6
     test.setTimeout(90_000);
     // Freeze permission timestamps while thousands of mocked requests cross Playwright IPC.
     // Real permission expiry is exercised separately below. Browser timers still run.
-    await page.clock.setFixedTime(new Date());
+    const frozen = Date.now();
+    await page.clock.setFixedTime(frozen);
     await page.setViewportSize({ width: 1440, height: 900 });
     await installApiMocks(page, "logged-out"); await setUiPreferences(page, "en-US", "light");
-    const fixture = await installMinecraftMapMocks(page);
+    const fixture = await installMinecraftMapMocks(page, frozen);
     await page.goto("/minecraft");
     await expect(page.locator('.minecraft-seed-tile[data-ready="true"]').first()).toBeVisible();
     await page.setViewportSize(viewport);

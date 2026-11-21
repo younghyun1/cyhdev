@@ -25,7 +25,12 @@ function terrainTile(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><defs><pattern id="grass" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="16" height="16" fill="#7e9455"/><rect width="7" height="4" fill="#879c60"/><rect x="10" y="8" width="5" height="7" fill="#758b4d"/></pattern><pattern id="water" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#527c95"/><rect x="2" y="4" width="7" height="2" fill="#648da0"/></pattern></defs><rect width="512" height="512" fill="url(#grass)"/><path d="M205 0H260V84H244V164H275V241H250V345H286V512H230V360H205V245H230V174H206V91H190Z" fill="#c3b687"/><path d="M215 0H250V90H234V174H265V231H240V355H276V512H240V350H215V235H240V164H216V81H200Z" fill="url(#water)"/>${trees}<path d="M0 117H174V126H0Z M154 126H164V210H154Z" fill="#b9a27b"/><rect x="140" y="106" width="25" height="24" fill="#514736"/><rect x="142" y="103" width="21" height="22" fill="#aa8460"/><rect x="148" y="103" width="4" height="22" fill="#bc9572"/><rect x="100" y="80" width="20" height="12" fill="#786c46"/><path d="M102 81H118M102 85H118M102 89H118" stroke="#bda85e" stroke-width="2"/></svg>`;
 }
 
-export async function installMinecraftMapMocks(page: Page) {
+/**
+ * `fixedNow` is the page's frozen clock, when a test freezes it. Each tile then
+ * skips a `page.evaluate` round trip that waits behind the busy page and limits
+ * very large viewports to about 20 tiles per second.
+ */
+export async function installMinecraftMapMocks(page: Page, fixedNow?: number) {
   const queries: MinecraftMapQuery[] = [];
   const predictions: MinecraftSeedTileQuery[] = [];
   const writes: { method: string; body: unknown }[] = [];
@@ -38,7 +43,8 @@ export async function installMinecraftMapMocks(page: Page) {
     const query = route.request().postDataJSON() as MinecraftSeedTileQuery;
     predictions.push(query);
     let now: number;
-    try { now = await page.evaluate(() => Date.now()); }
+    if (fixedNow !== undefined) now = fixedNow;
+    else try { now = await page.evaluate(() => Date.now()); }
     catch (cause) {
       // Leaving the map cancels its tile fetch and destroys the fixture clock's context.
       if (cause instanceof Error && cause.message.includes("Execution context was destroyed")) return;
