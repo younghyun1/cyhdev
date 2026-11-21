@@ -219,7 +219,7 @@ const BottomBar: Component = () => {
             </span>
           </button>
           <div class="site-copyright">
-            <span dir="ltr">© 2025-{copyrightYear} Young Hyun Chi.</span>
+            <span dir="ltr">© 2025-{copyrightYear} Young Hyun Chi.</span>{" "}
             <span dir="ltr"><a href="https://github.com/younghyun1/cyhdev" target="_blank" rel="noopener noreferrer">Code</a> licensed under the MIT License.</span>
           </div>
         </div>

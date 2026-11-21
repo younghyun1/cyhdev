@@ -72,9 +72,16 @@
     .site-status-metrics { grid-area: 1 / 2; }
     .site-status-timing { grid-area: 2 / 2; }
     .site-status-mobile { display: none; }
+    /* One line beside the timing row; wrapping here added a whole row to the
+       bar. A narrow column cuts the end, and hovering shows the full text. */
     .site-copyright {
         grid-area: 2 / 1;
+        display: block;
+        min-width: 0;
+        overflow: hidden;
         padding: 0;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 
