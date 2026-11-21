@@ -24,6 +24,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [November 4 language expansion: sixteen languages, right-to-left, stable control sizes](plans/2026-11-04-language-expansion.md)
 - [November 4 interface pass: home board, forum, animation switch, page styling](plans/2026-11-04-interface-pass.md)
 - [November 21 dependency upgrade: stable Solid 2 and current Rust crates](plans/2026-11-21-dependency-upgrade.md)
+- [November 21 KCNA archive integration and three more languages](plans/2026-11-21-kcna-archive-integration.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.
@@ -48,9 +49,14 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [WebAssembly service](architecture/be/wasm-service.md)
 - [Live-chat moderation](architecture/be/live-chat-moderation.md)
 - [Live-chat realtime limits](architecture/be/live-chat-realtime-limits.md)
+- [KCNA archive serving: snapshot format, memory, search](architecture/be/kcna-archive-serving.md)
+- [KCNA archive backend feature: routes, states, reload, bounds](architecture/be/kcna-archive-feature.md)
+- [KCNA archive collection](architecture/be/kcna-archive-collection.md)
+- [KCNA corpus storage](architecture/be/kcna-archive-corpus.md)
 - [Minecraft terrain explorer](architecture/be/minecraft-explorer.md)
 - [Binary biome tile protocol](architecture/be/minecraft-tile-protocol.md)
 - [Minecraft atlas interface](design/fe/minecraft.md)
+- [KCNA archive section: routes, states, shortcuts, visual rules](design/fe/kcna-archive-browser.md)
 
 ## Active Plans
 
