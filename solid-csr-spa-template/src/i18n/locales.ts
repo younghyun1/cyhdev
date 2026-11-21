@@ -25,6 +25,9 @@ export const UI_LOCALES = [
   { tag: "sv-SE", label: "Svenska" },
   { tag: "sh", label: "Srpskohrvatski" },
   { tag: "ro-RO", label: "Română" },
+  { tag: "nl-NL", label: "Nederlands" },
+  { tag: "uk-UA", label: "Українська" },
+  { tag: "tr-TR", label: "Türkçe" },
 ] as const satisfies readonly { tag: UiLocale; label: string }[];
 
 const RIGHT_TO_LEFT: ReadonlySet<UiLocale> = new Set<UiLocale>(["ar", "ur-PK", "fa-IR"]);
@@ -64,6 +67,9 @@ export function resolveLocale(language: string): UiLocale | null {
     // One Latin-script catalog serves the mutually intelligible standards.
     case "sh": case "hbs": case "sr": case "hr": case "bs": case "cnr": return "sh";
     case "ro": return "ro-RO";
+    case "nl": return "nl-NL";
+    case "uk": return "uk-UA";
+    case "tr": return "tr-TR";
     case "zh":
       if (normalized.includes("-hans")) return "zh-Hans";
       return /-(hant|tw|hk|mo)(-|$)/.test(normalized) ? "zh-Hant" : "zh-Hans";
@@ -97,4 +103,7 @@ export const LOCAL_TEXT_LOADERS: Record<UiLocale, () => Promise<Record<UiTextKey
   "sv-SE": async () => (await import("../../../rust-be-template/i18n/ui/sv-SE.json")).default,
   "sh": async () => (await import("../../../rust-be-template/i18n/ui/sh.json")).default,
   "ro-RO": async () => (await import("../../../rust-be-template/i18n/ui/ro-RO.json")).default,
+  "nl-NL": async () => (await import("../../../rust-be-template/i18n/ui/nl-NL.json")).default,
+  "uk-UA": async () => (await import("../../../rust-be-template/i18n/ui/uk-UA.json")).default,
+  "tr-TR": async () => (await import("../../../rust-be-template/i18n/ui/tr-TR.json")).default,
 };

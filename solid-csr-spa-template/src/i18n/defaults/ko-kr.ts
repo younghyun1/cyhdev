@@ -1,5 +1,6 @@
 import type { UiTextKey } from "../keys";
 import { KO_KR_FORUM_TEXTS } from "./forum-ko-kr";
+import { KO_KR_KCNA_TEXTS } from "./kcna-ko-kr";
 
 export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "call.permission_denied": "마이크/카메라 권한이 거부되었습니다.",
@@ -656,4 +657,5 @@ export const KO_KR_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "accent.custom_rgb": "RGB 값",
   "accent.custom_invalid": "255, 120, 40 또는 #ff7828 같은 RGB 값을 입력하세요.",
   "accent.custom_adjusted": "글자를 읽기 쉽도록 이 모드에서 조정했습니다.",
+  ...KO_KR_KCNA_TEXTS,
 };

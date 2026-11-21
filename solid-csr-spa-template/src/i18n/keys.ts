@@ -1,4 +1,5 @@
 import { FORUM_UI_TEXT_KEYS } from "./forum_keys";
+import { KCNA_UI_TEXT_KEYS } from "./kcna_keys";
 
 export const UI_TEXT_KEYS = [
   "call.permission_denied",
@@ -635,7 +636,8 @@ export const UI_TEXT_KEYS = [
   "accent.custom_rgb",
   "accent.custom_invalid",
   "accent.custom_adjusted",
+  ...KCNA_UI_TEXT_KEYS,
 ] as const;
 
 export type UiTextKey = (typeof UI_TEXT_KEYS)[number];
-export type UiLocale = "en-US" | "ko-KR" | "fr-FR" | "es-ES" | "zh-Hans" | "zh-Hant" | "ja-JP" | "de-DE" | "ar" | "hi-IN" | "bn-BD" | "te-IN" | "pt-BR" | "id-ID" | "ru-RU" | "ur-PK" | "vi-VN" | "tl-PH" | "fa-IR" | "it-IT" | "pl-PL" | "sv-SE" | "sh" | "ro-RO";
+export type UiLocale = "en-US" | "ko-KR" | "fr-FR" | "es-ES" | "zh-Hans" | "zh-Hant" | "ja-JP" | "de-DE" | "ar" | "hi-IN" | "bn-BD" | "te-IN" | "pt-BR" | "id-ID" | "ru-RU" | "ur-PK" | "vi-VN" | "tl-PH" | "fa-IR" | "it-IT" | "pl-PL" | "sv-SE" | "sh" | "ro-RO" | "nl-NL" | "uk-UA" | "tr-TR";

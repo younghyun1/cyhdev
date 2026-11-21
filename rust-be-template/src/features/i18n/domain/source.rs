@@ -106,6 +106,18 @@ pub fn source_bundles() -> anyhow::Result<Vec<UiTextSourceBundle>> {
             UiLocale::RoRo,
             include_str!("../../../../i18n/ui/ro-RO.json"),
         )?,
+        parse_bundle(
+            UiLocale::NlNl,
+            include_str!("../../../../i18n/ui/nl-NL.json"),
+        )?,
+        parse_bundle(
+            UiLocale::UkUa,
+            include_str!("../../../../i18n/ui/uk-UA.json"),
+        )?,
+        parse_bundle(
+            UiLocale::TrTr,
+            include_str!("../../../../i18n/ui/tr-TR.json"),
+        )?,
     ])
 }
 
@@ -150,7 +162,7 @@ mod tests {
     #[test]
     fn locale_sources_cover_the_registry_and_translate_eu5_navigation() -> anyhow::Result<()> {
         let bundles = source_bundles()?;
-        assert_eq!(bundles.len(), 24);
+        assert_eq!(bundles.len(), 27);
         for bundle in &bundles {
             assert_eq!(bundle.entries.len(), REQUIRED_UI_TEXT_KEYS.len());
             assert_eq!(

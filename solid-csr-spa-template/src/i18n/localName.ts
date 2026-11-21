@@ -11,6 +11,7 @@ export const LOCAL_NAMES: Partial<Readonly<Record<UiLocale, string>>> = {
   "bn-BD": "ইয়ংহিউন চি",
   "te-IN": "యంగ్‌హ్యూన్ చి",
   "ru-RU": "Ёнхён Чи",
+  "uk-UA": "Йонхьон Чі",
   "ur-PK": "یونگ ہیون چی",
   "fa-IR": "یونگ‌هیون چی",
 };

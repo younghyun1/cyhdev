@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Tiến trình Node.js trong môi trường production; frontend được nhúng vào binary của máy chủ",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Ngôn ngữ giao diện, mỗi ngôn ngữ chỉ được tải khi được chọn",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Giao diện hỗ trợ 24 ngôn ngữ, gồm cả bố cục từ phải sang trái cho tiếng Ả Rập, tiếng Ba Tư và tiếng Urdu. Một danh mục khoảng 740 khóa được đối chiếu với registry của backend, và các placeholder phải được giữ nguyên khi dịch. Các trang Giới thiệu này là những module dữ liệu có kiểu, nên bản dịch không thể âm thầm bỏ sót một mục mà bản tiếng Anh có.",
+              text: "Giao diện hỗ trợ 27 ngôn ngữ, gồm cả bố cục từ phải sang trái cho tiếng Ả Rập, tiếng Ba Tư và tiếng Urdu. Một danh mục khoảng 830 khóa được đối chiếu với registry của backend, và các placeholder phải được giữ nguyên khi dịch. Các trang Giới thiệu này là những module dữ liệu có kiểu, nên bản dịch không thể âm thầm bỏ sót một mục mà bản tiếng Anh có.",
             },
           ],
         },

@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Node.js procesa u produkciji; frontend je ugrađen u izvršnu datoteku servera",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Jezika sučelja, a svaki se preuzima tek kad se odabere",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Sučelje podržava 24 jezika, uključujući raspored zdesna nalijevo za arapski, perzijski i urdu. Katalog od otprilike 740 ključeva provjerava se naspram registra na backendu, a rezervirana mjesta moraju preživjeti prevođenje. Ove stranice O meni su tipizirani moduli podataka, pa prijevod ne može nezapaženo izostaviti odjeljak koji postoji u engleskom.",
+              text: "Sučelje podržava 27 jezika, uključujući raspored zdesna nalijevo za arapski, perzijski i urdu. Katalog od otprilike 830 ključeva provjerava se naspram registra na backendu, a rezervirana mjesta moraju preživjeti prevođenje. Ove stranice O meni su tipizirani moduli podataka, pa prijevod ne može nezapaženo izostaviti odjeljak koji postoji u engleskom.",
             },
           ],
         },

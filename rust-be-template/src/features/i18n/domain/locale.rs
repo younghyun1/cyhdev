@@ -32,6 +32,9 @@ pub enum UiLocale {
     SvSe,
     Sh,
     RoRo,
+    NlNl,
+    UkUa,
+    TrTr,
 }
 
 impl UiLocale {
@@ -64,6 +67,9 @@ impl UiLocale {
             // One Latin-script catalog serves the mutually intelligible standards.
             Some("sh" | "hbs" | "sr" | "hr" | "bs" | "cnr") => Self::Sh,
             Some("ro") => Self::RoRo,
+            Some("nl") => Self::NlNl,
+            Some("uk") => Self::UkUa,
+            Some("tr") => Self::TrTr,
             Some("zh") => {
                 let mut parts = normalized.split('-').skip(1);
                 if parts.clone().any(|part| part == "hans") {
@@ -104,6 +110,9 @@ impl UiLocale {
             Self::SvSe => "sv-SE",
             Self::Sh => "sh",
             Self::RoRo => "ro-RO",
+            Self::NlNl => "nl-NL",
+            Self::UkUa => "uk-UA",
+            Self::TrTr => "tr-TR",
         }
     }
 
@@ -132,6 +141,9 @@ impl UiLocale {
             Self::SvSe => 153,
             Self::Sh => 141,
             Self::RoRo => 133,
+            Self::NlNl => 39,
+            Self::UkUa => 170,
+            Self::TrTr => 164,
         }
     }
 
@@ -161,6 +173,9 @@ impl UiLocale {
             Self::SvSe => 752,
             Self::Sh => 688,
             Self::RoRo => 642,
+            Self::NlNl => 528,
+            Self::UkUa => 804,
+            Self::TrTr => 792,
         }
     }
 }
@@ -200,6 +215,9 @@ mod tests {
             ("sr-Latn-RS", UiLocale::Sh),
             ("bs", UiLocale::Sh),
             ("ro-MD", UiLocale::RoRo),
+            ("nl-BE", UiLocale::NlNl),
+            ("uk", UiLocale::UkUa),
+            ("tr-CY", UiLocale::TrTr),
             ("unknown", UiLocale::EnUs),
         ] {
             assert_eq!(UiLocale::parse(Some(tag)), expected);

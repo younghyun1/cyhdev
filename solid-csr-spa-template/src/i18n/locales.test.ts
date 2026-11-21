@@ -52,6 +52,7 @@ describe("UI locales", () => {
       ["vi", "vi-VN"], ["fil-PH", "tl-PH"], ["tl", "tl-PH"], ["fa-AF", "fa-IR"],
       ["it-CH", "it-IT"], ["pl", "pl-PL"], ["sv-FI", "sv-SE"], ["ro-MD", "ro-RO"],
       ["hr-HR", "sh"], ["sr-Latn-RS", "sh"], ["bs", "sh"], ["cnr", "sh"], ["sh", "sh"],
+      ["nl-BE", "nl-NL"], ["nl", "nl-NL"], ["uk", "uk-UA"], ["tr-CY", "tr-TR"], ["tr", "tr-TR"],
     ]) {
       expect(resolveLocale(input ?? "")).toBe(expected);
     }

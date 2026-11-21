@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Processi Node.js in produzione; il frontend è incorporato nel binario del server",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Lingue dell'interfaccia, ciascuna scaricata solo quando viene selezionata",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "L'interfaccia supporta 24 lingue, inclusi i layout da destra a sinistra per arabo, persiano e urdu. Un catalogo di circa 740 chiavi viene validato rispetto al registro del backend, e i segnaposto devono sopravvivere alla traduzione. Queste pagine Info sono moduli di dati tipizzati, quindi una traduzione non può omettere in silenzio una sezione presente in inglese.",
+              text: "L'interfaccia supporta 27 lingue, inclusi i layout da destra a sinistra per arabo, persiano e urdu. Un catalogo di circa 830 chiavi viene validato rispetto al registro del backend, e i segnaposto devono sopravvivere alla traduzione. Queste pagine Info sono moduli di dati tipizzati, quindi una traduzione non può omettere in silenzio una sezione presente in inglese.",
             },
           ],
         },

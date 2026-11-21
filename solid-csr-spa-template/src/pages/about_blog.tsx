@@ -35,6 +35,9 @@ const loadAboutBlog = createLocaleContentLoader<AboutBlogContent>({
   "sv-SE": () => import("./about-locales/about_blog_sv_se"),
   "sh": () => import("./about-locales/about_blog_sh"),
   "ro-RO": () => import("./about-locales/about_blog_ro_ro"),
+  "nl-NL": () => import("./about-locales/about_blog_nl_nl"),
+  "uk-UA": () => import("./about-locales/about_blog_uk_ua"),
+  "tr-TR": () => import("./about-locales/about_blog_tr_tr"),
 });
 
 /** Subpage ids accepted by the `/about-blog/:page` route filter. */

@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Procese Node.js în producție; frontend-ul este încorporat în binarul serverului",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Limbi ale interfeței, fiecare descărcată doar când este selectată",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Interfața acceptă 24 de limbi, inclusiv aranjamente de la dreapta la stânga pentru arabă, persană și urdu. Un catalog de aproximativ 740 de chei este validat în raport cu registrul backendului, iar substituenții trebuie să supraviețuiască traducerii. Aceste pagini Despre sunt module de date tipizate, astfel încât o traducere nu poate omite pe tăcute o secțiune pe care o are engleza.",
+              text: "Interfața acceptă 27 de limbi, inclusiv aranjamente de la dreapta la stânga pentru arabă, persană și urdu. Un catalog de aproximativ 830 de chei este validat în raport cu registrul backendului, iar substituenții trebuie să supraviețuiască traducerii. Aceste pagini Despre sunt module de date tipizate, astfel încât o traducere nu poate omite pe tăcute o secțiune pe care o are engleza.",
             },
           ],
         },

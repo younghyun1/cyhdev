@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Processos Node.js em produção; o frontend está embutido no binário do servidor",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Idiomas da interface, cada um baixado apenas quando selecionado",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "A interface tem suporte a 24 idiomas, incluindo layouts da direita para a esquerda para árabe, persa e urdu. Um catálogo de aproximadamente 740 chaves é validado contra o registro do backend, e os placeholders precisam sobreviver à tradução. Estas páginas Sobre são módulos de dados tipados, de modo que uma tradução não consegue omitir em silêncio uma seção que existe em inglês.",
+              text: "A interface tem suporte a 27 idiomas, incluindo layouts da direita para a esquerda para árabe, persa e urdu. Um catálogo de aproximadamente 830 chaves é validado contra o registro do backend, e os placeholders precisam sobreviver à tradução. Estas páginas Sobre são módulos de dados tipados, de modo que uma tradução não consegue omitir em silêncio uma seção que existe em inglês.",
             },
           ],
         },

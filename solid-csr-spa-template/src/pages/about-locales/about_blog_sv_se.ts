@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Node.js-processer i produktion; frontend är inbäddad i serverbinären",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Gränssnittsspråk, vart och ett hämtas först när det väljs",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Gränssnittet stöder 24 språk, inklusive höger-till-vänster-layout för arabiska, persiska och urdu. En katalog på ungefär 740 nycklar valideras mot backendens register, och platshållare måste överleva översättningen. De här Om-sidorna är typade datamoduler, så en översättning inte kan utelämna ett avsnitt som finns på engelska utan att det märks.",
+              text: "Gränssnittet stöder 27 språk, inklusive höger-till-vänster-layout för arabiska, persiska och urdu. En katalog på ungefär 830 nycklar valideras mot backendens register, och platshållare måste överleva översättningen. De här Om-sidorna är typade datamoduler, så en översättning inte kan utelämna ett avsnitt som finns på engelska utan att det märks.",
             },
           ],
         },

@@ -38,6 +38,9 @@ const headings: ReadonlyArray<{
   { locale: "sv-SE", about: "Om", blog: "Bloggens teknikstack" },
   { locale: "sh", about: "O meni", blog: "Tehnološki stek bloga" },
   { locale: "ro-RO", about: "Despre", blog: "Stack-ul tehnic al blogului" },
+  { locale: "nl-NL", about: "Over mij", blog: "Techstack van de blog" },
+  { locale: "uk-UA", about: "Про мене", blog: "Технології блогу" },
+  { locale: "tr-TR", about: "Hakkında", blog: "Blogun teknoloji yığını" },
 ];
 
 afterEach(() => {

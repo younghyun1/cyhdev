@@ -34,6 +34,9 @@ const loadAboutMe = createLocaleContentLoader<AboutMeContent>({
   "sv-SE": () => import("./about-locales/about_me_sv_se"),
   "sh": () => import("./about-locales/about_me_sh"),
   "ro-RO": () => import("./about-locales/about_me_ro_ro"),
+  "nl-NL": () => import("./about-locales/about_me_nl_nl"),
+  "uk-UA": () => import("./about-locales/about_me_uk_ua"),
+  "tr-TR": () => import("./about-locales/about_me_tr_tr"),
 });
 
 /** Subpage ids accepted by the `/about/:page` route filter. */

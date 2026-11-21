@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Mga proseso ng Node.js sa production; naka-embed ang frontend sa binary ng server",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Mga wika ng interface, na bawat isa ay dina-download lamang kapag pinili",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Sinusuportahan ng interface ang 24 na wika, kasama ang mga right-to-left na layout para sa Arabic, Persian, at Urdu. Isang catalog na may humigit-kumulang 740 key ang bina-validate laban sa registry ng backend, at dapat manatili ang mga placeholder sa pagsasalin. Ang mga About page na ito ay mga typed data module, kaya hindi basta makakalaktaw ang isang salin ng seksyong mayroon sa Ingles.",
+              text: "Sinusuportahan ng interface ang 27 na wika, kasama ang mga right-to-left na layout para sa Arabic, Persian, at Urdu. Isang catalog na may humigit-kumulang 830 key ang bina-validate laban sa registry ng backend, at dapat manatili ang mga placeholder sa pagsasalin. Ang mga About page na ito ay mga typed data module, kaya hindi basta makakalaktaw ang isang salin ng seksyong mayroon sa Ingles.",
             },
           ],
         },

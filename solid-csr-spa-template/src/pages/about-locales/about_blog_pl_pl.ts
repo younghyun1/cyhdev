@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Procesów Node.js w produkcji; frontend jest osadzony w pliku binarnym serwera",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Języków interfejsu, każdy pobierany tylko po wybraniu",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Interfejs obsługuje 24 języki, w tym układy od prawej do lewej dla arabskiego, perskiego i urdu. Katalog około 740 kluczy jest walidowany względem rejestru backendu, a znaczniki zastępcze muszą przetrwać tłumaczenie. Te strony O mnie są typowanymi modułami danych, więc tłumaczenie nie może po cichu pominąć sekcji, którą ma wersja angielska.",
+              text: "Interfejs obsługuje 27 języków, w tym układy od prawej do lewej dla arabskiego, perskiego i urdu. Katalog około 830 kluczy jest walidowany względem rejestru backendu, a znaczniki zastępcze muszą przetrwać tłumaczenie. Te strony O mnie są typowanymi modułami danych, więc tłumaczenie nie może po cichu pominąć sekcji, którą ma wersja angielska.",
             },
           ],
         },

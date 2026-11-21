@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Node.js-Prozesse in Produktion; das Frontend ist in die Server-Binärdatei eingebettet",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Oberflächensprachen, die jeweils erst bei Auswahl geladen werden",
                 },
                 {
@@ -356,7 +356,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Die Oberfläche unterstützt 24 Sprachen, darunter Layouts von rechts nach links für Arabisch, Persisch und Urdu. Ein Katalog mit rund 740 Schlüsseln wird gegen das Register des Backends validiert, und Platzhalter müssen die Übersetzung überstehen. Diese „Über“-Seiten sind typisierte Datenmodule, sodass eine Übersetzung keinen Abschnitt stillschweigend auslassen kann, den es auf Englisch gibt.",
+              text: "Die Oberfläche unterstützt 27 Sprachen, darunter Layouts von rechts nach links für Arabisch, Persisch und Urdu. Ein Katalog mit rund 830 Schlüsseln wird gegen das Register des Backends validiert, und Platzhalter müssen die Übersetzung überstehen. Diese „Über“-Seiten sind typisierte Datenmodule, sodass eine Übersetzung keinen Abschnitt stillschweigend auslassen kann, den es auf Englisch gibt.",
             },
           ],
         },

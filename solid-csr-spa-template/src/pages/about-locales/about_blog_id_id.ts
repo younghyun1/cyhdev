@@ -37,8 +37,8 @@ const content: AboutBlogContent = {
                   label: "Proses Node.js di produksi; frontend disematkan di dalam binary server",
                 },
                 {
-                  value: "24",
-                  count: 24,
+                  value: "27",
+                  count: 27,
                   label: "Bahasa antarmuka, masing-masing diunduh hanya saat dipilih",
                 },
                 {
@@ -425,7 +425,7 @@ const content: AboutBlogContent = {
           blocks: [
             {
               kind: "paragraph",
-              text: "Antarmuka mendukung 24 bahasa, termasuk tata letak kanan-ke-kiri untuk bahasa Arab, Persia, dan Urdu. Katalog sekitar 740 kunci divalidasi terhadap registri backend, dan placeholder harus tetap utuh setelah diterjemahkan. Halaman Tentang ini adalah modul data bertipe, sehingga terjemahan tidak dapat diam-diam melewatkan bagian yang ada dalam bahasa Inggris.",
+              text: "Antarmuka mendukung 27 bahasa, termasuk tata letak kanan-ke-kiri untuk bahasa Arab, Persia, dan Urdu. Katalog sekitar 830 kunci divalidasi terhadap registri backend, dan placeholder harus tetap utuh setelah diterjemahkan. Halaman Tentang ini adalah modul data bertipe, sehingga terjemahan tidak dapat diam-diam melewatkan bagian yang ada dalam bahasa Inggris.",
             },
           ],
         },

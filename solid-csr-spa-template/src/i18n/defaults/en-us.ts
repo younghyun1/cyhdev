@@ -1,5 +1,6 @@
 import type { UiTextKey } from "../keys";
 import { EN_US_FORUM_TEXTS } from "./forum-en-us";
+import { EN_US_KCNA_TEXTS } from "./kcna-en-us";
 
 export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "call.permission_denied": "Microphone/camera permission denied.",
@@ -656,4 +657,5 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "accent.custom_rgb": "RGB value",
   "accent.custom_invalid": "Enter an RGB value such as 255, 120, 40 or #ff7828.",
   "accent.custom_adjusted": "Adjusted in this mode so text stays readable.",
+  ...EN_US_KCNA_TEXTS,
 };
