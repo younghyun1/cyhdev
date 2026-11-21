@@ -4,7 +4,7 @@ This map covers every registered browser route plus the backend-served and embed
 
 ## Page hierarchy
 
-Solid lines show navigation groups and page relationships, not an exhaustive list of clickable links. Dashed lines show embedded or separately served content. Labels mark signed-in and superuser requirements; unmarked SPA routes have no route-level guard. Public page access does not grant permission to mutate its content. All routes remain directly addressable by URL.
+Solid lines show navigation groups and page relationships, not an exhaustive list of clickable links. Dashed lines show embedded or separately served content. Labels mark signed-in and superuser requirements; the KCNA archive section is reached from a card on the Projects page and a link in the admin workspace navigation, and neither is rendered for other visitors; unmarked SPA routes have no route-level guard. Public page access does not grant permission to mutate its content. All routes remain directly addressable by URL.
 
 ```mermaid
 flowchart TB
@@ -35,6 +35,12 @@ flowchart TB
         Minecraft["/minecraft · Terrain explorer and public waypoints"]
         Geo["/geo-ip-db · IP lookup"]
         EU5["/eu5-locations-db · EU5 Locations DB"]
+    end
+    subgraph Archive["KCNA archive · signed in and superuser"]
+        KcnaSearch["/projects/kcna-archive · Search"]
+        KcnaDocument["/projects/kcna-archive/documents/:documentId · Reader"]
+        KcnaTrends["/projects/kcna-archive/trends · Term trends"]
+        KcnaStatus["/projects/kcna-archive/status · Snapshot status"]
     end
     subgraph Account["Account and identity pages"]
         Login["/login · Sign in"]
@@ -76,6 +82,10 @@ flowchart TB
     FindPassword --> ResetPassword
     Site --> Operations
     Operations --> Authorization & AdminMinecraft
+    Projects --> KcnaSearch
+    Operations --> KcnaSearch
+    KcnaSearch --> KcnaDocument & KcnaTrends & KcnaStatus
+    KcnaTrends --> KcnaStatus
     Site --> Construction & NotFound & CatchAll
     Operations -.-> Swagger
     EU5 -.-> EU5App
@@ -114,7 +124,7 @@ flowchart TD
 
 ## Complete SPA route inventory
 
-Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-spa-template/src/routes.ts). There are 35 route states: 26 public, five signed-in, three superuser, and one unmatched-path fallback. The two About parameter routes accept only the listed page names through `matchFilters`; any other value falls through to the 404 route. The gallery's index child and parent represent the same `/photographs` URL. Source paths below are relative to [src/](../../../solid-csr-spa-template/src/).
+Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-spa-template/src/routes.ts). There are 39 route states: 26 public, five signed-in, seven superuser, and one unmatched-path fallback. The two About parameter routes accept only the listed page names through `matchFilters`; any other value falls through to the 404 route. The gallery's index child and parent represent the same `/photographs` URL. Source paths below are relative to [src/](../../../solid-csr-spa-template/src/).
 
 | URL pattern | Route access | Page source / behavior |
 | --- | --- | --- |
@@ -137,8 +147,12 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/users/:userName` | Public | `pages/user_info.tsx` |
 | `/photographs` | Public | `pages/photographs.tsx` |
 | `/photographs/:photograph_id` | Public | Same mounted gallery; URL-synced detail modal, null child component |
-| `/projects` | Public | `pages/projects.tsx`; demos open in an iframe modal or separately |
+| `/projects` | Public | `pages/projects.tsx`; demos open in an iframe modal or separately; superusers also see a card linking to the KCNA archive |
 | `/minecraft` | Public | `pages/minecraft.tsx`; native Leaflet terrain over continuous Overworld/Nether/End seed-map tiles, bounded overview zoom, Home navigation to 0,0, dynamic kilometre scale, floating tool menus, drag selection, public waypoints, biome/elevation/structure surveys, bounded block search, and administrator-only waypoint editing |
+| `/projects/kcna-archive` | Superuser | `pages/kcna_archive/Search.tsx` inside the section layout `Layout.tsx`; archive search with the whole query in the URL, month histogram, and the reader beside the results on wide screens |
+| `/projects/kcna-archive/documents/:documentId` | Superuser | `pages/kcna_archive/Document.tsx`; one article with translations and the search it came from |
+| `/projects/kcna-archive/trends` | Superuser | `pages/kcna_archive/Trends.tsx`; up to four terms compared over time |
+| `/projects/kcna-archive/status` | Superuser | `pages/kcna_archive/Status.tsx`; snapshot summary and reload |
 | `/geo-ip-db` | Public | `pages/geo_ip_info.tsx` |
 | `/eu5-locations-db` | Public | `pages/eu5_locations_db.tsx`; embedded EU5 app |
 | `/login` | Public | `pages/login.tsx`; password and OIDC entry/return UI |
@@ -163,8 +177,8 @@ Paths are normalized from nested definitions in [routes.ts](../../../solid-csr-s
 | `/eu5-locations-db/app/index.html` | [EU5 host source](../../../vendor/eu5-location-filter/web/index.html), staged by [xtask](../../../tools/xtask/src/eu5_web.rs); availability depends on staged/embedded assets; runs in an opaque-origin CSP sandbox and exchanges only the theme with its parent |
 | `/api/wasm-modules/{wasm_module_id}/wasm` | [Bundle serving](../../../rust-be-template/src/features/wasm/api/serve_bundle.rs); project records provide the link, so demo instances are data-driven rather than fixed SPA routes |
 
-`/admin/operations#retention-notifications`, `#media-cleanup`, `#i18n-sync`, and `#hard-purge` are sections within the operations page. About section fragments such as `/about-blog/performance#transport` and generated `#post-…` heading fragments on blog posts are in-page anchors. The command palette (Ctrl+K or Command+K, the header search button, or the mobile drawer) is a dialog over the current page that navigates to public routes and About subpages; it adds no route. Forum reply fragments, blog search parameters, photograph overlays, project upload/edit dialogs, and call controls are page states, not additional routes. The OIDC callback at `/api/auth/oidc/callback` is a backend protocol endpoint, not a separate frontend page. Local WASM demo host files belong to development/demo artifacts, not extra registered website routes.
+The admin workspace navigation also links to `/projects/kcna-archive`; that section does not use the admin workspace frame. `/admin/operations#retention-notifications`, `#media-cleanup`, `#i18n-sync`, and `#hard-purge` are sections within the operations page. About section fragments such as `/about-blog/performance#transport` and generated `#post-…` heading fragments on blog posts are in-page anchors. The command palette (Ctrl+K or Command+K, the header search button, or the mobile drawer) is a dialog over the current page that navigates to public routes and About subpages; it adds no route. Forum reply fragments, blog search parameters, photograph overlays, project upload/edit dialogs, and call controls are page states, not additional routes. The OIDC callback at `/api/auth/oidc/callback` is a backend protocol endpoint, not a separate frontend page. Local WASM demo host files belong to development/demo artifacts, not extra registered website routes.
 
 ## Maintaining this map
 
-When adding, removing, renaming, or guarding a route, update the diagram and inventory in the same change. Also update embedded surfaces when their mounting or access changes. Keep the public menu structure aligned with [PublicNavigation.tsx](../../../solid-csr-spa-template/src/components/PublicNavigation.tsx), admin links with [admin/navigation.ts](../../../solid-csr-spa-template/src/components/admin/navigation.ts), and access flow with [RequireAuth.tsx](../../../solid-csr-spa-template/src/components/RequireAuth.tsx), [RequireSuperuser.tsx](../../../solid-csr-spa-template/src/components/RequireSuperuser.tsx), and [login.tsx](../../../solid-csr-spa-template/src/pages/login.tsx). Source code is authoritative if this document drifts.
+When adding, removing, renaming, or guarding a route, update the diagram and inventory in the same change. Also update embedded surfaces when their mounting or access changes. Keep the KCNA archive entry points (the card in [ArchiveEntryCard.tsx](../../../solid-csr-spa-template/src/components/kcna_archive/ArchiveEntryCard.tsx) and its link in the admin navigation) aligned with the [archive section design](kcna-archive-browser.md). Keep the public menu structure aligned with [PublicNavigation.tsx](../../../solid-csr-spa-template/src/components/PublicNavigation.tsx), admin links with [admin/navigation.ts](../../../solid-csr-spa-template/src/components/admin/navigation.ts), and access flow with [RequireAuth.tsx](../../../solid-csr-spa-template/src/components/RequireAuth.tsx), [RequireSuperuser.tsx](../../../solid-csr-spa-template/src/components/RequireSuperuser.tsx), and [login.tsx](../../../solid-csr-spa-template/src/pages/login.tsx). Source code is authoritative if this document drifts.

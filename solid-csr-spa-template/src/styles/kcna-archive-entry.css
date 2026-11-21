@@ -1,0 +1,84 @@
+/* The archive's entry on the Projects page, and the badge that marks it as
+   administrator-only wherever it appears. */
+.kcna-badge {
+  display: inline-block;
+  flex: none;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.kcna-entry {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+
+/* Accent sweep along the top edge, as on the project cards. */
+.kcna-entry::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+:root[dir="rtl"] .kcna-entry::before {
+  background: linear-gradient(to left, var(--accent), transparent);
+  transform-origin: right;
+}
+
+.kcna-entry:hover,
+.kcna-entry:focus-visible {
+  border-color: var(--line-strong);
+}
+
+.kcna-entry:hover::before,
+.kcna-entry:focus-visible::before {
+  transform: scaleX(1);
+}
+
+:root[data-motion="off"] .kcna-entry::before {
+  transition: none;
+}
+
+.kcna-entry-text {
+  display: grid;
+  flex: 1 1 16rem;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.kcna-entry-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.kcna-entry-description {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

@@ -764,7 +764,7 @@
   "kcna.results.export": "تصدير",
   "kcna.histogram.label": "عدد الوثائق في كل شهر. اسحب لتحديد نطاق.",
   "kcna.jump.label": "الانتقال إلى تاريخ",
-  "kcna.jump.placeholder": "2026 أو 2026-11 أو 2026-11-21",
+  "kcna.jump.placeholder": "2026 · 2026-11 · 2026-11-21",
   "kcna.jump.submit": "انتقال",
   "kcna.reader.label": "الوثيقة",
   "kcna.reader.empty": "اختر نتيجة لقراءتها.",

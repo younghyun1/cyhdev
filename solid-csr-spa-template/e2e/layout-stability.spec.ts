@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { installApiMocks, type AuthMode } from "./fixtures";
+import { KCNA_DOCUMENT_ID } from "./kcna-fixtures";
 import { UI_LOCALES } from "../src/i18n/locales";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -48,6 +49,11 @@ const ROUTES: ReadonlyArray<readonly [string, AuthMode]> = [
   ["/verify-email", "logged-out"],
   ["/users/Example", "logged-out"],
   ["/admin/minecraft", "superuser"],
+  ["/projects/kcna-archive", "superuser"],
+  [`/projects/kcna-archive?q=bridge&doc=${KCNA_DOCUMENT_ID}&with=eng`, "superuser"],
+  [`/projects/kcna-archive/documents/${KCNA_DOCUMENT_ID}?q=bridge&with=eng`, "superuser"],
+  ["/projects/kcna-archive/trends?terms=bridge,economy,port,school", "superuser"],
+  ["/projects/kcna-archive/status", "superuser"],
 ];
 
 /** Controls that exist only after a click, measured with the overlay open. */
@@ -167,7 +173,7 @@ for (const width of WIDTHS) {
   for (const [route, mode] of ROUTES) {
     test(`${route} (${mode}) keeps control sizes in every language at ${width}px`, async ({ page }) => {
       test.setTimeout(30_000 + LOCALES.length * 3_000);
-      await sweep(page, route.replaceAll("/", "_") || "_", route, mode, width);
+      await sweep(page, route.replaceAll("/", "_").replace(/[?&=,]/g, "-") || "_", route, mode, width);
     });
   }
 }

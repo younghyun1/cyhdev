@@ -1,4 +1,5 @@
 import type { UiTextKey } from "../../i18n/keys";
+import { ARCHIVE_PATH } from "../../utils/kcna_archive/routes";
 
 export const ADMIN_DEFAULT_HREF = "/admin/operations";
 
@@ -50,6 +51,11 @@ export const ADMIN_WORKSPACE_LINKS = [
   {
     href: "/admin/minecraft",
     labelKey: "minecraft.admin_title",
+    depth: 0,
+  },
+  {
+    href: ARCHIVE_PATH,
+    labelKey: "kcna.title",
     depth: 0,
   },
   {

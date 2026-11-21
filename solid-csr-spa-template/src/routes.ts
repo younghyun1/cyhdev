@@ -122,6 +122,33 @@ export const routes = defineRoutes([
     path: "/minecraft",
     component: lazy(() => import("./pages/minecraft")),
   },
+  // The KCNA archive section is for superusers only. Each page renders the
+  // shared section layout (title and tabs) itself, so every route carries both
+  // guards and none is reachable without them.
+  {
+    path: "/projects/kcna-archive",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/kcna_archive/Search"))),
+    ),
+  },
+  {
+    path: "/projects/kcna-archive/documents/:documentId",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/kcna_archive/Document"))),
+    ),
+  },
+  {
+    path: "/projects/kcna-archive/trends",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/kcna_archive/Trends"))),
+    ),
+  },
+  {
+    path: "/projects/kcna-archive/status",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/kcna_archive/Status"))),
+    ),
+  },
   {
     path: "/geo-ip-db",
     component: lazy(() => import("./pages/geo_ip_info")),

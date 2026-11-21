@@ -35,12 +35,26 @@ describe("application routes", () => {
     ["/admin/authorization", "/admin/authorization"],
     ["/admin/operations", "/admin/operations"],
     ["/admin/minecraft", "/admin/minecraft"],
+    ["/projects", "/projects"],
+    ["/projects/kcna-archive", "/projects/kcna-archive"],
+    ["/projects/kcna-archive/documents/0198f4d0-aaaa-7000-8000-000000000001", "/projects/kcna-archive/documents/:documentId"],
+    ["/projects/kcna-archive/trends", "/projects/kcna-archive/trends"],
+    ["/projects/kcna-archive/status", "/projects/kcna-archive/status"],
   ])("matches %s with the expected route", (url, pattern) => {
     expect(Router.match(url).at(-1)?.pattern).toBe(pattern);
   });
 
   it("uses the named wildcard route for unknown URLs", () => {
     expect(Router.match("/missing/page").at(-1)?.pattern).toBe("/*404");
+  });
+
+  it.each([
+    "/projects/kcna-archive/unknown",
+    "/projects/kcna-archive/documents",
+    "/projects/kcna-archive/trends/extra",
+    "/projects/other",
+  ])("sends the unknown archive path %s to the site 404", (url) => {
+    expect(Router.match(url).at(-1)?.pattern).toBe("/*404");
   });
 
   it.each(["/about/finances", "/about-blog/secrets", "/about/experience/extra"])(

@@ -764,7 +764,7 @@
   "kcna.results.export": "برون‌بری",
   "kcna.histogram.label": "سندها در هر ماه. برای انتخاب بازه بکشید.",
   "kcna.jump.label": "رفتن به تاریخ",
-  "kcna.jump.placeholder": "2026، 2026-11 یا 2026-11-21",
+  "kcna.jump.placeholder": "2026 · 2026-11 · 2026-11-21",
   "kcna.jump.submit": "برو",
   "kcna.reader.label": "سند",
   "kcna.reader.empty": "برای خواندن، یک نتیجه را انتخاب کنید.",

@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { kcnaArchiveBody } from "./kcna-fixtures";
 
 export type AuthMode = "logged-out" | "authenticated" | "superuser";
 
@@ -354,6 +355,8 @@ export async function installApiMocks(
           },
         ],
       });
+    } else if (kcnaArchiveBody(url) !== undefined) {
+      body = kcnaArchiveBody(url);
     } else {
       body = api({});
     }

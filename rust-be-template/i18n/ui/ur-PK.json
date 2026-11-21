@@ -764,7 +764,7 @@
   "kcna.results.export": "برآمد",
   "kcna.histogram.label": "ماہانہ دستاویزات۔ حد منتخب کرنے کے لیے گھسیٹیں۔",
   "kcna.jump.label": "تاریخ پر جائیں",
-  "kcna.jump.placeholder": "2026، 2026-11 یا 2026-11-21",
+  "kcna.jump.placeholder": "2026 · 2026-11 · 2026-11-21",
   "kcna.jump.submit": "جائیں",
   "kcna.reader.label": "دستاویز",
   "kcna.reader.empty": "پڑھنے کے لیے کوئی نتیجہ منتخب کریں۔",

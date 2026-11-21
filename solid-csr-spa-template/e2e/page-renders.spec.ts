@@ -11,7 +11,7 @@ const routes = [...map.matchAll(/^\| `([^`]+)` \| (Public|Signed in|Superuser|Fa
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
   for (const theme of ["light", "dark"] as const) {
     for (const pattern of routes) {
-      const path = pattern.replace(/:post_id|:topic_id|:photograph_id/g, id)
+      const path = pattern.replace(/:post_id|:topic_id|:photograph_id|:documentId/g, id)
         .replace(":userName", "mobile-superuser").replace("*404", "/missing-page-fixture");
       const name = pattern === "*404" ? "unmatched-route" : pattern.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "home";
       test(`render ${name} ${viewport.width} ${theme}`, async ({ page }, testInfo) => {

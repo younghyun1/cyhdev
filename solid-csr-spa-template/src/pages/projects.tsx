@@ -16,6 +16,7 @@ import {
 import { pageStyles } from "../styles/pageStyles";
 import { t, tx } from "../state/i18n";
 import { MobileDialog } from "../components/MobileDialog";
+import ArchiveEntryCard from "../components/kcna_archive/ArchiveEntryCard";
 import "../styles/projects.css";
 
 /**
@@ -255,6 +256,9 @@ export default function Projects() {
         <p class={pageStyles.muted}>
           {t("projects.subtitle")}
         </p>
+
+        {/* Superusers only; renders nothing for everyone else. */}
+        <ArchiveEntryCard />
 
         <Show when={isSuperuser()}>
           <section class="admin-panel">
