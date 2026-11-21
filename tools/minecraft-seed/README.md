@@ -1,6 +1,6 @@
 # Minecraft biome sampler
 
-This Rust library samples Java 26.3 Overworld, Nether and End biomes using Pumpkin revision `4426d1113a211e6018a2db416e33b6b8a7802614`. It initializes only biome noise state. It does not start a Minecraft server, read world files, or generate chunks. Default and large-biomes Overworlds use their respective noise routers; matching the configured dimension and preset is required.
+This Rust library samples Java 26.3 Overworld, Nether and End biomes using Pumpkin revision `d0c0a5d73d3757258f7afb2ca240279d52653862`. It initializes only biome noise state. It does not start a Minecraft server, read world files, or generate chunks. Default and large-biomes Overworlds use their respective noise routers; matching the configured dimension and preset is required.
 
 The continuous map calls `Predictor::new()` once in the web backend and awaits `predict(request)` on its clonable handle. One dedicated CPU worker retains the seeded router and borrowing sampler across requests, rebuilding when seed, dimension, preset or surface/slice mode changes. Its private single-thread Rayon pool prevents per-core density-buffer pools from multiplying retained memory. Eight queued jobs are permitted; excess admission returns `Error::Busy`. Dropping an awaiting future cancels queued work and active sampling checks cancellation between rows. All handles dropping closes the worker. The standalone executable remains available for compatibility with the old bounded prediction endpoint and offline fixtures.
 
@@ -15,7 +15,7 @@ Send one JSON object followed by a newline to stdin, then close stdin. The seed 
 ```
 
 ```json
-{"generator_revision":"pumpkin-4426d1113a211e6018a2db416e33b6b8a7802614-java26.3-surface1","large_biomes":false,"cells":[{"x":176,"z":148,"biome":"minecraft:stony_shore"}]}
+{"generator_revision":"pumpkin-d0c0a5d73d3757258f7afb2ca240279d52653862-java26.3-surface1","large_biomes":false,"cells":[{"x":176,"z":148,"biome":"minecraft:stony_shore"}]}
 ```
 
 Requests are at most 4096 bytes including their newline. `seed` is a signed 64-bit integer. Optional `dimension` is `overworld` (the default), `nether`, or `end`; the Rust API exports `Dimension::{Overworld, Nether, End}`. Large biomes are rejected outside the Overworld. Width and height are positive and their product is at most 4096. Step is positive, all sample X/Z coordinates are within ±30,000,000, and numeric Y is within -64 through 319 in the Overworld or 0 through 255 elsewhere. The Rust field is `Option<i32>`: omitted or null Y selects Overworld surface projection, while numeric Y selects a fixed-height slice, including numeric zero. Nether and End require numeric Y. Coordinates and step are in blocks, rounded to containing quart coordinates toward negative infinity. Cells are ordered by Z row, then X column. Existing numeric-Y requests retain their fixed-slice behavior and response shape.

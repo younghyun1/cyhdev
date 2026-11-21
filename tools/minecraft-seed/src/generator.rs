@@ -22,8 +22,12 @@ use crate::{
 
 /// Exact source and generated-data revision used by this executable.
 pub const GENERATOR_REVISION: &str =
-    "pumpkin-4426d1113a211e6018a2db416e33b6b8a7802614-java26.3-surface1";
+    "pumpkin-d0c0a5d73d3757258f7afb2ca240279d52653862-java26.3-surface1";
 
+#[expect(
+    clippy::large_enum_variant,
+    reason = "each worker holds one long-lived sampler; boxing would add an indirection to every biome lookup"
+)]
 pub(crate) enum Sampler<'a> {
     MultiNoise(MultiNoiseSampler<'a>),
     End(EndSampler),

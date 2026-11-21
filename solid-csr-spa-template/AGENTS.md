@@ -1,6 +1,6 @@
 # Frontend
 
-The application uses Solid 2 prereleases, not Solid 1 or React semantics. `package.json` and `package-lock.json` are authoritative for versions; the migration document contains older pins. Preserve the coordinated exact Solid, web, router, and compiler pins unless dependency work is explicitly scoped. Use normal npm peer resolution; the current dependency graph supports its prerelease peers directly.
+The application uses stable Solid 2, not Solid 1 or React semantics. `package.json` and `package-lock.json` are authoritative for versions. Preserve the coordinated exact Solid, web, router, Vite plugin, and primitives pins unless dependency work is explicitly scoped. Use normal npm peer resolution; do not force peers. `@solidjs/testing-library` has no stable Solid 2 release yet and stays on its release candidate, and `@testing-library/jest-dom` stays on 7.x because `@solidjs/vite-plugin` 3.0.1 declares a peer range ending at 7.
 
 ## Entry points and conventions
 
