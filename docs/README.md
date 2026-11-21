@@ -23,6 +23,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Deployment capacity estimates and compression notes for future optimization](plans/2026-11-03-deployment-capacity-notes.md)
 - [November 4 language expansion: sixteen languages, right-to-left, stable control sizes](plans/2026-11-04-language-expansion.md)
 - [November 4 interface pass: home board, forum, animation switch, page styling](plans/2026-11-04-interface-pass.md)
+- [November 21 dependency upgrade: stable Solid 2 and current Rust crates](plans/2026-11-21-dependency-upgrade.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.

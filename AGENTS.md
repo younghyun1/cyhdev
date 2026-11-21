@@ -27,7 +27,7 @@ Paths in the entry-point column are relative to the named package where abbrevia
 
 ## Commands and verification
 
-Run these from the repository root. `Cargo.lock`, `rust-toolchain.toml`, `solid-csr-spa-template/package.json`, and its `package-lock.json` define actual versions. Rust uses rolling nightly; the frontend deliberately uses exact Solid 2 prerelease pins. Do not replace these with generic stable-stack defaults or upgrade dependencies as an incidental fix.
+Run these from the repository root. `Cargo.lock`, `rust-toolchain.toml`, `solid-csr-spa-template/package.json`, and its `package-lock.json` define actual versions. Rust uses rolling nightly; the frontend pins the Solid 2 family (`solid-js`, `@solidjs/web`, router, Vite plugin, primitives) to exact stable versions. Do not replace these with generic stable-stack defaults or upgrade dependencies as an incidental fix.
 
 | Need | Command / prerequisite |
 | --- | --- |
