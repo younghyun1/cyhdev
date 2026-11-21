@@ -32,7 +32,7 @@ fn synchronize_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let repository = Arc::new(I18nRepository::new(pool.clone()));
         let service = I18nService::new(Arc::clone(&repository));
         let sources = source_bundles()?;
-        require(sources.len() == 8, "expected eight embedded locale sources")?;
+        require(sources.len() == 24, "expected 24 embedded locale sources")?;
         let expected_rows = sources.len() * REQUIRED_UI_TEXT_KEYS.len();
         require(
             service.synchronize_file_sources().await?
