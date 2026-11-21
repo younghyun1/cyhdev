@@ -26,10 +26,11 @@ use super::{
 use crate::features::kcna_archive::error::{ArchiveError, UnavailableReason};
 
 /// Archive queries that may run on the blocking pool at once. Each one is
-/// CPU-bound for tens of milliseconds, so four keep several administrators
-/// responsive while one person's burst of searches cannot occupy the whole
-/// blocking pool shared with image processing and password hashing.
-pub const MAX_CONCURRENT_QUERIES: usize = 4;
+/// CPU-bound for a few milliseconds, so this is well above what the listed
+/// readers produce and they do not queue behind one another. It still bounds
+/// a runaway burst, which would otherwise take every thread of the blocking
+/// pool shared with image processing and password hashing.
+pub const MAX_CONCURRENT_QUERIES: usize = 64;
 
 /// Reads a snapshot directory into memory. Production uses
 /// `Archive::load_into_memory`; tests substitute a gated loader.
