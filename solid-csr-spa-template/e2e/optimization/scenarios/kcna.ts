@@ -80,8 +80,16 @@ export async function kcna(name: string, scene: Scene): Promise<void> {
   const exportPath = `${BASE}/export?q=lantern&sort=oldest`;
   await call(scene, "GET", `${BASE}/export`, undefined,
     { path: `${exportPath}&format=csv`, json_pointer: undefined, minimum_bytes: 200, content_type: "text/csv" });
-  await call(scene, "GET", `${BASE}/export`, undefined,
-    { path: `${exportPath}&format=jsonl`, json_pointer: undefined, minimum_bytes: 200, content_type: "application/x-ndjson" });
+  // JSON Lines is one object per line, which the request step would try to parse as a single document.
+  const lines = await scene.context.request.get(`${scene.campaign.base_url}${exportPath}&format=jsonl`,
+    { headers: { Origin: new URL(scene.campaign.base_url).origin } });
+  try {
+    expect(lines.status()).toBe(200);
+    expect(lines.headers()["content-type"]).toContain("application/x-ndjson");
+    const rows = (await lines.text()).trimEnd().split("\n").map((line): unknown => JSON.parse(line));
+    expect(rows).toHaveLength(lantern);
+    expect(pointer(rows[0], "/id")).toBe(scene.variables.kcna_document_id);
+  } finally { await lines.dispose(); }
   const download = await scene.context.request.get(`${scene.campaign.base_url}${exportPath}`,
     { headers: { Origin: new URL(scene.campaign.base_url).origin } });
   try {

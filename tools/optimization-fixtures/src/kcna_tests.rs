@@ -24,10 +24,22 @@ fn query(text: &str) -> QueryParams {
     }
 }
 
+/// Counts are written as strings, the only parameter type the campaign admits.
 fn number(parameters: &Value, name: &str) -> anyhow::Result<u64> {
-    parameters[name]
-        .as_u64()
-        .ok_or_else(|| anyhow::anyhow!("missing parameter {name}"))
+    let Some(text) = parameters[name].as_str() else {
+        anyhow::bail!("parameter {name} is missing or not a string");
+    };
+    Ok(text.parse::<u64>()?)
+}
+
+/// The campaign driver rejects a campaign whose parameters are not all strings.
+#[test]
+fn every_parameter_is_a_string() {
+    assert!(
+        parameters()
+            .as_object()
+            .is_some_and(|object| !object.is_empty() && object.values().all(Value::is_string))
+    );
 }
 
 #[test]

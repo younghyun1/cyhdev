@@ -15,7 +15,7 @@ const campaign = readJson<Campaign>(required("CYHDEV_OPT_CAMPAIGN"));
 validate(campaign);
 const diagnostic = process.env.CYHDEV_OPT_DIAGNOSTIC;
 const group=process.env.CYHDEV_OPT_DIAGNOSTIC_GROUP;
-const groups:Record<string,string[]>={content:["blog.","forum."],media:["photographs.","wasm."],protocols:["host.","chat.","rtc."],minecraft:["minecraft."],browser:["browser."],system:["authorization.","geo.","reference.","i18n.","operations."]};
+const groups:Record<string,string[]>={content:["blog.","forum."],media:["photographs.","wasm."],protocols:["host.","chat.","rtc."],minecraft:["minecraft."],browser:["browser."],system:["authorization.","geo.","reference.","i18n.","operations."],kcna:["kcna."]};
 if(group && (diagnostic!=="workflows" || !groups[group])) throw new Error("Diagnostic groups require development workflow mode");
 if (diagnostic && (process.env.CYHDEV_OPT_STAGE !== "development" || !["pages", "workflows"].includes(diagnostic)))
   throw new Error("Partial diagnostics are restricted to the development stage and cannot produce accepted coverage");

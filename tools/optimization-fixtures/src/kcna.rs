@@ -59,7 +59,8 @@ fn mentions(entry: &Entry, word: &str) -> bool {
 }
 
 /// Values the scenario asserts, derived from the corpus so they cannot drift
-/// from it. The English counts use the analyzer's lowercase words; the Korean
+/// from it. Every value is a string: the campaign driver admits only string
+/// parameters, and the scenario parses the counts back. The English counts use the analyzer's lowercase words; the Korean
 /// count is a substring match, as the analyzer indexes Hangul as bigrams.
 pub fn parameters() -> Value {
     let count = |word: &str| ENTRIES.iter().filter(|entry| mentions(entry, word)).count();
@@ -68,14 +69,15 @@ pub fn parameters() -> Value {
     json!({
         "documentId": document_id().to_string(),
         "kcna_translation_id": Uuid::from_u128(ID_BASE + KOREAN_EDITION).to_string(),
-        "kcna_indexed": ENTRIES.len(),
-        "kcna_lantern_total": count("lantern"),
+        "kcna_indexed": ENTRIES.len().to_string(),
+        "kcna_lantern_total": count("lantern").to_string(),
         "kcna_korean_lantern_total": ENTRIES
             .iter()
             .filter(|entry| entry.language == Language::Korean
                 && (entry.title.contains("등불") || entry.body.contains("등불")))
-            .count(),
-        "kcna_years": years.len(),
+            .count()
+            .to_string(),
+        "kcna_years": years.len().to_string(),
     })
 }
 
