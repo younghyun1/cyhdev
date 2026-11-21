@@ -44,6 +44,18 @@ pub enum ArchiveError {
     /// An index or task failure; the cause is logged where it happened.
     #[error("archive query failed internally")]
     Internal,
+    /// The account is neither a superuser nor on the reader list.
+    #[error("the archive is not open to this account")]
+    Denied,
+    /// The reader list could not be read or changed; logged at the store.
+    #[error("the archive reader list could not be read or changed")]
+    Store,
+    /// The account to list does not exist or is no longer active.
+    #[error("no active account to add to the archive reader list")]
+    ReaderNotFound,
+    /// The reader list already holds as many accounts as it may.
+    #[error("the archive reader list is full")]
+    ReaderLimit,
 }
 
 impl ArchiveError {
@@ -71,6 +83,10 @@ mod tests {
             ArchiveError::Unavailable(UnavailableReason::Failed),
             ArchiveError::ReloadFailed,
             ArchiveError::Internal,
+            ArchiveError::Denied,
+            ArchiveError::Store,
+            ArchiveError::ReaderNotFound,
+            ArchiveError::ReaderLimit,
         ] {
             assert!(!error.is_retryable(), "{error}");
         }

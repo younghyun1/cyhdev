@@ -26,7 +26,7 @@ describe("archive service wrapper", () => {
     const fetchMock = stubFetch({ total: 0 });
     await kcnaArchiveApi.search(EMPTY_QUERY, 0);
     const url = requested(fetchMock);
-    expect(url.pathname).toBe("/api/admin/kcna-archive/search");
+    expect(url.pathname).toBe("/api/kcna-archive/search");
     expect(url.search).toBe("?limit=50");
   });
 
@@ -62,14 +62,14 @@ describe("archive service wrapper", () => {
     const fetchMock = stubFetch({ bucket: "month", buckets: [] });
     await kcnaArchiveApi.histogram({ ...EMPTY_QUERY, text: "peace" }, "month");
     const url = requested(fetchMock);
-    expect(url.pathname).toBe("/api/admin/kcna-archive/histogram");
+    expect(url.pathname).toBe("/api/kcna-archive/histogram");
     expect(url.search).toBe("?q=peace&bucket=month");
   });
 
   it("encodes the document id and passes the highlight text only when there is one", async () => {
     const plain = stubFetch({ id: "x" });
     await kcnaArchiveApi.document("a/b", "");
-    expect(requested(plain).pathname).toBe("/api/admin/kcna-archive/documents/a%2Fb");
+    expect(requested(plain).pathname).toBe("/api/kcna-archive/documents/a%2Fb");
     expect(requested(plain).search).toBe("");
 
     const marked = stubFetch({ id: "x" });
@@ -110,12 +110,45 @@ describe("archive service wrapper", () => {
   });
 });
 
+describe("archive access endpoints", () => {
+  const list = { readers: [], limit: 500 };
+
+  it("asks the reader endpoint about the visitor and the admin endpoint for the list", async () => {
+    const own = stubFetch({ canRead: true, adminOnly: false });
+    expect(await kcnaArchiveApi.access()).toEqual({ canRead: true, adminOnly: false });
+    expect(requested(own).pathname).toBe("/api/kcna-archive/access");
+
+    const readers = stubFetch(list);
+    expect(await kcnaArchiveApi.readers()).toEqual(list);
+    expect(requested(readers).pathname).toBe("/api/admin/kcna-archive/readers");
+  });
+
+  it("allows an account with a POST that carries only its identifier", async () => {
+    const fetchMock = stubFetch(list);
+    await kcnaArchiveApi.grantReader("0198f4d0-aaaa-7000-8000-000000000001");
+    const [input, init] = fetchMock.mock.calls[0] ?? [];
+    expect(new URL(String(input), "http://localhost").pathname).toBe("/api/admin/kcna-archive/readers");
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ userId: "0198f4d0-aaaa-7000-8000-000000000001" });
+  });
+
+  it("removes an account with a DELETE on its own path", async () => {
+    const fetchMock = stubFetch(list);
+    await kcnaArchiveApi.revokeReader("0198f4d0-aaaa-7000-8000-000000000001");
+    const [input, init] = fetchMock.mock.calls[0] ?? [];
+    expect(new URL(String(input), "http://localhost").pathname).toBe(
+      "/api/admin/kcna-archive/readers/0198f4d0-aaaa-7000-8000-000000000001",
+    );
+    expect(init?.method).toBe("DELETE");
+  });
+});
+
 describe("export links", () => {
   it("point at the export endpoint with the current query and the format", () => {
     const href = exportHref({ ...EMPTY_QUERY, text: "평화", languages: ["kor"] }, "jsonl");
     const url = new URL(href, "http://localhost");
-    expect(url.pathname).toBe("/api/admin/kcna-archive/export");
+    expect(url.pathname).toBe("/api/kcna-archive/export");
     expect(Object.fromEntries(url.searchParams)).toEqual({ q: "평화", lang: "kor", format: "jsonl" });
-    expect(exportHref(EMPTY_QUERY, "csv")).toBe("/api/admin/kcna-archive/export?format=csv");
+    expect(exportHref(EMPTY_QUERY, "csv")).toBe("/api/kcna-archive/export?format=csv");
   });
 });

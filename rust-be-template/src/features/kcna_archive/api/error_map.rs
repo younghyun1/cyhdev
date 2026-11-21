@@ -19,6 +19,10 @@ pub(super) fn map_archive_error(error: ArchiveError) -> CodeErrorResp {
         ArchiveError::Busy => CodeError::KCNA_ARCHIVE_RELOAD_BUSY,
         ArchiveError::ReloadFailed => CodeError::KCNA_ARCHIVE_RELOAD_FAILED,
         ArchiveError::Internal => CodeError::KCNA_ARCHIVE_INTERNAL,
+        ArchiveError::Denied => CodeError::KCNA_ARCHIVE_ACCESS_DENIED,
+        ArchiveError::Store => CodeError::KCNA_ARCHIVE_ACCESS_STORE_FAILED,
+        ArchiveError::ReaderNotFound => CodeError::KCNA_ARCHIVE_READER_NOT_FOUND,
+        ArchiveError::ReaderLimit => CodeError::KCNA_ARCHIVE_READER_LIMIT,
     };
     let response = code_err(code, &error);
     if error.is_retryable() {
@@ -64,6 +68,10 @@ mod tests {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 118,
             ),
+            (ArchiveError::Denied, StatusCode::FORBIDDEN, 119),
+            (ArchiveError::Store, StatusCode::INTERNAL_SERVER_ERROR, 120),
+            (ArchiveError::ReaderNotFound, StatusCode::NOT_FOUND, 121),
+            (ArchiveError::ReaderLimit, StatusCode::CONFLICT, 122),
         ];
         for (error, status, code) in expected {
             let label = error.to_string();

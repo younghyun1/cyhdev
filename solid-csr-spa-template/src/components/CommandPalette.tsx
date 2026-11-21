@@ -8,7 +8,7 @@ import { motionEnabled, toggleMotion } from "../state/motion";
 import { theme, toggleThemeFrom } from "../state/theme";
 import { rankByQuery } from "../utils/fuzzyMatch";
 import { MobileDialog } from "./MobileDialog";
-import { NAV_LINKS } from "./PublicNavigation";
+import { ARCHIVE_NAV_LINK, NAV_LINKS } from "./PublicNavigation";
 import "../styles/command-palette.css";
 
 type Group = "pages" | "sections" | "actions";
@@ -69,7 +69,9 @@ export default function CommandPalette(props: { onClose: () => void }): JSX.Elem
   };
 
   const entries = createMemo((): PaletteEntry[] => {
-    const pages = NAV_LINKS.map(
+    // The archive is listed only for a visitor who may open it.
+    const reachable = ARCHIVE_NAV_LINK.visible() ? [...NAV_LINKS, ARCHIVE_NAV_LINK] : NAV_LINKS;
+    const pages = reachable.map(
       (link): PaletteEntry => ({
         id: `page:${link.href}`,
         group: "pages",

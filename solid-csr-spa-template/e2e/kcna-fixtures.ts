@@ -189,19 +189,45 @@ const statusResponse = () => ({
 
 const envelope = (data: unknown) => ({ success: true, data, meta: { time_to_process: "1ms" } });
 
+export interface ArchiveReaderFixture {
+  readonly userId: string;
+  readonly userName: string;
+  readonly userEmail: string;
+  readonly grantedAt: string;
+}
+
+/** An account on the reader list, as the administration endpoints give it. */
+export const archiveReader = (userId: string, userName: string): ArchiveReaderFixture => ({
+  userId,
+  userName,
+  userEmail: `${userName.toLowerCase()}@example.test`,
+  grantedAt: NOW,
+});
+
+/** The answer to "may this visitor read the archive", as the access endpoint gives it. */
+export const archiveAccessBody = (canRead: boolean, adminOnly: boolean): unknown =>
+  envelope({ canRead, adminOnly });
+
+/** The reader list, as the administration endpoints give it. */
+export const archiveReadersBody = (readers: ReadonlyArray<ArchiveReaderFixture>): unknown =>
+  envelope({ readers, limit: 500 });
+
 /**
  * The JSON body for an archive endpoint, or `undefined` when the path is not
- * one. Tests override single endpoints with their own routes for error states.
+ * one. Nobody is listed here, as on a new installation, so only a superuser
+ * reads; tests override single endpoints with their own routes for other states.
  */
-export function kcnaArchiveBody(url: URL): unknown {
+export function kcnaArchiveBody(url: URL, superuser: boolean): unknown {
   const path = url.pathname;
-  if (path === "/api/admin/kcna-archive/search") return envelope(searchResponse(url));
-  if (path === "/api/admin/kcna-archive/histogram") return envelope(histogramResponse());
-  if (path === "/api/admin/kcna-archive/trends") return envelope(trendsResponse(url));
+  if (path === "/api/kcna-archive/access") return archiveAccessBody(superuser, superuser);
+  if (path.startsWith("/api/admin/kcna-archive/readers")) return archiveReadersBody([]);
+  if (path === "/api/kcna-archive/search") return envelope(searchResponse(url));
+  if (path === "/api/kcna-archive/histogram") return envelope(histogramResponse());
+  if (path === "/api/kcna-archive/trends") return envelope(trendsResponse(url));
   if (path === "/api/admin/kcna-archive/status" || path === "/api/admin/kcna-archive/reload") {
     return envelope(statusResponse());
   }
-  const document = /^\/api\/admin\/kcna-archive\/documents\/([^/]+)$/.exec(path);
+  const document = /^\/api\/kcna-archive\/documents\/([^/]+)$/.exec(path);
   if (document?.[1] !== undefined) {
     return envelope(documentResponse(decodeURIComponent(document[1]), url.searchParams.get("q") ?? ""));
   }

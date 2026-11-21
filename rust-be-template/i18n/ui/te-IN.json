@@ -829,5 +829,16 @@
   "kcna.precision.second": "సెకను",
   "kcna.precision.minute": "నిమిషం",
   "kcna.precision.day": "రోజు",
-  "kcna.precision.inferred_day": "రోజు (URL నుండి అంచనా)"
+  "kcna.precision.inferred_day": "రోజు (URL నుండి అంచనా)",
+  "kcna.disclaimer": "ఈ వెబ్‌సైట్ నిర్వాహకుడు రిపబ్లిక్ ఆఫ్ కొరియా సైన్యంలో రిజర్వ్ సైనికుడు; ప్యోంగ్యాంగ్‌లోని అక్రమమైన, హంతక, అసమర్థ ఫాసిస్ట్ రాచరికాన్ని నిర్ద్వంద్వంగా ఖండిస్తున్నారు.",
+  "kcna.access.title": "KCNA ఆర్కైవ్ యాక్సెస్",
+  "kcna.access.description": "అడ్మిన్‌లు KCNA ఆర్కైవ్‌ను ఎప్పుడైనా చదవగలరు. ఇతర సభ్యులు ఈ జాబితాలో ఉన్నంత వరకు మాత్రమే చదవగలరు.",
+  "kcna.access.find": "పేరు లేదా ఇమెయిల్‌తో సభ్యుడిని వెతకండి",
+  "kcna.access.allow": "అనుమతించు",
+  "kcna.access.remove": "తీసివేయి",
+  "kcna.access.readers": "అనుమతించిన సభ్యులు",
+  "kcna.access.empty": "జాబితాలో ఎవరూ లేరు. అడ్మిన్‌లు మాత్రమే ఆర్కైవ్‌ను చదవగలరు.",
+  "kcna.access.no_match": "సరిపోలే సభ్యులు లేరు.",
+  "kcna.access.saved": "యాక్సెస్ జాబితా అప్‌డేట్ అయింది.",
+  "kcna.access.failed": "యాక్సెస్ జాబితాను మార్చలేకపోయాం."
 }

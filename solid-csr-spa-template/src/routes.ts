@@ -4,6 +4,7 @@ import { defineRoutes } from "@solidjs/router";
 import Home from "./pages/home";
 import { withAuth } from "./components/RequireAuth";
 import { withSuperuser } from "./components/RequireSuperuser";
+import { withArchiveAccess } from "./components/kcna_archive/RequireArchiveAccess";
 
 export const routes = defineRoutes([
   {
@@ -122,31 +123,32 @@ export const routes = defineRoutes([
     path: "/minecraft",
     component: lazy(() => import("./pages/minecraft")),
   },
-  // The KCNA archive section is for superusers only. Each page renders the
-  // shared section layout (title and tabs) itself, so every route carries both
-  // guards and none is reachable without them.
+  // The KCNA archive is open to whoever its audience admits; its status page
+  // is for superusers. Each page renders the shared section layout itself, so
+  // every route carries the guard, which shows Not Found instead of sign-in.
   {
     path: "/projects/kcna-archive",
-    component: withAuth(
-      withSuperuser(lazy(() => import("./pages/kcna_archive/Search"))),
+    component: withArchiveAccess(
+      lazy(() => import("./pages/kcna_archive/Search")),
     ),
   },
   {
     path: "/projects/kcna-archive/documents/:documentId",
-    component: withAuth(
-      withSuperuser(lazy(() => import("./pages/kcna_archive/Document"))),
+    component: withArchiveAccess(
+      lazy(() => import("./pages/kcna_archive/Document")),
     ),
   },
   {
     path: "/projects/kcna-archive/trends",
-    component: withAuth(
-      withSuperuser(lazy(() => import("./pages/kcna_archive/Trends"))),
+    component: withArchiveAccess(
+      lazy(() => import("./pages/kcna_archive/Trends")),
     ),
   },
   {
     path: "/projects/kcna-archive/status",
-    component: withAuth(
-      withSuperuser(lazy(() => import("./pages/kcna_archive/Status"))),
+    component: withArchiveAccess(
+      lazy(() => import("./pages/kcna_archive/Status")),
+      "manage",
     ),
   },
   {
@@ -177,6 +179,12 @@ export const routes = defineRoutes([
     path: "/admin/minecraft",
     component: withAuth(
       withSuperuser(lazy(() => import("./pages/admin_minecraft"))),
+    ),
+  },
+  {
+    path: "/admin/kcna-archive",
+    component: withAuth(
+      withSuperuser(lazy(() => import("./pages/admin_kcna_archive"))),
     ),
   },
   {

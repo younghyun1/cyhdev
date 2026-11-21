@@ -829,5 +829,16 @@
   "kcna.precision.second": "秒",
   "kcna.precision.minute": "分",
   "kcna.precision.day": "日",
-  "kcna.precision.inferred_day": "日（由 URL 推斷）"
+  "kcna.precision.inferred_day": "日（由 URL 推斷）",
+  "kcna.disclaimer": "本網站的維護者是大韓民國陸軍後備軍人，並堅決譴責平壤那個非法、嗜殺且無能的法西斯王朝。",
+  "kcna.access.title": "KCNA 檔案庫存取權限",
+  "kcna.access.description": "管理員一律可以閱讀 KCNA 檔案庫。其他成員只有在此名單中時才能閱讀。",
+  "kcna.access.find": "依名稱或電子郵件尋找成員",
+  "kcna.access.allow": "允許",
+  "kcna.access.remove": "移除",
+  "kcna.access.readers": "已允許的成員",
+  "kcna.access.empty": "名單是空的。只有管理員可以閱讀檔案庫。",
+  "kcna.access.no_match": "沒有符合的成員。",
+  "kcna.access.saved": "存取名單已更新。",
+  "kcna.access.failed": "無法變更存取名單。"
 }

@@ -17,9 +17,11 @@ import { applyLocale, loadUiTextBundle, locale, t } from "./state/i18n";
 import { LiveChatSocketProvider } from "./state/live_chat_socket";
 import { RtcProvider } from "./state/rtc";
 import { useSiteBarMeasurements } from "./utils/siteBars";
+import { useArchiveAccess } from "./components/kcna_archive/access";
 
 const App: ParentComponent = (props) => {
   useSiteBarMeasurements();
+  useArchiveAccess();
   const bootstrap = async () => {
     applyLocale(locale());
     void loadUiTextBundle(locale());

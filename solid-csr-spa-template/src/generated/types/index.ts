@@ -1,6 +1,7 @@
 // Generated from rust-be-template OpenAPI. Do not edit by hand.
 
 export * from "./api-response";
+export * from "./archive-access-response";
 export * from "./archive-bucket";
 export * from "./archive-category-facet";
 export * from "./archive-copy-link";
@@ -11,6 +12,9 @@ export * from "./archive-histogram-response";
 export * from "./archive-language";
 export * from "./archive-language-facet";
 export * from "./archive-precision";
+export * from "./archive-reader-grant";
+export * from "./archive-reader-item";
+export * from "./archive-readers-response";
 export * from "./archive-search-item";
 export * from "./archive-search-response";
 export * from "./archive-service-state";

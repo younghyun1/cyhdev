@@ -6,6 +6,8 @@ import { firstParam, queryString, type ArchiveQuery } from "./query";
 export const ARCHIVE_PATH = "/projects/kcna-archive";
 export const ARCHIVE_TRENDS_PATH = `${ARCHIVE_PATH}/trends`;
 export const ARCHIVE_STATUS_PATH = `${ARCHIVE_PATH}/status`;
+/** The administration page that sets who may read the archive. */
+export const ARCHIVE_ADMIN_PATH = "/admin/kcna-archive";
 
 /** The reader page of one document, carrying the search it was opened from. */
 export const documentHref = (

@@ -829,5 +829,16 @@
   "kcna.precision.second": "detik",
   "kcna.precision.minute": "menit",
   "kcna.precision.day": "hari",
-  "kcna.precision.inferred_day": "hari (disimpulkan dari URL)"
+  "kcna.precision.inferred_day": "hari (disimpulkan dari URL)",
+  "kcna.disclaimer": "Pengelola situs web ini adalah anggota cadangan Angkatan Darat Republik Korea dan dengan tegas mengecam monarki fasis yang tidak sah, pembunuh, dan tidak becus di Pyongyang.",
+  "kcna.access.title": "Akses arsip KCNA",
+  "kcna.access.description": "Admin selalu dapat membaca arsip KCNA. Anggota lain hanya selama mereka ada di daftar ini.",
+  "kcna.access.find": "Cari anggota berdasarkan nama atau email",
+  "kcna.access.allow": "Izinkan",
+  "kcna.access.remove": "Hapus",
+  "kcna.access.readers": "Anggota yang diizinkan",
+  "kcna.access.empty": "Daftar kosong. Hanya admin yang dapat membaca arsip.",
+  "kcna.access.no_match": "Tidak ada anggota yang cocok.",
+  "kcna.access.saved": "Daftar akses diperbarui.",
+  "kcna.access.failed": "Daftar akses tidak dapat diubah."
 }

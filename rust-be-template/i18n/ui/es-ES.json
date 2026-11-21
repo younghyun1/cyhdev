@@ -829,5 +829,16 @@
   "kcna.precision.second": "segundo",
   "kcna.precision.minute": "minuto",
   "kcna.precision.day": "día",
-  "kcna.precision.inferred_day": "día (inferido de la URL)"
+  "kcna.precision.inferred_day": "día (inferido de la URL)",
+  "kcna.disclaimer": "El responsable de este sitio web es reservista del Ejército de la República de Corea y denuncia categóricamente a la monarquía fascista ilegítima, asesina e incompetente de Pionyang.",
+  "kcna.access.title": "Acceso al archivo KCNA",
+  "kcna.access.description": "Los administradores siempre pueden leer el archivo KCNA. Los demás miembros solo mientras figuren en esta lista.",
+  "kcna.access.find": "Buscar un miembro por nombre o correo",
+  "kcna.access.allow": "Permitir",
+  "kcna.access.remove": "Quitar",
+  "kcna.access.readers": "Miembros permitidos",
+  "kcna.access.empty": "No hay nadie en la lista. Solo los administradores pueden leer el archivo.",
+  "kcna.access.no_match": "Ningún miembro coincide.",
+  "kcna.access.saved": "Lista de acceso actualizada.",
+  "kcna.access.failed": "No se pudo cambiar la lista de acceso."
 }

@@ -16,7 +16,9 @@ export function routes(source: string): PageRoute[] {
     const local = path.initializer.text;
     const pattern = local.startsWith("*") ? local : `${parent}${local}`.replace(/\/$/, "") || "/";
     const component = property("component")?.getText(file) ?? "";
-    const actor: Actor = component.includes("withSuperuser(") ? "admin" : component.includes("withAuth(") ? "member" : inherited;
+    // The archive's audience decides who reads it, and a fixture leaves it closed, so only an administrator is sure to be admitted.
+    const administrator = component.includes("withSuperuser(") || component.includes("withArchiveAccess(");
+    const actor: Actor = administrator ? "admin" : component.includes("withAuth(") ? "member" : inherited;
     const previous = result.get(pattern);
     if (!previous || previous.actor === "anonymous") result.set(pattern, { pattern, actor });
     const children = property("children");

@@ -15,6 +15,7 @@ mod content_write_linearization;
 mod forum;
 mod forum_maintenance;
 mod i18n_sources;
+mod kcna_archive_access;
 mod live_chat_moderation;
 mod live_chat_runtime;
 mod migration_guards;

@@ -9,15 +9,38 @@ import {
 
 import type { UiTextKey } from "../i18n/keys";
 import { t } from "../state/i18n";
+import { ARCHIVE_PATH } from "../utils/kcna_archive/routes";
+import { canViewArchive } from "./kcna_archive/access";
 
 type NavLink = {
   href: string;
   labelKey: UiTextKey;
 };
 
-type NavItem =
-  | { kind: "link"; link: NavLink }
-  | { kind: "group"; labelKey: UiTextKey; links: ReadonlyArray<NavLink> };
+/** A link only some visitors see; it stays out of the public link list. */
+type GatedNavLink = NavLink & { readonly visible: () => boolean };
+
+type NavGroup = {
+  kind: "group";
+  labelKey: UiTextKey;
+  links: ReadonlyArray<NavLink>;
+  gated?: ReadonlyArray<GatedNavLink>;
+};
+
+type NavItem = { kind: "link"; link: NavLink } | NavGroup;
+
+/** The archive's entry, for the Projects menu and the command palette. */
+export const ARCHIVE_NAV_LINK: GatedNavLink = {
+  href: ARCHIVE_PATH,
+  labelKey: "kcna.title",
+  visible: canViewArchive,
+};
+
+/** A group's links for this visitor: the public ones, then the gated ones they may see. */
+export const visibleGroupLinks = (group: NavGroup): ReadonlyArray<NavLink> => [
+  ...group.links,
+  ...(group.gated ?? []).filter((link) => link.visible()),
+];
 
 export const NAV_ITEMS: ReadonlyArray<NavItem> = [
   {
@@ -62,6 +85,7 @@ export const NAV_ITEMS: ReadonlyArray<NavItem> = [
         labelKey: "top_bar.nav.eu5_locations_db",
       },
     ],
+    gated: [ARCHIVE_NAV_LINK],
   },
 ];
 
@@ -152,11 +176,11 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
                 props.variant === "desktop"
                   ? [
                       "site-nav-control site-nav-control--group",
-                      item.links.some((link) => props.isActive(link.href)) && "site-nav-control--active",
+                      visibleGroupLinks(item).some((link) => props.isActive(link.href)) && "site-nav-control--active",
                     ]
                   : [
                       "w-full cursor-pointer appearance-none border-0 bg-transparent px-4 py-2 text-start font-mono text-sm rounded-sm transition-colors after:ms-1 after:content-['▾']",
-                      item.links.some((link) => props.isActive(link.href))
+                      visibleGroupLinks(item).some((link) => props.isActive(link.href))
                         ? "text-ink bg-surface-2 border-s-2 border-accent"
                         : "text-ink-muted hover:text-ink hover:bg-surface-2",
                     ]
@@ -175,7 +199,7 @@ const PublicNavigation: Component<PublicNavigationProps> = (props) => {
                     : "mt-1 space-y-1 ps-3"
                 }
               >
-                <For each={item.links}>
+                <For each={visibleGroupLinks(item)}>
                   {(link) => (
                     <li>
                       <a

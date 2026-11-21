@@ -829,5 +829,16 @@
   "kcna.precision.second": "秒",
   "kcna.precision.minute": "分",
   "kcna.precision.day": "日",
-  "kcna.precision.inferred_day": "日（URL から推定）"
+  "kcna.precision.inferred_day": "日（URL から推定）",
+  "kcna.disclaimer": "本サイトの管理人は大韓民国陸軍の予備役であり、平壌の不法かつ殺人的で無能なファシスト王朝を断固として糾弾します。",
+  "kcna.access.title": "KCNA アーカイブのアクセス権",
+  "kcna.access.description": "管理者はいつでも KCNA アーカイブを閲覧できます。その他のメンバーは、この一覧に載っている間だけ閲覧できます。",
+  "kcna.access.find": "名前またはメールでメンバーを検索",
+  "kcna.access.allow": "許可",
+  "kcna.access.remove": "削除",
+  "kcna.access.readers": "許可されたメンバー",
+  "kcna.access.empty": "一覧には誰もいません。アーカイブを閲覧できるのは管理者だけです。",
+  "kcna.access.no_match": "該当するメンバーがいません。",
+  "kcna.access.saved": "アクセス一覧を更新しました。",
+  "kcna.access.failed": "アクセス一覧を変更できませんでした。"
 }

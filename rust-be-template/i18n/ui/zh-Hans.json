@@ -829,5 +829,16 @@
   "kcna.precision.second": "秒",
   "kcna.precision.minute": "分",
   "kcna.precision.day": "日",
-  "kcna.precision.inferred_day": "日（根据 URL 推断）"
+  "kcna.precision.inferred_day": "日（根据 URL 推断）",
+  "kcna.disclaimer": "本网站的维护者是大韩民国陆军预备役军人，并坚决谴责平壤那个非法、嗜杀且无能的法西斯王朝。",
+  "kcna.access.title": "KCNA 档案库访问权限",
+  "kcna.access.description": "管理员始终可以阅读 KCNA 档案库。其他成员只有在此名单中时才能阅读。",
+  "kcna.access.find": "按名称或邮箱查找成员",
+  "kcna.access.allow": "允许",
+  "kcna.access.remove": "移除",
+  "kcna.access.readers": "已允许的成员",
+  "kcna.access.empty": "名单为空。只有管理员可以阅读档案库。",
+  "kcna.access.no_match": "没有匹配的成员。",
+  "kcna.access.saved": "访问名单已更新。",
+  "kcna.access.failed": "无法更改访问名单。"
 }

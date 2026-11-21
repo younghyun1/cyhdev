@@ -829,5 +829,16 @@
   "kcna.precision.second": "सेकंड",
   "kcna.precision.minute": "मिनट",
   "kcna.precision.day": "दिन",
-  "kcna.precision.inferred_day": "दिन (URL से अनुमानित)"
+  "kcna.precision.inferred_day": "दिन (URL से अनुमानित)",
+  "kcna.disclaimer": "इस वेबसाइट का संचालक कोरिया गणराज्य की थलसेना का रिज़र्व सैनिक है और प्योंगयांग की अवैध, हत्यारी और अक्षम फ़ासीवादी राजशाही की स्पष्ट शब्दों में निंदा करता है।",
+  "kcna.access.title": "KCNA अभिलेखागार की पहुँच",
+  "kcna.access.description": "प्रशासक KCNA अभिलेखागार हमेशा पढ़ सकते हैं। अन्य सदस्य केवल तब तक पढ़ सकते हैं जब तक वे इस सूची में हैं।",
+  "kcna.access.find": "नाम या ईमेल से सदस्य खोजें",
+  "kcna.access.allow": "अनुमति दें",
+  "kcna.access.remove": "हटाएँ",
+  "kcna.access.readers": "अनुमति प्राप्त सदस्य",
+  "kcna.access.empty": "सूची में कोई नहीं है। केवल प्रशासक अभिलेखागार पढ़ सकते हैं।",
+  "kcna.access.no_match": "कोई मेल खाता सदस्य नहीं।",
+  "kcna.access.saved": "पहुँच सूची अपडेट की गई।",
+  "kcna.access.failed": "पहुँच सूची बदली नहीं जा सकी।"
 }

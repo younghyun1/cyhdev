@@ -1,6 +1,6 @@
 # KCNA archive section
 
-The archive is a section of the website for superusers: a search-first research tool over about 400,000 articles of the Korean Central News Agency in six languages. It is reached from the Projects page and the admin workspace navigation, shares the site's shell, tokens, typography, and components, and talks to the backend only through the generated client. The backend side is described in [archive serving](../../architecture/be/kcna-archive-serving.md) and the [backend feature notes](../../architecture/be/kcna-archive-feature.md).
+The archive is a section of the website for superusers and the members a superuser allows: a search-first research tool over about 400,000 articles of the Korean Central News Agency in six languages. It is reached from the Projects menu and the Projects page, shares the site's shell, tokens, typography, and components, and talks to the backend only through the generated client. The backend side is described in [archive serving](../../architecture/be/kcna-archive-serving.md) and the [backend feature notes](../../architecture/be/kcna-archive-feature.md).
 
 ## Routes and access
 
@@ -9,21 +9,29 @@ The archive is a section of the website for superusers: a search-first research 
 | `/projects/kcna-archive` | Search: query form, filters, month histogram, results, and the reader beside them |
 | `/projects/kcna-archive/documents/:documentId` | One article; the citation link, and the reader on narrow screens |
 | `/projects/kcna-archive/trends` | Up to four terms compared over time |
-| `/projects/kcna-archive/status` | Snapshot summary and the reload action |
+| `/projects/kcna-archive/status` | Snapshot summary and the reload action; superusers only |
+| `/admin/kcna-archive` | The members allowed to read the archive; superusers only, inside the admin workspace |
 
-Each route is lazy-loaded and wrapped in `withAuth(withSuperuser(...))` in `src/routes.ts`, so a signed-out visitor goes to login and any other account goes to the site 404. Each page renders the shared section layout (`pages/kcna_archive/Layout.tsx`: title, the administrators-only badge, and the Search, Trends, and Status tabs) around its own content. The reader counts as part of Search for the active tab. Any other path below `/projects/kcna-archive` falls to the site 404. The guards control rendering only; every endpoint answers superusers only.
+The archive routes are lazy-loaded and wrapped in `withArchiveAccess(...)` (`components/kcna_archive/RequireArchiveAccess.tsx`) in `src/routes.ts`; the status route passes `"manage"`. A visitor the guard does not admit, signed in or not, gets the site's Not Found page in place: the address stays, nobody is sent to the sign-in page, and the archive is not advertised to someone who cannot open it. Each page renders the shared section layout (`pages/kcna_archive/Layout.tsx`: title, the maintainer's disclaimer, and the tabs) around its own content. The tabs are Search and Trends, plus Status for a superuser. The reader counts as part of Search for the active tab. Any other path below `/projects/kcna-archive` falls to the site 404. The guards control rendering only; the server decides every request.
 
-The entry points are rendered only when `canViewArchive()` holds (signed in and superuser, the same condition as the admin navigation): a card at the top of the Projects page with the `kcna.admin_only` badge, and a link in the admin workspace navigation. The public navigation and the command palette list public pages only, so a visitor who is not a superuser finds no trace of the section in the menus, the palette, or the Projects page.
+Who may read comes from the server. `useArchiveAccess()`, called once from the application root, asks `GET /api/kcna-archive/access` once per signed-in account and keeps the answer in `state/kcna_archive_access.ts`; a signed-out visitor is answered "no" without a request, and a failed request, including an unverified address, reads as "no". `canViewArchive()` is that answer, `canManageArchive()` is the superuser condition, and `archiveIsRestricted()` is true for a superuser while nobody else is listed.
+
+The entry points are rendered only when `canViewArchive()` holds: a link at the end of the Projects menu in the top bar, a card at the top of the Projects page, and an entry in the command palette. The link is a gated entry of the Projects group and is not part of the public link list, so a visitor without access finds no trace of the section in the menus, the palette, or the Projects page. The `kcna.admin_only` badge appears on the card and in the section header only for a superuser while nobody else is listed, which is the one case in which it is true.
+
+`/admin/kcna-archive` (`pages/admin_kcna_archive.tsx`) is the access page. It shows the allowed members, each with name, address, the time they were allowed, and a Remove button, and below that a search over the member directory by name or address prefix, each match with an Allow button that is disabled for a member already listed. The search uses the same directory endpoint as the roles page and shows the first 20 matches; a longer prefix narrows it. A change updates the list from the server's answer and the access state at once, so the badge follows without a reload. The page is listed in the admin workspace navigation, which no longer links to the archive itself.
+
+The maintainer's disclaimer (`kcna.disclaimer`) sits under the description on every archive page, in every language.
 
 ## Code layout
 
 | Area | Location |
 | --- | --- |
-| Pages | `src/pages/kcna_archive/` |
+| Pages | `src/pages/kcna_archive/`, and `src/pages/admin_kcna_archive.tsx` for the access page |
 | Components | `src/components/kcna_archive/` |
 | Pure logic and tests | `src/utils/kcna_archive/` |
 | Service wrapper over the generated client | `src/services/contracts/kcna_archive.ts` |
-| Styles | `src/styles/kcna-archive.css` (frame, controls, filters, notices), `kcna-archive-reader.css` (results and reader), `kcna-archive-charts.css` (histogram, trends, status), `kcna-archive-entry.css` (the Projects card and badge) |
+| Access state | `src/state/kcna_archive_access.ts`, read through `src/components/kcna_archive/access.ts` |
+| Styles | `src/styles/kcna-archive.css` (frame, controls, filters, notices), `kcna-archive-reader.css` (results and reader), `kcna-archive-charts.css` (histogram, trends, status), `kcna-archive-entry.css` (the Projects card and badge), `kcna-archive-admin.css` (the access page) |
 
 Styles are imported by the layout and the entry card, so the Projects page loads only the entry stylesheet. All text comes from the site catalog (`kcna.*` keys, plus `common.*` for loading and unavailable values), and numbers and dates go through `Intl` with the selected interface language (`utils/kcna_archive/format.ts`). Dates are read as midnight UTC so the reader's time zone never moves a day.
 
@@ -63,6 +71,12 @@ The status page shows the snapshot counts, coverage, retrieval and build times i
 
 The shortcuts never act while a text field, select, or editable element has focus, with Ctrl, Command, or Alt held, or while a modal dialog is open, so they leave the site's own Ctrl+K or Command+K palette alone. The decision is a pure function (`shortcuts.ts`) with its own tests.
 
+## Width and scrolling
+
+The section is up to 108rem wide, wider than the site's reading pages, because it holds a result list and a reader side by side. The list column takes up to 32rem and the article text up to 58rem; a side-by-side translation uses the whole reader.
+
+Opening a result beside the list must not move the page. The router scrolls to the top on a link by default, so result rows and the links between language editions carry `noscroll` while the reader is beside the list, and the `j` and `k` shortcuts navigate with `scroll: false`. On a narrow screen a result opens on its own page, where starting at the top is right.
+
 ## Visual rules
 
 The section uses the site's tokens and furniture without additions: surfaces, 1px hairlines, `rounded-sm`-sized corners, monospace labels, square-marker section headings, the accent rule under the title, and the blueprint grid behind the page. Records are hairline rows inside one bordered box. Light and dark mode come from the theme state and the accent from the accent state; no color is declared in the section's stylesheets. The trends chart reads the same tokens, and its series differ by dash pattern as well as color. Charts and the histogram stay left to right in every language, like the statistics charts, and everything else uses logical properties so right-to-left languages mirror.
@@ -81,4 +95,4 @@ The standalone browser had its own design tokens, a bundled variable font, a the
 
 ## Verification
 
-`npm --prefix solid-csr-spa-template run test` covers query parsing, histogram geometry, trends, paragraph pairing, request sequencing, shortcuts, formatting, failure mapping, the service wrapper's query strings, the superuser-only visibility of the Projects entry, and the routes. `npm --prefix solid-csr-spa-template run test:e2e:chromium -- kcna-archive.spec.ts` exercises access, search, shortcuts, the reader, states, trends, and status against mocked endpoints (`e2e/kcna-fixtures.ts`, shared with the page-render and layout specs). Running it with `KCNA_RENDERS=1` also writes screenshots of the section in English, Korean, Arabic, and German, light and dark, at 390 and 1440 pixels to `target/kcna-archive-renders/`. `npm --prefix solid-csr-spa-template run test:e2e:layout` includes the archive routes in every language.
+`npm --prefix solid-csr-spa-template run test` covers query parsing, histogram geometry, trends, paragraph pairing, request sequencing, shortcuts, formatting, failure mapping, the service wrapper's query strings and paths, who sees the Projects entry and menu link, the split between reading and managing, and the routes. `npm --prefix solid-csr-spa-template run test:e2e:chromium -- kcna-archive.spec.ts` exercises access for a superuser, a member who is and is not listed, and a signed-out visitor, allowing and removing a member on the access page, the kept scroll position, search, shortcuts, the reader, states, trends, and status against mocked endpoints (`e2e/kcna-fixtures.ts`, shared with the page-render and layout specs). Running it with `KCNA_RENDERS=1` also writes screenshots of the section in English, Korean, Arabic, and German, light and dark, at 390 and 1440 pixels to `target/kcna-archive-renders/`. `npm --prefix solid-csr-spa-template run test:e2e:layout` includes the archive routes in every language.

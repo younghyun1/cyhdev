@@ -28,7 +28,7 @@ use crate::{
 /// is not redistributable.
 #[utoipa::path(
     get,
-    path = "/api/admin/kcna-archive/export",
+    path = "/api/kcna-archive/export",
     tag = "kcna_archive",
     params(ArchiveQuery, ExportQuery),
     responses(

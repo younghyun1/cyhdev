@@ -257,7 +257,7 @@ export default function Projects() {
           {t("projects.subtitle")}
         </p>
 
-        {/* Superusers only; renders nothing for everyone else. */}
+        {/* Renders nothing for a visitor who may not read the archive. */}
         <ArchiveEntryCard />
 
         <Show when={isSuperuser()}>

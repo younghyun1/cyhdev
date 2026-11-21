@@ -829,5 +829,16 @@
   "kcna.precision.second": "ثانية",
   "kcna.precision.minute": "دقيقة",
   "kcna.precision.day": "يوم",
-  "kcna.precision.inferred_day": "يوم (مستنتج من الرابط)"
+  "kcna.precision.inferred_day": "يوم (مستنتج من الرابط)",
+  "kcna.disclaimer": "القائم على هذا الموقع جندي احتياط في جيش جمهورية كوريا، ويدين إدانة قاطعة النظام الملكي الفاشي غير الشرعي والقاتل وعديم الكفاءة في بيونغ يانغ.",
+  "kcna.access.title": "الوصول إلى أرشيف KCNA",
+  "kcna.access.description": "يستطيع المشرفون قراءة أرشيف KCNA دائمًا. أما بقية الأعضاء فيقرؤونه ما داموا في هذه القائمة فقط.",
+  "kcna.access.find": "ابحث عن عضو بالاسم أو البريد الإلكتروني",
+  "kcna.access.allow": "سماح",
+  "kcna.access.remove": "إزالة",
+  "kcna.access.readers": "الأعضاء المسموح لهم",
+  "kcna.access.empty": "لا أحد في القائمة. المشرفون فقط يستطيعون قراءة الأرشيف.",
+  "kcna.access.no_match": "لا يوجد عضو مطابق.",
+  "kcna.access.saved": "تم تحديث قائمة الوصول.",
+  "kcna.access.failed": "تعذّر تغيير قائمة الوصول."
 }

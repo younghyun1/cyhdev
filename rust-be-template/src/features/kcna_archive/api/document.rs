@@ -21,7 +21,7 @@ use crate::{
 /// Returns one document, with the matches of `q` marked in its title and body.
 #[utoipa::path(
     get,
-    path = "/api/admin/kcna-archive/documents/{document_id}",
+    path = "/api/kcna-archive/documents/{document_id}",
     tag = "kcna_archive",
     params(
         ("document_id" = String, Path, description = "Document UUID"),

@@ -829,5 +829,16 @@
   "kcna.precision.second": "секунда",
   "kcna.precision.minute": "хвилина",
   "kcna.precision.day": "день",
-  "kcna.precision.inferred_day": "день (визначено за URL)"
+  "kcna.precision.inferred_day": "день (визначено за URL)",
+  "kcna.disclaimer": "Власник цього сайту є резервістом Сухопутних військ Республіки Корея і категорично засуджує нелегітимну, кровожерливу та некомпетентну фашистську монархію в Пхеньяні.",
+  "kcna.access.title": "Доступ до архіву KCNA",
+  "kcna.access.description": "Адміністратори завжди можуть читати архів KCNA. Інші учасники лише поки вони є в цьому списку.",
+  "kcna.access.find": "Знайти учасника за іменем або адресою пошти",
+  "kcna.access.allow": "Дозволити",
+  "kcna.access.remove": "Вилучити",
+  "kcna.access.readers": "Учасники з доступом",
+  "kcna.access.empty": "У списку нікого немає. Читати архів можуть лише адміністратори.",
+  "kcna.access.no_match": "Відповідних учасників немає.",
+  "kcna.access.saved": "Список доступу оновлено.",
+  "kcna.access.failed": "Не вдалося змінити список доступу."
 }

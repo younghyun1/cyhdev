@@ -1,7 +1,9 @@
 import {
+  type ArchiveAccessResponse,
   type ArchiveBucket,
   type ArchiveDocumentResponse,
   type ArchiveHistogramResponse,
+  type ArchiveReadersResponse,
   type ArchiveSearchResponse,
   type ArchiveStatusResponse,
   type ArchiveTrendsResponse,
@@ -12,6 +14,7 @@ import { contractApi } from "../account_api";
 import { apiUrl } from "../api";
 
 export type {
+  ArchiveAccessResponse,
   ArchiveBucket,
   ArchiveCopyLink,
   ArchiveDocumentResponse,
@@ -21,6 +24,8 @@ export type {
   ArchiveLanguageFacet,
   ArchiveFacets,
   ArchivePrecision,
+  ArchiveReaderItem,
+  ArchiveReadersResponse,
   ArchiveSearchItem,
   ArchiveSearchResponse,
   ArchiveServiceState,
@@ -34,7 +39,7 @@ export type {
   ArchiveTrendsResponse,
 } from "../../generated";
 
-const ARCHIVE_ROOT = "/api/admin/kcna-archive";
+const ARCHIVE_ROOT = "/api/kcna-archive";
 
 export type ExportFormat = "csv" | "jsonl";
 
@@ -108,6 +113,42 @@ export const kcnaArchiveApi = {
     // The search text does not apply to trends: the terms are the text.
     const response = await contractApi.kcnaArchiveTrends(
       { query: { ...queryParams({ ...query, text: "" }), bucket, term: terms } },
+      requestOptions(options),
+    );
+    return response.data;
+  },
+
+  /** Whether the signed-in visitor may read the archive. */
+  async access(options: ArchiveRequestOptions = {}): Promise<ArchiveAccessResponse> {
+    const response = await contractApi.kcnaArchiveAccess(requestOptions(options));
+    return response.data;
+  },
+
+  /** The accounts allowed to read the archive; superusers only. */
+  async readers(options: ArchiveRequestOptions = {}): Promise<ArchiveReadersResponse> {
+    const response = await contractApi.kcnaArchiveReaders(requestOptions(options));
+    return response.data;
+  },
+
+  /** Allows an account to read; resolves with the list as it now stands. */
+  async grantReader(
+    userId: string,
+    options: ArchiveRequestOptions = {},
+  ): Promise<ArchiveReadersResponse> {
+    const response = await contractApi.kcnaArchiveGrantReader(
+      { body: { userId } },
+      requestOptions(options),
+    );
+    return response.data;
+  },
+
+  /** Removes an account from the list; resolves with the list as it now stands. */
+  async revokeReader(
+    userId: string,
+    options: ArchiveRequestOptions = {},
+  ): Promise<ArchiveReadersResponse> {
+    const response = await contractApi.kcnaArchiveRevokeReader(
+      { path: { user_id: userId } },
       requestOptions(options),
     );
     return response.data;

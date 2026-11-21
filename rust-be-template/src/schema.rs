@@ -698,3 +698,13 @@ diesel::table! {
         minecraft_waypoint_z -> Int4,
     }
 }
+
+diesel::table! {
+    kcna_archive_reader (kcna_archive_reader_user_id) {
+        kcna_archive_reader_user_id -> Uuid,
+        kcna_archive_reader_granted_at -> Timestamptz,
+    }
+}
+
+diesel::joinable!(kcna_archive_reader -> users (kcna_archive_reader_user_id));
+diesel::allow_tables_to_appear_in_same_query!(kcna_archive_reader, users);

@@ -4,11 +4,12 @@ use super::{actor, owner, page_assertion, page_path};
 use serde_json::Value;
 
 const SCENARIO: &str = "kcna.search-read-trends-reload";
-const PAGES: [&str; 4] = [
+const PAGES: [&str; 5] = [
     "/projects/kcna-archive",
     "/projects/kcna-archive/documents/:documentId",
     "/projects/kcna-archive/trends",
     "/projects/kcna-archive/status",
+    "/admin/kcna-archive",
 ];
 
 fn policy() -> anyhow::Result<Value> {
@@ -20,13 +21,17 @@ fn policy() -> anyhow::Result<Value> {
 #[test]
 fn every_archive_operation_belongs_to_the_archive_scenario() {
     for operation in [
-        "GET /api/admin/kcna-archive/search",
-        "GET /api/admin/kcna-archive/histogram",
-        "GET /api/admin/kcna-archive/trends",
+        "GET /api/kcna-archive/search",
+        "GET /api/kcna-archive/histogram",
+        "GET /api/kcna-archive/trends",
+        "GET /api/kcna-archive/documents/{document_id}",
+        "GET /api/kcna-archive/export",
+        "GET /api/kcna-archive/access",
         "GET /api/admin/kcna-archive/status",
-        "GET /api/admin/kcna-archive/documents/{document_id}",
-        "GET /api/admin/kcna-archive/export",
         "POST /api/admin/kcna-archive/reload",
+        "GET /api/admin/kcna-archive/readers",
+        "POST /api/admin/kcna-archive/readers",
+        "DELETE /api/admin/kcna-archive/readers/{user_id}",
     ] {
         assert_eq!(owner(operation), SCENARIO, "{operation}");
     }
@@ -65,7 +70,7 @@ fn every_openapi_operation_is_owned_by_a_listed_scenario() -> anyhow::Result<()>
             archive += usize::from(scenario == SCENARIO);
         }
     }
-    assert_eq!(archive, 7);
+    assert_eq!(archive, 11);
     Ok(())
 }
 
@@ -107,6 +112,7 @@ fn only_the_trends_page_needs_a_query_string() {
         "/projects/kcna-archive",
         "/projects/kcna-archive/documents/:documentId",
         "/projects/kcna-archive/status",
+        "/admin/kcna-archive",
     ] {
         assert_eq!(page_path(page), None);
     }

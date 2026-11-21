@@ -829,5 +829,16 @@
   "kcna.precision.second": "ثانیه",
   "kcna.precision.minute": "دقیقه",
   "kcna.precision.day": "روز",
-  "kcna.precision.inferred_day": "روز (برگرفته از URL)"
+  "kcna.precision.inferred_day": "روز (برگرفته از URL)",
+  "kcna.disclaimer": "گرداننده‌ی این وب‌سایت نیروی ذخیره‌ی ارتش جمهوری کره است و سلطنت فاشیستیِ نامشروع، آدم‌کش و بی‌کفایت پیونگ‌یانگ را قاطعانه محکوم می‌کند.",
+  "kcna.access.title": "دسترسی به آرشیو KCNA",
+  "kcna.access.description": "مدیران همیشه می‌توانند آرشیو KCNA را بخوانند. اعضای دیگر فقط تا وقتی در این فهرست هستند می‌توانند آن را بخوانند.",
+  "kcna.access.find": "جست‌وجوی عضو با نام یا ایمیل",
+  "kcna.access.allow": "اجازه دادن",
+  "kcna.access.remove": "حذف",
+  "kcna.access.readers": "اعضای مجاز",
+  "kcna.access.empty": "کسی در فهرست نیست. فقط مدیران می‌توانند آرشیو را بخوانند.",
+  "kcna.access.no_match": "عضوی مطابق نیست.",
+  "kcna.access.saved": "فهرست دسترسی به‌روز شد.",
+  "kcna.access.failed": "تغییر فهرست دسترسی ممکن نشد."
 }

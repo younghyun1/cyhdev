@@ -12,7 +12,7 @@ describe("live optimization inventory", () => {
     expect(currentRoutes().map(({ pattern }) => pattern).sort()).toEqual([...policy.pages].sort());
     expect(currentRoutes().find(({ pattern }) => pattern === "/admin/minecraft")?.actor).toBe("admin");
     expect(currentRoutes().find(({ pattern }) => pattern === "/blog/new")?.actor).toBe("member");
-    for (const pattern of ["/projects/kcna-archive", "/projects/kcna-archive/documents/:documentId", "/projects/kcna-archive/trends", "/projects/kcna-archive/status"])
+    for (const pattern of ["/projects/kcna-archive", "/projects/kcna-archive/documents/:documentId", "/projects/kcna-archive/trends", "/projects/kcna-archive/status", "/admin/kcna-archive"])
       expect(currentRoutes().find((route) => route.pattern === pattern)?.actor).toBe("admin");
   });
   it("joins nested paths and preserves parent gallery access", () => {

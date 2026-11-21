@@ -829,5 +829,16 @@
   "kcna.precision.second": "seconde",
   "kcna.precision.minute": "minuut",
   "kcna.precision.day": "dag",
-  "kcna.precision.inferred_day": "dag (afgeleid uit de URL)"
+  "kcna.precision.inferred_day": "dag (afgeleid uit de URL)",
+  "kcna.disclaimer": "De beheerder van deze website is reservist van de landmacht van de Republiek Korea en veroordeelt categorisch de onwettige, moorddadige en incompetente fascistische monarchie in Pyongyang.",
+  "kcna.access.title": "Toegang tot het KCNA-archief",
+  "kcna.access.description": "Beheerders kunnen het KCNA-archief altijd lezen. Andere leden alleen zolang ze op deze lijst staan.",
+  "kcna.access.find": "Zoek een lid op naam of e-mail",
+  "kcna.access.allow": "Toestaan",
+  "kcna.access.remove": "Verwijderen",
+  "kcna.access.readers": "Toegelaten leden",
+  "kcna.access.empty": "Er staat niemand op de lijst. Alleen beheerders kunnen het archief lezen.",
+  "kcna.access.no_match": "Geen lid gevonden.",
+  "kcna.access.saved": "Toegangslijst bijgewerkt.",
+  "kcna.access.failed": "De toegangslijst kon niet worden gewijzigd."
 }

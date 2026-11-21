@@ -829,5 +829,16 @@
   "kcna.precision.second": "초",
   "kcna.precision.minute": "분",
   "kcna.precision.day": "일",
-  "kcna.precision.inferred_day": "일(주소에서 추정)"
+  "kcna.precision.inferred_day": "일(주소에서 추정)",
+  "kcna.disclaimer": "이 웹사이트의 운영자는 대한민국 육군 예비군이며, 불법적이고 살인적이며 무능한 평양의 파시스트 왕조를 단호히 규탄합니다.",
+  "kcna.access.title": "KCNA 자료실 접근 권한",
+  "kcna.access.description": "관리자는 언제나 KCNA 자료실을 읽을 수 있습니다. 다른 회원은 이 목록에 있는 동안에만 읽을 수 있습니다.",
+  "kcna.access.find": "이름이나 이메일로 회원 찾기",
+  "kcna.access.allow": "허용",
+  "kcna.access.remove": "제외",
+  "kcna.access.readers": "허용된 회원",
+  "kcna.access.empty": "목록에 아무도 없습니다. 관리자만 자료실을 읽을 수 있습니다.",
+  "kcna.access.no_match": "일치하는 회원이 없습니다.",
+  "kcna.access.saved": "접근 목록을 변경했습니다.",
+  "kcna.access.failed": "접근 목록을 변경하지 못했습니다."
 }

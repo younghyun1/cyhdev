@@ -829,5 +829,16 @@
   "kcna.precision.second": "sekund",
   "kcna.precision.minute": "minut",
   "kcna.precision.day": "dag",
-  "kcna.precision.inferred_day": "dag (härledd från URL:en)"
+  "kcna.precision.inferred_day": "dag (härledd från URL:en)",
+  "kcna.disclaimer": "Den som driver den här webbplatsen är reservist i Republiken Koreas armé och fördömer kategoriskt den illegitima, mordiska och inkompetenta fascistiska monarkin i Pyongyang.",
+  "kcna.access.title": "Åtkomst till KCNA-arkivet",
+  "kcna.access.description": "Administratörer kan alltid läsa KCNA-arkivet. Övriga medlemmar bara så länge de står på den här listan.",
+  "kcna.access.find": "Sök medlem efter namn eller e-post",
+  "kcna.access.allow": "Tillåt",
+  "kcna.access.remove": "Ta bort",
+  "kcna.access.readers": "Tillåtna medlemmar",
+  "kcna.access.empty": "Ingen står på listan. Bara administratörer kan läsa arkivet.",
+  "kcna.access.no_match": "Ingen medlem matchar.",
+  "kcna.access.saved": "Åtkomstlistan har uppdaterats.",
+  "kcna.access.failed": "Åtkomstlistan kunde inte ändras."
 }

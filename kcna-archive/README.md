@@ -1,6 +1,6 @@
 # KCNA research archive
 
-This part of the workspace collects public Korean Central News Agency material for research and serves it on the website to administrator accounts. `cli/` is the collector, importer, and snapshot writer (`kcna-archive`); `core/` is the search index, snapshot format, and read-only service (`kcna-archive-core`) that the backend links. The browser lives in the site's frontend under `solid-csr-spa-template/src/pages/kcna_archive/`.
+This part of the workspace collects public Korean Central News Agency material for research and serves it on the website to administrators and to the members an administrator allows. `cli/` is the collector, importer, and snapshot writer (`kcna-archive`); `core/` is the search index, snapshot format, and read-only service (`kcna-archive-core`) that the backend links. The browser lives in the site's frontend under `solid-csr-spa-template/src/pages/kcna_archive/`.
 
 It collects public Korean Central News Agency material for local research. Korean text is the first priority; KCNA-published English, Chinese, Russian, Spanish, and Japanese versions are retained as parallel source records. Downloads are resumable and content-addressed in an append-only retrieval manifest.
 
@@ -88,7 +88,7 @@ KCNA_TEST_DATABASE_URL='postgres://user:password@localhost/kcna_test' cargo test
 
 ## Website
 
-The site serves the archive at `/projects/kcna-archive` to superuser accounts only, because the API would otherwise be open and the corpus is not redistributable. It reads a snapshot into memory at startup and needs no database for the archive. From the repository root:
+The site serves the archive at `/projects/kcna-archive`. Only superusers and the members a superuser lists at `/admin/kcna-archive` can read it, because the corpus is not redistributable. It reads a snapshot into memory at startup and needs no database for the archive. From the repository root:
 
 ```bash
 export DATABASE_URL='postgres://user:password@localhost/kcna'

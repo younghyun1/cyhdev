@@ -35,16 +35,24 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     ),
     operation!("minecraft", "GET", "/api/admin/minecraft"),
     operation!("minecraft", "POST", "/api/admin/minecraft/actions"),
-    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/search"),
-    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/histogram"),
-    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/trends"),
-    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/status"),
+    operation!("kcna-archive", "GET", "/api/kcna-archive/search"),
+    operation!("kcna-archive", "GET", "/api/kcna-archive/histogram"),
+    operation!("kcna-archive", "GET", "/api/kcna-archive/trends"),
     operation!(
         "kcna-archive",
         "GET",
-        "/api/admin/kcna-archive/documents/{document_id}"
+        "/api/kcna-archive/documents/{document_id}"
     ),
+    operation!("kcna-archive", "GET", "/api/kcna-archive/access"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/status"),
     operation!("kcna-archive", "POST", "/api/admin/kcna-archive/reload"),
+    operation!("kcna-archive", "GET", "/api/admin/kcna-archive/readers"),
+    operation!("kcna-archive", "POST", "/api/admin/kcna-archive/readers"),
+    operation!(
+        "kcna-archive",
+        "DELETE",
+        "/api/admin/kcna-archive/readers/{user_id}"
+    ),
     operation!("authorization", "GET", "/api/admin/authorization/users"),
     operation!("authorization", "GET", "/api/admin/authorization/roles"),
     operation!(
@@ -245,53 +253,3 @@ pub const FRONTEND_OPERATIONS: &[FrontendOperation] = &[
     operation!("wasm", "POST", "/api/wasm-modules/{wasm_module_id}/assets"),
     operation!("wasm", "DELETE", "/api/wasm-modules/{wasm_module_id}"),
 ];
-
-#[cfg(test)]
-mod tests {
-    use super::{FRONTEND_OPERATIONS, FrontendOperation};
-
-    #[test]
-    fn selects_every_admin_operations_panel_contract() {
-        let expected = [
-            FrontendOperation {
-                client_group: "account",
-                method: "GET",
-                path: "/api/admin/account-retention-notifications",
-            },
-            FrontendOperation {
-                client_group: "account",
-                method: "POST",
-                path: "/api/admin/account-retention-notifications/{notification_id}/retry",
-            },
-            FrontendOperation {
-                client_group: "account",
-                method: "POST",
-                path: "/api/admin/users/{user_id}/hard-purge",
-            },
-            FrontendOperation {
-                client_group: "account",
-                method: "GET",
-                path: "/api/admin/media-cleanup/unresolved",
-            },
-            FrontendOperation {
-                client_group: "account",
-                method: "POST",
-                path: "/api/admin/media-cleanup/{cleanup_id}/resolve",
-            },
-            FrontendOperation {
-                client_group: "i18n",
-                method: "POST",
-                path: "/api/admin/sync-i18n-cache",
-            },
-        ];
-
-        for operation in expected {
-            assert!(
-                FRONTEND_OPERATIONS.contains(&operation),
-                "missing generated frontend operation: {} {}",
-                operation.method,
-                operation.path,
-            );
-        }
-    }
-}

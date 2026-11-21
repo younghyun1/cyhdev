@@ -2,7 +2,8 @@ import { expect } from "@playwright/test";
 import { pointer } from "../model";
 import { another, call, type Scene } from "./support";
 
-const BASE = "/api/admin/kcna-archive";
+const BASE = "/api/kcna-archive";
+const ADMIN = "/api/admin/kcna-archive";
 const CSV_HEADER = "id,date,language,sources,category,title\r\n";
 const KOREAN_LANTERN = encodeURIComponent("등불");
 
@@ -28,7 +29,7 @@ export async function kcna(name: string, scene: Scene): Promise<void> {
   const lantern = expected(scene, "kcna_lantern_total");
   const years = expected(scene, "kcna_years");
 
-  const status = await call(scene, "GET", `${BASE}/status`, undefined, { json_pointer: "/data/state", equals: "ready" });
+  const status = await call(scene, "GET", `${ADMIN}/status`, undefined, { json_pointer: "/data/state", equals: "ready" });
   expect(pointer(status, "/data/snapshot/indexed")).toBe(indexed);
   expect(pointer(status, "/data/reloading")).toBe(false);
   expect(pointer(status, "/data/snapshot/translationGroups")).toBeGreaterThan(0);
@@ -104,22 +105,59 @@ export async function kcna(name: string, scene: Scene): Promise<void> {
   await call(scene, "GET", `${BASE}/documents/{document_id}`, undefined,
     { path: `${BASE}/documents/00000000-0000-0000-0000-0000000003e7`, status: 404, ...denied });
   await call(scene, "GET", `${BASE}/export`, undefined, { path: `${BASE}/export?format=xml`, status: 400, ...denied });
-  await another(scene, "member", async (member) => {
-    await call(member, "GET", `${BASE}/search`, undefined, { path: `${BASE}/search?q=lantern`, status: 403, ...denied });
-    await call(member, "POST", `${BASE}/reload`, undefined, { status: 403, ...denied });
-  });
   await another(scene, "anonymous", async (visitor) => {
-    await call(visitor, "GET", `${BASE}/status`, undefined, { status: 401, ...denied });
+    await call(visitor, "GET", `${ADMIN}/status`, undefined, { status: 401, ...denied });
+    await call(visitor, "GET", `${BASE}/search`, undefined, { path: `${BASE}/search?q=lantern`, status: 401, ...denied });
   });
 
+  await audience(scene, lantern);
   await browse(scene);
 
-  const reloaded = await call(scene, "POST", `${BASE}/reload`, undefined, { json_pointer: "/data/state", equals: "ready" });
+  const reloaded = await call(scene, "POST", `${ADMIN}/reload`, undefined, { json_pointer: "/data/state", equals: "ready" });
   expect(pointer(reloaded, "/data/snapshot/indexed")).toBe(indexed);
   expect(pointer(reloaded, "/data/lastReloadFailed")).toBe(false);
-  const after = await call(scene, "GET", `${BASE}/status`, undefined, { json_pointer: "/data/state", equals: "ready" });
+  const after = await call(scene, "GET", `${ADMIN}/status`, undefined, { json_pointer: "/data/state", equals: "ready" });
   expect(pointer(after, "/data/snapshot/indexed")).toBe(indexed);
   expect(pointer(after, "/data/reloading")).toBe(false);
+}
+
+/**
+ * Nobody is listed at the start. The administrator finds the member in the
+ * directory and lists them, the member reads, and the administrator removes
+ * them again, so the member's reads and both outcomes of the gate are trained
+ * and the next stage starts from the same state.
+ */
+async function audience(scene: Scene, lantern: number): Promise<void> {
+  const search = { path: `${BASE}/search?q=lantern` };
+  const empty = await call(scene, "GET", `${ADMIN}/readers`);
+  expect(list(empty, "/data/readers")).toHaveLength(0);
+  const own = await call(scene, "GET", `${BASE}/access`, undefined, { json_pointer: "/data/canRead", equals: true });
+  expect(pointer(own, "/data/adminOnly")).toBe(true);
+  const directory = await call(scene, "GET", "/api/admin/authorization/users", undefined,
+    { path: "/api/admin/authorization/users?search=fixture-member&limit=20" });
+  const userId = pointer(directory, "/data/users/0/user_id");
+  if (typeof userId !== "string") throw new Error("The fixture member is missing from the directory");
+  const revoke = { path: `${ADMIN}/readers/${userId}` };
+  await another(scene, "member", async (member) => {
+    await call(member, "GET", `${BASE}/access`, undefined, { json_pointer: "/data/canRead", equals: false });
+    await call(member, "GET", `${BASE}/search`, undefined, { ...search, status: 403, ...denied });
+    await call(member, "POST", `${ADMIN}/reload`, undefined, { status: 403, ...denied });
+    await call(member, "POST", `${ADMIN}/readers`, { userId }, { status: 403, ...denied });
+  });
+  await call(scene, "POST", `${ADMIN}/readers`, { userId }, { json_pointer: "/data/readers/0/userId", equals: userId });
+  try {
+    await another(scene, "member", async (member) => {
+      await call(member, "GET", `${BASE}/access`, undefined, { json_pointer: "/data/canRead", equals: true });
+      const found = await call(member, "GET", `${BASE}/search`, undefined, search);
+      expect(pointer(found, "/data/total")).toBe(lantern);
+      // Being listed grants reading only.
+      await call(member, "GET", `${ADMIN}/status`, undefined, { status: 403, ...denied });
+      await call(member, "DELETE", `${ADMIN}/readers/{user_id}`, undefined, { ...revoke, status: 403, ...denied });
+    });
+  } finally {
+    const after = await call(scene, "DELETE", `${ADMIN}/readers/{user_id}`, undefined, revoke);
+    expect(list(after, "/data/readers")).toHaveLength(0);
+  }
 }
 
 /** Search through the page, open the only match, and toggle its translation beside it. */
@@ -150,4 +188,18 @@ async function browse(scene: Scene): Promise<void> {
   await expect(page.locator(".kcna-stats")).toBeVisible();
   await page.locator(".kcna-status-head .kcna-button").click();
   await expect(page.locator(".kcna-notice--ok")).toBeVisible();
+
+  // The access page: find the member, allow them, and remove them again.
+  await page.goto(`${scene.campaign.base_url}/admin/kcna-archive`);
+  const readers = page.locator('[data-list="readers"]');
+  await expect(readers).toBeVisible();
+  const member = page.locator("#kcna-access-search");
+  await member.fill("fixture-member");
+  await member.press("Enter");
+  const allow = page.locator('[data-list="matches"] .kcna-access-action').first();
+  await allow.click();
+  await expect(page.locator(".kcna-access [role=status]")).toBeVisible();
+  await expect(readers.locator(".kcna-access-row")).toHaveCount(1);
+  await readers.locator(".kcna-access-action").click();
+  await expect(readers.locator(".kcna-access-row")).toHaveCount(0);
 }

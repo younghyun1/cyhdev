@@ -53,4 +53,32 @@ impl CodeError {
         message: "The archive query failed.",
         log_level: Level::ERROR,
     };
+    pub const KCNA_ARCHIVE_ACCESS_DENIED: Self = Self {
+        success: false,
+        error_code: 119,
+        http_status_code: StatusCode::FORBIDDEN,
+        message: "The archive is not open to this account.",
+        log_level: Level::INFO,
+    };
+    pub const KCNA_ARCHIVE_ACCESS_STORE_FAILED: Self = Self {
+        success: false,
+        error_code: 120,
+        http_status_code: StatusCode::INTERNAL_SERVER_ERROR,
+        message: "The archive access list could not be read or changed.",
+        log_level: Level::ERROR,
+    };
+    pub const KCNA_ARCHIVE_READER_NOT_FOUND: Self = Self {
+        success: false,
+        error_code: 121,
+        http_status_code: StatusCode::NOT_FOUND,
+        message: "There is no active account to add to the archive access list.",
+        log_level: Level::INFO,
+    };
+    pub const KCNA_ARCHIVE_READER_LIMIT: Self = Self {
+        success: false,
+        error_code: 122,
+        http_status_code: StatusCode::CONFLICT,
+        message: "The archive access list is full.",
+        log_level: Level::INFO,
+    };
 }

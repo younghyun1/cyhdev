@@ -2,9 +2,71 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { installApiMocks, setUiPreferences, type AuthMode } from "./fixtures";
-import { KCNA_DOCUMENT_ID, KCNA_ENGLISH_ID } from "./kcna-fixtures";
+import {
+  archiveAccessBody,
+  archiveReader,
+  archiveReadersBody,
+  KCNA_DOCUMENT_ID,
+  KCNA_ENGLISH_ID,
+  type ArchiveReaderFixture,
+} from "./kcna-fixtures";
 
 const ROOT = "/projects/kcna-archive";
+const ADMIN = "/admin/kcna-archive";
+const DISCLAIMER = /ROK Army reservist/;
+
+/** The signed-in member is on the reader list. */
+async function listMember(page: Page): Promise<void> {
+  await page.route("**/api/kcna-archive/access", (route) =>
+    route.fulfill({ json: archiveAccessBody(true, false) }),
+  );
+}
+
+const ALICE = "0198f4d0-bbbb-7000-8000-000000000001";
+const BORIS = "0198f4d0-bbbb-7000-8000-000000000002";
+
+/**
+ * A reader list that remembers its changes, and a member directory with two
+ * accounts, so the access page can be driven as against a server. Returns the
+ * requests the page made to change the list.
+ */
+async function serveReaderList(page: Page): Promise<string[]> {
+  let readers: ArchiveReaderFixture[] = [];
+  const changes: string[] = [];
+  await page.route("**/api/admin/authorization/users**", (route) => {
+    const search = new URL(route.request().url()).searchParams.get("search") ?? "";
+    const users = [
+      { user_id: ALICE, user_name: "Alice", user_email: "alice@example.test", role_id: ALICE, role_name: "user" },
+      { user_id: BORIS, user_name: "Boris", user_email: "boris@example.test", role_id: ALICE, role_name: "user" },
+    ].filter((user) => user.user_name.toLowerCase().startsWith(search.toLowerCase()));
+    return route.fulfill({ json: { success: true, data: { users, next_cursor: null }, meta: {} } });
+  });
+  await page.route("**/api/admin/kcna-archive/readers**", (route) => {
+    const request = route.request();
+    if (request.method() === "POST") {
+      const { userId } = request.postDataJSON() as { userId: string };
+      changes.push(`POST ${JSON.stringify(request.postDataJSON())}`);
+      readers = [archiveReader(userId, userId === ALICE ? "Alice" : "Boris"), ...readers];
+    } else if (request.method() === "DELETE") {
+      const userId = new URL(request.url()).pathname.split("/").pop() ?? "";
+      changes.push(`DELETE ${userId}`);
+      readers = readers.filter((reader) => reader.userId !== userId);
+    }
+    return route.fulfill({ json: archiveReadersBody(readers) });
+  });
+  await page.route("**/api/kcna-archive/access", (route) =>
+    route.fulfill({ json: archiveAccessBody(true, readers.length === 0) }),
+  );
+  return changes;
+}
+
+async function expectNotFoundInPlace(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await expect(page.locator(".not-found-stage")).toBeVisible();
+  await expect(page.locator(".kcna-tabs")).toHaveCount(0);
+  // The page is answered where it was asked for: no sign-in page, no redirect.
+  expect(new URL(page.url()).pathname).toBe(path);
+}
 const ENVELOPE_ERROR = (code: number, message: string) => ({
   success: false,
   error_code: code,
@@ -27,36 +89,69 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 test.describe("access", () => {
-  test("a superuser sees the Projects entry and the admin link, a visitor sees neither", async ({ page }) => {
+  test("a superuser reaches the archive from Projects and its access page from the admin workspace", async ({ page }) => {
     await visit(page, "/projects", "superuser");
     const entry = page.locator("a.kcna-entry");
     await expect(entry).toBeVisible();
     await expect(entry).toContainText("Administrators only");
-    await entry.click();
+
+    // The Projects menu in the top bar lists the archive too.
+    await page.getByRole("button", { name: "Projects" }).click();
+    const menuLink = page.locator(`.site-nav-panel a[href="${ROOT}"]`);
+    await expect(menuLink).toHaveText("KCNA Archive");
+    await menuLink.click();
     await expect(page).toHaveURL(new RegExp(`${ROOT}$`));
     await expect(page.getByRole("heading", { name: "KCNA Archive" })).toBeVisible();
+    await expect(page.locator(".kcna-header .kcna-badge")).toHaveText("Administrators only");
+    await expect(page.locator(".kcna-disclaimer")).toHaveText(DISCLAIMER);
+    await expect(page.locator(".kcna-tab")).toHaveText(["Search", "Trends", "Status"]);
 
     await page.goto("/admin/operations");
-    await expect(page.locator(`.admin-workspace-sidebar a[href="${ROOT}"]`)).toBeVisible();
+    const sidebar = page.locator(".admin-workspace-sidebar");
+    await expect(sidebar.locator(`a[href="${ADMIN}"]`)).toBeVisible();
+    await expect(sidebar.locator(`a[href="${ROOT}"]`)).toHaveCount(0);
   });
 
-  test("an authenticated non-superuser has no entry, no admin link, and is sent to 404", async ({ page }) => {
+  test("a member who is not listed sees nothing of the archive and gets Not Found for it", async ({ page }) => {
     await visit(page, "/projects", "authenticated");
     await expect(page.locator("a.kcna-entry")).toHaveCount(0);
     await expect(page.getByText("KCNA Archive")).toHaveCount(0);
-    await page.goto(ROOT);
-    await expect(page).toHaveURL(/\/404$/);
+    await page.getByRole("button", { name: "Projects" }).click();
+    await expect(page.locator(".site-nav-panel a")).not.toHaveCount(0);
+    await expect(page.locator(`.site-nav-panel a[href="${ROOT}"]`)).toHaveCount(0);
+    await expectNotFoundInPlace(page, ROOT);
+    await expectNotFoundInPlace(page, `${ROOT}/status`);
   });
 
-  test("a signed-out visitor is sent to login and the palette lists no archive page", async ({ page }) => {
+  test("a listed member reads the archive but cannot manage it", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await installApiMocks(page, "authenticated");
+    await listMember(page);
+    await setUiPreferences(page, "en-US", "light");
+    await page.goto("/projects");
+    const entry = page.locator("a.kcna-entry");
+    await expect(entry).toBeVisible();
+    await expect(entry.locator(".kcna-badge")).toHaveCount(0);
+    await entry.click();
+    await expect(page.locator(".kcna-row").first()).toBeVisible();
+    await expect(page.locator(".kcna-header .kcna-badge")).toHaveCount(0);
+    await expect(page.locator(".kcna-disclaimer")).toHaveText(DISCLAIMER);
+    await expect(page.locator(".kcna-tab")).toHaveText(["Search", "Trends"]);
+    await page.goto(`${ROOT}/trends?terms=bridge`);
+    await expect(page.locator(".kcna-table")).toBeVisible();
+    await expectNotFoundInPlace(page, `${ROOT}/status`);
+  });
+
+  test("a signed-out visitor gets Not Found, not the sign-in page, and the palette lists no archive", async ({ page }) => {
     await visit(page, "/projects", "logged-out");
     await expect(page.locator("a.kcna-entry")).toHaveCount(0);
     await page.keyboard.press("Control+k");
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByRole("dialog").getByText(/kcna/i)).toHaveCount(0);
     await page.keyboard.press("Escape");
-    await page.goto(`${ROOT}/trends`);
-    await expect(page).toHaveURL(/\/login/);
+    for (const path of [ROOT, `${ROOT}/trends`, `${ROOT}/documents/${KCNA_DOCUMENT_ID}`, `${ROOT}/status`]) {
+      await expectNotFoundInPlace(page, path);
+    }
   });
 
   test("unknown archive sub-paths fall to the site 404", async ({ page }) => {
@@ -64,6 +159,67 @@ test.describe("access", () => {
     await expect(page.getByRole("heading", { name: "KCNA Archive" })).toHaveCount(0);
     await expect(page.locator(".kcna-tabs")).toHaveCount(0);
     await expect(page.locator(".not-found-stage, [class*='not-found']").first()).toBeVisible();
+  });
+
+  test("a superuser allows a member from the access page and removes them again", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await installApiMocks(page, "superuser");
+    const changes = await serveReaderList(page);
+    await setUiPreferences(page, "en-US", "light");
+    await page.goto(ADMIN);
+    const readers = page.locator('[data-list="readers"]');
+    await expect(readers).toContainText("Nobody is listed. Only administrators can read the archive.");
+
+    await page.getByLabel("Find a member by name or email").fill("a");
+    await page.locator(".kcna-access-search").getByRole("button", { name: "Search" }).click();
+    const matches = page.locator('[data-list="matches"] .kcna-access-row');
+    await expect(matches).toHaveCount(1);
+    await expect(matches).toContainText("alice@example.test");
+    await matches.getByRole("button", { name: "Allow" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Access list updated." })).toBeVisible();
+    await expect(readers.locator(".kcna-access-row")).toHaveCount(1);
+    await expect(readers).toContainText("Alice");
+    // An account that is already listed cannot be allowed twice.
+    await expect(matches.getByRole("button", { name: "Allow" })).toBeDisabled();
+    expect(changes).toEqual([`POST {"userId":"${ALICE}"}`]);
+
+    // The "administrators only" badge is gone once somebody else is listed.
+    await page.locator(`.kcna-access-head a[href="${ROOT}"]`).click();
+    await expect(page.locator(".kcna-row").first()).toBeVisible();
+    await expect(page.locator(".kcna-header .kcna-badge")).toHaveCount(0);
+
+    await page.goto(ADMIN);
+    await expect(readers.locator(".kcna-access-row")).toHaveCount(1);
+    await readers.getByRole("button", { name: "Remove" }).click();
+    await expect(readers).toContainText("Nobody is listed.");
+    expect(changes).toEqual([`POST {"userId":"${ALICE}"}`, `DELETE ${ALICE}`]);
+  });
+
+  test("a search without a match says so, and a failed change is reported", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await installApiMocks(page, "superuser");
+    await serveReaderList(page);
+    await setUiPreferences(page, "en-US", "light");
+    await page.goto(ADMIN);
+    const field = page.getByLabel("Find a member by name or email");
+    await field.fill("zzz");
+    await field.press("Enter");
+    await expect(page.locator('[data-list="matches"]')).toContainText("No member matches.");
+
+    await page.route("**/api/admin/kcna-archive/readers", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      return route.fulfill({ status: 500, json: ENVELOPE_ERROR(120, "store failed") });
+    });
+    await field.fill("b");
+    await field.press("Enter");
+    await page.locator('[data-list="matches"]').getByRole("button", { name: "Allow" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: "The access list could not be changed." })).toBeVisible();
+    await expect(page.locator('[data-list="readers"]')).toContainText("Nobody is listed.");
+  });
+
+  test("a non-superuser cannot open the access page", async ({ page }) => {
+    await visit(page, ADMIN, "authenticated");
+    await expect(page.locator(".kcna-access")).toHaveCount(0);
   });
 });
 
@@ -162,13 +318,13 @@ test.describe("search", () => {
   test("export links download from the export endpoint with the current query", async ({ page }) => {
     await visit(page, `${ROOT}?q=bridge&lang=eng`);
     const csv = page.getByRole("link", { name: "CSV" });
-    await expect(csv).toHaveAttribute("href", /\/api\/admin\/kcna-archive\/export\?.*q=bridge.*lang=eng.*format=csv/);
+    await expect(csv).toHaveAttribute("href", /\/api\/kcna-archive\/export\?.*q=bridge.*lang=eng.*format=csv/);
     await expect(csv).toHaveAttribute("download", "");
   });
 
   test("a snapshot that is not ready shows a plain notice instead of an error", async ({ page }) => {
     await visit(page, ROOT);
-    await page.route("**/api/admin/kcna-archive/search**", (route) =>
+    await page.route("**/api/kcna-archive/search**", (route) =>
       route.fulfill({ status: 503, json: ENVELOPE_ERROR(113, "not installed") }),
     );
     await page.goto(ROOT);
@@ -179,7 +335,7 @@ test.describe("search", () => {
   test("a failed search offers a retry that works", async ({ page }) => {
     await visit(page, ROOT);
     let failing = true;
-    await page.route("**/api/admin/kcna-archive/search**", async (route) => {
+    await page.route("**/api/kcna-archive/search**", async (route) => {
       if (failing) return route.fulfill({ status: 500, json: ENVELOPE_ERROR(118, "boom") });
       return route.fallback();
     });
@@ -192,7 +348,7 @@ test.describe("search", () => {
 
   test("an empty result says so", async ({ page }) => {
     await visit(page, ROOT);
-    await page.route("**/api/admin/kcna-archive/search**", (route) =>
+    await page.route("**/api/kcna-archive/search**", (route) =>
       route.fulfill({
         json: {
           success: true,
@@ -239,7 +395,7 @@ test.describe("reader", () => {
 
   test("a missing document is reported as not found", async ({ page }) => {
     await visit(page, ROOT);
-    await page.route("**/api/admin/kcna-archive/documents/**", (route) =>
+    await page.route("**/api/kcna-archive/documents/**", (route) =>
       route.fulfill({ status: 404, json: ENVELOPE_ERROR(112, "missing") }),
     );
     await page.goto(`${ROOT}/documents/${KCNA_ENGLISH_ID}`);
@@ -317,6 +473,7 @@ test.describe("renders", () => {
             ["reader", `${ROOT}/documents/${KCNA_DOCUMENT_ID}?q=bridge&with=eng`],
             ["trends", `${ROOT}/trends?terms=bridge,economy,port,school`],
             ["status", `${ROOT}/status`],
+            ["access", ADMIN],
             ["projects", "/projects"],
           ];
           for (const [name, path] of pages) {

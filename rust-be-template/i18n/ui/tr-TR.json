@@ -829,5 +829,16 @@
   "kcna.precision.second": "saniye",
   "kcna.precision.minute": "dakika",
   "kcna.precision.day": "gün",
-  "kcna.precision.inferred_day": "gün (URL'den çıkarıldı)"
+  "kcna.precision.inferred_day": "gün (URL'den çıkarıldı)",
+  "kcna.disclaimer": "Bu web sitesinin yöneticisi Kore Cumhuriyeti Kara Kuvvetleri yedek askeridir ve Pyongyang'daki gayrimeşru, katil ve beceriksiz faşist monarşiyi kesin bir dille kınar.",
+  "kcna.access.title": "KCNA Arşivi erişimi",
+  "kcna.access.description": "Yöneticiler KCNA Arşivi'ni her zaman okuyabilir. Diğer üyeler yalnızca bu listede oldukları sürece okuyabilir.",
+  "kcna.access.find": "Ada veya e-postaya göre üye bul",
+  "kcna.access.allow": "İzin ver",
+  "kcna.access.remove": "Kaldır",
+  "kcna.access.readers": "İzin verilen üyeler",
+  "kcna.access.empty": "Listede kimse yok. Arşivi yalnızca yöneticiler okuyabilir.",
+  "kcna.access.no_match": "Eşleşen üye yok.",
+  "kcna.access.saved": "Erişim listesi güncellendi.",
+  "kcna.access.failed": "Erişim listesi değiştirilemedi."
 }

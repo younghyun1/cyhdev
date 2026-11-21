@@ -1,6 +1,7 @@
-import { For, type ParentComponent } from "solid-js";
+import { For, Show, type ParentComponent } from "solid-js";
 import { useLocation } from "@solidjs/router";
 
+import { archiveIsRestricted, canManageArchive } from "../../components/kcna_archive/access";
 import type { UiTextKey } from "../../i18n/keys";
 import { t } from "../../state/i18n";
 import { pageStyles } from "../../styles/pageStyles";
@@ -16,20 +17,24 @@ import "../../styles/kcna-archive.css";
 import "../../styles/kcna-archive-reader.css";
 import "../../styles/kcna-archive-charts.css";
 
-const TABS: ReadonlyArray<{
+interface Tab {
   readonly section: ArchiveSection;
   readonly href: string;
   readonly labelKey: UiTextKey;
-}> = [
+}
+
+const READER_TABS: ReadonlyArray<Tab> = [
   { section: "search", href: ARCHIVE_PATH, labelKey: "kcna.nav.search" },
   { section: "trends", href: ARCHIVE_TRENDS_PATH, labelKey: "kcna.nav.trends" },
-  { section: "status", href: ARCHIVE_STATUS_PATH, labelKey: "kcna.nav.status" },
 ];
+/** The snapshot's status and reload are for whoever manages the archive. */
+const STATUS_TAB: Tab = { section: "status", href: ARCHIVE_STATUS_PATH, labelKey: "kcna.nav.status" };
 
 /** The archive section's frame: title, tabs, and the active tab's page. */
 const KcnaArchiveLayout: ParentComponent = (props) => {
   const location = useLocation();
   const section = () => sectionOf(location.pathname);
+  const tabs = (): ReadonlyArray<Tab> => (canManageArchive() ? [...READER_TABS, STATUS_TAB] : READER_TABS);
 
   return (
     <main class={`${pageStyles.page} kcna-page`}>
@@ -38,12 +43,15 @@ const KcnaArchiveLayout: ParentComponent = (props) => {
           <div class="kcna-header-text">
             <h1 class={`${pageStyles.titleSm} kcna-heading`}>{t("kcna.title")}</h1>
             <p class="kcna-subtitle">{t("kcna.description")}</p>
+            <p class="kcna-disclaimer">{t("kcna.disclaimer")}</p>
           </div>
-          <span class="kcna-badge">{t("kcna.admin_only")}</span>
+          <Show when={archiveIsRestricted()}>
+            <span class="kcna-badge">{t("kcna.admin_only")}</span>
+          </Show>
         </header>
         <nav class="kcna-tabs" aria-label={t("kcna.title")}>
           <ul class="kcna-tab-list">
-            <For each={TABS}>
+            <For each={tabs()}>
               {(tab) => (
                 <li>
                   <a

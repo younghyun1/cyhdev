@@ -220,6 +220,7 @@ fn checked_in_policy_lists_each_page_and_scenario_once_including_the_archive()
         "/projects/kcna-archive/documents/:documentId",
         "/projects/kcna-archive/trends",
         "/projects/kcna-archive/status",
+        "/admin/kcna-archive",
     ] {
         assert!(policy.pages.contains(page), "{page}");
     }

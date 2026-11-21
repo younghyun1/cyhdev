@@ -54,6 +54,7 @@ const ROUTES: ReadonlyArray<readonly [string, AuthMode]> = [
   [`/projects/kcna-archive/documents/${KCNA_DOCUMENT_ID}?q=bridge&with=eng`, "superuser"],
   ["/projects/kcna-archive/trends?terms=bridge,economy,port,school", "superuser"],
   ["/projects/kcna-archive/status", "superuser"],
+  ["/admin/kcna-archive", "superuser"],
 ];
 
 /** Controls that exist only after a click, measured with the overlay open. */

@@ -829,5 +829,16 @@
   "kcna.precision.second": "Sekunde",
   "kcna.precision.minute": "Minute",
   "kcna.precision.day": "Tag",
-  "kcna.precision.inferred_day": "Tag (aus der URL abgeleitet)"
+  "kcna.precision.inferred_day": "Tag (aus der URL abgeleitet)",
+  "kcna.disclaimer": "Der Betreiber dieser Website ist Reservist des Heeres der Republik Korea und verurteilt die illegitime, mörderische und unfähige faschistische Monarchie in Pjöngjang kategorisch.",
+  "kcna.access.title": "Zugriff auf das KCNA-Archiv",
+  "kcna.access.description": "Administratoren können das KCNA-Archiv immer lesen. Andere Mitglieder nur, solange sie hier aufgeführt sind.",
+  "kcna.access.find": "Mitglied nach Name oder E-Mail suchen",
+  "kcna.access.allow": "Zulassen",
+  "kcna.access.remove": "Entfernen",
+  "kcna.access.readers": "Zugelassene Mitglieder",
+  "kcna.access.empty": "Niemand ist aufgeführt. Nur Administratoren können das Archiv lesen.",
+  "kcna.access.no_match": "Kein Mitglied gefunden.",
+  "kcna.access.saved": "Zugriffsliste aktualisiert.",
+  "kcna.access.failed": "Die Zugriffsliste konnte nicht geändert werden."
 }

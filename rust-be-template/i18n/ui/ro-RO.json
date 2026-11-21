@@ -829,5 +829,16 @@
   "kcna.precision.second": "secundă",
   "kcna.precision.minute": "minut",
   "kcna.precision.day": "zi",
-  "kcna.precision.inferred_day": "zi (dedusă din URL)"
+  "kcna.precision.inferred_day": "zi (dedusă din URL)",
+  "kcna.disclaimer": "Administratorul acestui site este rezervist al Forțelor Terestre ale Republicii Coreea și denunță categoric monarhia fascistă ilegitimă, ucigașă și incompetentă de la Phenian.",
+  "kcna.access.title": "Acces la arhiva KCNA",
+  "kcna.access.description": "Administratorii pot citi oricând arhiva KCNA. Ceilalți membri doar cât timp sunt pe această listă.",
+  "kcna.access.find": "Caută un membru după nume sau e-mail",
+  "kcna.access.allow": "Permite",
+  "kcna.access.remove": "Elimină",
+  "kcna.access.readers": "Membri cu acces",
+  "kcna.access.empty": "Nu este nimeni pe listă. Doar administratorii pot citi arhiva.",
+  "kcna.access.no_match": "Niciun membru nu corespunde.",
+  "kcna.access.saved": "Lista de acces a fost actualizată.",
+  "kcna.access.failed": "Lista de acces nu a putut fi modificată."
 }

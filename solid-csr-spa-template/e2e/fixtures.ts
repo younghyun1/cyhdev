@@ -355,8 +355,8 @@ export async function installApiMocks(
           },
         ],
       });
-    } else if (kcnaArchiveBody(url) !== undefined) {
-      body = kcnaArchiveBody(url);
+    } else if (kcnaArchiveBody(url, authMode === "superuser") !== undefined) {
+      body = kcnaArchiveBody(url, authMode === "superuser");
     } else {
       body = api({});
     }

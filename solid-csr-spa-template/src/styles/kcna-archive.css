@@ -38,6 +38,18 @@
   line-height: 1.5;
 }
 
+/* The maintainer's statement about the source; present on every archive page. */
+.kcna-disclaimer {
+  max-width: 60rem;
+  margin: 0.375rem 0 0;
+  padding-inline-start: 0.625rem;
+  border-inline-start: 2px solid var(--accent);
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 /* Tabs: equal cells that share the row, so no language moves them. */
 .kcna-tabs {
   margin-bottom: 1rem;

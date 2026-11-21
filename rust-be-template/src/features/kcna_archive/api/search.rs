@@ -24,7 +24,7 @@ use crate::{
 /// plain 200.
 #[utoipa::path(
     get,
-    path = "/api/admin/kcna-archive/search",
+    path = "/api/kcna-archive/search",
     tag = "kcna_archive",
     params(ArchiveQuery),
     responses(
@@ -50,7 +50,7 @@ pub async fn kcna_archive_search(
 /// Counts matches per time bucket over the whole time axis.
 #[utoipa::path(
     get,
-    path = "/api/admin/kcna-archive/histogram",
+    path = "/api/kcna-archive/histogram",
     tag = "kcna_archive",
     params(ArchiveQuery),
     responses(
@@ -80,7 +80,7 @@ pub async fn kcna_archive_histogram(
 /// query string instead of a typed struct.
 #[utoipa::path(
     get,
-    path = "/api/admin/kcna-archive/trends",
+    path = "/api/kcna-archive/trends",
     tag = "kcna_archive",
     params(ArchiveQuery, TrendTermsQuery),
     responses(

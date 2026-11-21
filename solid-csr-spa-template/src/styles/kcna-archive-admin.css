@@ -1,0 +1,159 @@
+/* The administration page that lists who may read the KCNA archive. */
+.kcna-access {
+  display: grid;
+  width: min(100%, 52rem);
+  gap: 1rem;
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.kcna-access-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.kcna-access-head h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.kcna-access-description {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.kcna-access-section {
+  display: grid;
+  min-width: 0;
+  gap: 0.5rem;
+}
+
+.kcna-access-heading {
+  margin: 0;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kcna-access-search {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* The field takes the row; the button keeps one size in every language. */
+.kcna-access-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem;
+  gap: 0.5rem;
+}
+
+.kcna-access-search-row input {
+  block-size: 2.75rem;
+  box-sizing: border-box;
+}
+
+.kcna-access-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  list-style: none;
+}
+
+.kcna-access-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8.5rem;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.kcna-access-row + .kcna-access-row {
+  border-top: 1px solid var(--line);
+}
+
+.kcna-access-who {
+  display: grid;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.kcna-access-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* An address is left to right; it aligns with the page, not with itself. */
+.kcna-access-detail {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+
+:root[dir="rtl"] .kcna-access-detail[dir="ltr"] {
+  text-align: right;
+}
+
+.kcna-access-empty {
+  padding: 0.75rem;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Fixed boxes: the label wraps inside instead of resizing the button. */
+.kcna-access-action {
+  display: inline-flex;
+  box-sizing: border-box;
+  inline-size: 8.5rem;
+  block-size: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.25rem;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.1rem;
+  overflow-wrap: anywhere;
+  text-align: center;
+  transition: background-color 120ms ease;
+}
+
+.kcna-access-action:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.kcna-access-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 767px) {
+  .kcna-access-search-row,
+  .kcna-access-row {
+    grid-template-columns: minmax(0, 1fr) 6.5rem;
+  }
+
+  .kcna-access-action {
+    inline-size: 6.5rem;
+  }
+}

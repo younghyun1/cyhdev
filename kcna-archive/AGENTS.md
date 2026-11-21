@@ -8,7 +8,7 @@ Two workspace crates. `core/` (`kcna-archive-core`) is what the website links: i
 - The website never reads the collector's database. Anything a reader needs has to be in the snapshot. Changing the index fields or storage settings in `core/src/search/fields.rs` changes the snapshot format: existing snapshots are rebuilt on the next run, and the server and the snapshot must be deployed from the same revision.
 - `search_text.rs` is the single analyzer for indexing, querying, and highlighting. Do not add a second tokenization path.
 - The collector's migrations in `cli/migrations/` belong to the corpus database, not to the website's. Keep `cli/src/database/schema.rs` in step with them and load the database conventions before changing either.
-- The corpus (`data/`, snapshots) is not redistributable and stays out of Git, the backend binary, and container images. Archive routes stay superuser-only.
+- The corpus (`data/`, snapshots) is not redistributable and stays out of Git, the backend binary, and container images. Reading the archive is for superusers and the accounts a superuser lists, one account at a time; do not add a setting that opens it to every member. Its status, reload, and reader-list routes stay superuser-only.
 
 ## Commands
 

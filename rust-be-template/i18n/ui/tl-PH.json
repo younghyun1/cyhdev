@@ -829,5 +829,16 @@
   "kcna.precision.second": "segundo",
   "kcna.precision.minute": "minuto",
   "kcna.precision.day": "araw",
-  "kcna.precision.inferred_day": "araw (hinuha mula sa URL)"
+  "kcna.precision.inferred_day": "araw (hinuha mula sa URL)",
+  "kcna.disclaimer": "Ang tagapangasiwa ng website na ito ay reservist ng ROK Army at mariing kinokondena ang hindi lehitimo, mamamatay-tao, at walang kakayahang pasistang monarkiya sa Pyongyang.",
+  "kcna.access.title": "Access sa KCNA Archive",
+  "kcna.access.description": "Laging makakabasa ng KCNA Archive ang mga administrator. Ang ibang miyembro ay makakabasa lang habang nasa listahang ito.",
+  "kcna.access.find": "Maghanap ng miyembro ayon sa pangalan o email",
+  "kcna.access.allow": "Payagan",
+  "kcna.access.remove": "Alisin",
+  "kcna.access.readers": "Mga pinapayagang miyembro",
+  "kcna.access.empty": "Walang nasa listahan. Mga administrator lang ang makakabasa ng archive.",
+  "kcna.access.no_match": "Walang tumutugmang miyembro.",
+  "kcna.access.saved": "Na-update ang listahan ng access.",
+  "kcna.access.failed": "Hindi mabago ang listahan ng access."
 }

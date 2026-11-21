@@ -829,5 +829,16 @@
   "kcna.precision.second": "sekunda",
   "kcna.precision.minute": "minuta",
   "kcna.precision.day": "dzień",
-  "kcna.precision.inferred_day": "dzień (wywnioskowany z URL)"
+  "kcna.precision.inferred_day": "dzień (wywnioskowany z URL)",
+  "kcna.disclaimer": "Opiekun tej strony jest rezerwistą Wojsk Lądowych Republiki Korei i kategorycznie potępia nielegalną, morderczą i nieudolną faszystowską monarchię w Pjongjangu.",
+  "kcna.access.title": "Dostęp do archiwum KCNA",
+  "kcna.access.description": "Administratorzy zawsze mogą czytać archiwum KCNA. Pozostali użytkownicy tylko wtedy, gdy są na tej liście.",
+  "kcna.access.find": "Znajdź użytkownika po nazwie lub adresie e-mail",
+  "kcna.access.allow": "Zezwól",
+  "kcna.access.remove": "Usuń",
+  "kcna.access.readers": "Użytkownicy z dostępem",
+  "kcna.access.empty": "Lista jest pusta. Archiwum mogą czytać tylko administratorzy.",
+  "kcna.access.no_match": "Brak pasujących użytkowników.",
+  "kcna.access.saved": "Zaktualizowano listę dostępu.",
+  "kcna.access.failed": "Nie udało się zmienić listy dostępu."
 }

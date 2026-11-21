@@ -322,9 +322,17 @@ pub fn build_router(
         .merge(media_cleanup_admin_router)
         .merge(crate::features::minecraft::api::controls::router(&state)?)
         .merge(crate::features::minecraft::api::map::admin_router(&state))
-        .merge(crate::features::kcna_archive::api::routes::router(&state))
+        .merge(crate::features::kcna_archive::api::routes::admin_router(
+            &state,
+        ))
         .layer(require_superuser_middleware)
-        .layer(auth_middleware);
+        .layer(auth_middleware.clone());
+
+    // The archive's own gate decides who reads; its text is never cached,
+    // and the outer layer covers the session check's rejections too.
+    let archive_reader_router = crate::features::kcna_archive::api::routes::reader_router(&state)
+        .layer(auth_middleware)
+        .layer(from_fn(sensitive_response_headers));
 
     let api_router = public_router
         .merge(auth_abuse_router)
@@ -333,6 +341,7 @@ pub fn build_router(
         .merge(protected_forum_router)
         .merge(protected_router)
         .merge(superuser_router)
+        .merge(archive_reader_router)
         .layer(is_logged_in_middleware)
         .layer(trusted_origin_middleware)
         .layer(log_middleware)

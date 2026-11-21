@@ -77,6 +77,7 @@ pub fn page_assertion(pattern: &str) -> (&str, &str) {
         "/projects/kcna-archive/documents/:documentId" => (".kcna-document-title", "admin"),
         "/projects/kcna-archive/trends" => (".kcna-table", "admin"),
         "/projects/kcna-archive/status" => (".kcna-stats", "admin"),
+        "/admin/kcna-archive" => (".kcna-access-list", "admin"),
         "/edit-profile" => ("main h1", "member"),
         _ => ("main h1", "anonymous"),
     }
@@ -84,7 +85,7 @@ pub fn page_assertion(pattern: &str) -> (&str, &str) {
 
 pub fn owner(operation: &str) -> &str {
     let path = operation.split_once(' ').map_or("", |(_, path)| path);
-    if path.starts_with("/api/admin/kcna-archive") {
+    if path.starts_with("/api/kcna-archive") || path.starts_with("/api/admin/kcna-archive") {
         "kcna.search-read-trends-reload"
     } else if path.starts_with("/api/admin/authorization") {
         "authorization.roles-permissions-audit"

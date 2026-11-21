@@ -1,3 +1,6 @@
+pub mod access;
+#[cfg(test)]
+mod access_tests;
 pub mod archive_service;
 pub mod config;
 mod loading;
@@ -7,5 +10,7 @@ mod reload_tests;
 pub mod state;
 #[cfg(test)]
 pub(crate) mod test_snapshot;
+#[cfg(test)]
+pub(crate) mod test_store;
 #[cfg(test)]
 mod tests;

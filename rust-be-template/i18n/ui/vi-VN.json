@@ -829,5 +829,16 @@
   "kcna.precision.second": "giây",
   "kcna.precision.minute": "phút",
   "kcna.precision.day": "ngày",
-  "kcna.precision.inferred_day": "ngày (suy ra từ URL)"
+  "kcna.precision.inferred_day": "ngày (suy ra từ URL)",
+  "kcna.disclaimer": "Người quản lý trang web này là quân nhân dự bị của Lục quân Đại Hàn Dân Quốc và kiên quyết lên án chế độ quân chủ phát xít bất hợp pháp, sát nhân và bất tài ở Bình Nhưỡng.",
+  "kcna.access.title": "Quyền truy cập kho lưu trữ KCNA",
+  "kcna.access.description": "Quản trị viên luôn đọc được kho lưu trữ KCNA. Các thành viên khác chỉ đọc được khi có tên trong danh sách này.",
+  "kcna.access.find": "Tìm thành viên theo tên hoặc email",
+  "kcna.access.allow": "Cho phép",
+  "kcna.access.remove": "Gỡ",
+  "kcna.access.readers": "Thành viên được phép",
+  "kcna.access.empty": "Danh sách trống. Chỉ quản trị viên đọc được kho lưu trữ.",
+  "kcna.access.no_match": "Không có thành viên nào khớp.",
+  "kcna.access.saved": "Đã cập nhật danh sách truy cập.",
+  "kcna.access.failed": "Không thể thay đổi danh sách truy cập."
 }

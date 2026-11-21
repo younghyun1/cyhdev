@@ -20,7 +20,7 @@ For page discovery, navigation, and access boundaries, start with the [complete 
 | Commands, Docker, verification | `tools/xtask/src/main.rs`, `rust-be-template/Dockerfile` | [Tools](tools/AGENTS.md); also read it for root build changes |
 | Browser Rust demos | `wasm_demos/block_breaker/`, `wasm_demos/ray_tracer/` | [WASM](wasm_demos/AGENTS.md) |
 | Squaremap visibility plugin | `minecraft/map-control/README.md` | [Minecraft](minecraft/AGENTS.md) |
-| KCNA research archive (admin-only Projects page) | `kcna-archive/README.md`, `rust-be-template/src/features/kcna_archive/`, `solid-csr-spa-template/src/pages/kcna_archive/` | [KCNA archive](kcna-archive/AGENTS.md) |
+| KCNA research archive (Projects page for administrators and the members they allow) | `kcna-archive/README.md`, `rust-be-template/src/features/kcna_archive/`, `solid-csr-spa-template/src/pages/kcna_archive/` | [KCNA archive](kcna-archive/AGENTS.md) |
 | EU5 browser app integration | `tools/xtask/src/eu5_web.rs`, `.gitmodules` | [Vendor](vendor/AGENTS.md) |
 | Architecture, design, ongoing work | `docs/README.md`, `docs/plans/` | [Documentation](docs/AGENTS.md) |
 

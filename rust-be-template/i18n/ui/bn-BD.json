@@ -829,5 +829,16 @@
   "kcna.precision.second": "সেকেন্ড",
   "kcna.precision.minute": "মিনিট",
   "kcna.precision.day": "দিন",
-  "kcna.precision.inferred_day": "দিন (URL থেকে অনুমিত)"
+  "kcna.precision.inferred_day": "দিন (URL থেকে অনুমিত)",
+  "kcna.disclaimer": "এই ওয়েবসাইটের রক্ষণাবেক্ষণকারী কোরিয়া প্রজাতন্ত্রের সেনাবাহিনীর একজন রিজার্ভ সদস্য এবং পিয়ংইয়ংয়ের অবৈধ, খুনি ও অযোগ্য ফ্যাসিবাদী রাজতন্ত্রকে দ্ব্যর্থহীনভাবে নিন্দা করেন।",
+  "kcna.access.title": "KCNA আর্কাইভে প্রবেশাধিকার",
+  "kcna.access.description": "অ্যাডমিনরা সবসময় KCNA আর্কাইভ পড়তে পারেন। অন্য সদস্যরা কেবল এই তালিকায় থাকা অবস্থায় পড়তে পারেন।",
+  "kcna.access.find": "নাম বা ইমেইল দিয়ে সদস্য খুঁজুন",
+  "kcna.access.allow": "অনুমতি দিন",
+  "kcna.access.remove": "সরান",
+  "kcna.access.readers": "অনুমোদিত সদস্য",
+  "kcna.access.empty": "তালিকায় কেউ নেই। শুধু অ্যাডমিনরা আর্কাইভ পড়তে পারেন।",
+  "kcna.access.no_match": "কোনো সদস্য মেলেনি।",
+  "kcna.access.saved": "প্রবেশাধিকারের তালিকা হালনাগাদ হয়েছে।",
+  "kcna.access.failed": "প্রবেশাধিকারের তালিকা পরিবর্তন করা যায়নি।"
 }

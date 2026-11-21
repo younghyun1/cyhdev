@@ -829,5 +829,16 @@
   "kcna.precision.second": "sekunda",
   "kcna.precision.minute": "minuta",
   "kcna.precision.day": "dan",
-  "kcna.precision.inferred_day": "dan (zaključen iz URL-a)"
+  "kcna.precision.inferred_day": "dan (zaključen iz URL-a)",
+  "kcna.disclaimer": "Održavatelj ove stranice je rezervist Kopnene vojske Republike Koreje i kategorički osuđuje nelegitimnu, ubilačku i nesposobnu fašističku monarhiju u Pjongjangu.",
+  "kcna.access.title": "Pristup KCNA arhivi",
+  "kcna.access.description": "Administratori uvijek mogu čitati KCNA arhivu. Ostali članovi samo dok su na ovoj listi.",
+  "kcna.access.find": "Pronađi člana po imenu ili e-pošti",
+  "kcna.access.allow": "Dozvoli",
+  "kcna.access.remove": "Ukloni",
+  "kcna.access.readers": "Članovi s pristupom",
+  "kcna.access.empty": "Na listi nema nikoga. Arhivu mogu čitati samo administratori.",
+  "kcna.access.no_match": "Nema odgovarajućih članova.",
+  "kcna.access.saved": "Lista pristupa je ažurirana.",
+  "kcna.access.failed": "Listu pristupa nije moguće izmijeniti."
 }

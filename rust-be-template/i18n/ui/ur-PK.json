@@ -829,5 +829,16 @@
   "kcna.precision.second": "سیکنڈ",
   "kcna.precision.minute": "منٹ",
   "kcna.precision.day": "دن",
-  "kcna.precision.inferred_day": "دن (URL سے اخذ کردہ)"
+  "kcna.precision.inferred_day": "دن (URL سے اخذ کردہ)",
+  "kcna.disclaimer": "اس ویب سائٹ کا منتظم جمہوریہ کوریا کی بری فوج کا ریزرو اہلکار ہے اور پیانگ یانگ کی ناجائز، قاتل اور نااہل فاشسٹ بادشاہت کی دوٹوک مذمت کرتا ہے۔",
+  "kcna.access.title": "KCNA آرکائیو تک رسائی",
+  "kcna.access.description": "منتظمین KCNA آرکائیو ہمیشہ پڑھ سکتے ہیں۔ دوسرے ارکان صرف اس وقت تک پڑھ سکتے ہیں جب تک وہ اس فہرست میں ہیں۔",
+  "kcna.access.find": "نام یا ای میل سے رکن تلاش کریں",
+  "kcna.access.allow": "اجازت دیں",
+  "kcna.access.remove": "ہٹائیں",
+  "kcna.access.readers": "اجازت یافتہ ارکان",
+  "kcna.access.empty": "فہرست میں کوئی نہیں۔ صرف منتظمین آرکائیو پڑھ سکتے ہیں۔",
+  "kcna.access.no_match": "کوئی مماثل رکن نہیں۔",
+  "kcna.access.saved": "رسائی کی فہرست تازہ ہو گئی۔",
+  "kcna.access.failed": "رسائی کی فہرست تبدیل نہیں ہو سکی۔"
 }

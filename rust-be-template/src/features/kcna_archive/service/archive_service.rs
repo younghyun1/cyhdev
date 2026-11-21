@@ -19,6 +19,7 @@ use tokio::sync::{Mutex, RwLock, Semaphore};
 use tracing::error;
 
 use super::{
+    access::{AccessPolicy, ReaderStore},
     config::KcnaArchiveConfig,
     state::{ArchiveStatus, Shared, Slot},
 };
@@ -42,6 +43,8 @@ pub(super) struct Inner {
     /// Held for the whole of a load or reload, so only one runs at a time.
     pub(super) load_gate: Arc<Mutex<()>>,
     pub(super) queries: Arc<Semaphore>,
+    /// Who may read the archive; see the `access` module.
+    pub(super) access: AccessPolicy,
 }
 
 /// Handle to the in-memory archive; cloning shares the same state.
@@ -53,13 +56,24 @@ pub struct KcnaArchiveService {
 impl KcnaArchiveService {
     /// Starts the service from `KCNA_ARCHIVE_DIR` and returns at once; the
     /// snapshot loads on the blocking pool while the server accepts requests.
-    pub async fn start_from_environment() -> Self {
+    pub async fn start_from_environment(store: Arc<dyn ReaderStore>) -> Self {
         let config = KcnaArchiveConfig::from_environment();
-        Self::start(config.directory, Arc::new(Archive::load_into_memory)).await
+        Self::start_with_store(config.directory, Arc::new(Archive::load_into_memory), store).await
     }
 
-    /// Starts the service on `directory` with an explicit loader.
+    /// Starts the service on `directory` with an empty reader store in memory.
+    #[cfg(test)]
     pub(crate) async fn start(directory: PathBuf, loader: SnapshotLoader) -> Self {
+        let store = Arc::new(super::test_store::MemoryReaderStore::default());
+        Self::start_with_store(directory, loader, store).await
+    }
+
+    /// Starts the service on `directory` with an explicit loader and store.
+    pub(crate) async fn start_with_store(
+        directory: PathBuf,
+        loader: SnapshotLoader,
+        store: Arc<dyn ReaderStore>,
+    ) -> Self {
         let load_gate = Arc::new(Mutex::new(()));
         // A fresh mutex is free, so this returns immediately. The first load
         // holds the gate so an early reload request gets a conflict.
@@ -74,8 +88,11 @@ impl KcnaArchiveService {
                 }),
                 load_gate,
                 queries: Arc::new(Semaphore::new(MAX_CONCURRENT_QUERIES)),
+                access: AccessPolicy::new(store),
             }),
         };
+        // One short query; the database is already up when the service starts.
+        service.load_readers().await;
         let background = service.clone();
         tokio::spawn(async move {
             background.finish_first_load().await;
