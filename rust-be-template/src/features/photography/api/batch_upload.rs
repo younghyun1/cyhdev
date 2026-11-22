@@ -1,6 +1,6 @@
 use axum::{
     Extension,
-    extract::{Multipart, State},
+    extract::{Multipart, State, multipart::Field},
     http::StatusCode,
     response::IntoResponse,
 };
@@ -24,7 +24,13 @@ use crate::{
     init::state::ServerState,
     util::{
         image::batch_pipeline::{BatchStagingDir, append_chunk},
-        media::{image_upload::is_allowed_image_mime, staged_upload::read_bounded_text_field},
+        media::{
+            image_upload::{
+                MAX_THUMBNAIL_SOURCE_BYTES, is_allowed_image_mime, is_allowed_photograph_mime,
+                is_avif_mime,
+            },
+            staged_upload::read_bounded_text_field,
+        },
         time::now::tokio_now,
     },
 };
@@ -55,7 +61,7 @@ pub async fn batch_upload(
     let mut files = Vec::new();
     let mut metadata = None;
     let mut context = PhotographContext::Photography;
-    while let Some(mut field) = multipart
+    while let Some(field) = multipart
         .next_field()
         .await
         .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?
@@ -70,53 +76,51 @@ pub async fn batch_upload(
                 }
                 let file_name = field.file_name().map(str::to_owned);
                 let content_type = field.content_type().map(str::to_owned);
-                if !content_type.as_deref().is_some_and(is_allowed_image_mime) {
+                if !content_type
+                    .as_deref()
+                    .is_some_and(is_allowed_photograph_mime)
+                {
                     return Err(code_err(
                         CodeError::FILE_UPLOAD_ERROR,
                         "Unsupported image type in batch",
                     ));
                 }
                 let item_id = Uuid::now_v7();
-                let mut file = staging
+                let file = staging
                     .open_item(item_id)
                     .await
                     .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
-                let mut size_bytes = 0_u64;
-                loop {
-                    let chunk = match field.chunk().await {
-                        Ok(Some(chunk)) => chunk,
-                        Ok(None) => break,
-                        Err(error) => return Err(code_err(CodeError::FILE_UPLOAD_ERROR, error)),
-                    };
-                    let chunk_size = u64::try_from(chunk.len()).map_err(|_| {
-                        code_err(CodeError::FILE_UPLOAD_ERROR, "Batch chunk size overflow")
-                    })?;
-                    size_bytes = size_bytes
-                        .checked_add(chunk_size)
-                        .filter(|size| *size <= MAX_FILE_SIZE_BYTES)
-                        .ok_or_else(|| {
-                            code_err(
-                                CodeError::FILE_UPLOAD_ERROR,
-                                "A file exceeds the maximum allowed size",
-                            )
-                        })?;
-                    append_chunk(&mut file, &chunk)
-                        .await
-                        .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
-                }
-                drop(file);
-                if size_bytes == 0 {
-                    return Err(code_err(
-                        CodeError::FILE_UPLOAD_ERROR,
-                        "Batch files must not be empty",
-                    ));
-                }
+                let size_bytes = stage_part(field, file, MAX_FILE_SIZE_BYTES).await?;
                 files.push(StagedBatchFile {
                     item_id,
                     file_name,
                     content_type,
+                    thumbnail_content_type: None,
                     size_bytes,
                 });
+            }
+            // Rendered image for the thumbnail of the AVIF file sent just
+            // before it. Position is the pairing: only AVIF files have one.
+            Some("thumbnail") => {
+                let content_type = field.content_type().map(str::to_owned);
+                if !content_type.as_deref().is_some_and(is_allowed_image_mime) {
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Unsupported thumbnail image type in batch",
+                    ));
+                }
+                let Some(owner) = files.last_mut().filter(|file| awaits_thumbnail(file)) else {
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "A thumbnail image must directly follow its AVIF file",
+                    ));
+                };
+                let file = staging
+                    .open_thumbnail_source(owner.item_id)
+                    .await
+                    .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
+                stage_part(field, file, MAX_THUMBNAIL_SOURCE_BYTES).await?;
+                owner.thumbnail_content_type = content_type;
             }
             Some("meta") => {
                 let text = read_bounded_text_field(field, MAX_BATCH_META_BYTES)
@@ -149,6 +153,12 @@ pub async fn batch_upload(
     }
     let metadata =
         metadata.ok_or_else(|| code_err(CodeError::INVALID_REQUEST, "Missing meta field"))?;
+    if files.iter().any(awaits_thumbnail) {
+        return Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "Every AVIF file in a batch requires a thumbnail image",
+        ));
+    }
     let accepted = state
         .photography_service()
         .accept_batch(user_id, batch_id, context, staging, files, metadata)
@@ -173,4 +183,48 @@ pub async fn batch_upload(
             start,
         ),
     ))
+}
+
+/// Whether a staged file is an AVIF that has not received its thumbnail image.
+fn awaits_thumbnail(file: &StagedBatchFile) -> bool {
+    file.thumbnail_content_type.is_none() && file.content_type.as_deref().is_some_and(is_avif_mime)
+}
+
+/// Streams one multipart part into an opened staging file, refusing an empty
+/// part or one larger than `max_bytes`, and returns the bytes written.
+async fn stage_part(
+    mut field: Field<'_>,
+    mut file: tokio::fs::File,
+    max_bytes: u64,
+) -> HandlerResponse<u64> {
+    let mut size_bytes = 0_u64;
+    loop {
+        let chunk = match field.chunk().await {
+            Ok(Some(chunk)) => chunk,
+            Ok(None) => break,
+            Err(error) => return Err(code_err(CodeError::FILE_UPLOAD_ERROR, error)),
+        };
+        let chunk_size = u64::try_from(chunk.len())
+            .map_err(|_| code_err(CodeError::FILE_UPLOAD_ERROR, "Batch chunk size overflow"))?;
+        size_bytes = size_bytes
+            .checked_add(chunk_size)
+            .filter(|size| *size <= max_bytes)
+            .ok_or_else(|| {
+                code_err(
+                    CodeError::FILE_UPLOAD_ERROR,
+                    "A file exceeds the maximum allowed size",
+                )
+            })?;
+        append_chunk(&mut file, &chunk)
+            .await
+            .map_err(|error| code_err(CodeError::FILE_UPLOAD_ERROR, error))?;
+    }
+    drop(file);
+    if size_bytes == 0 {
+        return Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "Batch files must not be empty",
+        ));
+    }
+    Ok(size_bytes)
 }

@@ -5,6 +5,10 @@
 //! the codecs compiled into `image` (see `rust-be-template/Cargo.toml`) are
 //! reachable, and a file whose signature disagrees with its declared type is
 //! rejected before decoding.
+//!
+//! AVIF is the one accepted type with no decoder. Photograph endpoints store
+//! an AVIF upload byte-for-byte, so its embedded metadata survives, and build
+//! the thumbnail from a small rendered image that the client sends with it.
 
 use image::ImageFormat;
 
@@ -18,13 +22,26 @@ pub const ALLOWED_IMAGE_FORMATS: [(&str, ImageFormat); 6] = [
     ("image/bmp", ImageFormat::Bmp),
 ];
 
-/// Decoder for a declared MIME type, or `None` when the type is not accepted.
-pub fn image_format_for_mime(content_type: &str) -> Option<ImageFormat> {
-    let media_type = content_type
+/// MIME type of photographs that are stored exactly as uploaded.
+pub const AVIF_MIME: &str = "image/avif";
+
+/// Largest rendered image accepted as the thumbnail source of an AVIF
+/// photograph. The client sends at most a 1,600-pixel JPEG, which stays far
+/// below this; the bound only stops the part from carrying a second original.
+pub const MAX_THUMBNAIL_SOURCE_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Strips parameters such as `; charset=` from a declared content type.
+fn media_type(content_type: &str) -> &str {
+    content_type
         .split(';')
         .next()
         .map(str::trim)
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+/// Decoder for a declared MIME type, or `None` when the type is not decoded.
+pub fn image_format_for_mime(content_type: &str) -> Option<ImageFormat> {
+    let media_type = media_type(content_type);
     ALLOWED_IMAGE_FORMATS
         .iter()
         .find(|(mime, _)| mime.eq_ignore_ascii_case(media_type))
@@ -34,6 +51,17 @@ pub fn image_format_for_mime(content_type: &str) -> Option<ImageFormat> {
 /// Returns whether the declared MIME type is supported for image uploads.
 pub fn is_allowed_image_mime(content_type: &str) -> bool {
     image_format_for_mime(content_type).is_some()
+}
+
+/// Returns whether the declared MIME type is AVIF, which is never decoded.
+pub fn is_avif_mime(content_type: &str) -> bool {
+    media_type(content_type).eq_ignore_ascii_case(AVIF_MIME)
+}
+
+/// Returns whether a photograph endpoint accepts the declared MIME type:
+/// every decodable type, plus AVIF for storage as uploaded.
+pub fn is_allowed_photograph_mime(content_type: &str) -> bool {
+    is_allowed_image_mime(content_type) || is_avif_mime(content_type)
 }
 
 /// Resolves a staged upload's declared type to its decoder.
@@ -57,6 +85,7 @@ mod tests {
 
     use super::{
         declared_image_format, has_file_extension, image_format_for_mime, is_allowed_image_mime,
+        is_allowed_photograph_mime, is_avif_mime,
     };
 
     #[test]
@@ -84,5 +113,19 @@ mod tests {
             assert_eq!(image_format_for_mime(refused), None, "{refused}");
         }
         assert!(declared_image_format(None).is_err());
+    }
+
+    #[test]
+    fn avif_is_accepted_for_photographs_only_and_never_decoded() {
+        assert!(is_avif_mime("image/avif"));
+        assert!(is_avif_mime("IMAGE/AVIF; q=1"));
+        assert!(!is_avif_mime("image/avif-sequence"));
+        assert!(!is_avif_mime("image/heic"));
+        assert!(is_allowed_photograph_mime("image/avif"));
+        assert!(is_allowed_photograph_mime("image/jpeg"));
+        assert!(!is_allowed_photograph_mime("image/heic"));
+        // Profile pictures and demo thumbnails keep using the decoder list.
+        assert!(!is_allowed_image_mime("image/avif"));
+        assert!(declared_image_format(Some("image/avif")).is_err());
     }
 }

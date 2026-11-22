@@ -5,7 +5,8 @@
 //! temporary directory, and each file is created with mode 0600. Directory
 //! names carry a random per-process token, which lets the startup sweep remove
 //! every staging directory left by an earlier process without touching ones
-//! this process has already created.
+//! this process has already created. An AVIF item also stages the rendered
+//! image its thumbnail is made from, under the same directory and mode.
 
 use std::{
     fs::Permissions,
@@ -69,6 +70,16 @@ impl BatchStagingDir {
             .await
     }
 
+    /// Creates the staging file for an AVIF item's rendered thumbnail source.
+    pub async fn open_thumbnail_source(&self, item_id: Uuid) -> io::Result<tokio::fs::File> {
+        tokio::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(batch_thumbnail_source_path(&self.path, item_id))
+            .await
+    }
+
     /// Removes the directory and every staged file it still holds.
     pub async fn remove(mut self) -> io::Result<()> {
         match self.dir.take() {
@@ -103,6 +114,10 @@ impl Drop for BatchStagingDir {
 
 pub fn batch_item_path(directory: &Path, item_id: Uuid) -> PathBuf {
     directory.join(format!("{item_id}.orig"))
+}
+
+pub fn batch_thumbnail_source_path(directory: &Path, item_id: Uuid) -> PathBuf {
+    directory.join(format!("{item_id}.thumb"))
 }
 
 pub async fn append_chunk(file: &mut tokio::fs::File, chunk: &[u8]) -> io::Result<()> {
@@ -165,6 +180,11 @@ mod tests {
             .mode()
             & 0o777;
         assert_eq!(file_mode, 0o600);
+        drop(staging.open_thumbnail_source(item).await?);
+        let thumbnail_path = super::batch_thumbnail_source_path(&path, item);
+        assert_ne!(thumbnail_path, super::batch_item_path(&path, item));
+        let thumbnail_mode = std::fs::metadata(thumbnail_path)?.permissions().mode() & 0o777;
+        assert_eq!(thumbnail_mode, 0o600);
         staging.remove().await?;
         assert!(!path.exists());
         Ok(())

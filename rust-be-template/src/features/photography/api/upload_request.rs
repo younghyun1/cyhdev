@@ -8,7 +8,10 @@ use crate::{
         domain::photograph::PhotographContext, service::media::PhotographUpload,
     },
     util::media::{
-        image_upload::{has_file_extension, is_allowed_image_mime},
+        image_upload::{
+            MAX_THUMBNAIL_SOURCE_BYTES, has_file_extension, is_allowed_image_mime,
+            is_allowed_photograph_mime, is_avif_mime,
+        },
         staged_upload::{StageUploadError, read_bounded_text_field, stage_file_field},
     },
 };
@@ -22,6 +25,7 @@ pub async fn read_upload(
     user_id: Uuid,
 ) -> HandlerResponse<PhotographUpload> {
     let mut source = None;
+    let mut thumbnail_source = None;
     let mut comments = None;
     let mut latitude = None;
     let mut longitude = None;
@@ -42,6 +46,27 @@ pub async fn read_upload(
                 validate_file(field.file_name(), field.content_type())?;
                 source = Some(
                     stage_file_field(field, MAX_PHOTOGRAPH_BYTES)
+                        .await
+                        .map_err(map_stage_error)?,
+                );
+            }
+            // Rendered image for the thumbnail of an AVIF photograph, which the
+            // server stores without decoding.
+            Some("thumbnail") => {
+                if thumbnail_source.is_some() {
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Only one thumbnail image may be uploaded",
+                    ));
+                }
+                if !field.content_type().is_some_and(is_allowed_image_mime) {
+                    return Err(code_err(
+                        CodeError::FILE_UPLOAD_ERROR,
+                        "Unsupported thumbnail image type",
+                    ));
+                }
+                thumbnail_source = Some(
+                    stage_file_field(field, MAX_THUMBNAIL_SOURCE_BYTES)
                         .await
                         .map_err(map_stage_error)?,
                 );
@@ -80,6 +105,8 @@ pub async fn read_upload(
     }
     let source =
         source.ok_or_else(|| code_err(CodeError::FILE_UPLOAD_ERROR, "Photograph is required"))?;
+    // Parts arrive in any order, so the pairing is checked once all are read.
+    require_thumbnail_pairing(source.content_type.as_deref(), thumbnail_source.is_some())?;
     let (comments, latitude, longitude) = match context {
         PhotographContext::Photography => (
             required_nonempty(comments, "comments")?,
@@ -102,6 +129,7 @@ pub async fn read_upload(
     };
     Ok(PhotographUpload {
         source,
+        thumbnail_source,
         comments,
         latitude,
         longitude,
@@ -120,13 +148,31 @@ fn validate_file(file_name: Option<&str>, content_type: Option<&str>) -> Handler
     }
     let content_type = content_type
         .ok_or_else(|| code_err(CodeError::FILE_UPLOAD_ERROR, "Content type is required"))?;
-    if !is_allowed_image_mime(content_type) {
+    if !is_allowed_photograph_mime(content_type) {
         return Err(code_err(
             CodeError::FILE_UPLOAD_ERROR,
             "Unsupported image type",
         ));
     }
     Ok(())
+}
+/// An AVIF photograph must come with a thumbnail image, and no other type may.
+fn require_thumbnail_pairing(
+    photograph_content_type: Option<&str>,
+    has_thumbnail_source: bool,
+) -> HandlerResponse<()> {
+    let is_avif = photograph_content_type.is_some_and(is_avif_mime);
+    match (is_avif, has_thumbnail_source) {
+        (true, false) => Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "An AVIF photograph requires a thumbnail image",
+        )),
+        (false, true) => Err(code_err(
+            CodeError::FILE_UPLOAD_ERROR,
+            "A thumbnail image is only accepted with an AVIF photograph",
+        )),
+        (true, true) | (false, false) => Ok(()),
+    }
 }
 fn parse_coordinate(
     value: &str,
@@ -162,7 +208,15 @@ fn map_stage_error(error: StageUploadError) -> CodeErrorResp {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_coordinate;
+    use super::{parse_coordinate, require_thumbnail_pairing};
+    #[test]
+    fn thumbnail_image_accompanies_avif_photographs_only() {
+        assert!(require_thumbnail_pairing(Some("image/avif"), true).is_ok());
+        assert!(require_thumbnail_pairing(Some("image/jpeg"), false).is_ok());
+        assert!(require_thumbnail_pairing(Some("image/avif"), false).is_err());
+        assert!(require_thumbnail_pairing(Some("image/jpeg"), true).is_err());
+        assert!(require_thumbnail_pairing(None, true).is_err());
+    }
     #[test]
     fn rejects_invalid_coordinates() {
         assert!(parse_coordinate("NaN", "latitude", -90.0, 90.0).is_err());
