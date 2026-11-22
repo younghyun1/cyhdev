@@ -1,3 +1,4 @@
+pub mod avif_original;
 pub mod batch_pipeline;
 pub mod exif_utils;
 pub mod image_variant;

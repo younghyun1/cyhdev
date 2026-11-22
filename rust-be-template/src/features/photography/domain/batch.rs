@@ -42,6 +42,8 @@ pub struct BatchPipelineItem {
     pub item_id: Uuid,
     pub file_name: Option<String>,
     pub content_type: Option<String>,
+    /// Declared type of the staged thumbnail source; set only for AVIF items.
+    pub thumbnail_content_type: Option<String>,
     pub comments: String,
     pub latitude: f64,
     pub longitude: f64,

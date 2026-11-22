@@ -20,6 +20,9 @@ pub struct StagedBatchFile {
     pub item_id: Uuid,
     pub file_name: Option<String>,
     pub content_type: Option<String>,
+    /// Declared type of the client-rendered thumbnail source staged beside an
+    /// AVIF file; `None` for files the server decodes itself.
+    pub thumbnail_content_type: Option<String>,
     pub size_bytes: u64,
 }
 
@@ -68,6 +71,7 @@ impl PhotographyService {
                 item_id: file.item_id,
                 file_name: file.file_name,
                 content_type: file.content_type,
+                thumbnail_content_type: file.thumbnail_content_type,
                 comments,
                 latitude,
                 longitude,

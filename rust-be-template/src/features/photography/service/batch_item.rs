@@ -1,4 +1,4 @@
-//! One batch item: EXIF read, AVIF encode, upload, and metadata commit.
+//! One batch item: EXIF read, AVIF encode or passthrough, upload, and metadata commit.
 
 use chrono::Utc;
 use std::{
@@ -19,14 +19,12 @@ use crate::{
     },
     util::{
         image::{
-            batch_pipeline::batch_item_path,
+            batch_pipeline::{batch_item_path, batch_thumbnail_source_path},
             exif_utils::extract_exif_shot_at_from_path,
-            image_variant::{CyhdevImageType, IMAGE_ENCODING_FORMAT},
+            image_variant::IMAGE_ENCODING_FORMAT,
             map_image_format_to_db_enum::map_image_format_to_str,
-            process_uploaded_image_files::process_uploaded_image_files,
         },
         media::{
-            image_upload::declared_image_format,
             object_store::ObjectLocation,
             persistence::{
                 CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
@@ -39,6 +37,7 @@ use crate::{
 
 use super::batch_worker::BatchWorker;
 use super::media::enqueue_photograph_compensation_cleanup;
+use super::photograph_source::{StagedPhotograph, StagedThumbnailSource, prepare_photograph};
 
 impl BatchWorker {
     pub(super) async fn process(
@@ -53,8 +52,22 @@ impl BatchWorker {
         let item_id = item.item_id;
         let source_path = batch_item_path(directory, item_id);
         let mut guard = StagedFileGuard(Some(source_path.clone()));
-        self.process_staged(batch, batch_id, item, user_id, context, source_path.clone())
-            .await;
+        // Only AVIF items stage a thumbnail source. Removing the batch
+        // directory deletes it, so it needs no guard of its own.
+        let thumbnail_source_path = item
+            .thumbnail_content_type
+            .as_ref()
+            .map(|_| batch_thumbnail_source_path(directory, item_id));
+        self.process_staged(
+            batch,
+            batch_id,
+            item,
+            user_id,
+            context,
+            source_path.clone(),
+            thumbnail_source_path,
+        )
+        .await;
         match tokio::fs::remove_file(&source_path).await {
             Ok(()) => guard.disarm(),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => guard.disarm(),
@@ -72,6 +85,7 @@ impl BatchWorker {
         user_id: Uuid,
         context: PhotographContext,
         source_path: PathBuf,
+        thumbnail_source_path: Option<PathBuf>,
     ) {
         let item_id = item.item_id;
         batch
@@ -92,52 +106,28 @@ impl BatchWorker {
                     None
                 }
             };
-        let format = match declared_image_format(item.content_type.as_deref()) {
-            Ok(format) => format,
-            Err(error) => {
-                fail(&batch, item_id, "encode", &error).await;
-                return;
-            }
-        };
-        let mut outputs = match process_uploaded_image_files(
-            &source_path,
-            format,
-            vec![CyhdevImageType::Photograph, CyhdevImageType::Thumbnail],
-        )
+        // The staged source outlives this call, so an AVIF original can be
+        // uploaded straight from it.
+        let prepared = match prepare_photograph(StagedPhotograph {
+            source: &source_path,
+            content_type: item.content_type.as_deref(),
+            thumbnail_source: thumbnail_source_path
+                .as_deref()
+                .map(|path| StagedThumbnailSource {
+                    path,
+                    content_type: item.thumbnail_content_type.as_deref(),
+                }),
+        })
         .await
         {
-            Ok(outputs) => outputs.into_iter(),
+            Ok(prepared) => prepared,
             Err(error) => {
                 fail(&batch, item_id, "encode", &error).await;
                 return;
             }
         };
-        let main = match outputs.next() {
-            Some(value) => value,
-            None => {
-                batch
-                    .fail_item(
-                        item_id,
-                        "encoder produced no main image".to_owned(),
-                        Utc::now(),
-                    )
-                    .await;
-                return;
-            }
-        };
-        let thumbnail = match outputs.next() {
-            Some(value) => value,
-            None => {
-                batch
-                    .fail_item(
-                        item_id,
-                        "encoder produced no thumbnail".to_owned(),
-                        Utc::now(),
-                    )
-                    .await;
-                return;
-            }
-        };
+        let main = prepared.main;
+        let thumbnail = prepared.thumbnail;
         let (extension, image_type) = map_image_format_to_str(IMAGE_ENCODING_FORMAT);
         let main_location =
             ObjectLocation::new(AWS_S3_BUCKET_NAME, format!("images/{item_id}.{extension}"));

@@ -10,14 +10,11 @@ use crate::{
     },
     util::{
         image::{
-            exif_utils::extract_exif_shot_at_from_path,
-            image_variant::{CyhdevImageType, IMAGE_ENCODING_FORMAT},
+            exif_utils::extract_exif_shot_at_from_path, image_variant::IMAGE_ENCODING_FORMAT,
             map_image_format_to_db_enum::map_image_format_to_str,
-            process_uploaded_image_files::process_uploaded_image_files,
         },
         media::{
             cleanup::{REASON_DELETED_PHOTOGRAPH_IMAGE, REASON_DELETED_PHOTOGRAPH_THUMBNAIL},
-            image_upload::declared_image_format,
             object_store::{MediaObjectStore, ObjectLocation},
             persistence::{
                 CleanupFailure, MediaWriteError, PendingMediaObject, PersistedMedia,
@@ -29,6 +26,7 @@ use crate::{
     },
 };
 
+use super::photograph_source::{StagedPhotograph, StagedThumbnailSource, prepare_photograph};
 use super::photography_service::PhotographyService;
 
 pub struct MediaPorts {
@@ -53,6 +51,8 @@ impl MediaPorts {
 
 pub struct PhotographUpload {
     pub source: StagedUpload,
+    /// Client-rendered image for the thumbnail; sent only with an AVIF source.
+    pub thumbnail_source: Option<StagedUpload>,
     pub comments: String,
     pub latitude: f64,
     pub longitude: f64,
@@ -65,26 +65,27 @@ impl PhotographyService {
         user_id: Uuid,
         upload: PhotographUpload,
     ) -> Result<Photograph, PhotographyError> {
-        let format = declared_image_format(upload.source.content_type.as_deref())
-            .map_err(PhotographyError::Image)?;
         let source_path = upload.source.path().to_path_buf();
         let shot_at = read_exif(source_path.clone(), user_id).await;
-        let mut outputs = process_uploaded_image_files(
-            &source_path,
-            format,
-            vec![CyhdevImageType::Photograph, CyhdevImageType::Thumbnail],
-        )
+        let prepared = prepare_photograph(StagedPhotograph {
+            source: &source_path,
+            content_type: upload.source.content_type.as_deref(),
+            thumbnail_source: upload.thumbnail_source.as_ref().map(|staged| {
+                StagedThumbnailSource {
+                    path: staged.path(),
+                    content_type: staged.content_type.as_deref(),
+                }
+            }),
+        })
         .await
-        .map_err(PhotographyError::Image)?
-        .into_iter();
-        let main = outputs.next().ok_or_else(|| {
-            PhotographyError::Image(anyhow::anyhow!("encoder produced no main image"))
-        })?;
-        let thumbnail = outputs.next().ok_or_else(|| {
-            PhotographyError::Image(anyhow::anyhow!("encoder produced no thumbnail"))
-        })?;
+        .map_err(PhotographyError::Image)?;
         drop(source_path);
-        drop(upload.source);
+        drop(upload.thumbnail_source);
+        // An AVIF original is uploaded from its staged file, so that file must
+        // outlive persistence; any other source is finished once encoded.
+        let _staged_original = prepared.main.is_original().then_some(upload.source);
+        let main = prepared.main;
+        let thumbnail = prepared.thumbnail;
 
         let image_id = Uuid::now_v7();
         let (extension, image_type) = map_image_format_to_str(IMAGE_ENCODING_FORMAT);
