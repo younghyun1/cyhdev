@@ -7,7 +7,8 @@
 // onMount-at-component-mount approach saw an undefined ref and never created the
 // map). The map always targets the currently-visible photo. Submit is blocked
 // until every photo has a comment and a location. Builds FormData as ordered
-// `files` + a `meta` JSON array aligned to file order + `context`.
+// `files` + a `meta` JSON array aligned to file order + `context`. An AVIF is
+// uploaded as it is, followed by a `thumbnail` part rendered in the browser.
 
 import {
   For,
@@ -24,6 +25,7 @@ import { GeoSearchControl, OpenStreetMapProvider } from "leaflet-geosearch";
 import "leaflet-geosearch/dist/geosearch.css";
 import { pageStyles } from "../../styles/pageStyles";
 import { t, tx } from "../../state/i18n";
+import { appendPhotograph } from "../../utils/avifThumbnail";
 
 const MAX_FILES_PER_BATCH = 50;
 const SWIPE_THRESHOLD_PX = 40;
@@ -53,6 +55,8 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
   const [entries, setEntries] = createSignal<FileEntry[]>([]);
   const [index, setIndex] = createSignal(0);
   const [err, setErr] = createSignal<string | null>(null);
+  // True while AVIF thumbnails render, before the parent starts the request.
+  const [preparing, setPreparing] = createSignal(false);
 
   let map: L.Map | null = null;
   let marker: L.Marker | null = null;
@@ -208,22 +212,42 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
     map = null;
   });
 
-  const handleSubmit = (e: Event) => {
-    e.preventDefault();
-    if (!allValid() || props.submitting) {
-      setErr(t("photos.batch_needs_meta"));
-      return;
-    }
+  const submit = async () => {
+    // One snapshot feeds both the parts and `meta`, so their order agrees
+    // even if the list changes while thumbnails render.
+    const list = entries();
     const formData = new FormData();
-    const meta = entries().map((entry) => ({
+    setErr(null);
+    setPreparing(true);
+    try {
+      for (const entry of list) {
+        await appendPhotograph(formData, "files", entry.file, entry.file.name);
+      }
+    } catch (error: unknown) {
+      console.error("Could not render an AVIF thumbnail:", error);
+      setErr(t("photos.upload_failed"));
+      return;
+    } finally {
+      setPreparing(false);
+    }
+    const meta = list.map((entry) => ({
       comment: entry.comment,
       lat: entry.lat,
       lon: entry.lon,
     }));
-    for (const entry of entries()) formData.append("files", entry.file);
     formData.append("meta", JSON.stringify(meta));
     formData.append("context", "photography");
     props.onSubmit(formData);
+  };
+
+  const handleSubmit = (e: Event) => {
+    e.preventDefault();
+    if (preparing()) return;
+    if (!allValid() || props.submitting) {
+      setErr(t("photos.batch_needs_meta"));
+      return;
+    }
+    void submit();
   };
 
   let addInput: HTMLInputElement | undefined;
@@ -430,10 +454,12 @@ export default function BatchUploadFields(props: BatchUploadFieldsProps) {
         </button>
         <button
           type="submit"
-          disabled={!allValid() || props.submitting}
+          disabled={!allValid() || props.submitting || preparing()}
           class={pageStyles.buttonPrimary}
         >
-          {props.submitting ? t("common.uploading") : t("common.upload")}
+          {props.submitting || preparing()
+            ? t("common.uploading")
+            : t("common.upload")}
         </button>
       </div>
     </form>

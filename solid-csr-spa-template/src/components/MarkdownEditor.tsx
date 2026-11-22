@@ -7,6 +7,7 @@ import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
 import { theme } from "../state/theme";
 import { photographyApi } from "../services/all_api";
 import { t } from "../state/i18n";
+import { appendPhotograph } from "../utils/avifThumbnail";
 
 interface MarkdownEditorProps {
   value: string;
@@ -75,7 +76,8 @@ export default function MarkdownEditor(
         try {
           const fileName = blob instanceof File ? blob.name : "post-image";
           const formData = new FormData();
-          formData.append("file", blob, fileName);
+          // An AVIF is stored as uploaded and needs a rendered thumbnail.
+          await appendPhotograph(formData, "file", blob, fileName);
           formData.append("context", "post");
           formData.append("comments", fileName);
           formData.append("lat", "0");
