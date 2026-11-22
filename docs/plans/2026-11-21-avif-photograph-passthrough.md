@@ -2,7 +2,7 @@
 
 Status: implemented and awaiting review, November 21. Not complete: the Linux gates below have not run. Intended outcome: a photograph exported as AVIF reaches the object store unchanged, with its embedded metadata, while every other format is still encoded to AVIF.
 
-Checkout: branch `feat/avif-upload-passthrough`, based on `origin/main` at `1b950eec`. Implementation commits: `2d8a232a` (backend) and `2137fdad` (frontend). No uncommitted paths.
+Checkout: branch `feat/avif-upload-passthrough`, based on `origin/main` at `1b950eec`. Implementation commits: `2d8a232a` (backend) and `2137fdad` (frontend). No uncommitted paths. Pull request: https://github.com/younghyun1/cyhdev/pull/2.
 
 ## Problem
 
