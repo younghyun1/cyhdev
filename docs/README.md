@@ -25,6 +25,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [November 4 interface pass: home board, forum, animation switch, page styling](plans/2026-11-04-interface-pass.md)
 - [November 21 dependency upgrade: stable Solid 2 and current Rust crates](plans/2026-11-21-dependency-upgrade.md)
 - [November 21 KCNA archive integration and three more languages](plans/2026-11-21-kcna-archive-integration.md)
+- [November 21 AVIF photographs stored as uploaded](plans/2026-11-21-avif-photograph-passthrough.md)
 - `architecture/be/` - backend architecture and boundary conventions.
 - `design/fe/` - frontend interaction and visual design.
 - `plans/` - implementation plans before code changes begin.
