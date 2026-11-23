@@ -9,6 +9,16 @@ use super::process;
 const MANIFEST: &str = "https://static.rust-lang.org/dist/channel-rust-nightly.toml";
 const MAX_MANIFEST_BYTES: usize = 2 * 1024 * 1024;
 
+/// Dated compiler used instead of the latest nightly while that one cannot build the campaign.
+///
+/// nightly-2026-11-23 changed `profiler_builtins` from `#![no_core]` back to `#![no_std]`
+/// with a dependency on `core`. Under `-Cprofile-generate` rustc then loads the prebuilt
+/// sysroot `core` beside the one `-Zbuild-std` is compiling, and the instrumented build
+/// fails with E0152 (duplicate lang item `sized`). nightly-2026-11-22 is the last release
+/// without the change. No upstream report was found on 2026-11-23. Set this back to `None`
+/// once a newer nightly compiles a crate with `-Zbuild-std` and `-Cprofile-generate`.
+pub(super) const PINNED_NIGHTLY: Option<&str> = Some("nightly-2026-11-22");
+
 /// A dated toolchain is a stable cache input and prevents mid-campaign updates.
 pub(super) fn requested() -> TaskResult<Option<String>> {
     match env::var("CYHDEV_OPT_LATEST_NIGHTLY") {
@@ -19,6 +29,10 @@ pub(super) fn requested() -> TaskResult<Option<String>> {
                 "CYHDEV_OPT_LATEST_NIGHTLY must be 1 or unset".into(),
             ));
         }
+    }
+    if let Some(toolchain) = PINNED_NIGHTLY {
+        println!("Optimization compiler: {toolchain} (pinned; see PINNED_NIGHTLY)");
+        return Ok(Some(toolchain.to_owned()));
     }
     let manifest = match process::output(&mut manifest_command()) {
         Ok(manifest) => manifest,
@@ -91,7 +105,7 @@ pub(super) fn from_manifest(manifest: &str) -> TaskResult<String> {
 }
 
 /// Reject malformed dates before they become Docker or rustup arguments.
-fn valid_date(value: &str) -> bool {
+pub(super) fn valid_date(value: &str) -> bool {
     let bytes = value.as_bytes();
     if bytes.len() != 10
         || bytes[4] != b'-'

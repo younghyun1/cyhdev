@@ -86,3 +86,15 @@ fn published_nightly_manifest_resolves() -> crate::TaskResult<()> {
     println!("Latest published nightly: {toolchain}");
     Ok(())
 }
+
+#[test]
+fn pinned_nightly_is_a_dated_toolchain() {
+    if let Some(toolchain) = nightly::PINNED_NIGHTLY {
+        assert!(
+            toolchain
+                .strip_prefix("nightly-")
+                .is_some_and(nightly::valid_date),
+            "the pin must name a dated nightly, never a moving channel"
+        );
+    }
+}

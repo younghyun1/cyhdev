@@ -16,4 +16,6 @@ Not run: browser E2E, `image-smoke`.
 
 ## PGO and BOLT campaign
 
-Pending: `./build_pgo_and_bolt.sh` from this branch head.
+The first run, from `096b2ea2` on nightly-2026-11-23, built the baseline and passed its full coverage, then failed compiling the instrumented binary: `error[E0152]: found duplicate lang item \`sized\`` in `core`. That nightly changed `profiler_builtins` from `#![no_core]` to `#![no_std]` with a `core` dependency, so `-Cprofile-generate` loads the prebuilt sysroot `core` beside the one `-Zbuild-std` compiles. A one-file crate reproduces it with the same flags; nightly-2026-11-21 and nightly-2026-11-22 build it. The campaign compiler is therefore pinned to nightly-2026-11-22 through `PINNED_NIGHTLY` in `tools/xtask/src/optimization/nightly.rs`, which states when to clear it.
+
+Pending: rerun of `./build_pgo_and_bolt.sh` with the pinned compiler.
