@@ -152,7 +152,10 @@ fn run() -> anyhow::Result<()> {
     // 3) zstd 22 compress
     let mut out_file = File::create(output_path)?;
     let mut encoder = zstd::Encoder::new(&mut out_file, 22)?;
-    match encoder.multithread(num_cpus::get() as u32) {
+    // One worker when the parallelism query fails or does not fit zstd's u32.
+    let workers = std::thread::available_parallelism()
+        .map_or(1, |count| u32::try_from(count.get()).unwrap_or(1));
+    match encoder.multithread(workers) {
         Ok(()) => {}
         Err(e) => eprintln!("Could not enable zstd multithreading: {e}"),
     }

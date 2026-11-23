@@ -22,7 +22,7 @@ edition = "2024"
 version = "0.1.0"
 
 [workspace.dependencies]
-anyhow = "1.0.104"
+anyhow = "1.0.105"
 jiff = { version = "1.0.2", features = ["serde"] }
 # Diesel wrapper types for jiff values; the PostgreSQL feature only enables
 # diesel/postgres_backend, so it links no libpq of its own.

@@ -103,7 +103,6 @@ anyhow.workspace = true
 thiserror = "2.0.21"
 
 # system information
-num_cpus = "1.17.0"
 walkdir = "2.5.1"
 # sysinfo = "0.37.2"
 
@@ -117,7 +116,7 @@ flate2 = "1.1.11"
 # types
 jiff.workspace = true
 jiff-diesel.workspace = true
-scc = "3.9.1"
+scc = "3.9.3"
 uuid = { version = "1.29.3", features = [
     "v4",
     "v7",
@@ -176,7 +175,7 @@ tempfile = "3.27.0"
 
 # markdown
 # Only the library renderer is used; CLI and syntax-highlighter defaults add unused parsers.
-comrak = { version = "1.1.0", default-features = false, features = ["shortcodes"] }
+comrak = { version = "1.2.0", default-features = false, features = ["shortcodes"] }
 ansi-to-html = "0.2.4"
 
 # full-text search

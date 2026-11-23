@@ -22,7 +22,7 @@ use crate::{
 
 /// Exact source and generated-data revision used by this executable.
 pub const GENERATOR_REVISION: &str =
-    "pumpkin-d0c0a5d73d3757258f7afb2ca240279d52653862-java26.3-surface1";
+    "pumpkin-a49be4bee2113e4cf812de3117c61bc3e9d06d3f-java26.3-surface1";
 
 #[expect(
     clippy::large_enum_variant,

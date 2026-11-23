@@ -8,9 +8,9 @@ publish = false
 [dependencies]
 mimalloc.workspace = true
 # Both packages must use the same reviewed 26.3 generation/data revision.
-pumpkin-world = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "d0c0a5d73d3757258f7afb2ca240279d52653862", default-features = false }
-pumpkin-data = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "d0c0a5d73d3757258f7afb2ca240279d52653862", default-features = false, features = ["noise_router", "chunk"] }
-pumpkin-util = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "d0c0a5d73d3757258f7afb2ca240279d52653862", default-features = false }
+pumpkin-world = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "a49be4bee2113e4cf812de3117c61bc3e9d06d3f", default-features = false }
+pumpkin-data = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "a49be4bee2113e4cf812de3117c61bc3e9d06d3f", default-features = false, features = ["noise_router", "chunk"] }
+pumpkin-util = { git = "https://github.com/Pumpkin-MC/Pumpkin", rev = "a49be4bee2113e4cf812de3117c61bc3e9d06d3f", default-features = false }
 serde = { version = "1.0.229", default-features = false, features = ["derive", "std"] }
 serde_json.workspace = true
 thiserror = "2.0.21"
