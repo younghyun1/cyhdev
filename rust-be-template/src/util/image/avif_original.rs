@@ -65,7 +65,9 @@ fn has_avif_still_image_brand(head: &[u8]) -> bool {
     // The minor version sits between the major brand and the compatible
     // brands; it is a number, so it must not be matched as a brand.
     brands
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .enumerate()
         .any(|(index, brand)| index != 1 && brand == STILL_IMAGE_BRAND)
 }
