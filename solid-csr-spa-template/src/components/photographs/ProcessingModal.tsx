@@ -44,9 +44,11 @@ export default function ProcessingModal(props: ProcessingModalProps) {
       .map((id) => batches[id])
       .filter((entry): entry is BatchEntry => entry !== undefined && !entry._missing)
       .sort((a, b) => {
-        const at = a.status?.created_at ?? "";
-        const bt = b.status?.created_at ?? "";
-        return bt.localeCompare(at);
+        // Compare instants, not text: RFC 3339 strings with different
+        // fractional-second widths do not sort lexicographically.
+        const at = Date.parse(a.status?.created_at ?? "");
+        const bt = Date.parse(b.status?.created_at ?? "");
+        return (Number.isNaN(bt) ? 0 : bt) - (Number.isNaN(at) ? 0 : at);
       }),
   );
 
