@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use diesel::{Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::{comments, post_tags, posts, tags};
@@ -20,9 +20,12 @@ pub(super) struct PostRecord {
     post_slug: String,
     post_content: String,
     post_summary: Option<String>,
-    post_created_at: DateTime<Utc>,
-    post_updated_at: DateTime<Utc>,
-    post_published_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    post_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    post_updated_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    post_published_at: Option<Timestamp>,
     post_is_published: bool,
     post_view_count: i64,
     post_share_count: i64,
@@ -68,9 +71,12 @@ pub(super) struct PostInfoRecord {
     post_title: String,
     post_slug: String,
     post_summary: Option<String>,
-    post_created_at: DateTime<Utc>,
-    post_updated_at: DateTime<Utc>,
-    post_published_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    post_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    post_updated_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    post_published_at: Option<Timestamp>,
     post_is_published: bool,
     post_view_count: i64,
     post_share_count: i64,
@@ -106,12 +112,15 @@ pub(super) struct CommentRecord {
     post_id: Uuid,
     user_id: Uuid,
     comment_content: String,
-    comment_created_at: DateTime<Utc>,
-    comment_updated_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    comment_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    comment_updated_at: Option<Timestamp>,
     parent_comment_id: Option<Uuid>,
     total_upvotes: i64,
     total_downvotes: i64,
-    comment_deleted_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    comment_deleted_at: Option<Timestamp>,
 }
 
 impl CommentRecord {
@@ -151,7 +160,8 @@ pub(super) struct NewPostRecord<'a> {
     pub post_title: &'a str,
     pub post_slug: &'a str,
     pub post_content: &'a str,
-    pub post_published_at: Option<DateTime<Utc>>,
+    #[diesel(serialize_as = jiff_diesel::NullableTimestamp)]
+    pub post_published_at: Option<Timestamp>,
     pub post_is_published: bool,
     pub post_metadata: &'a serde_json::Value,
 }

@@ -5,7 +5,7 @@ use std::{
     sync::atomic::{AtomicI64, AtomicUsize, Ordering},
 };
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::photography::domain::batch::{BatchItem, ProcessingStatus};
@@ -13,7 +13,7 @@ use crate::features::photography::domain::batch::{BatchItem, ProcessingStatus};
 pub struct BatchSession {
     pub batch_id: Uuid,
     pub owner: Uuid,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub total: usize,
     staging_path: PathBuf,
     items: scc::HashMap<Uuid, BatchItem>,
@@ -27,7 +27,7 @@ impl BatchSession {
         batch_id: Uuid,
         owner: Uuid,
         total: usize,
-        now: DateTime<Utc>,
+        now: Timestamp,
         staging_path: PathBuf,
     ) -> Self {
         Self {
@@ -39,20 +39,20 @@ impl BatchSession {
             items: scc::HashMap::new(),
             completed: AtomicUsize::new(0),
             failed: AtomicUsize::new(0),
-            last_activity: AtomicI64::new(now.timestamp()),
+            last_activity: AtomicI64::new(now.as_second()),
         }
     }
     /// Private directory holding this batch's staged originals.
     pub fn staging_path(&self) -> &Path {
         &self.staging_path
     }
-    fn touch(&self, now: DateTime<Utc>) {
-        self.last_activity.store(now.timestamp(), Ordering::SeqCst);
+    fn touch(&self, now: Timestamp) {
+        self.last_activity.store(now.as_second(), Ordering::SeqCst);
     }
     pub async fn register_item(&self, item: BatchItem) {
         let _ = self.items.insert_async(item.item_id, item).await;
     }
-    pub async fn set_status(&self, item_id: Uuid, status: ProcessingStatus, now: DateTime<Utc>) {
+    pub async fn set_status(&self, item_id: Uuid, status: ProcessingStatus, now: Timestamp) {
         let _ = self
             .items
             .update_async(&item_id, |_, item| {
@@ -70,7 +70,7 @@ impl BatchSession {
         photograph_id: Uuid,
         photograph_link: String,
         thumbnail_link: String,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) {
         let transitioned = self
             .items
@@ -93,7 +93,7 @@ impl BatchSession {
         }
         self.touch(now);
     }
-    pub async fn fail_item(&self, item_id: Uuid, reason: String, now: DateTime<Utc>) {
+    pub async fn fail_item(&self, item_id: Uuid, reason: String, now: Timestamp) {
         let transitioned = self
             .items
             .update_async(&item_id, |_, item| {

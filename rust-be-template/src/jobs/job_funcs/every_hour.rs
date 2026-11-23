@@ -1,10 +1,16 @@
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
-use chrono::{Duration, SecondsFormat, Timelike, Utc};
+use jiff::{SignedDuration, Timestamp};
 use tracing::{error, info};
 
-use crate::{init::state::ServerState, util::time::duration_formatter::format_duration};
+use crate::{
+    init::state::ServerState,
+    util::time::{
+        duration_formatter::format_duration,
+        utc::{from_utc_datetime, to_utc_datetime},
+    },
+};
 
 /// Calculate the next UTC DateTime that lands on the current/next hour,
 /// with a specific "minute + second" offset from the start of that hour.
@@ -12,31 +18,34 @@ use crate::{init::state::ServerState, util::time::duration_formatter::format_dur
 /// For example, minute_offset=15 and second_offset=30 will schedule
 /// the time XX:15:30 of the next hour (if that time has already passed in this hour).
 pub fn next_scheduled_hour_mark(
-    now: chrono::DateTime<chrono::Utc>,
+    now: jiff::Timestamp,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<chrono::DateTime<chrono::Utc>> {
+) -> Result<jiff::Timestamp> {
     // 1) Truncate to the current hour boundary.
-    let truncated_to_hour = match now
-        .with_minute(0)
-        .and_then(|dt| dt.with_second(0))
-        .and_then(|dt| dt.with_nanosecond(0))
+    let truncated_to_hour = match to_utc_datetime(now)
+        .with()
+        .minute(0)
+        .second(0)
+        .subsec_nanosecond(0)
+        .build()
+        .and_then(from_utc_datetime)
     {
-        Some(truncated_to_hour) => truncated_to_hour,
-        None => {
-            error!(now = %now, "Could not truncate to hour");
+        Ok(truncated_to_hour) => truncated_to_hour,
+        Err(e) => {
+            error!(now = %now, error = %e, "Could not truncate to hour");
             return Err(anyhow!("Could not truncate to hour"));
         }
     };
 
     // 2) Add the desired minute + second offset to get the target time within this hour.
     let mut target_time = truncated_to_hour
-        + chrono::Duration::minutes(minute_offset as i64)
-        + chrono::Duration::seconds(second_offset as i64);
+        + SignedDuration::from_mins(i64::from(minute_offset))
+        + SignedDuration::from_secs(i64::from(second_offset));
 
     // 3) If that target time is before 'now', move it to the next hour.
     if target_time <= now {
-        target_time += chrono::Duration::hours(1);
+        target_time += SignedDuration::from_hours(1);
     }
 
     Ok(target_time)
@@ -48,15 +57,14 @@ pub fn next_scheduled_hourly_delay(
     _task_descriptor: &str,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<(tokio::time::Duration, chrono::DateTime<chrono::Utc>)> {
-    let now = Utc::now();
+) -> Result<(tokio::time::Duration, jiff::Timestamp)> {
+    let now = Timestamp::now();
     let next_mark = next_scheduled_hour_mark(now, minute_offset, second_offset)?;
 
     // Convert the difference into a std::time::Duration for tokio.
-    let delay = next_mark - now;
-    let delay = delay.to_std().map_err(|e| {
+    let delay = std::time::Duration::try_from(next_mark.duration_since(now)).map_err(|e| {
         anyhow!(
-            "Could not schedule job at next_scheduled_hour_mark(). Chrono->Std error: {:?}",
+            "Could not schedule job at next_scheduled_hour_mark(). negative delay: {:?}",
             e
         )
     })?;
@@ -96,7 +104,7 @@ where
         if !initialized {
             info!(
                 task_name = %task_descriptor,
-                initial_run_time = %scheduled_run_time.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+                initial_run_time = %scheduled_run_time,
                 delay = %format!("{:?}", delay),
                 delay_human = %format_duration(delay),
                 "Scheduled task initialized"
@@ -112,8 +120,10 @@ where
 
         // FIX: Simply add one hour to the already-calculated scheduled time.
         // This is far more efficient than calling the calculation function again.
-        let next_run_time = scheduled_run_time + Duration::hours(1);
-        let next_delay = match (next_run_time - Utc::now()).to_std() {
+        let next_run_time = scheduled_run_time + SignedDuration::from_hours(1);
+        let next_delay = match std::time::Duration::try_from(
+            next_run_time.duration_since(Timestamp::now()),
+        ) {
             Ok(next_delay) => next_delay,
             Err(e) => {
                 error!(task_name = %task_descriptor, error = ?e, "Scheduled task next delay was negative");
@@ -123,7 +133,7 @@ where
 
         info!(
             task_name = %task_descriptor,
-            next_run_time = %next_run_time.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+            next_run_time = %next_run_time,
             duration = %format!("{:?}", elapsed),
             next_delay_human = %format_duration(next_delay),
             "Scheduled task ran"

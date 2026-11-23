@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -48,7 +48,7 @@ impl PhotographyService {
         if files.len() > MAX_FILES_PER_BATCH || files.len() != metadata.len() {
             return Err(PhotographyError::InvalidInput);
         }
-        let now = Utc::now();
+        let now = Timestamp::now();
         let total = files.len();
         let mut pipeline = Vec::with_capacity(total);
         let mut items = Vec::with_capacity(total);

@@ -3,15 +3,15 @@
 //! join/leave and whether the participant published audio/video. No media is
 //! recorded.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct LiveChatCall {
     pub live_chat_call_id: Uuid,
     pub room_key: String,
-    pub call_started_at: DateTime<Utc>,
-    pub call_ended_at: Option<DateTime<Utc>>,
+    pub call_started_at: Timestamp,
+    pub call_ended_at: Option<Timestamp>,
 }
 
 #[derive(Debug, Clone)]
@@ -22,8 +22,8 @@ pub struct LiveChatCallParticipant {
     pub guest_ip: Option<ipnet::IpNet>,
     pub participant_sender_kind: i16,
     pub participant_display_name: String,
-    pub participant_joined_at: DateTime<Utc>,
-    pub participant_left_at: Option<DateTime<Utc>>,
+    pub participant_joined_at: Timestamp,
+    pub participant_left_at: Option<Timestamp>,
     pub participant_had_audio: bool,
     pub participant_had_video: bool,
 }

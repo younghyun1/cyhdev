@@ -1,6 +1,6 @@
 use super::photography_service::PhotographyService;
 use crate::features::photography::service::batch_session::BatchSession;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -82,8 +82,8 @@ impl PhotographyService {
         batches
     }
 
-    pub async fn prune_batches(&self, now: DateTime<Utc>) -> usize {
-        let now_unix = now.timestamp();
+    pub async fn prune_batches(&self, now: Timestamp) -> usize {
+        let now_unix = now.as_second();
         let mut evicted = Vec::new();
         self.batches
             .batches

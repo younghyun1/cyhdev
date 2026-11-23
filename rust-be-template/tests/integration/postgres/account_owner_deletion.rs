@@ -1,8 +1,8 @@
 //! PostgreSQL coverage for owner preservation across account deletion and demotion.
 
-use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
+use jiff::{SignedDuration, Timestamp};
 use uuid::Uuid;
 
 use rust_be_template::{
@@ -62,7 +62,7 @@ fn final_owner_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let identity = users::table
             .find(owner.user_id)
             .select((users::user_name, users::user_email, users::user_deleted_at))
-            .first::<(String, String, Option<chrono::DateTime<Utc>>)>(&mut connection)
+            .first::<(String, String, Option<jiff_diesel::Timestamp>)>(&mut connection)
             .await?;
         require(
             identity == (owner.user_name, owner.email, None),
@@ -185,8 +185,8 @@ async fn delete_via_repository(
     user_id: Uuid,
     expected_password_hash: &str,
 ) -> Result<SoftDeleteAccountReceipt, AccountError> {
-    let deleted_at = Utc::now();
-    let purge_after = deleted_at + Duration::days(ACCOUNT_RETENTION_DAYS);
+    let deleted_at = Timestamp::now();
+    let purge_after = deleted_at + SignedDuration::from_hours(24 * ACCOUNT_RETENTION_DAYS);
     let schedule = RetentionNotificationSchedule::from_purge_after(purge_after)
         .ok_or(AccountError::RetentionScheduleOverflow)?;
     context

@@ -65,7 +65,7 @@ impl SessionService {
         account: &LoginAccount,
         role_type: RoleType,
         previous_token: Option<&str>,
-        valid_for: Option<chrono::Duration>,
+        valid_for: Option<jiff::SignedDuration>,
     ) -> Result<SessionToken, AccountError> {
         self.create_principal(
             &account.session_principal(),
@@ -82,7 +82,7 @@ impl SessionService {
         account: &SessionPrincipal,
         role_type: RoleType,
         previous_token: Option<&str>,
-        valid_for: Option<chrono::Duration>,
+        valid_for: Option<jiff::SignedDuration>,
     ) -> Result<SessionToken, AccountError> {
         // Generate before revoking the prior credential so entropy failure cannot log out
         // a browser without replacing its session.
@@ -102,7 +102,7 @@ impl SessionService {
             }
         }
 
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let session = Session {
             is_email_verified: account.is_email_verified,
             created_at: now,
@@ -147,7 +147,7 @@ impl SessionService {
     }
 
     async fn unless_expired(&self, key: &SessionKey, session: Session) -> Option<Session> {
-        if session.is_unexpired_at(chrono::Utc::now()) {
+        if session.is_unexpired_at(jiff::Timestamp::now()) {
             Some(session)
         } else {
             let _ = self.remove_key(key).await;
@@ -161,7 +161,7 @@ impl SessionService {
         account: &SessionAccount,
         role_type: RoleType,
     ) -> usize {
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let mut refreshed = 0usize;
 
         self.sessions
@@ -215,7 +215,7 @@ impl SessionService {
     }
 
     pub async fn purge_expired(&self) -> (usize, usize) {
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let mut pruned = 0usize;
         self.sessions
             .iter_mut_async(|entry| {

@@ -1,6 +1,5 @@
 //! Post and comment votes with denormalized totals recomputed under row locks.
 
-use chrono::{DateTime, Utc};
 use diesel::{
     AggregateExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, dsl::count,
 };
@@ -162,9 +161,10 @@ async fn lock_comment_for_vote(
         .find(comment_id)
         .select((comments::post_id, comments::comment_deleted_at))
         .for_update()
-        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+        .first::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut *connection)
         .await
         .optional()?
+        .map(|(post_id, deleted_at)| (post_id, deleted_at.to_jiff()))
         .ok_or(BlogError::CommentNotFound)?;
     if action == VoteAction::Rescind {
         return Ok(());

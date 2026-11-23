@@ -89,7 +89,7 @@ pub async fn seed_photograph(pool: &Pool<AsyncPgConnection>, owner_id: Uuid) -> 
     let photograph_id = diesel::insert_into(photographs::table)
         .values((
             photographs::user_id.eq(owner_id),
-            photographs::photograph_shot_at.eq(None::<chrono::DateTime<chrono::Utc>>),
+            photographs::photograph_shot_at.eq(None::<jiff_diesel::Timestamp>),
             photographs::photograph_image_type.eq(4),
             photographs::photograph_context.eq(DbPhotographContext::Photography),
             photographs::photograph_is_on_cloud.eq(true),

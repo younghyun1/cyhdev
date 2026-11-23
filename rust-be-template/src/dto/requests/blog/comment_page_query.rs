@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use utoipa::IntoParams;
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use uuid::Uuid;
 #[into_params(parameter_in = Query)]
 pub struct CommentPageQuery {
     /// Creation time of the last comment already received.
-    pub after_created_at: Option<DateTime<Utc>>,
+    pub after_created_at: Option<Timestamp>,
     /// ID of the last comment already received.
     pub after_comment_id: Option<Uuid>,
     /// Page size from 1 to 100; defaults to 50.

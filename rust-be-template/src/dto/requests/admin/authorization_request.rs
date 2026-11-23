@@ -1,6 +1,6 @@
 //! Validated-at-service-boundary inputs for authorization administration.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Deserialize;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -23,7 +23,7 @@ pub struct AuthorizationPageQuery {
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct AuthorizationAuditQuery {
-    pub before_created_at: Option<DateTime<Utc>>,
+    pub before_created_at: Option<Timestamp>,
     pub before_audit_event_id: Option<Uuid>,
     pub limit: Option<u16>,
 }

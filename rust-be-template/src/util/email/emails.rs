@@ -65,7 +65,7 @@ impl ValidateEmailEmail {
 
     pub fn set_fields(
         mut self,
-        valid_until: chrono::DateTime<chrono::Utc>,
+        valid_until: jiff::Timestamp,
         token: &str,
         public_app_origin: &str,
     ) -> Self {

@@ -4,7 +4,7 @@ use super::social::{PhotographCommentPageData, PhotographCommentResponse};
 use crate::features::blog::domain::{
     comment_page::CommentCursor, post::UserBadgeInfo, vote::VoteState,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -33,9 +33,9 @@ impl PhotographContext {
 pub struct Photograph {
     pub photograph_id: Uuid,
     pub user_id: Uuid,
-    pub photograph_shot_at: Option<DateTime<Utc>>,
-    pub photograph_created_at: DateTime<Utc>,
-    pub photograph_updated_at: DateTime<Utc>,
+    pub photograph_shot_at: Option<Timestamp>,
+    pub photograph_created_at: Timestamp,
+    pub photograph_updated_at: Timestamp,
     pub photograph_image_type: i32,
     pub photograph_is_on_cloud: bool,
     pub photograph_link: String,
@@ -59,7 +59,7 @@ impl Photograph {
 
 pub struct NewPhotograph {
     pub user_id: Uuid,
-    pub photograph_shot_at: Option<DateTime<Utc>>,
+    pub photograph_shot_at: Option<Timestamp>,
     pub photograph_image_type: i32,
     pub photograph_context: PhotographContext,
     pub photograph_is_on_cloud: bool,

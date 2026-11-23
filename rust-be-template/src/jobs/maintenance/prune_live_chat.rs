@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 
 use crate::init::state::ServerState;
 
@@ -12,7 +12,7 @@ use crate::init::state::ServerState;
 /// entry older than the sweep interval holds no live signal and is recreated on
 /// demand. Running this once per minute bounds both maps to recently-active actors.
 pub async fn prune_live_chat_state(state: Arc<ServerState>) {
-    let now = Utc::now();
+    let now = Timestamp::now();
     state.live_chat_service().prune_runtime(now).await;
     // Drop empty SFU rooms and close their dangling call rows, bounding the
     // `rtc_rooms` registry to rooms with live participants.
@@ -27,6 +27,6 @@ pub async fn prune_live_chat_state(state: Arc<ServerState>) {
 pub async fn prune_live_chat_rate_windows(state: Arc<ServerState>) {
     state
         .live_chat_service()
-        .prune_stale_rate_windows(Utc::now())
+        .prune_stale_rate_windows(Timestamp::now())
         .await;
 }

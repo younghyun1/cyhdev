@@ -6,6 +6,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::features::kcna_archive::domain::reader::{ArchiveReader, MAX_READERS};
+use crate::util::time::utc::rfc3339_utc;
 
 /// Whether the signed-in caller may read the archive right now.
 #[derive(Clone, Copy, Debug, Serialize, ToSchema)]
@@ -35,7 +36,7 @@ impl From<ArchiveReader> for ArchiveReaderItem {
             user_id: reader.user_id,
             user_name: reader.user_name,
             user_email: reader.user_email,
-            granted_at: reader.granted_at.to_rfc3339(),
+            granted_at: rfc3339_utc(reader.granted_at),
         }
     }
 }

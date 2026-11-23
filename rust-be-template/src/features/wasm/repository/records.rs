@@ -1,7 +1,7 @@
 //! Diesel records isolated from the WebAssembly domain.
 
-use chrono::{DateTime, Utc};
 use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::wasm_module;
@@ -18,8 +18,10 @@ pub(super) struct WasmModuleRecord {
     user_id: Uuid,
     wasm_module_link: String,
     wasm_module_description: String,
-    wasm_module_created_at: DateTime<Utc>,
-    wasm_module_updated_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    wasm_module_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    wasm_module_updated_at: Timestamp,
     wasm_module_thumbnail_link: String,
     wasm_module_title: String,
     wasm_module_bundle_gz: Vec<u8>,
@@ -49,8 +51,10 @@ pub(super) struct WasmModuleMetadataRecord {
     user_id: Uuid,
     wasm_module_link: String,
     wasm_module_description: String,
-    wasm_module_created_at: DateTime<Utc>,
-    wasm_module_updated_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    wasm_module_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    wasm_module_updated_at: Timestamp,
     wasm_module_thumbnail_link: String,
     wasm_module_title: String,
 }
@@ -77,8 +81,10 @@ pub(super) struct NewWasmModuleRecord {
     user_id: Uuid,
     wasm_module_link: String,
     wasm_module_description: String,
-    wasm_module_created_at: DateTime<Utc>,
-    wasm_module_updated_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    wasm_module_created_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    wasm_module_updated_at: Timestamp,
     wasm_module_thumbnail_link: String,
     wasm_module_title: String,
     wasm_module_bundle_gz: Vec<u8>,
@@ -105,7 +111,7 @@ impl From<NewWasmModule> for NewWasmModuleRecord {
 pub(super) struct WasmMetadataChangeset {
     wasm_module_title: Option<String>,
     wasm_module_description: Option<String>,
-    wasm_module_updated_at: DateTime<Utc>,
+    wasm_module_updated_at: jiff_diesel::Timestamp,
 }
 
 impl From<WasmMetadataUpdate> for WasmMetadataChangeset {
@@ -113,7 +119,7 @@ impl From<WasmMetadataUpdate> for WasmMetadataChangeset {
         Self {
             wasm_module_title: update.wasm_module_title,
             wasm_module_description: update.wasm_module_description,
-            wasm_module_updated_at: update.wasm_module_updated_at,
+            wasm_module_updated_at: update.wasm_module_updated_at.into(),
         }
     }
 }
@@ -125,7 +131,7 @@ pub(super) struct WasmAssetChangeset {
     wasm_module_description: Option<String>,
     wasm_module_thumbnail_link: Option<String>,
     wasm_module_bundle_gz: Option<Vec<u8>>,
-    wasm_module_updated_at: DateTime<Utc>,
+    wasm_module_updated_at: jiff_diesel::Timestamp,
 }
 
 impl From<WasmAssetUpdate> for WasmAssetChangeset {
@@ -135,7 +141,7 @@ impl From<WasmAssetUpdate> for WasmAssetChangeset {
             wasm_module_description: update.wasm_module_description,
             wasm_module_thumbnail_link: update.wasm_module_thumbnail_link,
             wasm_module_bundle_gz: update.wasm_module_bundle_gz,
-            wasm_module_updated_at: update.wasm_module_updated_at,
+            wasm_module_updated_at: update.wasm_module_updated_at.into(),
         }
     }
 }

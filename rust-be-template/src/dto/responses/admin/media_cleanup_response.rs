@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -13,7 +13,7 @@ pub struct UnresolvedMediaCleanupItem {
     pub original_url: String,
     pub reason: String,
     pub source_id: Uuid,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(serde_derive::Serialize, ToSchema)]

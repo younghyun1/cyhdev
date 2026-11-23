@@ -1,6 +1,6 @@
 //! Account registration use case.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use lettre::AsyncTransport;
 use std::sync::Arc;
 use tracing::error;
@@ -27,7 +27,8 @@ use crate::{
     util::{email::emails::ValidateEmailEmail, string::validations::validate_username},
 };
 
-const EMAIL_VERIFICATION_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Duration::days(1);
+const EMAIL_VERIFICATION_TOKEN_VALID_DURATION: jiff::SignedDuration =
+    jiff::SignedDuration::from_hours(24);
 
 impl AccountService {
     /// Registers an account, or settles a signup whose email already exists.
@@ -46,7 +47,7 @@ impl AccountService {
         }
         let user_email = normalize_email(&command.user_email);
         validate_email(&user_email)?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let (verification_token, verification_digest) =
             CapabilityToken::generate().map_err(AccountError::CapabilityEntropy)?;
         let verify_by = now + EMAIL_VERIFICATION_TOKEN_VALID_DURATION;
@@ -132,7 +133,7 @@ impl AccountService {
         &self,
         user_email: String,
         token: &CapabilityToken,
-        verify_by: chrono::DateTime<Utc>,
+        verify_by: jiff::Timestamp,
     ) {
         let email_job = match self.email_jobs.clone().try_acquire_owned() {
             Ok(email_job) => email_job,

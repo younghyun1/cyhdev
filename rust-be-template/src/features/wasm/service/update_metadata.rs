@@ -1,6 +1,6 @@
 //! WebAssembly metadata update use case.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::info;
 use uuid::Uuid;
 
@@ -26,7 +26,7 @@ impl WasmService {
                 WasmMetadataUpdate {
                     wasm_module_title: title,
                     wasm_module_description: description,
-                    wasm_module_updated_at: Utc::now(),
+                    wasm_module_updated_at: Timestamp::now(),
                 },
             )
             .await?;

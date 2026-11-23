@@ -20,7 +20,9 @@ struct NewVisitRecord {
     ip_address: ipnet::IpNet,
     city: String,
     country: String,
-    visited_at: chrono::DateTime<chrono::Utc>,
+    // Inserted by reference in chunks, so the field holds the Diesel wrapper
+    // directly; `serialize_as` only applies to by-value inserts.
+    visited_at: jiff_diesel::Timestamp,
 }
 
 #[derive(diesel::Insertable)]
@@ -83,7 +85,7 @@ impl VisitorRepository {
                 ip_address: ipnet::IpNet::from(visit.ip_address),
                 city: visit.city,
                 country: visit.country,
-                visited_at: visit.visited_at,
+                visited_at: visit.visited_at.into(),
             })
             .collect::<Vec<_>>();
         let mut connection = self.pool.get().await?;

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::schema::{post_tags, posts, tags};
@@ -26,7 +27,7 @@ impl BlogRepository {
         connection
             .transaction::<Post, BlogError, _>(async move |connection| {
                 lock_active_superuser(connection, command.actor_user_id).await?;
-                let now = Utc::now();
+                let now = Timestamp::now();
                 let metadata = serde_json::json!({"markdown_content": command.markdown_content});
                 let post = match command.post_id {
                     Some(post_id) => {
@@ -36,7 +37,7 @@ impl BlogRepository {
                                 .filter(posts::user_id.eq(command.actor_user_id))
                                 .select(posts::post_published_at)
                                 .for_update()
-                                .first::<Option<chrono::DateTime<Utc>>>(&mut *connection)
+                                .first::<jiff_diesel::NullableTimestamp>(&mut *connection)
                                 .await
                                 .optional()?
                         } else {
@@ -44,10 +45,11 @@ impl BlogRepository {
                                 .find(post_id)
                                 .select(posts::post_published_at)
                                 .for_update()
-                                .first::<Option<chrono::DateTime<Utc>>>(&mut *connection)
+                                .first::<jiff_diesel::NullableTimestamp>(&mut *connection)
                                 .await
                                 .optional()?
                         }
+                        .map(jiff_diesel::NullableTimestamp::to_jiff)
                         .ok_or(BlogError::PostNotFound)?;
                         diesel::update(posts::table.find(post_id))
                             .set((
@@ -59,8 +61,9 @@ impl BlogRepository {
                                     published_at.or(Some(now))
                                 } else {
                                     None
-                                }),
-                                posts::post_updated_at.eq(now),
+                                }
+                                .to_diesel()),
+                                posts::post_updated_at.eq(now.to_diesel()),
                                 posts::post_metadata.eq(&metadata),
                             ))
                             .returning(PostRecord::as_returning())

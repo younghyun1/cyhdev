@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{schema::media_object_cleanup, util::media::cleanup::MediaCleanupFailureUpdate};
@@ -16,7 +16,8 @@ pub(super) struct NewFailedMediaObjectCleanup<'a> {
     pub(super) media_object_cleanup_reason: &'a str,
     pub(super) media_object_cleanup_source_id: Uuid,
     pub(super) media_object_cleanup_attempt_count: i32,
-    pub(super) media_object_cleanup_last_attempt_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) media_object_cleanup_last_attempt_at: Timestamp,
     pub(super) media_object_cleanup_last_error: &'a str,
 }
 
@@ -30,8 +31,10 @@ pub(super) struct RetriedMediaObjectCleanup {
     media_object_cleanup_reason: String,
     media_object_cleanup_source_id: Uuid,
     media_object_cleanup_attempt_count: i32,
-    media_object_cleanup_created_at: DateTime<Utc>,
-    media_object_cleanup_last_attempt_at: Option<DateTime<Utc>>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    media_object_cleanup_created_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::NullableTimestamp)]
+    media_object_cleanup_last_attempt_at: Option<Timestamp>,
     media_object_cleanup_last_error: Option<String>,
 }
 
@@ -43,13 +46,13 @@ pub(super) type StoredMediaObjectCleanup = (
     String,
     Uuid,
     i32,
-    DateTime<Utc>,
+    jiff_diesel::Timestamp,
 );
 
 pub(super) fn retry_row(
     row: StoredMediaObjectCleanup,
     failures_by_id: &HashMap<Uuid, &MediaCleanupFailureUpdate>,
-    attempted_at: DateTime<Utc>,
+    attempted_at: Timestamp,
 ) -> Option<RetriedMediaObjectCleanup> {
     let (cleanup_id, bucket, key, original_url, reason, source_id, attempt_count, created_at) = row;
     let failure = failures_by_id.get(&cleanup_id)?;
@@ -64,7 +67,7 @@ pub(super) fn retry_row(
         media_object_cleanup_reason: reason,
         media_object_cleanup_source_id: source_id,
         media_object_cleanup_attempt_count: attempt_count.saturating_add(1),
-        media_object_cleanup_created_at: created_at,
+        media_object_cleanup_created_at: created_at.to_jiff(),
         media_object_cleanup_last_attempt_at: Some(attempted_at),
         media_object_cleanup_last_error: Some(failure.error.clone()),
     })

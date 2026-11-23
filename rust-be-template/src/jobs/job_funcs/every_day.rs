@@ -1,10 +1,16 @@
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
-use chrono::{Duration, SecondsFormat, Timelike, Utc};
+use jiff::{SignedDuration, Timestamp};
 use tracing::{error, info};
 
-use crate::{init::state::ServerState, util::time::duration_formatter::format_duration};
+use crate::{
+    init::state::ServerState,
+    util::time::{
+        duration_formatter::format_duration,
+        utc::{from_utc_datetime, to_utc_datetime},
+    },
+};
 
 /// Calculate the next UTC DateTime that lands on the current or next day,
 /// with a specific "hour + minute + second" offset from the start of that day.
@@ -12,21 +18,20 @@ use crate::{init::state::ServerState, util::time::duration_formatter::format_dur
 /// For example, hour_offset=2, minute_offset=15, second_offset=30 will schedule
 /// XX-XX-XX 02:15:30 on the next day, if that time has already passed today.
 pub fn next_scheduled_day_mark(
-    now: chrono::DateTime<chrono::Utc>,
+    now: jiff::Timestamp,
     hour_offset: u32,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<chrono::DateTime<chrono::Utc>> {
+) -> Result<jiff::Timestamp> {
     // 1) Truncate to the current day boundary.
-    let truncated_to_day = match now
-        .with_hour(0)
-        .and_then(|dt| dt.with_minute(0))
-        .and_then(|dt| dt.with_second(0))
-        .and_then(|dt| dt.with_nanosecond(0))
-    {
-        Some(truncated_to_day) => truncated_to_day,
-        None => {
-            error!(now = %now, "Failed to truncate to start-of-day for scheduling");
+    let truncated_to_day = match from_utc_datetime(
+        to_utc_datetime(now)
+            .date()
+            .to_datetime(jiff::civil::Time::midnight()),
+    ) {
+        Ok(truncated_to_day) => truncated_to_day,
+        Err(e) => {
+            error!(now = %now, error = %e, "Failed to truncate to start-of-day for scheduling");
             return Err(anyhow!("Failed to truncate to start-of-day for scheduling"));
         }
     };
@@ -41,13 +46,13 @@ pub fn next_scheduled_day_mark(
         return Err(anyhow!("Invalid offset for daily schedule"));
     }
     let mut target_time = truncated_to_day
-        + chrono::Duration::hours(hour_offset as i64)
-        + chrono::Duration::minutes(minute_offset as i64)
-        + chrono::Duration::seconds(second_offset as i64);
+        + SignedDuration::from_hours(i64::from(hour_offset))
+        + SignedDuration::from_mins(i64::from(minute_offset))
+        + SignedDuration::from_secs(i64::from(second_offset));
 
     // 3) If that target time is before 'now', move it to the next day.
     if target_time <= now {
-        target_time += chrono::Duration::days(1);
+        target_time += SignedDuration::from_hours(24);
     }
 
     Ok(target_time)
@@ -60,15 +65,14 @@ pub fn next_scheduled_daily_delay(
     hour_offset: u32,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<(tokio::time::Duration, chrono::DateTime<chrono::Utc>)> {
-    let now = Utc::now();
+) -> Result<(tokio::time::Duration, jiff::Timestamp)> {
+    let now = Timestamp::now();
     let next_mark = next_scheduled_day_mark(now, hour_offset, minute_offset, second_offset)?;
 
     // Convert the difference into a std::time::Duration for tokio.
-    let delay = next_mark - now;
-    let delay = delay.to_std().map_err(|e| {
+    let delay = std::time::Duration::try_from(next_mark.duration_since(now)).map_err(|e| {
         anyhow!(
-            "Could not schedule job at next_scheduled_day_mark(). Chrono->Std error: {:?}",
+            "Could not schedule job at next_scheduled_day_mark(). negative delay: {:?}",
             e
         )
     })?;
@@ -91,7 +95,7 @@ where
     Fut: std::future::Future<Output = ()> + Send + 'static,
 {
     let mut initialized: bool = false;
-    let mut scheduled_run_time: Option<chrono::DateTime<chrono::Utc>> = None;
+    let mut scheduled_run_time: Option<jiff::Timestamp> = None;
     loop {
         let (delay, next_mark) = match next_scheduled_daily_delay(
             &task_descriptor,
@@ -114,7 +118,7 @@ where
         if !initialized {
             info!(
                 task_name = %task_descriptor,
-                initial_run_time = %next_mark.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+                initial_run_time = %next_mark,
                 ?delay,
                 delay_human = %format_duration(delay),
                 "Scheduled task initialized"
@@ -134,8 +138,10 @@ where
         let elapsed = start.elapsed();
 
         // Efficient: just add one day to the already-calculated scheduled time.
-        let next_run_time = this_run_time + Duration::days(1);
-        let next_delay = match (next_run_time - Utc::now()).to_std() {
+        let next_run_time = this_run_time + SignedDuration::from_hours(24);
+        let next_delay = match std::time::Duration::try_from(
+            next_run_time.duration_since(Timestamp::now()),
+        ) {
             Ok(next_delay) => next_delay,
             Err(e) => {
                 error!(task_name = %task_descriptor, error = ?e, "Scheduled task next delay was negative");
@@ -145,7 +151,7 @@ where
 
         info!(
             task_name = %task_descriptor,
-            next_run_time = %next_run_time.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+            next_run_time = %next_run_time,
             duration=?elapsed,
             next_delay_human = %format_duration(next_delay),
             "Scheduled task ran"

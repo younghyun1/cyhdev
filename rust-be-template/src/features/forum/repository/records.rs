@@ -1,7 +1,7 @@
 //! Diesel records private to forum persistence.
 
-use chrono::{DateTime, Utc};
 use diesel::{Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -30,10 +30,14 @@ pub(super) struct ForumTopicRecord {
     pub(super) forum_topic_is_pinned: bool,
     pub(super) forum_topic_revision: i32,
     pub(super) forum_topic_reply_count: i64,
-    pub(super) forum_topic_created_at: DateTime<Utc>,
-    pub(super) forum_topic_updated_at: DateTime<Utc>,
-    pub(super) forum_topic_last_activity_at: DateTime<Utc>,
-    pub(super) forum_topic_edited_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_updated_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_last_activity_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    pub(super) forum_topic_edited_at: Option<Timestamp>,
 }
 
 impl From<ForumTopicRecord> for ForumTopic {
@@ -70,10 +74,14 @@ pub(super) struct ForumTopicHeadRecord {
     forum_topic_is_pinned: bool,
     forum_topic_revision: i32,
     forum_topic_reply_count: i64,
-    forum_topic_created_at: DateTime<Utc>,
-    forum_topic_updated_at: DateTime<Utc>,
-    forum_topic_last_activity_at: DateTime<Utc>,
-    forum_topic_edited_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    forum_topic_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    forum_topic_updated_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    forum_topic_last_activity_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    forum_topic_edited_at: Option<Timestamp>,
 }
 
 impl ForumTopicHeadRecord {
@@ -106,9 +114,12 @@ pub(super) struct ForumReplyRecord {
     pub(super) forum_reply_body: String,
     pub(super) forum_reply_content_state: DbForumContentState,
     pub(super) forum_reply_revision: i32,
-    pub(super) forum_reply_created_at: DateTime<Utc>,
-    pub(super) forum_reply_updated_at: DateTime<Utc>,
-    pub(super) forum_reply_edited_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_reply_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_reply_updated_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    pub(super) forum_reply_edited_at: Option<Timestamp>,
 }
 
 impl From<ForumReplyRecord> for ForumReply {
@@ -134,9 +145,12 @@ pub(super) struct NewForumTopicRecord<'a> {
     pub(super) forum_topic_author_user_id: Uuid,
     pub(super) forum_topic_title: &'a str,
     pub(super) forum_topic_body: &'a str,
-    pub(super) forum_topic_created_at: DateTime<Utc>,
-    pub(super) forum_topic_updated_at: DateTime<Utc>,
-    pub(super) forum_topic_last_activity_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_created_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_updated_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_last_activity_at: Timestamp,
 }
 
 #[derive(Insertable)]
@@ -145,8 +159,10 @@ pub(super) struct NewForumReplyRecord<'a> {
     pub(super) forum_reply_topic_id: Uuid,
     pub(super) forum_reply_author_user_id: Uuid,
     pub(super) forum_reply_body: &'a str,
-    pub(super) forum_reply_created_at: DateTime<Utc>,
-    pub(super) forum_reply_updated_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_reply_created_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_reply_updated_at: Timestamp,
 }
 
 #[derive(Insertable)]
@@ -154,7 +170,8 @@ pub(super) struct NewForumReplyRecord<'a> {
 pub(super) struct NewForumSubscriptionRecord {
     pub(super) forum_topic_subscription_topic_id: Uuid,
     pub(super) forum_topic_subscription_user_id: Uuid,
-    pub(super) forum_topic_subscription_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_topic_subscription_created_at: Timestamp,
 }
 
 #[derive(Insertable)]
@@ -166,7 +183,8 @@ pub(super) struct NewForumModerationAuditRecord<'a> {
     pub(super) forum_moderation_audit_event_action: DbForumModerationAction,
     pub(super) forum_moderation_audit_event_reason: &'a str,
     pub(super) forum_moderation_audit_event_request_id: Option<Uuid>,
-    pub(super) forum_moderation_audit_event_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) forum_moderation_audit_event_created_at: Timestamp,
 }
 
 pub(super) type ForumNotificationRow = (
@@ -176,9 +194,9 @@ pub(super) type ForumNotificationRow = (
     Uuid,
     Uuid,
     DbForumNotificationKind,
-    DateTime<Utc>,
-    DateTime<Utc>,
-    Option<DateTime<Utc>>,
+    jiff_diesel::Timestamp,
+    jiff_diesel::Timestamp,
+    jiff_diesel::NullableTimestamp,
     String,
     DbForumContentState,
 );
@@ -191,9 +209,9 @@ pub(super) fn notification_from_row(row: ForumNotificationRow) -> ForumNotificat
         topic_id: row.3,
         reply_id: row.4,
         kind: row.5.into(),
-        created_at: row.6,
-        expires_at: row.7,
-        read_at: row.8,
+        created_at: row.6.to_jiff(),
+        expires_at: row.7.to_jiff(),
+        read_at: row.8.to_jiff(),
         topic_title: (row.10 == DbForumContentState::Visible).then_some(row.9),
     }
 }
@@ -206,7 +224,7 @@ pub(super) type ForumAuditRow = (
     DbForumModerationAction,
     String,
     Option<Uuid>,
-    DateTime<Utc>,
+    jiff_diesel::Timestamp,
 );
 
 pub(super) fn audit_from_row(row: ForumAuditRow) -> ForumModerationAuditEvent {
@@ -218,6 +236,6 @@ pub(super) fn audit_from_row(row: ForumAuditRow) -> ForumModerationAuditEvent {
         action: row.4.into(),
         reason: row.5,
         request_id: row.6,
-        created_at: row.7,
+        created_at: row.7.to_jiff(),
     }
 }

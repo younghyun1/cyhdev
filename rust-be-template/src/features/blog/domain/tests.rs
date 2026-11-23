@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use super::{
@@ -45,9 +45,9 @@ fn retained_post_masks_only_author_identity() {
         post_title: "Retained title".to_owned(),
         post_slug: "retained-title".to_owned(),
         post_summary: Some("Retained summary".to_owned()),
-        post_created_at: Utc::now(),
-        post_updated_at: Utc::now(),
-        post_published_at: Some(Utc::now()),
+        post_created_at: Timestamp::now(),
+        post_updated_at: Timestamp::now(),
+        post_published_at: Some(Timestamp::now()),
         post_is_published: true,
         post_view_count: 41,
         post_share_count: 7,
@@ -83,7 +83,7 @@ fn retained_comment_masks_author_without_changing_content_or_votes() {
         post_id,
         user_id: Uuid::now_v7(),
         comment_content: "Retained comment".to_owned(),
-        comment_created_at: Utc::now(),
+        comment_created_at: Timestamp::now(),
         comment_updated_at: None,
         parent_comment_id: None,
         total_upvotes: 8,

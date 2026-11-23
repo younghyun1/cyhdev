@@ -1,6 +1,6 @@
 //! Password-reset use cases.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use lettre::AsyncTransport;
 use std::sync::Arc;
 use tracing::error;
@@ -23,7 +23,8 @@ use crate::{
     util::email::emails::PasswordResetEmail,
 };
 
-const PASSWORD_RESET_TOKEN_VALID_DURATION: chrono::TimeDelta = chrono::Duration::minutes(30);
+const PASSWORD_RESET_TOKEN_VALID_DURATION: jiff::SignedDuration =
+    jiff::SignedDuration::from_mins(30);
 const DUMMY_RESET_PASSWORD: &str = "ResetTimingOnly5728";
 
 impl AccountService {
@@ -39,7 +40,7 @@ impl AccountService {
             )
             .await?;
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         let (token, digest) =
             CapabilityToken::generate().map_err(AccountError::CapabilityEntropy)?;
         let receipt = self
@@ -67,7 +68,7 @@ impl AccountService {
         }
         let digest = CapabilityDigest::from_submitted(token_value)
             .ok_or(AccountError::PasswordResetTokenNotFound)?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let token = match self.repository.password_reset_token(&digest).await? {
             Some(token) => token,
             None => return Err(AccountError::PasswordResetTokenNotFound),

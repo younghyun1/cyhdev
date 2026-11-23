@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -7,7 +7,7 @@ use crate::features::accounts::domain::retention_notifications::RetentionNotific
 #[derive(serde_derive::Deserialize, IntoParams, ToSchema)]
 #[into_params(parameter_in = Query)]
 pub struct RetentionNotificationStatusRequest {
-    pub after_next_attempt_at: Option<DateTime<Utc>>,
+    pub after_next_attempt_at: Option<Timestamp>,
     pub after_notification_id: Option<Uuid>,
     pub limit: Option<u16>,
 }

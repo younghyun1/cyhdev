@@ -202,7 +202,7 @@ async fn verify_locale_readback(service: &I18nService) -> TestResult {
 async fn stored_versions(
     pool: &diesel_async::pooled_connection::bb8::Pool<diesel_async::AsyncPgConnection>,
     expected_rows: usize,
-) -> TestResult<Vec<(Uuid, String, chrono::DateTime<chrono::Utc>)>> {
+) -> TestResult<Vec<(Uuid, String, jiff_diesel::Timestamp)>> {
     let mut connection = pool.get().await?;
     Ok(i18n_strings::table
         .filter(i18n_strings::i18n_string_country_subdivision_code.is_null())

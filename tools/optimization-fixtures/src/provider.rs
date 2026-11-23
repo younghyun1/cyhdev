@@ -54,7 +54,7 @@ pub async fn authorize(
     }
     let code = uuid::Uuid::new_v4().to_string();
     let mut codes = provider.codes.lock().await;
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     codes.retain(|_, (_, _, time)| now - *time < 60);
     if codes.len() >= 128 {
         return Err(StatusCode::SERVICE_UNAVAILABLE);
@@ -98,7 +98,7 @@ pub async fn token(
         .await
         .remove(code)
         .ok_or(StatusCode::BAD_REQUEST)?;
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     if now - issued > 60 || URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes())) != challenge
     {
         return Err(StatusCode::BAD_REQUEST);

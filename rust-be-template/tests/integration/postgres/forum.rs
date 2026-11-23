@@ -1,3 +1,4 @@
+use jiff_diesel::ToDiesel;
 use std::sync::Arc;
 
 use diesel::{Connection, ExpressionMethods, QueryDsl, dsl::count_star, pg::PgConnection};
@@ -65,12 +66,9 @@ fn forum_activity_and_cleanup_case(database: &TestDatabase) -> DatabaseTestFutur
                 "Opening body".to_owned(),
             )
             .await?;
-        let later = chrono::DateTime::<chrono::Utc>::from_timestamp(
-            chrono::Utc::now().timestamp() + 7_200,
-            0,
-        )
-        .ok_or(ForumError::CountOverflow)?;
-        let earlier = later - chrono::Duration::hours(1);
+        let later = jiff::Timestamp::from_second(jiff::Timestamp::now().as_second() + 7_200)
+            .map_err(|_| ForumError::CountOverflow)?;
+        let earlier = later - jiff::SignedDuration::from_hours(1);
         let body = ForumBody::try_new("A retained reply".to_owned())
             .map_err(|_| ForumError::InvalidBody)?;
         repository
@@ -92,7 +90,7 @@ fn forum_activity_and_cleanup_case(database: &TestDatabase) -> DatabaseTestFutur
                 author.user_id,
                 topic.item_id,
                 detail.topic.topic.revision,
-                later + chrono::Duration::hours(1),
+                later + jiff::SignedDuration::from_hours(1),
             )
             .await?;
         let mut connection = context.pool.get().await?;
@@ -207,14 +205,14 @@ fn forum_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             )
             .await?;
 
-        let tied_at = chrono::Utc::now();
+        let tied_at = jiff::Timestamp::now();
         let mut tie_connection = context.pool.get().await?;
         diesel::update(forum_replies::table.filter(
             forum_replies::forum_reply_id.eq_any([first_reply.item_id, second_reply.item_id]),
         ))
         .set((
-            forum_replies::forum_reply_created_at.eq(tied_at),
-            forum_replies::forum_reply_updated_at.eq(tied_at),
+            forum_replies::forum_reply_created_at.eq(tied_at.to_diesel()),
+            forum_replies::forum_reply_updated_at.eq(tied_at.to_diesel()),
         ))
         .execute(&mut tie_connection)
         .await?;
@@ -282,7 +280,7 @@ fn forum_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             )
             .await?;
         require(
-            read_at <= chrono::Utc::now(),
+            read_at <= jiff::Timestamp::now(),
             "notification read timestamp is in the future",
         )?;
 
@@ -363,15 +361,15 @@ fn forum_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             "stale reply edit did not conflict",
         )?;
 
-        let expired_created_at = chrono::Utc::now() - chrono::Duration::days(91);
+        let expired_created_at = jiff::Timestamp::now() - jiff::SignedDuration::from_hours(24 * 91);
         let mut expiry_connection = context.pool.get().await?;
         diesel::update(forum_notifications::table.filter(
             forum_notifications::forum_notification_recipient_user_id.eq(subscriber.user_id),
         ))
         .set((
-            forum_notifications::forum_notification_created_at.eq(expired_created_at),
+            forum_notifications::forum_notification_created_at.eq(expired_created_at.to_diesel()),
             forum_notifications::forum_notification_expires_at
-                .eq(expired_created_at + chrono::Duration::days(90)),
+                .eq((expired_created_at + jiff::SignedDuration::from_hours(24 * 90)).to_diesel()),
         ))
         .execute(&mut expiry_connection)
         .await?;

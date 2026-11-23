@@ -1,10 +1,11 @@
 //! Bounded WebAssembly module reads.
 
-use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
 };
 use diesel_async::RunQueryDsl;
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{persistence::public_authors::load_public_authors, schema::wasm_module};
@@ -23,7 +24,7 @@ pub struct WasmMetadataList {
 
 pub struct WasmBundlePageItem {
     pub module_id: Uuid,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     pub gz_bytes: Vec<u8>,
 }
 
@@ -73,7 +74,7 @@ impl WasmRepository {
 
     pub async fn bundle_page(
         &self,
-        after: Option<(DateTime<Utc>, Uuid)>,
+        after: Option<(Timestamp, Uuid)>,
     ) -> Result<Vec<WasmBundlePageItem>, WasmError> {
         let mut connection = self.connection().await?;
         let mut query = wasm_module::table
@@ -89,22 +90,22 @@ impl WasmRepository {
             .into_boxed();
         if let Some((updated_at, module_id)) = after {
             query = query.filter(
-                wasm_module::wasm_module_updated_at.lt(updated_at).or(
-                    wasm_module::wasm_module_updated_at
-                        .eq(updated_at)
-                        .and(wasm_module::wasm_module_id.lt(module_id)),
-                ),
+                wasm_module::wasm_module_updated_at
+                    .lt(updated_at.to_diesel())
+                    .or(wasm_module::wasm_module_updated_at
+                        .eq(updated_at.to_diesel())
+                        .and(wasm_module::wasm_module_id.lt(module_id))),
             );
         }
         query
             .limit(CACHE_SYNC_QUERY_ROWS)
-            .load::<(Uuid, DateTime<Utc>, Vec<u8>)>(&mut connection)
+            .load::<(Uuid, jiff_diesel::Timestamp, Vec<u8>)>(&mut connection)
             .await
             .map(|rows| {
                 rows.into_iter()
                     .map(|(module_id, updated_at, gz_bytes)| WasmBundlePageItem {
                         module_id,
-                        updated_at,
+                        updated_at: updated_at.to_jiff(),
                         gz_bytes,
                     })
                     .collect()

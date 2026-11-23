@@ -3,7 +3,7 @@ use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::{error, info};
 use zstd::stream::copy_encode;
 
@@ -14,8 +14,8 @@ use crate::util::time::now::tokio_now;
 const EXCLUDED_EXTENSIONS: [&str; 2] = ["gz", "zst"];
 
 pub async fn compress_old_logs(_state: Arc<ServerState>) {
-    let now = Utc::now();
-    let now_yyyy_mm_dd = now.format("%Y-%m-%d").to_string();
+    let now = Timestamp::now();
+    let now_yyyy_mm_dd = now.strftime("%Y-%m-%d").to_string();
 
     let logs_dir_path = Path::new(LOGS_DIR);
 

@@ -71,7 +71,7 @@ fn moderation_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 live_chat_messages::message_body,
                 live_chat_messages::message_deleted_at,
             ))
-            .first::<(String, Option<chrono::DateTime<chrono::Utc>>)>(&mut connection)
+            .first::<(String, Option<jiff_diesel::Timestamp>)>(&mut connection)
             .await?;
         drop(connection);
         require(

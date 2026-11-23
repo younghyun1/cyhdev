@@ -145,7 +145,7 @@ impl LiveChatCache {
 mod tests {
     use std::net::{IpAddr, Ipv6Addr};
 
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     use super::*;
     use crate::features::live_chat::domain::{actor::ChatActor, guest_identity::GuestIdentityKey};
@@ -158,7 +158,7 @@ mod tests {
             client_prefix: LiveChatIpPrefix::of(ip),
             disconnect_tx: tokio::sync::watch::channel(false).0,
             room_key: "main".to_owned(),
-            connected_at: Utc::now(),
+            connected_at: Timestamp::now(),
         }
     }
 

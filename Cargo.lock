@@ -1929,7 +1929,6 @@ checksum = "9824c36a57a17ece4c8883baed41dc3eb81b2b949364c174750acc462e19b5ec"
 dependencies = [
  "bitflags 2.13.2",
  "byteorder",
- "chrono",
  "diesel_derives",
  "downcast-rs",
  "ipnet",
@@ -3336,12 +3335,12 @@ dependencies = [
 
 [[package]]
 name = "jiff"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed5d126d72eb017f10b302e73bdeca446bea405ee449af4d9e7866d6b082d83e"
+checksum = "c5e77cbfb9fff4798e283c2d69dff39fc2c45e7da017e5ce95b654e46ea41236"
 dependencies = [
  "jiff-core 1.0.1",
- "jiff-static 1.0.1",
+ "jiff-static 1.0.2",
  "jiff-tzdb-platform 1.0.0",
  "log",
  "portable-atomic",
@@ -3369,6 +3368,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "jiff-diesel"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6b5ecd45a915436964f1bc65d62b1a32e9212dc10bf3af42ab051cfcfb5e0ee"
+dependencies = [
+ "diesel",
+ "jiff 1.0.2",
+]
+
+[[package]]
 name = "jiff-static"
 version = "0.2.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3382,9 +3391,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0127e9bde3c6130d6169e7d8d68676e4be69c4bf7573c308b6f960a5089c428"
+checksum = "e9067a0b23e5be3147d56b2dcf652b18e6b1364caca93fb157653b6fbcab23a9"
 dependencies = [
  "jiff-core 1.0.1",
  "proc-macro2",
@@ -3522,7 +3531,7 @@ dependencies = [
  "encoding_rs",
  "futures",
  "hex",
- "jiff 1.0.1",
+ "jiff 1.0.2",
  "kcna-archive-core",
  "mimalloc",
  "nutype",
@@ -4521,11 +4530,12 @@ dependencies = [
  "anyhow",
  "axum",
  "base64 0.23.1",
- "chrono",
  "diesel",
  "diesel-async",
  "futures-util",
  "image",
+ "jiff 1.0.2",
+ "jiff-diesel",
  "kcna-archive-core",
  "openidconnect",
  "reqwest",
@@ -5968,7 +5978,6 @@ dependencies = [
  "axum-server",
  "base64 0.23.1",
  "bitcode",
- "chrono",
  "comrak",
  "diesel",
  "diesel-async",
@@ -5983,6 +5992,8 @@ dependencies = [
  "image",
  "internment",
  "ipnet",
+ "jiff 1.0.2",
+ "jiff-diesel",
  "kamadak-exif",
  "kcna-archive-core",
  "lettre",
@@ -6478,7 +6489,7 @@ dependencies = [
  "indexmap 1.9.3",
  "indexmap 2.14.2",
  "jiff 0.2.46",
- "jiff 1.0.1",
+ "jiff 1.0.2",
  "schemars 0.9.0",
  "schemars 1.2.3",
  "serde_core",

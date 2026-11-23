@@ -98,7 +98,7 @@ fn terrain(request: Value, runtime: &std::path::Path) -> anyhow::Result<Value> {
         .iter()
         .find(|(name, _, _, _)| *name == world)
         .ok_or_else(|| anyhow::anyhow!("unknown dimension"))?;
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = jiff::Timestamp::now().as_millisecond();
     if kind == "prediction_context" {
         let x = request["chunk_x"].as_i64().unwrap_or(0);
         let z = request["chunk_z"].as_i64().unwrap_or(0);

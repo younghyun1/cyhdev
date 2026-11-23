@@ -1,8 +1,9 @@
 //! Photograph comment writes: creation, edits, and tombstone deletion.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -44,9 +45,10 @@ impl PhotographyRepository {
                             photograph_comments::photograph_id,
                             photograph_comments::photograph_comment_deleted_at,
                         ))
-                        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+                        .first::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut *connection)
                         .await
                         .optional()?
+                        .map(|(photograph_id, deleted_at)| (photograph_id, deleted_at.to_jiff()))
                         .ok_or(PhotographyError::CommentNotFound)?;
                     if parent_photograph != command.photograph_id {
                         return Err(PhotographyError::InvalidInput);
@@ -93,7 +95,8 @@ impl PhotographyRepository {
                 )
                 .set((
                     photograph_comments::photograph_comment_content.eq(content),
-                    photograph_comments::photograph_comment_updated_at.eq(Utc::now()),
+                    photograph_comments::photograph_comment_updated_at
+                        .eq(Timestamp::now().to_diesel()),
                 ))
                 .returning(PhotographCommentRecord::as_returning())
                 .get_result::<PhotographCommentRecord>(&mut *connection)
@@ -148,7 +151,8 @@ impl PhotographyRepository {
                 )
                 .set((
                     photograph_comments::photograph_comment_content.eq(""),
-                    photograph_comments::photograph_comment_deleted_at.eq(Some(Utc::now())),
+                    photograph_comments::photograph_comment_deleted_at
+                        .eq(Some(Timestamp::now()).to_diesel()),
                 ))
                 .execute(&mut *connection)
                 .await?;
@@ -162,7 +166,7 @@ impl PhotographyRepository {
 async fn lock_comment(
     connection: &mut AsyncPgConnection,
     comment_id: Uuid,
-) -> Result<(Uuid, Option<DateTime<Utc>>), PhotographyError> {
+) -> Result<(Uuid, Option<Timestamp>), PhotographyError> {
     photograph_comments::table
         .filter(photograph_comments::photograph_comment_id.eq(comment_id))
         .select((
@@ -170,9 +174,10 @@ async fn lock_comment(
             photograph_comments::photograph_comment_deleted_at,
         ))
         .for_update()
-        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+        .first::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut *connection)
         .await
         .optional()?
+        .map(|(author_id, deleted_at)| (author_id, deleted_at.to_jiff()))
         .ok_or(PhotographyError::CommentNotFound)
 }
 

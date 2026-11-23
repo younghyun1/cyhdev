@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl, SelectableHelper};
 use diesel_async::RunQueryDsl;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -39,10 +40,10 @@ impl AccountRepository {
         if let Some(before) = before {
             query = query.filter(
                 authorization_audit_events::authorization_audit_event_created_at
-                    .lt(before.created_at)
+                    .lt(before.created_at.to_diesel())
                     .or(
                         authorization_audit_events::authorization_audit_event_created_at
-                            .eq(before.created_at)
+                            .eq(before.created_at.to_diesel())
                             .and(
                                 authorization_audit_events::authorization_audit_event_id
                                     .lt(before.audit_event_id),

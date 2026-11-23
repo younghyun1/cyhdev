@@ -3,7 +3,7 @@
 use std::{net::IpAddr, sync::Arc};
 
 use axum_extra::extract::CookieJar;
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::warn;
 use uuid::Uuid;
 
@@ -62,7 +62,7 @@ pub(super) async fn register_connection(
                 client_prefix: LiveChatIpPrefix::of(client_ip),
                 disconnect_tx,
                 room_key: DEFAULT_LIVE_CHAT_ROOM.to_owned(),
-                connected_at: Utc::now(),
+                connected_at: Timestamp::now(),
             },
         )
         .await;

@@ -5,6 +5,7 @@ use diesel::{
     Queryable, Selectable, SelectableHelper, upsert::excluded,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool};
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -25,9 +26,11 @@ const SOURCE_SYNC_CHUNK_ROWS: usize = 1_000;
 struct I18nStringRecord {
     i18n_string_id: Uuid,
     i18n_string_content: String,
-    i18n_string_created_at: chrono::DateTime<chrono::Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    i18n_string_created_at: jiff::Timestamp,
     i18n_string_created_by: Uuid,
-    i18n_string_updated_at: chrono::DateTime<chrono::Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    i18n_string_updated_at: jiff::Timestamp,
     i18n_string_updated_by: Uuid,
     i18n_string_language_code: i32,
     i18n_string_country_code: i32,
@@ -139,7 +142,7 @@ impl I18nRepository {
         }
         let mut connection = self.pool.get().await?;
         let system_user_id = Uuid::nil();
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         connection
             .transaction::<usize, diesel::result::Error, _>(async |connection| {
                 let mut written = 0;
@@ -168,7 +171,7 @@ impl I18nRepository {
                         .set((
                             i18n_strings::i18n_string_content
                                 .eq(excluded(i18n_strings::i18n_string_content)),
-                            i18n_strings::i18n_string_updated_at.eq(now),
+                            i18n_strings::i18n_string_updated_at.eq(now.to_diesel()),
                             i18n_strings::i18n_string_updated_by.eq(system_user_id),
                         ));
                     // `ON CONFLICT ... DO UPDATE ... WHERE`. Insert statements have

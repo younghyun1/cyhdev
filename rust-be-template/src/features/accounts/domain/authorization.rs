@@ -1,6 +1,6 @@
 //! Validated role-administration commands and authority records.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use nutype::nutype;
 use uuid::Uuid;
 
@@ -103,7 +103,7 @@ pub struct AuthorizationAuditEvent {
     pub new_value: String,
     pub reason: String,
     pub request_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -114,7 +114,7 @@ pub struct AuthorizationPage<T> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct AuthorizationAuditCursor {
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub audit_event_id: Uuid,
 }
 

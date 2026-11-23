@@ -1,6 +1,6 @@
 //! WebAssembly module domain records and commands.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 pub struct WasmModule {
@@ -8,8 +8,8 @@ pub struct WasmModule {
     pub user_id: Uuid,
     pub wasm_module_link: String,
     pub wasm_module_description: String,
-    pub wasm_module_created_at: DateTime<Utc>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_created_at: Timestamp,
+    pub wasm_module_updated_at: Timestamp,
     pub wasm_module_thumbnail_link: String,
     pub wasm_module_title: String,
     pub wasm_module_bundle_gz: Vec<u8>,
@@ -21,8 +21,8 @@ pub struct WasmModuleMetadata {
     pub user_id: Uuid,
     pub wasm_module_link: String,
     pub wasm_module_description: String,
-    pub wasm_module_created_at: DateTime<Utc>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_created_at: Timestamp,
+    pub wasm_module_updated_at: Timestamp,
     pub wasm_module_thumbnail_link: String,
     pub wasm_module_title: String,
 }
@@ -32,8 +32,8 @@ pub struct NewWasmModule {
     pub user_id: Uuid,
     pub wasm_module_link: String,
     pub wasm_module_description: String,
-    pub wasm_module_created_at: DateTime<Utc>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_created_at: Timestamp,
+    pub wasm_module_updated_at: Timestamp,
     pub wasm_module_thumbnail_link: String,
     pub wasm_module_title: String,
     pub wasm_module_bundle_gz: Vec<u8>,
@@ -42,7 +42,7 @@ pub struct NewWasmModule {
 pub struct WasmMetadataUpdate {
     pub wasm_module_title: Option<String>,
     pub wasm_module_description: Option<String>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_updated_at: Timestamp,
 }
 
 pub struct WasmAssetUpdate {
@@ -50,7 +50,7 @@ pub struct WasmAssetUpdate {
     pub wasm_module_description: Option<String>,
     pub wasm_module_thumbnail_link: Option<String>,
     pub wasm_module_bundle_gz: Option<Vec<u8>>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_updated_at: Timestamp,
 }
 
 impl From<WasmModule> for WasmModuleMetadata {

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -16,9 +16,9 @@ pub struct LiveChatMessageItem {
     pub sender_country_flag: Option<String>,
     pub user_profile_picture_url: Option<String>,
     pub message_body: String,
-    pub message_created_at: DateTime<Utc>,
-    pub message_edited_at: Option<DateTime<Utc>>,
-    pub message_deleted_at: Option<DateTime<Utc>>,
+    pub message_created_at: Timestamp,
+    pub message_edited_at: Option<Timestamp>,
+    pub message_deleted_at: Option<Timestamp>,
 }
 
 impl From<CachedChatMessage> for LiveChatMessageItem {

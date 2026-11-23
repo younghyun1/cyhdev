@@ -1,6 +1,6 @@
 //! Persistence-free photograph batch values.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -34,8 +34,8 @@ pub struct BatchItem {
     pub original_file_name: Option<String>,
     pub original_size_bytes: u64,
     pub status: ProcessingStatus,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 pub struct BatchPipelineItem {

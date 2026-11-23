@@ -1,6 +1,6 @@
 //! Durable staged notification state for retained account identity.
 
-use chrono::{DateTime, Days, TimeDelta, Utc};
+use jiff::{SignedDuration, Timestamp};
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -40,23 +40,39 @@ impl RetentionNotificationStage {
 
 /// Both delivery deadlines derived from one immutable purge deadline.
 pub struct RetentionNotificationSchedule {
-    pub seven_days_before_purge: DateTime<Utc>,
-    pub one_day_before_purge: DateTime<Utc>,
+    pub seven_days_before_purge: Timestamp,
+    pub one_day_before_purge: Timestamp,
 }
 
 impl RetentionNotificationSchedule {
-    pub fn from_purge_after(purge_after: DateTime<Utc>) -> Option<Self> {
+    pub fn from_purge_after(purge_after: Timestamp) -> Option<Self> {
         Some(Self {
-            seven_days_before_purge: purge_after.checked_sub_days(Days::new(7))?,
-            one_day_before_purge: purge_after.checked_sub_days(Days::new(1))?,
+            seven_days_before_purge: stage_deadline(
+                purge_after,
+                RetentionNotificationStage::SevenDaysBeforePurge,
+            )?,
+            one_day_before_purge: stage_deadline(
+                purge_after,
+                RetentionNotificationStage::OneDayBeforePurge,
+            )?,
         })
     }
+}
+
+/// Subtracts whole UTC days, which are always 24 hours, from the purge deadline.
+fn stage_deadline(purge_after: Timestamp, stage: RetentionNotificationStage) -> Option<Timestamp> {
+    let hours = i64::try_from(stage.days_before_purge())
+        .ok()?
+        .checked_mul(24)?;
+    purge_after
+        .checked_sub(SignedDuration::from_hours(hours))
+        .ok()
 }
 
 /// Stable keyset position for bounded due/status scans.
 #[derive(Debug, Clone, Copy)]
 pub struct RetentionNotificationCursor {
-    pub next_attempt_at: DateTime<Utc>,
+    pub next_attempt_at: Timestamp,
     pub notification_id: Uuid,
 }
 
@@ -65,7 +81,7 @@ pub struct RetentionNotificationCursor {
 pub struct ClaimedRetentionNotification {
     pub notification_id: Uuid,
     pub stage: RetentionNotificationStage,
-    pub next_attempt_at: DateTime<Utc>,
+    pub next_attempt_at: Timestamp,
     pub attempt_count: i32,
 }
 
@@ -80,7 +96,7 @@ pub struct RetentionNotificationDeliveryItem {
     pub notification_id: Uuid,
     pub stage: RetentionNotificationStage,
     pub retained_email: Zeroizing<String>,
-    pub purge_after: DateTime<Utc>,
+    pub purge_after: Timestamp,
     pub attempt_count: i32,
 }
 
@@ -90,19 +106,19 @@ pub struct RetentionNotificationStatus {
     pub notification_id: Uuid,
     pub user_id: Uuid,
     pub stage: RetentionNotificationStage,
-    pub scheduled_for: DateTime<Utc>,
-    pub next_attempt_at: DateTime<Utc>,
+    pub scheduled_for: Timestamp,
+    pub next_attempt_at: Timestamp,
     pub attempt_count: i32,
-    pub claim_expires_at: Option<DateTime<Utc>>,
-    pub sent_at: Option<DateTime<Utc>>,
-    pub cancelled_at: Option<DateTime<Utc>>,
+    pub claim_expires_at: Option<Timestamp>,
+    pub sent_at: Option<Timestamp>,
+    pub cancelled_at: Option<Timestamp>,
     pub last_error: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct RetentionNotificationRetryReceipt {
     pub notification_id: Uuid,
-    pub next_attempt_at: DateTime<Utc>,
+    pub next_attempt_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -114,7 +130,7 @@ pub struct RetentionNotificationRunReport {
 }
 
 /// Capped exponential delay after the attempt already recorded by the claim.
-pub fn retention_notification_retry_delay(attempt_count: i32) -> TimeDelta {
+pub fn retention_notification_retry_delay(attempt_count: i32) -> SignedDuration {
     let bounded_exponent = attempt_count.saturating_sub(1).clamp(0, RETRY_MAX_EXPONENT);
     let exponent = match u32::try_from(bounded_exponent) {
         Ok(exponent) => exponent,
@@ -127,35 +143,34 @@ pub fn retention_notification_retry_delay(attempt_count: i32) -> TimeDelta {
             0
         }
     };
-    TimeDelta::minutes(RETRY_BASE_MINUTES * (1_i64 << exponent))
+    SignedDuration::from_mins(RETRY_BASE_MINUTES * (1_i64 << exponent))
 }
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
+    use jiff::{SignedDuration, Timestamp};
 
     use super::{RetentionNotificationSchedule, retention_notification_retry_delay};
 
     #[test]
     fn schedule_and_retry_bounds_are_exact() -> Result<(), &'static str> {
-        let purge_after = Utc
-            .with_ymd_and_hms(2026, 9, 30, 12, 0, 0)
-            .single()
-            .ok_or("fixed UTC test timestamp was invalid")?;
+        let purge_after = "2026-09-30T12:00:00Z"
+            .parse::<Timestamp>()
+            .map_err(|_| "fixed UTC test timestamp was invalid")?;
         let schedule = RetentionNotificationSchedule::from_purge_after(purge_after)
             .ok_or("fixed purge deadline did not produce a schedule")?;
         assert_eq!(
-            purge_after - schedule.seven_days_before_purge,
-            chrono::Duration::days(7)
+            purge_after.duration_since(schedule.seven_days_before_purge),
+            SignedDuration::from_hours(7 * 24)
         );
         assert_eq!(
-            purge_after - schedule.one_day_before_purge,
-            chrono::Duration::days(1)
+            purge_after.duration_since(schedule.one_day_before_purge),
+            SignedDuration::from_hours(24)
         );
-        assert_eq!(retention_notification_retry_delay(1).num_minutes(), 5);
-        assert_eq!(retention_notification_retry_delay(2).num_minutes(), 10);
+        assert_eq!(retention_notification_retry_delay(1).as_mins(), 5);
+        assert_eq!(retention_notification_retry_delay(2).as_mins(), 10);
         assert_eq!(
-            retention_notification_retry_delay(i32::MAX).num_minutes(),
+            retention_notification_retry_delay(i32::MAX).as_mins(),
             1_280
         );
         Ok(())

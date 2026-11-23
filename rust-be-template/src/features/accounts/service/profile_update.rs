@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -53,7 +53,12 @@ impl AccountService {
             let _session_consistency = service.session_consistency.write().await;
             let profile = service
                 .repository
-                .update_profile(user_id, &candidate.password_hash, &command, Utc::now())
+                .update_profile(
+                    user_id,
+                    &candidate.password_hash,
+                    &command,
+                    Timestamp::now(),
+                )
                 .await?;
             service
                 .refresh_sessions_after_commit(user_id, "update_profile")

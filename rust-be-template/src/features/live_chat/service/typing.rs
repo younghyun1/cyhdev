@@ -8,7 +8,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use chrono::{Duration as ChronoDuration, Utc};
+use jiff::{SignedDuration, Timestamp};
 
 use super::{
     super::domain::{actor::ChatActor, message::DEFAULT_LIVE_CHAT_ROOM},
@@ -17,7 +17,7 @@ use super::{
 };
 
 /// Lifetime of a typing entry without a refresh; browsers refresh every 2 s.
-pub const LIVE_CHAT_TYPING_TTL: ChronoDuration = ChronoDuration::seconds(4);
+pub const LIVE_CHAT_TYPING_TTL: SignedDuration = SignedDuration::from_secs(4);
 /// Window that collapses bursts of typing changes into one broadcast.
 const TYPING_BROADCAST_COALESCE: Duration = Duration::from_millis(250);
 /// Refreshes rebroadcast at most this often, well inside the TTL browsers use
@@ -29,7 +29,7 @@ pub const LIVE_CHAT_TYPING_BROADCAST_MAX_ACTORS: usize = 16;
 impl LiveChatService {
     /// Record a start or stop from one connection's actor.
     pub async fn record_typing(self: &Arc<Self>, actor: &ChatActor, is_typing: bool) {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let changed = if is_typing {
             self.cache
                 .set_typing(TypingState {
@@ -67,7 +67,7 @@ impl LiveChatService {
         tokio::spawn(async move {
             tokio::time::sleep(TYPING_BROADCAST_COALESCE).await;
             service.cache.release_typing_broadcast();
-            let now = Utc::now();
+            let now = Timestamp::now();
             let actors = service
                 .cache
                 .active_typing_actors(now, LIVE_CHAT_TYPING_BROADCAST_MAX_ACTORS)

@@ -11,6 +11,7 @@ For resumable work, follow the status and handoff fields in [documentation instr
 
 ## Completed
 
+- [Replace chrono with jiff 1.0](2026-11-23-chrono-to-jiff.md)
 - [Rust workspace dependency upgrade, October 30](2026-10-30-rust-dependency-upgrade.md)
 - [Optimization request admission](2026-10-09-optimization-request-admission.md)
 - [Frontend dependency upgrade, October 9](2026-10-09-frontend-dependency-upgrade.md)

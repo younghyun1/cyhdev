@@ -5,7 +5,7 @@
 //! page than its replies and a client that accumulates pages can rebuild the
 //! whole thread. Blog posts and photographs share this contract.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 /// Comments returned with a detail read and by default on later pages.
@@ -16,7 +16,7 @@ pub const MAX_COMMENT_PAGE_SIZE: u16 = 100;
 /// Position after the last comment of the previous page.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CommentCursor {
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub comment_id: Uuid,
 }
 
@@ -46,7 +46,7 @@ impl CommentPageRequest {
     }
 
     pub fn parse(
-        after_created_at: Option<DateTime<Utc>>,
+        after_created_at: Option<Timestamp>,
         after_comment_id: Option<Uuid>,
         limit: Option<u16>,
     ) -> Result<Self, CommentPageError> {
@@ -94,7 +94,7 @@ impl CommentPageRequest {
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
+    use jiff::Timestamp;
     use uuid::Uuid;
 
     use super::{CommentCursor, CommentPageError, CommentPageRequest, MAX_COMMENT_PAGE_SIZE};
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn cursor_fields_are_both_or_neither() {
         assert!(matches!(
-            CommentPageRequest::parse(Some(Utc::now()), None, None),
+            CommentPageRequest::parse(Some(Timestamp::now()), None, None),
             Err(CommentPageError::IncompleteCursor)
         ));
         assert!(matches!(
@@ -126,7 +126,7 @@ mod tests {
     fn split_page_trims_the_probe_row_and_points_at_the_last_kept_row() {
         let request = CommentPageRequest::parse(None, None, Some(2))
             .unwrap_or_else(|_| CommentPageRequest::first_page());
-        let now = Utc::now();
+        let now = Timestamp::now();
         let cursor = |id: &u128| CommentCursor {
             created_at: now,
             comment_id: Uuid::from_u128(*id),

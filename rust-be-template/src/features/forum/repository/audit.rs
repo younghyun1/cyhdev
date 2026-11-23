@@ -5,6 +5,7 @@ use diesel::{
     sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::RunQueryDsl;
+use jiff_diesel::ToDiesel;
 
 use crate::{
     features::{
@@ -58,7 +59,7 @@ impl ForumRepository {
                     forum_moderation_audit_events::forum_moderation_audit_event_id,
                 )
                     .into_sql::<Record<(Timestamptz, SqlUuid)>>()
-                    .lt((cursor.created_at, cursor.item_id)),
+                    .lt((cursor.created_at.to_diesel(), cursor.item_id)),
             );
         }
         let mut rows = query
@@ -68,7 +69,7 @@ impl ForumRepository {
         let next_cursor = if rows.len() > usize::from(page_size.into_inner()) {
             rows.pop();
             rows.last().map(|row| ForumTimestampCursor {
-                created_at: row.7,
+                created_at: row.7.to_jiff(),
                 item_id: row.0,
             })
         } else {

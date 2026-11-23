@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -6,7 +6,7 @@ use uuid::Uuid;
 #[derive(serde_derive::Serialize, ToSchema)]
 pub struct HardPurgeAccountResponse {
     pub user_id: Uuid,
-    pub hard_purged_at: DateTime<Utc>,
+    pub hard_purged_at: Timestamp,
     pub profile_objects_deleted: usize,
     pub profile_metadata_deleted: usize,
     pub profile_cleanup_remaining: usize,

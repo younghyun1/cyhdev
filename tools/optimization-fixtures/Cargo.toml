@@ -10,12 +10,13 @@ workspace = true
 rust-be-template = { path = "../../rust-be-template" }
 kcna-archive-core = { path = "../../kcna-archive/core" }
 anyhow.workspace = true
-chrono.workspace = true
+jiff.workspace = true
+jiff-diesel.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["full"] }
 tracing.workspace = true
 serde = { version = "1.0.229", features = ["derive"] }
-diesel = { version = "2.4.0", features = ["postgres", "chrono", "serde_json", "uuid"] }
+diesel = { version = "2.4.0", features = ["postgres", "serde_json", "uuid"] }
 diesel-async = { version = "0.10.0", features = ["bb8", "postgres"] }
 uuid = { version = "1.29.3", features = ["serde", "v4"] }
 zeroize = "1.9.2"

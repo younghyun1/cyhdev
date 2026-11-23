@@ -42,7 +42,7 @@ fn visit(latitude: f64, longitude: f64) -> NewVisit {
         ip_address: IpAddr::from([192, 0, 2, 44]),
         city: "Denver".to_owned(),
         country: "United States".to_owned(),
-        visited_at: chrono::Utc::now(),
+        visited_at: jiff::Timestamp::now(),
     }
 }
 

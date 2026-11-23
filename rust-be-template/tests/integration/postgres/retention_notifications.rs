@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::Duration;
+use jiff::SignedDuration;
 use uuid::Uuid;
 
 use rust_be_template::features::accounts::{
@@ -88,7 +88,8 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .soft_delete_account(account.user_id, VALID_PASSWORD)
             .await?;
-        let first_due = deletion.purge_after - Duration::days(7) + Duration::seconds(1);
+        let first_due = deletion.purge_after - SignedDuration::from_hours(24 * 7)
+            + SignedDuration::from_secs(1);
         let sender = Arc::new(FakeSender::failing(1));
 
         let failed = context
@@ -112,7 +113,7 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 && seven_day.attempt_count == 1
                 && seven_day.sent_at.is_none()
                 && seven_day.last_error.as_deref() == Some("smtp transport failed")
-                && seven_day.next_attempt_at == first_due + Duration::minutes(5),
+                && seven_day.next_attempt_at == first_due + SignedDuration::from_mins(5),
             "failed notification did not retain bounded exponential retry state",
         )?;
 
@@ -120,14 +121,14 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .send_due_retention_notifications_with(
                 sender.as_ref(),
-                seven_day.next_attempt_at - Duration::seconds(1),
+                seven_day.next_attempt_at - SignedDuration::from_secs(1),
             )
             .await?;
         require(
             early.claimed == 0,
             "notification retried before next-attempt time",
         )?;
-        let manual_retry_at = first_due + Duration::minutes(1);
+        let manual_retry_at = first_due + SignedDuration::from_mins(1);
         let retry = context
             .repository
             .retry_retention_notification(admin.user_id, seven_day.notification_id, manual_retry_at)
@@ -140,7 +141,7 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .send_due_retention_notifications_with(
                 sender.as_ref(),
-                manual_retry_at + Duration::seconds(1),
+                manual_retry_at + SignedDuration::from_secs(1),
             )
             .await?;
         require(
@@ -151,7 +152,8 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .send_due_retention_notifications_with(
                 sender.as_ref(),
-                deletion.purge_after - Duration::days(1) + Duration::seconds(1),
+                deletion.purge_after - SignedDuration::from_hours(24)
+                    + SignedDuration::from_secs(1),
             )
             .await?;
         require(
@@ -169,7 +171,7 @@ fn staged_delivery_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .hard_purge_account(
                 admin.user_id,
                 account.user_id,
-                deletion.purge_after + Duration::seconds(1),
+                deletion.purge_after + SignedDuration::from_secs(1),
             )
             .await?;
         let retained_status = context
@@ -202,7 +204,8 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .accounts
             .soft_delete_account(account.user_id, VALID_PASSWORD)
             .await?;
-        let due = deletion.purge_after - Duration::days(7) + Duration::seconds(1);
+        let due = deletion.purge_after - SignedDuration::from_hours(24 * 7)
+            + SignedDuration::from_secs(1);
         let first = context
             .repository
             .claim_due_retention_notifications(due)
@@ -221,7 +224,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )?;
         let reclaimed = context
             .repository
-            .claim_due_retention_notifications(due + Duration::minutes(11))
+            .claim_due_retention_notifications(due + SignedDuration::from_mins(11))
             .await?;
         let reclaimed_notification =
             <[_]>::first(&reclaimed.notifications).ok_or(AccountError::AccountChanged)?;
@@ -237,7 +240,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .hard_purge_account(
                 admin.user_id,
                 account.user_id,
-                deletion.purge_after + Duration::seconds(1),
+                deletion.purge_after + SignedDuration::from_secs(1),
             )
             .await?;
         let ids = first
@@ -250,7 +253,7 @@ fn claim_and_purge_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .revalidate_retention_notification_claim(
                 reclaimed.claim_token,
                 &ids,
-                due + Duration::minutes(11),
+                due + SignedDuration::from_mins(11),
             )
             .await?;
         require(

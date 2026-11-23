@@ -2,7 +2,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods, QueryDsl,
 };
@@ -14,7 +13,13 @@ use crate::{
     schema::{user_profile_pictures, users},
 };
 
-type PublicAuthorRow = (Uuid, String, i32, Option<DateTime<Utc>>, Option<String>);
+type PublicAuthorRow = (
+    Uuid,
+    String,
+    i32,
+    jiff_diesel::NullableTimestamp,
+    Option<String>,
+);
 
 /// Load one deletion-aware author and latest-profile projection per user.
 pub async fn load_public_authors(
@@ -47,7 +52,7 @@ pub async fn load_public_authors(
 
     let mut authors = HashMap::with_capacity(requested_user_ids.len());
     for (user_id, user_name, country_code, deleted_at, profile_picture_url) in rows {
-        let author = if deleted_at.is_some() {
+        let author = if deleted_at.to_jiff().is_some() {
             PublicAuthor::deleted()
         } else {
             PublicAuthor::active(user_id, user_name, country_code, profile_picture_url)
@@ -74,11 +79,11 @@ pub async fn load_deleted_user_ids(
     let rows = users::table
         .filter(users::user_id.eq_any(&requested_user_ids))
         .select((users::user_id, users::user_deleted_at))
-        .load::<(Uuid, Option<DateTime<Utc>>)>(conn)
+        .load::<(Uuid, jiff_diesel::NullableTimestamp)>(conn)
         .await?;
     let mut deleted_user_ids = requested_user_ids.into_iter().collect::<HashSet<_>>();
     for (user_id, deleted_at) in rows {
-        if deleted_at.is_none() {
+        if deleted_at.to_jiff().is_none() {
             deleted_user_ids.remove(&user_id);
         }
     }

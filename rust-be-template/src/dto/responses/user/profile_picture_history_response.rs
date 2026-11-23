@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -8,8 +8,8 @@ use crate::features::accounts::domain::account::ProfilePicture;
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ProfilePictureHistoryItem {
     pub profile_picture_id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub image_type: i32,
     pub is_active: bool,
     pub object_url: String,

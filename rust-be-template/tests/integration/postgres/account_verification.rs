@@ -1,8 +1,9 @@
 //! Email verification: one-time tokens, session revocation, and pre-registration takeover.
 
-use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
+use jiff::{SignedDuration, Timestamp};
+use jiff_diesel::ToDiesel;
 
 use rust_be_template::{
     features::accounts::{
@@ -66,7 +67,7 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         }
         let expired = seed_account(&context, "VerifyExpired").await?;
         let fabricated = seed_account(&context, "VerifyFuture").await?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let expired_digest = digest_of(&expired.verification_token)?;
         let fabricated_digest = digest_of(&fabricated.verification_token)?;
         let mut connection = context.pool.get().await?;
@@ -75,9 +76,9 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         ))
         .set((
             email_verification_tokens::email_verification_token_created_at
-                .eq(now - Duration::hours(2)),
+                .eq((now - SignedDuration::from_hours(2)).to_diesel()),
             email_verification_tokens::email_verification_token_expires_at
-                .eq(now - Duration::hours(1)),
+                .eq((now - SignedDuration::from_hours(1)).to_diesel()),
         ))
         .execute(&mut connection)
         .await?;
@@ -89,9 +90,9 @@ fn email_verification_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )
         .set((
             email_verification_tokens::email_verification_token_created_at
-                .eq(now + Duration::hours(1)),
+                .eq((now + SignedDuration::from_hours(1)).to_diesel()),
             email_verification_tokens::email_verification_token_expires_at
-                .eq(now + Duration::hours(2)),
+                .eq((now + SignedDuration::from_hours(2)).to_diesel()),
         ))
         .execute(&mut connection)
         .await?;

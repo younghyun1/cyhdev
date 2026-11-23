@@ -1,6 +1,7 @@
-use chrono::Utc;
 use diesel::{BoolExpressionMethods, ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::schema::{live_chat_call_participants, live_chat_calls};
@@ -29,7 +30,7 @@ impl LiveChatRepository {
                     .values(NewCallRecord {
                         live_chat_call_id: call_id,
                         room_key: room_key.to_owned(),
-                        call_started_at: Utc::now(),
+                        call_started_at: Timestamp::now(),
                     })
                     .execute(&mut *connection)
                     .await?;
@@ -47,7 +48,7 @@ impl LiveChatRepository {
                     .and(live_chat_calls::call_ended_at.is_null()),
             ),
         )
-        .set(live_chat_calls::call_ended_at.eq(Utc::now()))
+        .set(live_chat_calls::call_ended_at.eq(Timestamp::now().to_diesel()))
         .execute(&mut connection)
         .await?;
         Ok(())
@@ -75,7 +76,7 @@ impl LiveChatRepository {
                         guest_ip: actor.guest_ip.map(ipnet::IpNet::from),
                         participant_sender_kind: actor.sender_kind,
                         participant_display_name: actor.display_name.clone(),
-                        participant_joined_at: Utc::now(),
+                        participant_joined_at: Timestamp::now(),
                         participant_had_audio: audio,
                         participant_had_video: video,
                     })
@@ -93,18 +94,18 @@ impl LiveChatRepository {
         let mut connection = self.connection().await?;
         connection
             .transaction::<(usize, usize), LiveChatError, _>(async move |connection| {
-                let now = Utc::now();
+                let now = Timestamp::now();
                 let participants = diesel::update(
                     live_chat_call_participants::table
                         .filter(live_chat_call_participants::participant_left_at.is_null()),
                 )
-                .set(live_chat_call_participants::participant_left_at.eq(now))
+                .set(live_chat_call_participants::participant_left_at.eq(now.to_diesel()))
                 .execute(&mut *connection)
                 .await?;
                 let calls = diesel::update(
                     live_chat_calls::table.filter(live_chat_calls::call_ended_at.is_null()),
                 )
-                .set(live_chat_calls::call_ended_at.eq(now))
+                .set(live_chat_calls::call_ended_at.eq(now.to_diesel()))
                 .execute(&mut *connection)
                 .await?;
                 Ok((calls, participants))
@@ -121,7 +122,7 @@ impl LiveChatRepository {
                     .and(live_chat_call_participants::participant_left_at.is_null()),
             ),
         )
-        .set(live_chat_call_participants::participant_left_at.eq(Utc::now()))
+        .set(live_chat_call_participants::participant_left_at.eq(Timestamp::now().to_diesel()))
         .execute(&mut connection)
         .await?;
         Ok(())

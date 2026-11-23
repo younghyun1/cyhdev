@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use tokio::time::Duration;
 
 const SECONDS_PER_MINUTE: u64 = 60;
@@ -78,16 +78,17 @@ pub fn format_duration(duration: Duration) -> String {
     parts.join(", ")
 }
 
-// chrono::TimeDelta
-pub fn format_dt_difference(start_time: DateTime<Utc>, end_time: DateTime<Utc>) -> String {
-    let differential = end_time - start_time;
+/// Elapsed time between two instants, split into 24-hour days and clock units.
+pub fn format_dt_difference(start_time: Timestamp, end_time: Timestamp) -> String {
+    let differential = end_time.duration_since(start_time);
+    let seconds = differential.as_secs();
 
     format!(
         "{} days, {} hours, {} minutes, {} seconds, {} milliseconds",
-        differential.num_days(),
-        differential.num_hours() % 24,
-        differential.num_minutes() % 60,
-        differential.num_seconds() % 60,
-        differential.num_milliseconds() % 1000,
+        seconds / 86_400,
+        (seconds / 3_600) % 24,
+        (seconds / 60) % 60,
+        seconds % 60,
+        differential.subsec_millis(),
     )
 }

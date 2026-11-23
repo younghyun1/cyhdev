@@ -1,6 +1,5 @@
 //! Stable synthetic records cloned identically before every candidate process.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use rust_be_template::{
@@ -20,7 +19,8 @@ pub const PHOTO: Uuid = Uuid::from_u128(0x01990000000070008000000000000030);
 pub const CLEANUP: Uuid = Uuid::from_u128(0x01990000000070008000000000000040);
 
 pub async fn seed(connection: &mut AsyncPgConnection) -> anyhow::Result<Value> {
-    let instant: DateTime<Utc> = "2026-09-29T00:00:00Z".parse()?;
+    // jiff_diesel::Timestamp is the Diesel-encodable form of the instant.
+    let instant = jiff_diesel::Timestamp::from("2026-09-29T00:00:00Z".parse::<jiff::Timestamp>()?);
     let geography = rust_be_template::schema::iso_country::table
         .filter(rust_be_template::schema::iso_country::is_country.eq(true))
         .order(rust_be_template::schema::iso_country::country_code.asc())

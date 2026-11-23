@@ -1,8 +1,8 @@
 //! Bounded delivery orchestration for durable account-retention notices.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use futures_util::{StreamExt, stream};
+use jiff::Timestamp;
 use lettre::AsyncTransport;
 
 use crate::{
@@ -79,7 +79,7 @@ impl AccountService {
     pub async fn send_due_retention_notifications(
         &self,
     ) -> Result<RetentionNotificationRunReport, AccountError> {
-        self.send_due_retention_notifications_with(self, Utc::now())
+        self.send_due_retention_notifications_with(self, Timestamp::now())
             .await
     }
 
@@ -87,7 +87,7 @@ impl AccountService {
     pub async fn send_due_retention_notifications_with<S>(
         &self,
         sender: &S,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<RetentionNotificationRunReport, AccountError>
     where
         S: RetentionNotificationSender + ?Sized,
@@ -132,10 +132,10 @@ impl AccountService {
                     .map(|updated| (updated, true)),
                 Err(error) => {
                     let next_attempt_at = now
-                        .checked_add_signed(retention_notification_retry_delay(
+                        .checked_add(retention_notification_retry_delay(
                             notification.attempt_count,
                         ))
-                        .ok_or(AccountError::RetentionScheduleOverflow)?;
+                        .map_err(|_| AccountError::RetentionScheduleOverflow)?;
                     let bounded_error = bounded_delivery_error(error);
                     self.repository
                         .mark_retention_notification_failed(
@@ -189,7 +189,7 @@ impl AccountService {
         let _run = self.retention_notification_run_gate.lock().await;
         let _delivery = self.retention_notification_delivery_gate.write().await;
         self.repository
-            .retry_retention_notification(requester_id, notification_id, Utc::now())
+            .retry_retention_notification(requester_id, notification_id, Timestamp::now())
             .await
     }
 }

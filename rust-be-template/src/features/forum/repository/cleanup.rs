@@ -1,8 +1,9 @@
 //! Bounded expiry cleanup for the durable notification inbox.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, QueryDsl, dsl::exists};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -18,13 +19,13 @@ pub const FORUM_NOTIFICATION_CLEANUP_BATCH: i64 = 512;
 impl ForumRepository {
     pub async fn prune_expired_notifications(
         &self,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumNotificationPruneReport, ForumError> {
         let mut connection = self.connection().await?;
         connection
             .transaction::<ForumNotificationPruneReport, ForumError, _>(async move |connection| {
                 let ids = forum_notifications::table
-                    .filter(forum_notifications::forum_notification_expires_at.le(now))
+                    .filter(forum_notifications::forum_notification_expires_at.le(now.to_diesel()))
                     .order((
                         forum_notifications::forum_notification_expires_at.asc(),
                         forum_notifications::forum_notification_id.asc(),
@@ -45,10 +46,9 @@ impl ForumRepository {
                     .execute(&mut *connection)
                     .await?
                 };
-                let remaining_expired = diesel::select(exists(
-                    forum_notifications::table
-                        .filter(forum_notifications::forum_notification_expires_at.le(now)),
-                ))
+                let remaining_expired = diesel::select(exists(forum_notifications::table.filter(
+                    forum_notifications::forum_notification_expires_at.le(now.to_diesel()),
+                )))
                 .get_result::<bool>(&mut *connection)
                 .await?;
                 Ok(ForumNotificationPruneReport {

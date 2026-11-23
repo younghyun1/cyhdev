@@ -1,8 +1,9 @@
 //! Irreversible retained-identity and profile-metadata purge.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -27,7 +28,7 @@ impl AccountRepository {
         &self,
         requester_id: Uuid,
         user_id: Uuid,
-        hard_purged_at: DateTime<Utc>,
+        hard_purged_at: Timestamp,
     ) -> Result<HardPurgeAccountPlan, AccountError> {
         let mut connection = self.connection().await?;
         connection
@@ -43,15 +44,17 @@ impl AccountRepository {
                     ))
                     .for_update()
                     .first::<(
-                        Option<DateTime<Utc>>,
-                        Option<DateTime<Utc>>,
-                        Option<DateTime<Utc>>,
+                        Option<jiff_diesel::Timestamp>,
+                        jiff_diesel::NullableTimestamp,
+                        jiff_diesel::NullableTimestamp,
                         bool,
                     )>(&mut *connection)
                     .await
                     .optional()?
                     .ok_or(AccountError::AccountNotFound)?;
                 let (deleted_at, purge_after, previous_hard_purge, is_system_actor) = lifecycle;
+                let purge_after = purge_after.to_jiff();
+                let previous_hard_purge = previous_hard_purge.to_jiff();
                 if is_system_actor {
                     return Err(AccountError::SystemActorProtected);
                 }
@@ -102,8 +105,8 @@ impl AccountRepository {
                         }
                         diesel::update(users::table.filter(users::user_id.eq(user_id)))
                             .set((
-                                users::user_hard_purged_at.eq(hard_purged_at),
-                                users::user_updated_at.eq(hard_purged_at),
+                                users::user_hard_purged_at.eq(hard_purged_at.to_diesel()),
+                                users::user_updated_at.eq(hard_purged_at.to_diesel()),
                             ))
                             .execute(&mut *connection)
                             .await?;
@@ -163,7 +166,7 @@ impl AccountRepository {
                     .filter(users::user_id.eq(user_id))
                     .select((users::user_hard_purged_at, users::user_is_system_actor))
                     .for_update()
-                    .first::<(Option<DateTime<Utc>>, bool)>(&mut *connection)
+                    .first::<(Option<jiff_diesel::Timestamp>, bool)>(&mut *connection)
                     .await
                     .optional()?
                     .ok_or(AccountError::AccountNotFound)?;

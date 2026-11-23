@@ -9,7 +9,7 @@ use axum::{
     http::{HeaderMap, HeaderValue, Request, Response, StatusCode},
     middleware::Next,
 };
-use chrono::Utc;
+use jiff::Timestamp;
 use tokio::time::Instant;
 use tracing::Level;
 use uuid::Uuid;
@@ -25,7 +25,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct RequestLogContext {
     pub request_id: String,
-    pub received_at: chrono::DateTime<chrono::Utc>,
+    pub received_at: jiff::Timestamp,
     pub client_ip: Option<IpAddr>,
 }
 
@@ -76,7 +76,7 @@ pub async fn log_middleware(
     next: Next,
 ) -> Response<Body> {
     let start = Instant::now();
-    let now = Utc::now(); // earliest possible timestamp of server-received request
+    let now = Timestamp::now(); // earliest possible timestamp of server-received request
 
     state.server_status_service().record_response();
 

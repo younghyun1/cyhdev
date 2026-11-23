@@ -1,8 +1,8 @@
 //! Fixed-capacity durable topic subscriptions.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, dsl::count_star};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -23,7 +23,7 @@ impl ForumRepository {
         &self,
         user_id: Uuid,
         topic_id: Uuid,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<bool, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -51,7 +51,7 @@ pub(super) async fn ensure_subscription(
     connection: &mut AsyncPgConnection,
     user_id: Uuid,
     topic_id: Uuid,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<bool, ForumError> {
     let existing = forum_topic_subscriptions::table
         .filter(forum_topic_subscriptions::forum_topic_subscription_topic_id.eq(topic_id))

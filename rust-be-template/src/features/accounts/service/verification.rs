@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 
 use crate::features::accounts::{
     domain::{account::EmailVerificationReceipt, capability_token::CapabilityDigest},
@@ -17,7 +17,7 @@ impl AccountService {
     ) -> Result<EmailVerificationReceipt, AccountError> {
         let digest = CapabilityDigest::from_submitted(token_value.as_ref())
             .ok_or(AccountError::EmailVerificationTokenNotFound)?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let token = match self.repository.email_verification_token(&digest).await? {
             Some(token) => token,
             None => return Err(AccountError::EmailVerificationTokenNotFound),

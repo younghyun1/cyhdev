@@ -1,6 +1,6 @@
 //! Local-account use cases for verified OpenID Connect identities.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use lettre::AsyncTransport;
 use uuid::Uuid;
 
@@ -181,7 +181,7 @@ impl AccountService {
             }
         };
         let email_client = self.email_client.clone();
-        let email = SignInMethodLinkedEmail::new(provider_name, Utc::now());
+        let email = SignInMethodLinkedEmail::new(provider_name, Timestamp::now());
         tokio::spawn(async move {
             let _email_job = email_job;
             let message = match email.to_message(&owner_email) {

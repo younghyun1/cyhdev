@@ -2,9 +2,9 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, NullableExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -84,7 +84,7 @@ impl AccountRepository {
                 media_object_cleanup::media_object_cleanup_attempt_count,
                 media_object_cleanup::media_object_cleanup_last_attempt_at.assume_not_null(),
             ))
-            .load::<(Uuid, String, String, i32, DateTime<Utc>)>(&mut connection)
+            .load::<(Uuid, String, String, i32, jiff_diesel::Timestamp)>(&mut connection)
             .await
             .map_err(AccountError::Query)?;
         candidates.extend(attempted.into_iter().map(
@@ -95,7 +95,7 @@ impl AccountRepository {
                         location: ObjectLocation::new(bucket, key),
                         attempt_count,
                     },
-                    last_attempt_at: Some(last_attempt_at),
+                    last_attempt_at: Some(last_attempt_at.to_jiff()),
                 }
             },
         ));
@@ -131,7 +131,7 @@ impl AccountRepository {
 
     pub async fn record_media_object_cleanup_failures(
         &self,
-        attempted_at: DateTime<Utc>,
+        attempted_at: Timestamp,
         failures: &[MediaCleanupFailureUpdate],
     ) -> Result<usize, AccountError> {
         let mut failures = failures.to_vec();
@@ -173,7 +173,7 @@ impl AccountRepository {
                     updated =
                         updated.saturating_add(
                             diesel::insert_into(media_object_cleanup::table)
-                                .values(&retries)
+                                .values(retries)
                                 .on_conflict(media_object_cleanup::media_object_cleanup_id)
                                 .do_update()
                                 .set((

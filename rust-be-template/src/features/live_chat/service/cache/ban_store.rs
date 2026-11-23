@@ -1,6 +1,6 @@
 use std::{net::IpAddr, sync::atomic::Ordering};
 
-use chrono::Utc;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use super::{CachedLiveChatBan, LiveChatCache};
@@ -45,7 +45,7 @@ impl LiveChatCache {
         self.bans_by_ip.clear_async().await;
         self.ban_cache_complete
             .store(source_complete, Ordering::Release);
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         for ban in bans {
             let cached_ban = CachedLiveChatBan::from(ban);
@@ -107,7 +107,7 @@ impl LiveChatCache {
     }
 
     pub async fn lookup_ban(&self, user_id: Option<Uuid>, ip: IpAddr) -> BanCacheLookup {
-        let now = Utc::now();
+        let now = Timestamp::now();
         if let Some(user_id) = user_id {
             match self
                 .bans_by_user
@@ -179,13 +179,13 @@ impl LiveChatCache {
 mod tests {
     use std::net::IpAddr;
 
-    use chrono::Duration;
+    use jiff::SignedDuration;
 
     use super::*;
     use crate::features::live_chat::domain::ip_prefix::LiveChatIpPrefix;
 
-    fn ban(network: ipnet::IpNet, expires_in: Option<Duration>) -> CachedLiveChatBan {
-        let now = Utc::now();
+    fn ban(network: ipnet::IpNet, expires_in: Option<SignedDuration>) -> CachedLiveChatBan {
+        let now = Timestamp::now();
         CachedLiveChatBan {
             live_chat_ban_id: Uuid::now_v7(),
             user_id: None,
@@ -205,7 +205,7 @@ mod tests {
         let network = LiveChatIpPrefix::of(banned).network();
         assert!(
             cache
-                .cache_ban(ban(network, Some(Duration::hours(24))))
+                .cache_ban(ban(network, Some(SignedDuration::from_hours(24))))
                 .await
         );
         let neighbor: IpAddr = "2001:db8:5:6:ffff::2".parse()?;
@@ -237,7 +237,7 @@ mod tests {
         let network = LiveChatIpPrefix::of(expired).network();
         assert!(
             cache
-                .cache_ban(ban(network, Some(Duration::seconds(-1))))
+                .cache_ban(ban(network, Some(SignedDuration::from_secs(-1))))
                 .await
         );
         assert_eq!(

@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ impl ChatTimelineKey {
     pub fn from_message(message: &CachedChatMessage) -> Self {
         Self {
             room_key: message.room_key.clone(),
-            message_created_at_micros: message.message_created_at.timestamp_micros(),
+            message_created_at_micros: message.message_created_at.as_microsecond(),
             live_chat_message_id: message.live_chat_message_id,
         }
     }
@@ -49,9 +49,9 @@ pub struct CachedChatMessage {
     pub sender_country_flag: Option<String>,
     pub user_profile_picture_url: Option<String>,
     pub message_body: String,
-    pub message_created_at: DateTime<Utc>,
-    pub message_edited_at: Option<DateTime<Utc>>,
-    pub message_deleted_at: Option<DateTime<Utc>>,
+    pub message_created_at: Timestamp,
+    pub message_edited_at: Option<Timestamp>,
+    pub message_deleted_at: Option<Timestamp>,
 }
 
 impl CachedChatMessage {

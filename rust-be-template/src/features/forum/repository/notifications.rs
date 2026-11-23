@@ -1,11 +1,12 @@
 //! Recipient-scoped notification inbox reads and idempotent read markers.
 
-use chrono::{DateTime, Utc};
 use diesel::{
     ExpressionMethods, IntoSql, JoinOnDsl, OptionalExtension, QueryDsl,
     sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -31,7 +32,7 @@ impl ForumRepository {
         recipient_user_id: Uuid,
         before: Option<ForumTimestampCursor>,
         page_size: ForumPageSize,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumNotificationPage, ForumError> {
         let mut connection = self.connection().await?;
         let mut query = forum_notifications::table
@@ -39,7 +40,7 @@ impl ForumRepository {
                 forum_topics::forum_topic_id.eq(forum_notifications::forum_notification_topic_id),
             ))
             .filter(forum_notifications::forum_notification_recipient_user_id.eq(recipient_user_id))
-            .filter(forum_notifications::forum_notification_expires_at.gt(now))
+            .filter(forum_notifications::forum_notification_expires_at.gt(now.to_diesel()))
             .select((
                 forum_notifications::forum_notification_id,
                 forum_notifications::forum_notification_recipient_user_id,
@@ -67,7 +68,7 @@ impl ForumRepository {
                     forum_notifications::forum_notification_id,
                 )
                     .into_sql::<Record<(Timestamptz, SqlUuid)>>()
-                    .lt((cursor.created_at, cursor.item_id)),
+                    .lt((cursor.created_at.to_diesel(), cursor.item_id)),
             );
         }
         let mut rows = query
@@ -77,7 +78,7 @@ impl ForumRepository {
         let next_cursor = if rows.len() > usize::from(page_size.into_inner()) {
             rows.pop();
             rows.last().map(|row| ForumTimestampCursor {
-                created_at: row.6,
+                created_at: row.6.to_jiff(),
                 item_id: row.0,
             })
         } else {
@@ -112,11 +113,11 @@ impl ForumRepository {
         &self,
         recipient_user_id: Uuid,
         notification_id: Uuid,
-        now: DateTime<Utc>,
-    ) -> Result<DateTime<Utc>, ForumError> {
+        now: Timestamp,
+    ) -> Result<Timestamp, ForumError> {
         let mut connection = self.connection().await?;
         connection
-            .transaction::<DateTime<Utc>, ForumError, _>(async move |connection| {
+            .transaction::<Timestamp, ForumError, _>(async move |connection| {
                 let row = forum_notifications::table
                     .filter(forum_notifications::forum_notification_id.eq(notification_id))
                     .filter(
@@ -128,21 +129,23 @@ impl ForumRepository {
                         forum_notifications::forum_notification_read_at,
                     ))
                     .for_update()
-                    .first::<(DateTime<Utc>, Option<DateTime<Utc>>)>(&mut *connection)
+                    .first::<(jiff_diesel::Timestamp, jiff_diesel::NullableTimestamp)>(
+                        &mut *connection,
+                    )
                     .await
                     .optional()?
                     .ok_or(ForumError::NotificationNotFound)?;
-                if row.0 <= now {
+                if row.0.to_jiff() <= now {
                     return Err(ForumError::NotificationNotFound);
                 }
-                if let Some(read_at) = row.1 {
+                if let Some(read_at) = row.1.to_jiff() {
                     return Ok(read_at);
                 }
                 diesel::update(
                     forum_notifications::table
                         .filter(forum_notifications::forum_notification_id.eq(notification_id)),
                 )
-                .set(forum_notifications::forum_notification_read_at.eq(Some(now)))
+                .set(forum_notifications::forum_notification_read_at.eq(Some(now).to_diesel()))
                 .execute(&mut *connection)
                 .await?;
                 Ok(now)

@@ -1,7 +1,7 @@
 use std::process::Stdio;
 
 use ansi_to_html::convert;
-use chrono::{DateTime, Utc};
+use jiff::{SignedDuration, Timestamp};
 use tokio::{
     process::Command,
     sync::{Mutex, RwLock},
@@ -10,7 +10,7 @@ use tokio::{
 use crate::errors::code_error::CodeError;
 
 pub const FASTFETCH_CACHE_MAX_BYTES: usize = 256 * 1024;
-const UPDATE_INTERVAL: chrono::Duration = chrono::Duration::minutes(1);
+const UPDATE_INTERVAL: SignedDuration = SignedDuration::from_mins(1);
 /// The output is public, so the child gets a hard deadline and is killed if it overruns.
 const FASTFETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
 /// Modules shown on the public statistics page. An explicit `--structure` replaces both
@@ -22,7 +22,7 @@ pub const FASTFETCH_PUBLIC_MODULES: &str =
 
 pub struct FastFetchCache {
     value: RwLock<String>,
-    last_fetched: RwLock<DateTime<Utc>>,
+    last_fetched: RwLock<Timestamp>,
     update_gate: Mutex<()>,
 }
 
@@ -36,7 +36,7 @@ impl FastFetchCache {
     pub fn new() -> Self {
         Self {
             value: RwLock::new(String::new()),
-            last_fetched: RwLock::new(DateTime::<Utc>::MIN_UTC),
+            last_fetched: RwLock::new(Timestamp::MIN),
             update_gate: Mutex::new(()),
         }
     }
@@ -48,13 +48,13 @@ impl FastFetchCache {
     }
 
     pub async fn value(&self) -> Result<String, CodeError> {
-        if Utc::now() - *self.last_fetched.read().await > UPDATE_INTERVAL {
+        if Timestamp::now().duration_since(*self.last_fetched.read().await) > UPDATE_INTERVAL {
             self.refresh().await?;
         }
         Ok(self.value.read().await.clone())
     }
 
-    pub async fn get_last_fetched_time(&self) -> DateTime<Utc> {
+    pub async fn get_last_fetched_time(&self) -> Timestamp {
         *self.last_fetched.read().await
     }
 
@@ -68,7 +68,7 @@ impl FastFetchCache {
 
     async fn refresh(&self) -> Result<(), CodeError> {
         let _update = self.update_gate.lock().await;
-        if Utc::now() - *self.last_fetched.read().await <= UPDATE_INTERVAL {
+        if Timestamp::now().duration_since(*self.last_fetched.read().await) <= UPDATE_INTERVAL {
             return Ok(());
         }
         let child = Command::new("fastfetch")
@@ -106,7 +106,7 @@ impl FastFetchCache {
             html.truncate(boundary);
         }
         *self.value.write().await = html;
-        *self.last_fetched.write().await = Utc::now();
+        *self.last_fetched.write().await = Timestamp::now();
         Ok(())
     }
 }

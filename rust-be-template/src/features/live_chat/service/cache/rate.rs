@@ -2,7 +2,7 @@
 
 use std::sync::atomic::Ordering;
 
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use jiff::{SignedDuration, Timestamp};
 use uuid::Uuid;
 
 use super::{
@@ -12,9 +12,9 @@ use crate::features::live_chat::domain::ip_prefix::LiveChatIpPrefix;
 
 /// Windows older than this carry no signal for a one-second limit; the short
 /// sweep removes them so a burst of distinct senders frees capacity quickly.
-const STALE_RATE_WINDOW: ChronoDuration = ChronoDuration::seconds(2);
+const STALE_RATE_WINDOW: SignedDuration = SignedDuration::from_secs(2);
 /// Retention for the minute-level sweep, which only bounds idle growth.
-const EXPIRED_RATE_WINDOW: ChronoDuration = ChronoDuration::seconds(60);
+const EXPIRED_RATE_WINDOW: SignedDuration = SignedDuration::from_secs(60);
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(super) enum LiveChatRateKey {
@@ -25,7 +25,7 @@ pub(super) enum LiveChatRateKey {
 
 #[derive(Debug, Clone)]
 pub(super) struct LiveChatRateState {
-    pub(super) window_started_at: DateTime<Utc>,
+    pub(super) window_started_at: Timestamp,
     pub(super) count: u32,
 }
 
@@ -48,7 +48,7 @@ impl LiveChatCache {
         &self,
         user_id: Option<Uuid>,
         ip: std::net::IpAddr,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> MessageRateDecision {
         let ip_decision = self
             .record_message_attempt_for_key(LiveChatRateKey::Ip(LiveChatIpPrefix::of(ip)), now)
@@ -76,7 +76,7 @@ impl LiveChatCache {
     async fn record_message_attempt_for_key(
         &self,
         key: LiveChatRateKey,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> MessageRateDecision {
         if let Some(decision) = self.count_existing_window(&key, now).await {
             return decision;
@@ -110,11 +110,11 @@ impl LiveChatCache {
     async fn count_existing_window(
         &self,
         key: &LiveChatRateKey,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Option<MessageRateDecision> {
         self.message_rate_by_key
             .update_async(key, |_, state| {
-                if now.signed_duration_since(state.window_started_at) < ChronoDuration::seconds(1) {
+                if now.duration_since(state.window_started_at) < SignedDuration::from_secs(1) {
                     state.count = state.count.saturating_add(1);
                 } else {
                     state.window_started_at = now;
@@ -130,20 +130,20 @@ impl LiveChatCache {
     }
 
     /// Short-interval sweep, run every second by the maintenance scheduler.
-    pub async fn clear_stale_rate_windows(&self, now: DateTime<Utc>) {
+    pub async fn clear_stale_rate_windows(&self, now: Timestamp) {
         self.clear_rate_windows_before(now, STALE_RATE_WINDOW).await;
     }
 
-    pub async fn clear_expired_rate_windows(&self, now: DateTime<Utc>) {
+    pub async fn clear_expired_rate_windows(&self, now: Timestamp) {
         self.clear_rate_windows_before(now, EXPIRED_RATE_WINDOW)
             .await;
     }
 
-    async fn clear_rate_windows_before(&self, now: DateTime<Utc>, age: ChronoDuration) {
+    async fn clear_rate_windows_before(&self, now: Timestamp, age: SignedDuration) {
         let mut removed = 0usize;
         self.message_rate_by_key
             .retain_async(|_, state| {
-                let retain = now.signed_duration_since(state.window_started_at) < age;
+                let retain = now.duration_since(state.window_started_at) < age;
                 if !retain {
                     removed = removed.saturating_add(1);
                 }
@@ -176,7 +176,7 @@ mod tests {
     #[tokio::test]
     async fn full_table_rejects_new_senders_without_marking_them_abnormal() {
         let cache = cache_with_rate_capacity(1);
-        let now = Utc::now();
+        let now = Timestamp::now();
         let first = IpAddr::V4(Ipv4Addr::new(198, 51, 100, 1));
         let second = IpAddr::V4(Ipv4Addr::new(198, 51, 100, 2));
         assert_eq!(
@@ -197,11 +197,11 @@ mod tests {
     #[tokio::test]
     async fn stale_sweep_frees_capacity_for_new_senders() {
         let cache = cache_with_rate_capacity(1);
-        let start = Utc::now();
+        let start = Timestamp::now();
         let first = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 1));
         let second = IpAddr::V4(Ipv4Addr::new(203, 0, 113, 2));
         let _ = cache.record_message_attempt(None, first, start).await;
-        let later = start + ChronoDuration::seconds(3);
+        let later = start + SignedDuration::from_secs(3);
         cache.clear_stale_rate_windows(later).await;
         assert_eq!(
             cache.record_message_attempt(None, second, later).await,
@@ -212,7 +212,7 @@ mod tests {
     #[tokio::test]
     async fn ipv6_senders_share_one_window_per_subscriber_prefix() {
         let cache = LiveChatCache::new(1024);
-        let now = Utc::now();
+        let now = Timestamp::now();
         for host in 0..LIVE_CHAT_ABNORMAL_MESSAGE_LIMIT_PER_SECOND {
             assert_eq!(
                 cache
@@ -235,7 +235,7 @@ mod tests {
     #[tokio::test]
     async fn abnormal_wins_over_saturation() {
         let cache = cache_with_rate_capacity(1);
-        let now = Utc::now();
+        let now = Timestamp::now();
         let user = Uuid::now_v7();
         let ip = IpAddr::V4(Ipv4Addr::new(192, 0, 2, 9));
         // The address key takes the last slot, so the account key saturates

@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 
 use crate::init::state::ServerState;
 
 pub async fn prune_photograph_batches(state: Arc<ServerState>) {
-    let now = Utc::now();
+    let now = Timestamp::now();
     let evicted = state.photography_service().prune_batches(now).await;
     if evicted > 0 {
         tracing::info!(

@@ -1,10 +1,11 @@
 //! Comment tombstones, reply retention, and keyset comment pages.
 
+use jiff_diesel::ToDiesel;
 use std::collections::HashSet;
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use rust_be_template::{
@@ -164,7 +165,7 @@ fn photograph_tombstone_case(database: &TestDatabase) -> DatabaseTestFuture<'_> 
                 photograph_comments::photograph_comment_deleted_at,
                 photograph_comments::parent_photograph_comment_id,
             ))
-            .load::<(Uuid, String, Option<DateTime<Utc>>, Option<Uuid>)>(&mut connection)
+            .load::<(Uuid, String, Option<jiff_diesel::Timestamp>, Option<Uuid>)>(&mut connection)
             .await?;
         require(
             rows.iter().any(|row| {
@@ -197,7 +198,7 @@ fn comment_page_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let author = verified_account(&context, "PageAuthor", true).await?;
         let blog = blog_service(context.pool.clone())?;
         let post_id = save_post(&blog, author.user_id, "Paged thread", true).await?;
-        let tied_at = Utc::now();
+        let tied_at = Timestamp::now();
         let mut connection = context.pool.get().await?;
         // Seven rows share one timestamp so only the id tie-breaker orders them.
         for index in 0..7 {
@@ -206,7 +207,7 @@ fn comment_page_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                     comments::post_id.eq(post_id),
                     comments::user_id.eq(author.user_id),
                     comments::comment_content.eq(format!("Tied comment {index}")),
-                    comments::comment_created_at.eq(tied_at),
+                    comments::comment_created_at.eq(tied_at.to_diesel()),
                 ))
                 .execute(&mut connection)
                 .await?;

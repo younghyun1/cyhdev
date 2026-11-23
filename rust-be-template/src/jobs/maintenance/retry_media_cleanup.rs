@@ -2,13 +2,16 @@
 
 use std::sync::Arc;
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::{error, info, warn};
 
 use crate::features::accounts::service::account_service::AccountService;
 
 pub async fn retry_media_object_cleanup(account_service: Arc<AccountService>) {
-    let report = match account_service.retry_media_object_cleanup(Utc::now()).await {
+    let report = match account_service
+        .retry_media_object_cleanup(Timestamp::now())
+        .await
+    {
         Ok(report) => report,
         Err(source) => {
             error!(error = %source, "Failed to run durable media cleanup retry");

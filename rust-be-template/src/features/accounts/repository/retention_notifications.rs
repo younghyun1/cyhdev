@@ -1,8 +1,9 @@
 //! Durable scheduling, claiming, and delivery outcomes for retention notices.
 
-use chrono::{DateTime, TimeDelta, Utc};
 use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::{SignedDuration, Timestamp};
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -27,17 +28,21 @@ use crate::{
 struct NewRetentionNotification {
     account_retention_notification_user_id: Uuid,
     account_retention_notification_stage: StoredRetentionNotificationStage,
-    account_retention_notification_scheduled_for: DateTime<Utc>,
-    account_retention_notification_next_attempt_at: DateTime<Utc>,
-    account_retention_notification_created_at: DateTime<Utc>,
-    account_retention_notification_updated_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    account_retention_notification_scheduled_for: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    account_retention_notification_next_attempt_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    account_retention_notification_created_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    account_retention_notification_updated_at: Timestamp,
 }
 
 pub(super) async fn insert_retention_notification_schedule(
     connection: &mut diesel_async::AsyncPgConnection,
     user_id: Uuid,
     schedule: &RetentionNotificationSchedule,
-    created_at: DateTime<Utc>,
+    created_at: Timestamp,
 ) -> Result<(), AccountError> {
     let notifications = [
         NewRetentionNotification {
@@ -60,7 +65,7 @@ pub(super) async fn insert_retention_notification_schedule(
         },
     ];
     diesel::insert_into(account_retention_notifications::table)
-        .values(&notifications)
+        .values(notifications)
         .execute(&mut *connection)
         .await?;
     Ok(())
@@ -70,12 +75,14 @@ impl AccountRepository {
     /// Claims the first due keyset page without waiting on another worker's rows.
     pub async fn claim_due_retention_notifications(
         &self,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<RetentionNotificationClaimBatch, AccountError> {
         let claim_token = Uuid::now_v7();
         let claim_expires_at = now
-            .checked_add_signed(TimeDelta::minutes(RETENTION_NOTIFICATION_CLAIM_MINUTES))
-            .ok_or(AccountError::RetentionScheduleOverflow)?;
+            .checked_add(SignedDuration::from_mins(
+                RETENTION_NOTIFICATION_CLAIM_MINUTES,
+            ))
+            .map_err(|_| AccountError::RetentionScheduleOverflow)?;
         let mut connection = self.connection().await?;
         connection
             .transaction::<RetentionNotificationClaimBatch, AccountError, _>(
@@ -103,17 +110,17 @@ impl AccountRepository {
                         )
                         .filter(
                             account_retention_notifications::account_retention_notification_next_attempt_at
-                                .le(now),
+                                .le(now.to_diesel()),
                         )
                         .filter(
                             account_retention_notifications::account_retention_notification_claim_token
                                 .is_null()
                                 .or(account_retention_notifications::account_retention_notification_claim_expires_at
-                                    .le(now)),
+                                    .le(now.to_diesel())),
                         )
                         .filter(users::user_deleted_at.is_not_null())
                         .filter(users::user_hard_purged_at.is_null())
-                        .filter(users::user_purge_after.gt(now))
+                        .filter(users::user_purge_after.gt(now.to_diesel()))
                         .select((
                             account_retention_notifications::account_retention_notification_id,
                             account_retention_notifications::account_retention_notification_stage,
@@ -128,7 +135,7 @@ impl AccountRepository {
                         .limit(RETENTION_NOTIFICATION_BATCH_SIZE)
                         .for_update()
                         .skip_locked()
-                        .load::<(Uuid, StoredRetentionNotificationStage, DateTime<Utc>, i32)>(
+                        .load::<(Uuid, StoredRetentionNotificationStage, jiff_diesel::Timestamp, i32)>(
                             &mut *connection,
                         )
                         .await?;
@@ -152,13 +159,13 @@ impl AccountRepository {
                         account_retention_notifications::account_retention_notification_claim_token
                             .eq(claim_token),
                         account_retention_notifications::account_retention_notification_claimed_at
-                            .eq(now),
+                            .eq(now.to_diesel()),
                         account_retention_notifications::account_retention_notification_claim_expires_at
-                            .eq(claim_expires_at),
+                            .eq(claim_expires_at.to_diesel()),
                         account_retention_notifications::account_retention_notification_attempt_count
                             .eq(account_retention_notifications::account_retention_notification_attempt_count + 1),
                         account_retention_notifications::account_retention_notification_updated_at
-                            .eq(now),
+                            .eq(now.to_diesel()),
                     ))
                     .execute(&mut *connection)
                     .await?;
@@ -174,7 +181,7 @@ impl AccountRepository {
                                     ClaimedRetentionNotification {
                                         notification_id,
                                         stage: stage.into_domain(),
-                                        next_attempt_at,
+                                        next_attempt_at: next_attempt_at.to_jiff(),
                                         attempt_count: attempt_count.saturating_add(1),
                                     }
                                 },
@@ -191,7 +198,7 @@ impl AccountRepository {
         &self,
         claim_token: Uuid,
         notification_ids: &[Uuid],
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<Vec<RetentionNotificationDeliveryItem>, AccountError> {
         if notification_ids.is_empty() {
             return Ok(Vec::new());
@@ -219,7 +226,7 @@ impl AccountRepository {
             )
             .filter(
                 account_retention_notifications::account_retention_notification_claim_expires_at
-                    .gt(now),
+                    .gt(now.to_diesel()),
             )
             .filter(
                 account_retention_notifications::account_retention_notification_sent_at.is_null(),
@@ -230,7 +237,7 @@ impl AccountRepository {
             )
             .filter(users::user_deleted_at.is_not_null())
             .filter(users::user_hard_purged_at.is_null())
-            .filter(users::user_purge_after.gt(now))
+            .filter(users::user_purge_after.gt(now.to_diesel()))
             .select((
                 account_retention_notifications::account_retention_notification_id,
                 account_retention_notifications::account_retention_notification_stage,
@@ -243,7 +250,7 @@ impl AccountRepository {
                 Uuid,
                 StoredRetentionNotificationStage,
                 String,
-                Option<DateTime<Utc>>,
+                jiff_diesel::NullableTimestamp,
                 i32,
             )>(&mut connection)
             .await?;
@@ -251,13 +258,15 @@ impl AccountRepository {
             .into_iter()
             .filter_map(
                 |(notification_id, stage, retained_email, purge_after, attempt_count)| {
-                    purge_after.map(|purge_after| RetentionNotificationDeliveryItem {
-                        notification_id,
-                        stage: stage.into_domain(),
-                        retained_email: Zeroizing::new(retained_email),
-                        purge_after,
-                        attempt_count,
-                    })
+                    purge_after
+                        .to_jiff()
+                        .map(|purge_after| RetentionNotificationDeliveryItem {
+                            notification_id,
+                            stage: stage.into_domain(),
+                            retained_email: Zeroizing::new(retained_email),
+                            purge_after,
+                            attempt_count,
+                        })
                 },
             )
             .collect())

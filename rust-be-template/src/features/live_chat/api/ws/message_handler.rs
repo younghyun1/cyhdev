@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::ws::Message;
-use chrono::Utc;
+use jiff::Timestamp;
 use tokio::time::Instant;
 use tracing::info;
 use uuid::Uuid;
@@ -171,7 +171,7 @@ async fn handle_send_message(
 
     match service
         .cache
-        .record_message_attempt(actor.user_id, client_ip, Utc::now())
+        .record_message_attempt(actor.user_id, client_ip, Timestamp::now())
         .await
     {
         MessageRateDecision::Allowed => {}

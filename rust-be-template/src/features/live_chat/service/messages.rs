@@ -20,14 +20,14 @@ use super::{
 const LIVE_CHAT_STARTUP_MESSAGE_LIMIT: i64 = 50_000;
 
 impl LiveChatService {
-    pub async fn prune_runtime(&self, now: chrono::DateTime<chrono::Utc>) {
+    pub async fn prune_runtime(&self, now: jiff::Timestamp) {
         self.cache.clear_expired_rate_windows(now).await;
         self.cache.clear_expired_typing(now).await;
     }
 
     /// Drop rate windows that can no longer affect the one-second limit, so
     /// the bounded table only holds senders active in the last two seconds.
-    pub async fn prune_stale_rate_windows(&self, now: chrono::DateTime<chrono::Utc>) {
+    pub async fn prune_stale_rate_windows(&self, now: jiff::Timestamp) {
         self.cache.clear_stale_rate_windows(now).await;
     }
 
@@ -189,7 +189,7 @@ impl LiveChatService {
         ip: IpAddr,
     ) -> Option<CachedLiveChatBan> {
         let network = LiveChatIpPrefix::of(ip).network();
-        let expires_at = chrono::Utc::now() + LIVE_CHAT_ABUSE_BAN_DURATION;
+        let expires_at = jiff::Timestamp::now() + LIVE_CHAT_ABUSE_BAN_DURATION;
         match self
             .repository
             .insert_abuse_ban(actor, network, expires_at)

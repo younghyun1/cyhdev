@@ -1,6 +1,6 @@
 //! WebAssembly module creation with ordered object-store compensation.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::info;
 use uuid::Uuid;
 
@@ -41,7 +41,7 @@ impl WasmService {
         let thumbnail_url = prepared_thumbnail.url.clone();
         let repository = self.repository.clone();
         let result = persist_media_objects(self.object_store.as_ref(), &pending, async move {
-            let now = Utc::now();
+            let now = Timestamp::now();
             let module = repository
                 .insert_authorized(
                     actor_user_id,

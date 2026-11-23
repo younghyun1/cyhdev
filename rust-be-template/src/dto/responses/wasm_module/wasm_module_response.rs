@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -13,8 +13,8 @@ pub struct WasmModuleItem {
     pub wasm_module_description: String,
     pub wasm_module_link: String,
     pub wasm_module_thumbnail_link: String,
-    pub wasm_module_created_at: DateTime<Utc>,
-    pub wasm_module_updated_at: DateTime<Utc>,
+    pub wasm_module_created_at: Timestamp,
+    pub wasm_module_updated_at: Timestamp,
 }
 
 impl From<WasmModule> for WasmModuleItem {

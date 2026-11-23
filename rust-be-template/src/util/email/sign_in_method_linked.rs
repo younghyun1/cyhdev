@@ -1,9 +1,9 @@
 //! Notice sent to an account owner when an external sign-in method is linked.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use lettre::message::Mailbox;
 
-use crate::DOMAIN_NAME;
+use crate::{DOMAIN_NAME, util::time::utc::rfc3339_utc};
 
 const TEMPLATE: &str = include_str!("sign_in_method_linked.html");
 
@@ -13,11 +13,11 @@ pub struct SignInMethodLinkedEmail {
 
 impl SignInMethodLinkedEmail {
     /// `provider_name` comes from deployment configuration and is HTML-escaped anyway.
-    pub fn new(provider_name: &str, linked_at: DateTime<Utc>) -> Self {
+    pub fn new(provider_name: &str, linked_at: Timestamp) -> Self {
         Self {
             body: TEMPLATE
                 .replace("$1", &escape_html(provider_name))
-                .replace("$2", &linked_at.to_rfc3339()),
+                .replace("$2", &rfc3339_utc(linked_at)),
         }
     }
 
@@ -50,16 +50,13 @@ fn escape_html(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
+    use jiff::Timestamp;
 
     use super::SignInMethodLinkedEmail;
 
     #[test]
     fn notice_names_the_escaped_provider_and_time() -> anyhow::Result<()> {
-        let linked_at = Utc
-            .with_ymd_and_hms(2026, 9, 23, 12, 0, 0)
-            .single()
-            .ok_or_else(|| anyhow::anyhow!("fixed UTC test timestamp was invalid"))?;
+        let linked_at = "2026-09-23T12:00:00Z".parse::<Timestamp>()?;
         let email = SignInMethodLinkedEmail::new("Acme <ID>", linked_at);
         assert!(email.body.contains("Acme &lt;ID&gt;"));
         assert!(email.body.contains("2026-09-23T12:00:00+00:00"));

@@ -3,14 +3,14 @@
 use std::{fmt, sync::Arc};
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
-use chrono::Utc;
+use jiff::SignedDuration;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
 use super::role::RoleType;
 
-pub const DEFAULT_SESSION_DURATION: chrono::Duration = chrono::Duration::hours(1);
+pub const DEFAULT_SESSION_DURATION: SignedDuration = SignedDuration::from_hours(1);
 pub const SESSION_COOKIE_NAME: &str = "__Host-cyhdev-session";
 pub const SESSION_SECRET_BYTES: usize = 32;
 pub const SESSION_TOKEN_LENGTH: usize = 43;
@@ -70,12 +70,12 @@ pub struct Session {
     pub user_country: i32,
     pub user_language: i32,
     pub is_email_verified: bool,
-    pub created_at: chrono::DateTime<Utc>,
-    pub expires_at: chrono::DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
+    pub expires_at: jiff::Timestamp,
 }
 
 impl Session {
-    pub fn is_unexpired_at(&self, now: chrono::DateTime<Utc>) -> bool {
+    pub fn is_unexpired_at(&self, now: jiff::Timestamp) -> bool {
         self.created_at <= now && self.expires_at > now
     }
 
@@ -108,13 +108,13 @@ impl Session {
 mod tests {
     use std::sync::Arc;
 
-    use chrono::{Duration, Utc};
+    use jiff::{SignedDuration, Timestamp};
     use uuid::Uuid;
 
     use super::{SESSION_SECRET_BYTES, SESSION_TOKEN_LENGTH, Session, SessionKey, SessionToken};
     use crate::features::accounts::domain::role::RoleType;
 
-    fn session(created_at: chrono::DateTime<Utc>, expires_at: chrono::DateTime<Utc>) -> Session {
+    fn session(created_at: jiff::Timestamp, expires_at: jiff::Timestamp) -> Session {
         Session {
             user_id: Uuid::new_v4(),
             role_type: RoleType::User,
@@ -129,12 +129,11 @@ mod tests {
 
     #[test]
     fn active_window_is_required() {
-        let now = Utc::now();
-        assert!(session(now, now + Duration::minutes(1)).is_unexpired_at(now));
-        assert!(!session(now - Duration::minutes(2), now).is_unexpired_at(now));
-        assert!(
-            !session(now + Duration::minutes(1), now + Duration::minutes(2)).is_unexpired_at(now)
-        );
+        let now = Timestamp::now();
+        let minute = SignedDuration::from_mins(1);
+        assert!(session(now, now + minute).is_unexpired_at(now));
+        assert!(!session(now - minute * 2, now).is_unexpired_at(now));
+        assert!(!session(now + minute, now + minute * 2).is_unexpired_at(now));
     }
 
     #[test]

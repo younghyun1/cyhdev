@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -12,9 +12,9 @@ pub struct CachedPostInfo {
     pub post_title: String,
     pub post_slug: String,
     pub post_summary: Option<String>,
-    pub post_created_at: DateTime<Utc>,
-    pub post_updated_at: DateTime<Utc>,
-    pub post_published_at: Option<DateTime<Utc>>,
+    pub post_created_at: Timestamp,
+    pub post_updated_at: Timestamp,
+    pub post_published_at: Option<Timestamp>,
     pub post_is_published: bool,
     pub post_view_count: i64,
     pub post_share_count: i64,

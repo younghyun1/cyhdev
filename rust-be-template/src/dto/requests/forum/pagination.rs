@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use utoipa::IntoParams;
 use uuid::Uuid;
 
@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub struct ForumTopicListQuery {
     pub search: Option<String>,
     pub before_pinned: Option<bool>,
-    pub before_activity_at: Option<DateTime<Utc>>,
+    pub before_activity_at: Option<Timestamp>,
     pub before_topic_id: Option<Uuid>,
     pub limit: Option<u16>,
 }
@@ -15,7 +15,7 @@ pub struct ForumTopicListQuery {
 #[derive(serde_derive::Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ForumTopicDetailQuery {
-    pub after_reply_created_at: Option<DateTime<Utc>>,
+    pub after_reply_created_at: Option<Timestamp>,
     pub after_reply_id: Option<Uuid>,
     pub reply_limit: Option<u16>,
 }
@@ -23,7 +23,7 @@ pub struct ForumTopicDetailQuery {
 #[derive(serde_derive::Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ForumNotificationListQuery {
-    pub before_created_at: Option<DateTime<Utc>>,
+    pub before_created_at: Option<Timestamp>,
     pub before_notification_id: Option<Uuid>,
     pub limit: Option<u16>,
 }
@@ -31,7 +31,7 @@ pub struct ForumNotificationListQuery {
 #[derive(serde_derive::Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ForumModerationAuditListQuery {
-    pub before_created_at: Option<DateTime<Utc>>,
+    pub before_created_at: Option<Timestamp>,
     pub before_audit_id: Option<Uuid>,
     pub limit: Option<u16>,
 }

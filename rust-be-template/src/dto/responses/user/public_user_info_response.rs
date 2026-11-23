@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub struct PublicUserInfoResponse {
     pub user_id: Uuid,
     pub user_name: String,
-    pub user_created_at: DateTime<Utc>,
+    pub user_created_at: Timestamp,
     #[schema(required)]
     pub user_country_flag: Option<String>,
     #[schema(required)]
