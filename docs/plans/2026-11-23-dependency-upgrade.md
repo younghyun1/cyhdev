@@ -1,8 +1,8 @@
 # November 23 dependency upgrade
 
-Status: upgrade complete, November 23, 2026; the PGO and BOLT campaign result is recorded at the end.
+Status: complete, November 23, 2026. The upgrade is merged and the PGO and BOLT campaign produced an accepted artifact; see the last section.
 
-Checkout: branch `chore/dependency-upgrade-2026-11-23`, based on `main` at `9ecf0c56`.
+Checkout: the upgrade is `096b2ea2` on `main` ([pull request 4](https://github.com/younghyun1/cyhdev/pull/4)). The campaign compiler pin is `c6fdf35f` on branch `fix/pgo-nightly-pin` ([pull request 5](https://github.com/younghyun1/cyhdev/pull/5)).
 
 Completed: `cargo upgrade --incompatible` and `cargo update`. Every direct Rust dependency was already on its latest major, so the changes are patch and minor releases: anyhow 1.0.105, comrak 1.2.0, scc 3.9.3, the kcna-archive jiff requirement 1.0.2, and cookie 0.18.3, hashbrown 0.17.2, saa 5.6.5 and zip 9.8.2 in the lockfile. cookie 0.18.3 clears RUSTSEC-2026-0594 (private cookie nonces can repeat after a fork); the `private` feature was never enabled here. `num_cpus` is removed: its one caller, the Geo-IP bundle tool, now uses `std::thread::available_parallelism`. Pumpkin moved from `d0c0a5d` to [`a49be4b`](https://github.com/Pumpkin-MC/Pumpkin/commit/a49be4bee2113e4cf812de3117c61bc3e9d06d3f), still Java 26.3 data, and `GENERATOR_REVISION` names it; the eleven upstream commits touch advancement, enchantment and loot-table data, not biome generation. Frontend: dompurify 3.5.0, the `postcss-selector-parser` override 7.2.1, and `npm update` for 22 transitive packages.
 
@@ -18,4 +18,6 @@ Not run: browser E2E, `image-smoke`.
 
 The first run, from `096b2ea2` on nightly-2026-11-23, built the baseline and passed its full coverage, then failed compiling the instrumented binary: `error[E0152]: found duplicate lang item \`sized\`` in `core`. That nightly changed `profiler_builtins` from `#![no_core]` to `#![no_std]` with a `core` dependency, so `-Cprofile-generate` loads the prebuilt sysroot `core` beside the one `-Zbuild-std` compiles. A one-file crate reproduces it with the same flags; nightly-2026-11-21 and nightly-2026-11-22 build it. The campaign compiler is therefore pinned to nightly-2026-11-22 through `PINNED_NIGHTLY` in `tools/xtask/src/optimization/nightly.rs`, which states when to clear it.
 
-Pending: rerun of `./build_pgo_and_bolt.sh` with the pinned compiler.
+The rerun from `c6fdf35f` (the upgrade plus the compiler pin) was accepted. Compiler: rustc 1.102.0-nightly (bdf712ee8 2026-11-21), which is nightly-2026-11-22; target CPU `znver3`. Medians of three paired rotated rounds on the native mixed read workload: PGO against baseline 1.134x throughput, p95 0.873x, p99 0.879x; BOLT against baseline 1.164x throughput, p95 0.851x, p99 0.856x; BOLT against PGO 1.027x throughput, p95 0.976x, p99 0.969x. Rounds ran at about 54,400 requests/s for the baseline, 61,700 for PGO and 63,100 for PGO+BOLT, with the power profile set to performance for the run and restored to balanced afterwards. Run directory: `target/optimization/cyhdev-pgo-bolt-18eab2f576f77ad4_430c0`; accepted artifact `dist/rust-be-template`, SHA-256 `a8e2cee7907896b990c039521254686323550e00814153073453c5cdd99eb858`, with its `minecraft-seed` companion, SHA-256 `3b4f589173c1ec09ca3d16ab17d0d356fdac1539ac3ad6652b123f99c4f7dd02`. The artifact was not installed or deployed.
+
+Remaining: clear `PINNED_NIGHTLY` once a newer nightly builds with `-Zbuild-std` and `-Cprofile-generate`. The failed first run's diagnostics remain in `/tmp/cyh-opt-18eab190ef6eea82_38b93` and its partial output in `target/optimization/cyhdev-pgo-bolt-18eab190ef6eea82_38b93`; both can be deleted.
