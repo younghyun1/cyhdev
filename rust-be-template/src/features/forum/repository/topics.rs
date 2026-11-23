@@ -1,8 +1,9 @@
 //! Transactional topic creation, editing, and author deletion.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -29,7 +30,7 @@ impl ForumRepository {
         actor_user_id: Uuid,
         title: &ForumTitle,
         body: &ForumBody,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -48,8 +49,9 @@ impl ForumRepository {
                         forum_topics::forum_topic_revision,
                         forum_topics::forum_topic_updated_at,
                     ))
-                    .get_result::<(Uuid, i32, DateTime<Utc>)>(&mut *connection)
+                    .get_result::<(Uuid, i32, jiff_diesel::Timestamp)>(&mut *connection)
                     .await?;
+                let updated_at = updated_at.to_jiff();
                 ensure_subscription(connection, actor_user_id, item_id, now).await?;
                 Ok(ForumMutationReceipt {
                     item_id,
@@ -67,7 +69,7 @@ impl ForumRepository {
         title: &ForumTitle,
         body: &ForumBody,
         expected_revision: i32,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -84,15 +86,16 @@ impl ForumRepository {
                     forum_topics::forum_topic_title.eq(title.as_ref()),
                     forum_topics::forum_topic_body.eq(body.as_ref()),
                     forum_topics::forum_topic_revision.eq(forum_topics::forum_topic_revision + 1),
-                    forum_topics::forum_topic_updated_at.eq(now),
-                    forum_topics::forum_topic_edited_at.eq(now),
+                    forum_topics::forum_topic_updated_at.eq(now.to_diesel()),
+                    forum_topics::forum_topic_edited_at.eq(now.to_diesel()),
                 ))
                 .returning((
                     forum_topics::forum_topic_revision,
                     forum_topics::forum_topic_updated_at,
                 ))
-                .get_result::<(i32, DateTime<Utc>)>(&mut *connection)
+                .get_result::<(i32, jiff_diesel::Timestamp)>(&mut *connection)
                 .await?;
+                let updated_at = updated_at.to_jiff();
                 Ok(ForumMutationReceipt {
                     item_id: topic_id,
                     revision,
@@ -107,7 +110,7 @@ impl ForumRepository {
         actor_user_id: Uuid,
         topic_id: Uuid,
         expected_revision: i32,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -125,17 +128,18 @@ impl ForumRepository {
                     forum_topics::forum_topic_body.eq(DELETED_CONTENT_BODY),
                     forum_topics::forum_topic_content_state.eq(DbForumContentState::Deleted),
                     forum_topics::forum_topic_is_pinned.eq(false),
-                    forum_topics::forum_topic_hidden_at.eq(Option::<DateTime<Utc>>::None),
-                    forum_topics::forum_topic_deleted_at.eq(Some(now)),
+                    forum_topics::forum_topic_hidden_at.eq(Option::<Timestamp>::None.to_diesel()),
+                    forum_topics::forum_topic_deleted_at.eq(Some(now).to_diesel()),
                     forum_topics::forum_topic_revision.eq(forum_topics::forum_topic_revision + 1),
-                    forum_topics::forum_topic_updated_at.eq(now),
+                    forum_topics::forum_topic_updated_at.eq(now.to_diesel()),
                 ))
                 .returning((
                     forum_topics::forum_topic_revision,
                     forum_topics::forum_topic_updated_at,
                 ))
-                .get_result::<(i32, DateTime<Utc>)>(&mut *connection)
+                .get_result::<(i32, jiff_diesel::Timestamp)>(&mut *connection)
                 .await?;
+                let updated_at = updated_at.to_jiff();
                 diesel::delete(forum_topic_subscriptions::table.filter(
                     forum_topic_subscriptions::forum_topic_subscription_topic_id.eq(topic_id),
                 ))
@@ -157,7 +161,7 @@ pub(super) struct LockedTopic {
     pub(super) content_state: DbForumContentState,
     pub(super) access_state: crate::features::forum::repository::enums::DbForumTopicAccessState,
     pub(super) is_pinned: bool,
-    pub(super) hidden_at: Option<DateTime<Utc>>,
+    pub(super) hidden_at: Option<Timestamp>,
     pub(super) revision: i32,
 }
 
@@ -181,7 +185,7 @@ pub(super) async fn lock_topic(
             DbForumContentState,
             crate::features::forum::repository::enums::DbForumTopicAccessState,
             bool,
-            Option<DateTime<Utc>>,
+            jiff_diesel::NullableTimestamp,
             i32,
         )>(&mut *connection)
         .await
@@ -191,7 +195,7 @@ pub(super) async fn lock_topic(
             content_state: row.1,
             access_state: row.2,
             is_pinned: row.3,
-            hidden_at: row.4,
+            hidden_at: row.4.to_jiff(),
             revision: row.5,
         })
         .ok_or(ForumError::TopicNotFound)

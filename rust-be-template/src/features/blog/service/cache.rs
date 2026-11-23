@@ -26,7 +26,7 @@ impl BlogService {
         removed
     }
 
-    async fn oldest_cached(&self) -> Option<(chrono::DateTime<chrono::Utc>, Uuid)> {
+    async fn oldest_cached(&self) -> Option<(jiff::Timestamp, Uuid)> {
         let mut oldest = None;
         self.posts_cache
             .iter_async(|post_id, post| {

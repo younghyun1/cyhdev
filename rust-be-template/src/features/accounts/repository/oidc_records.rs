@@ -1,6 +1,6 @@
 //! Diesel records private to OpenID Connect identity persistence.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -79,7 +79,9 @@ pub(super) struct NewOidcIdentityRecord<'a> {
     #[diesel(column_name = account_oidc_identity_provider_email)]
     pub(super) provider_email: &'a str,
     #[diesel(column_name = account_oidc_identity_created_at)]
-    pub(super) created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) created_at: Timestamp,
     #[diesel(column_name = account_oidc_identity_updated_at)]
-    pub(super) updated_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) updated_at: Timestamp,
 }

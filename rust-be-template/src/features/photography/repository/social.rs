@@ -1,8 +1,8 @@
-use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, dsl::count_star,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -194,14 +194,15 @@ async fn lock_photograph(
 async fn lock_comment(
     connection: &mut AsyncPgConnection,
     comment_id: Uuid,
-) -> Result<Option<DateTime<Utc>>, PhotographyError> {
+) -> Result<Option<Timestamp>, PhotographyError> {
     photograph_comments::table
         .filter(photograph_comments::photograph_comment_id.eq(comment_id))
         .select(photograph_comments::photograph_comment_deleted_at)
         .for_update()
-        .first::<Option<DateTime<Utc>>>(&mut *connection)
+        .first::<jiff_diesel::NullableTimestamp>(&mut *connection)
         .await
         .optional()?
+        .map(jiff_diesel::NullableTimestamp::to_jiff)
         .ok_or(PhotographyError::CommentNotFound)
 }
 

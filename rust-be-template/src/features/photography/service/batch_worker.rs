@@ -1,6 +1,6 @@
 //! Bounded background batch image and persistence pipeline.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use std::sync::Arc;
 use tokio::{sync::Semaphore, task::JoinSet};
 use tracing::{error, info, warn};
@@ -72,7 +72,7 @@ impl BatchWorker {
                         .fail_item(
                             item.item_id,
                             "internal scheduling error".to_owned(),
-                            Utc::now(),
+                            Timestamp::now(),
                         )
                         .await;
                     continue;
@@ -99,7 +99,7 @@ impl BatchWorker {
                     .fail_item(
                         item.item_id,
                         "processing did not complete".to_owned(),
-                        Utc::now(),
+                        Timestamp::now(),
                     )
                     .await;
             }

@@ -171,7 +171,7 @@ mod tests {
                 &principal(Uuid::now_v7()),
                 RoleType::User,
                 None,
-                Some(chrono::Duration::milliseconds(120)),
+                Some(jiff::SignedDuration::from_millis(120)),
             )
             .await
         else {
@@ -195,7 +195,7 @@ mod tests {
                 &principal(Uuid::now_v7()),
                 RoleType::User,
                 None,
-                Some(chrono::Duration::milliseconds(-1)),
+                Some(jiff::SignedDuration::from_millis(-1)),
             )
             .await
         else {

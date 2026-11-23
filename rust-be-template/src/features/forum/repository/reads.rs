@@ -6,6 +6,7 @@ use diesel::{
     sql_types::{Bool, Integer, Record, Text, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::RunQueryDsl;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -89,7 +90,7 @@ impl ForumRepository {
                         forum_topics::forum_topic_id,
                     )
                         .into_sql::<Record<(Timestamptz, SqlUuid)>>()
-                        .lt((cursor.last_activity_at, cursor.topic_id)),
+                        .lt((cursor.last_activity_at.to_diesel(), cursor.topic_id)),
                 )
             } else {
                 query.filter(
@@ -101,7 +102,7 @@ impl ForumRepository {
                         .into_sql::<Record<(Bool, Timestamptz, SqlUuid)>>()
                         .lt((
                             cursor.is_pinned,
-                            cursor.last_activity_at,
+                            cursor.last_activity_at.to_diesel(),
                             cursor.topic_id,
                         )),
                 )
@@ -169,7 +170,7 @@ impl ForumRepository {
                     forum_replies::forum_reply_id,
                 )
                     .into_sql::<Record<(Timestamptz, SqlUuid)>>()
-                    .gt((cursor.created_at, cursor.reply_id)),
+                    .gt((cursor.created_at.to_diesel(), cursor.reply_id)),
             );
         }
         let mut reply_records = reply_query

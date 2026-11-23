@@ -2,7 +2,7 @@
 //!
 //! Decoupled from the in-memory domain types so the wire shape is stable.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -31,15 +31,15 @@ pub struct BatchItemStatus {
     pub file_name: Option<String>,
     pub original_size_bytes: u64,
     pub status: ProcessingStatus,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 /// Full status snapshot for a single batch.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct BatchStatusResponse {
     pub batch_id: Uuid,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub total: usize,
     pub completed: usize,
     pub failed: usize,

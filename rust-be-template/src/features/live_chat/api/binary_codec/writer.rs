@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::live_chat::{
@@ -41,8 +41,8 @@ impl BinaryWriter {
         self.bytes.extend_from_slice(&value.to_be_bytes());
     }
 
-    pub(super) fn write_time(&mut self, value: DateTime<Utc>) {
-        self.write_i64(value.timestamp_millis());
+    pub(super) fn write_time(&mut self, value: Timestamp) {
+        self.write_i64(value.as_millisecond());
     }
 
     fn write_uuid(&mut self, value: Uuid) {

@@ -1,9 +1,9 @@
 //! PostgreSQL coverage for account deletion, retention, and permanent tombstones.
 
-use chrono::{DateTime, Duration, Utc};
 use diesel::{Connection, QueryDsl, pg::PgConnection};
 use diesel_async::RunQueryDsl;
 use diesel_migrations::MigrationHarness;
+use jiff::SignedDuration;
 
 use rust_be_template::{
     features::accounts::{
@@ -71,7 +71,7 @@ fn account_lifecycle_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         require(
             deleted.user_id == account.user_id
                 && deleted.purge_after - deleted.deleted_at
-                    == Duration::days(ACCOUNT_RETENTION_DAYS),
+                    == SignedDuration::from_hours(24 * ACCOUNT_RETENTION_DAYS),
             "soft-delete receipt did not contain the configured retention deadline",
         )?;
         require(
@@ -150,7 +150,7 @@ fn account_lifecycle_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .hard_purge_account(
                 admin.user_id,
                 account.user_id,
-                deleted.purge_after + Duration::seconds(1),
+                deleted.purge_after + SignedDuration::from_secs(1),
             )
             .await?;
         let profile_picture_id = purged
@@ -244,9 +244,9 @@ fn system_actor_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             ))
             .first::<(
                 bool,
-                Option<DateTime<Utc>>,
-                Option<DateTime<Utc>>,
-                Option<DateTime<Utc>>,
+                Option<jiff_diesel::Timestamp>,
+                Option<jiff_diesel::Timestamp>,
+                Option<jiff_diesel::Timestamp>,
             )>(&mut connection)
             .await?;
         drop(connection);

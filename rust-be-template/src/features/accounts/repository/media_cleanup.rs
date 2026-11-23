@@ -43,9 +43,7 @@ impl AccountRepository {
                         media_object_cleanup::media_object_cleanup_source_id,
                         media_object_cleanup::media_object_cleanup_created_at,
                     ))
-                    .load::<(Uuid, String, String, Uuid, chrono::DateTime<chrono::Utc>)>(
-                        &mut *connection,
-                    )
+                    .load::<(Uuid, String, String, Uuid, jiff_diesel::Timestamp)>(&mut *connection)
                     .await?;
                 Ok(rows
                     .into_iter()
@@ -56,7 +54,7 @@ impl AccountRepository {
                                 original_url,
                                 reason,
                                 source_id,
-                                created_at,
+                                created_at: created_at.to_jiff(),
                             }
                         },
                     )

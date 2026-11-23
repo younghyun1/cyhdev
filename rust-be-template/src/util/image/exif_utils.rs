@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
 use exif::{In, Tag};
+use jiff::{Timestamp, civil};
 use std::{
     fs::File,
     io::{BufRead, BufReader, Cursor, Seek},
@@ -8,20 +8,22 @@ use std::{
 };
 use tracing::{debug, warn};
 
-pub fn extract_exif_shot_at(image_bytes: &[u8]) -> Result<Option<DateTime<Utc>>> {
+use crate::util::time::utc::from_utc_datetime;
+
+pub fn extract_exif_shot_at(image_bytes: &[u8]) -> Result<Option<Timestamp>> {
     let mut cursor = Cursor::new(image_bytes);
 
     extract_exif_shot_at_from_reader(&mut cursor)
 }
 
 /// Reads EXIF directly from a staged upload without cloning its encoded bytes.
-pub fn extract_exif_shot_at_from_path(path: &Path) -> Result<Option<DateTime<Utc>>> {
+pub fn extract_exif_shot_at_from_path(path: &Path) -> Result<Option<Timestamp>> {
     let file = File::open(path)?;
     let mut reader = BufReader::with_capacity(64 * 1024, file);
     extract_exif_shot_at_from_reader(&mut reader)
 }
 
-fn extract_exif_shot_at_from_reader<R>(reader: &mut R) -> Result<Option<DateTime<Utc>>>
+fn extract_exif_shot_at_from_reader<R>(reader: &mut R) -> Result<Option<Timestamp>>
 where
     R: BufRead + Seek,
 {
@@ -92,13 +94,26 @@ where
         .parse()
         .map_err(|_| anyhow!("Invalid second"))?;
 
-    let date =
-        NaiveDate::from_ymd_opt(year, month, day).ok_or_else(|| anyhow!("Date out of range"))?;
-    let time = NaiveTime::from_hms_opt(hour, minute, second)
-        .ok_or_else(|| anyhow!("Time out of range"))?;
+    let date = match (i16::try_from(year), i8::try_from(month), i8::try_from(day)) {
+        (Ok(year), Ok(month), Ok(day)) => {
+            civil::Date::new(year, month, day).map_err(|_| anyhow!("Date out of range"))?
+        }
+        _ => return Err(anyhow!("Date out of range")),
+    };
+    let time = match (
+        i8::try_from(hour),
+        i8::try_from(minute),
+        i8::try_from(second),
+    ) {
+        (Ok(hour), Ok(minute), Ok(second)) => {
+            civil::Time::new(hour, minute, second, 0).map_err(|_| anyhow!("Time out of range"))?
+        }
+        _ => return Err(anyhow!("Time out of range")),
+    };
 
-    let naive_dt = NaiveDateTime::new(date, time);
-    let dt_utc: DateTime<Utc> = Utc.from_utc_datetime(&naive_dt);
+    // EXIF capture times carry no offset; they are interpreted as UTC.
+    let dt_utc: Timestamp =
+        from_utc_datetime(date.to_datetime(time)).map_err(|_| anyhow!("Date out of range"))?;
 
     Ok(Some(dt_utc))
 }
@@ -107,7 +122,6 @@ where
 mod tests {
     use std::io::{BufWriter, Cursor, Write};
 
-    use chrono::{TimeZone, Utc};
     use exif::{Field, In, Tag, Value, experimental::Writer};
     use image::{ImageEncoder, Rgba, RgbaImage, codecs::avif::AvifEncoder};
 
@@ -146,9 +160,8 @@ mod tests {
         output.flush()?;
         drop(output);
 
-        let expected = Utc.with_ymd_and_hms(2026, 5, 17, 14, 3, 21).single();
-        assert!(expected.is_some());
-        assert_eq!(extract_exif_shot_at_from_path(file.path())?, expected);
+        let expected = "2026-05-17T14:03:21Z".parse::<jiff::Timestamp>()?;
+        assert_eq!(extract_exif_shot_at_from_path(file.path())?, Some(expected));
         Ok(())
     }
 

@@ -1,6 +1,6 @@
 //! Accounts allowed to read the archive.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 /// Most accounts the list may hold. The whole list is kept in memory and
@@ -13,5 +13,5 @@ pub struct ArchiveReader {
     pub user_id: Uuid,
     pub user_name: String,
     pub user_email: String,
-    pub granted_at: DateTime<Utc>,
+    pub granted_at: Timestamp,
 }

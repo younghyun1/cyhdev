@@ -100,11 +100,11 @@ fn media_cleanup_bulk_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .collect::<Vec<_>>();
         let updated = context
             .accounts
-            .record_media_object_cleanup_failures(chrono::Utc::now(), &updates)
+            .record_media_object_cleanup_failures(jiff::Timestamp::now(), &updates)
             .await?;
         let stale_update = context
             .accounts
-            .record_media_object_cleanup_failures(chrono::Utc::now(), &updates)
+            .record_media_object_cleanup_failures(jiff::Timestamp::now(), &updates)
             .await?;
         require(
             updated == 2 && stale_update == 0,

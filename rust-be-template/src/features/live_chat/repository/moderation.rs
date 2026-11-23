@@ -1,8 +1,9 @@
 //! Transactional moderation with database-current authority.
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use super::live_chat_repository::LiveChatRepository;
@@ -34,7 +35,7 @@ impl LiveChatRepository {
                 )
                 .set((
                     live_chat_messages::message_body.eq(""),
-                    live_chat_messages::message_deleted_at.eq(Some(Utc::now())),
+                    live_chat_messages::message_deleted_at.eq(Some(Timestamp::now()).to_diesel()),
                 ))
                 .execute(connection)
                 .await?;

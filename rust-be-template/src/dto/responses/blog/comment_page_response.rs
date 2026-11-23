@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -8,7 +8,7 @@ use crate::features::blog::domain::{comment::CommentResponse, comment_page::Comm
 /// Query values that request the page after the last comment received.
 #[derive(Serialize, ToSchema)]
 pub struct CommentCursorResponse {
-    pub after_created_at: DateTime<Utc>,
+    pub after_created_at: Timestamp,
     pub after_comment_id: Uuid,
 }
 

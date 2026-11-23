@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -44,7 +44,7 @@ pub struct ForumModerationResponse {
     pub target_id: Uuid,
     pub revision: i32,
     pub action: ForumModerationActionResponse,
-    pub moderated_at: DateTime<Utc>,
+    pub moderated_at: Timestamp,
 }
 impl From<ForumModerationReceipt> for ForumModerationResponse {
     fn from(value: ForumModerationReceipt) -> Self {
@@ -70,7 +70,7 @@ pub struct ForumModerationAuditItem {
     pub reason: String,
     #[schema(required)]
     pub request_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 impl From<ForumModerationAuditView> for ForumModerationAuditItem {
     fn from(view: ForumModerationAuditView) -> Self {
@@ -90,7 +90,7 @@ impl From<ForumModerationAuditView> for ForumModerationAuditItem {
 
 #[derive(Serialize, ToSchema)]
 pub struct ForumModerationAuditCursorResponse {
-    pub before_created_at: DateTime<Utc>,
+    pub before_created_at: Timestamp,
     pub before_audit_id: Uuid,
 }
 impl From<ForumTimestampCursor> for ForumModerationAuditCursorResponse {

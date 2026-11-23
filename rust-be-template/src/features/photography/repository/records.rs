@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use diesel::{Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -20,9 +20,12 @@ use crate::{
 pub(super) struct PhotographRecord {
     photograph_id: Uuid,
     user_id: Uuid,
-    photograph_shot_at: Option<DateTime<Utc>>,
-    photograph_created_at: DateTime<Utc>,
-    photograph_updated_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    photograph_shot_at: Option<Timestamp>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    photograph_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    photograph_updated_at: Timestamp,
     photograph_image_type: i32,
     photograph_is_on_cloud: bool,
     photograph_link: String,
@@ -69,7 +72,8 @@ impl From<PhotographRecord> for Photograph {
 #[diesel(table_name = photographs)]
 pub(super) struct NewPhotographRecord {
     user_id: Uuid,
-    photograph_shot_at: Option<DateTime<Utc>>,
+    #[diesel(serialize_as = jiff_diesel::NullableTimestamp)]
+    photograph_shot_at: Option<Timestamp>,
     photograph_image_type: i32,
     photograph_context: DbPhotographContext,
     photograph_is_on_cloud: bool,
@@ -105,12 +109,15 @@ pub(super) struct PhotographCommentRecord {
     photograph_id: Uuid,
     user_id: Uuid,
     photograph_comment_content: String,
-    photograph_comment_created_at: DateTime<Utc>,
-    photograph_comment_updated_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    photograph_comment_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    photograph_comment_updated_at: Option<Timestamp>,
     parent_photograph_comment_id: Option<Uuid>,
     photograph_comment_total_upvotes: i64,
     photograph_comment_total_downvotes: i64,
-    photograph_comment_deleted_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    photograph_comment_deleted_at: Option<Timestamp>,
 }
 
 impl PhotographCommentRecord {

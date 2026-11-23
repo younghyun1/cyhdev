@@ -2,7 +2,7 @@
 
 use std::sync::atomic::Ordering;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 
 use super::{ChatActor, ChatActorKey, LIVE_CHAT_TYPING_MAX_ENTRIES, LiveChatCache, TypingState};
 
@@ -51,7 +51,7 @@ impl LiveChatCache {
         }
     }
 
-    pub async fn clear_expired_typing(&self, now: DateTime<Utc>) {
+    pub async fn clear_expired_typing(&self, now: Timestamp) {
         let mut removed = 0usize;
         self.typing_by_actor
             .retain_async(|_, typing_state| {
@@ -68,7 +68,7 @@ impl LiveChatCache {
     /// Unexpired typing actors, at most `limit` of them. Browsers show two
     /// names and a count, so broadcasting the full 4,096-entry set would only
     /// multiply payload size by the number of recipients.
-    pub async fn active_typing_actors(&self, now: DateTime<Utc>, limit: usize) -> Vec<ChatActor> {
+    pub async fn active_typing_actors(&self, now: Timestamp, limit: usize) -> Vec<ChatActor> {
         self.clear_expired_typing(now).await;
         let mut actors = Vec::with_capacity(limit.min(self.typing_by_actor.len()));
         self.typing_by_actor
@@ -98,15 +98,15 @@ impl LiveChatCache {
             .store(false, Ordering::Release);
     }
 
-    pub fn record_typing_broadcast(&self, now: DateTime<Utc>) {
+    pub fn record_typing_broadcast(&self, now: Timestamp) {
         self.typing_broadcast_at_millis
-            .store(now.timestamp_millis(), Ordering::Release);
+            .store(now.as_millisecond(), Ordering::Release);
     }
 
     /// Whether the last typing broadcast is at least `interval_millis` old.
-    pub fn typing_broadcast_older_than(&self, now: DateTime<Utc>, interval_millis: i64) -> bool {
+    pub fn typing_broadcast_older_than(&self, now: Timestamp, interval_millis: i64) -> bool {
         let last = self.typing_broadcast_at_millis.load(Ordering::Acquire);
-        now.timestamp_millis().saturating_sub(last) >= interval_millis
+        now.as_millisecond().saturating_sub(last) >= interval_millis
     }
 }
 
@@ -114,12 +114,12 @@ impl LiveChatCache {
 mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
-    use chrono::Duration;
+    use jiff::SignedDuration;
 
     use super::*;
     use crate::features::live_chat::domain::guest_identity::GuestIdentityKey;
 
-    fn typing(index: u8, expires_at: DateTime<Utc>) -> TypingState {
+    fn typing(index: u8, expires_at: Timestamp) -> TypingState {
         let key = GuestIdentityKey::from_secret(&[0x11; 32]);
         TypingState {
             actor: ChatActor::guest(IpAddr::V4(Ipv4Addr::new(192, 0, 2, index)), &key, None),
@@ -131,14 +131,20 @@ mod tests {
     #[tokio::test]
     async fn only_new_typers_change_the_set_and_payloads_are_capped() {
         let cache = LiveChatCache::new(1024);
-        let expires_at = Utc::now() + Duration::seconds(4);
+        let expires_at = Timestamp::now() + SignedDuration::from_secs(4);
         for index in 1..=20 {
             assert!(cache.set_typing(typing(index, expires_at)).await);
         }
         // A refresh updates the expiry without changing the visible set.
         assert!(!cache.set_typing(typing(1, expires_at)).await);
-        assert_eq!(cache.active_typing_actors(Utc::now(), 8).await.len(), 8);
-        assert_eq!(cache.active_typing_actors(Utc::now(), 64).await.len(), 20);
+        assert_eq!(
+            cache.active_typing_actors(Timestamp::now(), 8).await.len(),
+            8
+        );
+        assert_eq!(
+            cache.active_typing_actors(Timestamp::now(), 64).await.len(),
+            20
+        );
     }
 
     #[test]
@@ -148,9 +154,9 @@ mod tests {
         assert!(!cache.claim_typing_broadcast());
         cache.release_typing_broadcast();
         assert!(cache.claim_typing_broadcast());
-        let now = Utc::now();
+        let now = Timestamp::now();
         cache.record_typing_broadcast(now);
         assert!(!cache.typing_broadcast_older_than(now, 2_000));
-        assert!(cache.typing_broadcast_older_than(now + Duration::seconds(2), 2_000));
+        assert!(cache.typing_broadcast_older_than(now + SignedDuration::from_secs(2), 2_000));
     }
 }

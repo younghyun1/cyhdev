@@ -1,8 +1,9 @@
 //! PostgreSQL coverage for deletion-aware WebAssembly metadata projection.
 
-use chrono::Utc;
 use diesel::ExpressionMethods;
 use diesel_async::RunQueryDsl;
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use std::{io::Write, sync::Arc};
@@ -38,7 +39,7 @@ fn etag_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         let context = account_test_context(database)?;
         let owner = seed_account(&context, "WasmEtagOwner").await?;
         let module_id = Uuid::now_v7();
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
         encoder.write_all(b"\0asm\x01\0\0\0")?;
         let bundle_gz = encoder.finish()?;
@@ -49,8 +50,8 @@ fn etag_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 wasm_module::user_id.eq(owner.user_id),
                 wasm_module::wasm_module_link.eq(format!("/api/wasm-modules/{module_id}/wasm")),
                 wasm_module::wasm_module_description.eq("etag module"),
-                wasm_module::wasm_module_created_at.eq(now),
-                wasm_module::wasm_module_updated_at.eq(now),
+                wasm_module::wasm_module_created_at.eq(now.to_diesel()),
+                wasm_module::wasm_module_updated_at.eq(now.to_diesel()),
                 wasm_module::wasm_module_thumbnail_link.eq("https://example.test/etag.avif"),
                 wasm_module::wasm_module_title.eq("ETag module"),
                 wasm_module::wasm_module_bundle_gz.eq(bundle_gz),
@@ -99,7 +100,7 @@ fn deleted_owner_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .verify_email(owner.verification_token)
             .await?;
         let module_id = Uuid::now_v7();
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut connection = context.pool.get().await?;
         diesel::insert_into(wasm_module::table)
             .values((
@@ -107,8 +108,8 @@ fn deleted_owner_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 wasm_module::user_id.eq(owner.user_id),
                 wasm_module::wasm_module_link.eq(format!("/api/wasm-modules/{module_id}/wasm")),
                 wasm_module::wasm_module_description.eq("retained module"),
-                wasm_module::wasm_module_created_at.eq(now),
-                wasm_module::wasm_module_updated_at.eq(now),
+                wasm_module::wasm_module_created_at.eq(now.to_diesel()),
+                wasm_module::wasm_module_updated_at.eq(now.to_diesel()),
                 wasm_module::wasm_module_thumbnail_link.eq("https://example.test/module.avif"),
                 wasm_module::wasm_module_title.eq("Retained module"),
                 wasm_module::wasm_module_bundle_gz.eq(vec![0_u8]),

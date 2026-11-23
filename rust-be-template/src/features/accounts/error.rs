@@ -55,9 +55,7 @@ pub enum AccountError {
     #[error("account must be hard-purged before profile metadata can be finalized")]
     AccountNotHardPurged,
     #[error("retained identity cannot be purged before {purge_after}")]
-    RetentionPeriodActive {
-        purge_after: chrono::DateTime<chrono::Utc>,
-    },
+    RetentionPeriodActive { purge_after: jiff::Timestamp },
     #[error("account credentials changed while deletion was being confirmed")]
     AccountChanged,
     #[error("the protected system actor used for neutral identity defaults is missing")]

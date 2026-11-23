@@ -1,6 +1,6 @@
 //! Forum use cases and account-authority coordination.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::{
@@ -57,7 +57,7 @@ impl ForumService {
         &self,
         search: Option<String>,
         pinned: Option<bool>,
-        activity: Option<DateTime<Utc>>,
+        activity: Option<Timestamp>,
         topic_id: Option<Uuid>,
         limit: Option<u16>,
     ) -> Result<ForumTopicPage, ForumError> {
@@ -75,7 +75,7 @@ impl ForumService {
         &self,
         topic_id: Uuid,
         viewer: Option<Uuid>,
-        reply_created: Option<DateTime<Utc>>,
+        reply_created: Option<Timestamp>,
         reply_id: Option<Uuid>,
         limit: Option<u16>,
     ) -> Result<ForumTopicDetail, ForumError> {
@@ -107,7 +107,7 @@ impl ForumService {
         let lease = self.accounts.acquire_forum_authority(user_id).await?;
         let result = self
             .repository
-            .create_topic(lease.authority().user_id, &title, &body, Utc::now())
+            .create_topic(lease.authority().user_id, &title, &body, Timestamp::now())
             .await;
         drop(lease);
         result
@@ -132,7 +132,7 @@ impl ForumService {
                 &title,
                 &body,
                 validation::revision(expected_revision)?,
-                Utc::now(),
+                Timestamp::now(),
             )
             .await;
         drop(lease);
@@ -152,7 +152,7 @@ impl ForumService {
                 lease.authority().user_id,
                 topic_id,
                 validation::revision(expected_revision)?,
-                Utc::now(),
+                Timestamp::now(),
             )
             .await;
         drop(lease);
@@ -176,7 +176,7 @@ impl ForumService {
         let lease = self.accounts.acquire_forum_authority(user_id).await?;
         let result = self
             .repository
-            .create_reply(lease.authority().user_id, topic_id, &body, Utc::now())
+            .create_reply(lease.authority().user_id, topic_id, &body, Timestamp::now())
             .await;
         drop(lease);
         result
@@ -198,7 +198,7 @@ impl ForumService {
                 reply_id,
                 &body,
                 validation::revision(expected_revision)?,
-                Utc::now(),
+                Timestamp::now(),
             )
             .await;
         drop(lease);
@@ -218,7 +218,7 @@ impl ForumService {
                 lease.authority().user_id,
                 reply_id,
                 validation::revision(expected_revision)?,
-                Utc::now(),
+                Timestamp::now(),
             )
             .await;
         drop(lease);
@@ -234,7 +234,7 @@ impl ForumService {
         let lease = self.accounts.acquire_forum_authority(user_id).await?;
         let result = if enabled {
             self.repository
-                .subscribe(lease.authority().user_id, topic_id, Utc::now())
+                .subscribe(lease.authority().user_id, topic_id, Timestamp::now())
                 .await
                 .map(|_| true)
         } else {
@@ -271,7 +271,7 @@ impl ForumService {
                 reason: &reason,
                 expected_revision: validation::revision(expected_revision)?,
                 request_id,
-                now: Utc::now(),
+                now: Timestamp::now(),
             })
             .await;
         drop(lease);
@@ -302,7 +302,7 @@ impl ForumService {
                 reason: &reason,
                 expected_revision: validation::revision(expected_revision)?,
                 request_id,
-                now: Utc::now(),
+                now: Timestamp::now(),
             })
             .await;
         drop(lease);
@@ -312,7 +312,7 @@ impl ForumService {
     pub async fn notifications(
         &self,
         user_id: Uuid,
-        created: Option<DateTime<Utc>>,
+        created: Option<Timestamp>,
         notification_id: Option<Uuid>,
         limit: Option<u16>,
     ) -> Result<ForumNotificationPage, ForumError> {
@@ -323,7 +323,7 @@ impl ForumService {
                 lease.authority().user_id,
                 validation::timestamp_cursor(created, notification_id)?,
                 validation::page_size(limit, DEFAULT_NOTIFICATION_PAGE_SIZE)?,
-                Utc::now(),
+                Timestamp::now(),
             )
             .await;
         drop(lease);
@@ -334,11 +334,11 @@ impl ForumService {
         &self,
         user_id: Uuid,
         notification_id: Uuid,
-    ) -> Result<DateTime<Utc>, ForumError> {
+    ) -> Result<Timestamp, ForumError> {
         let lease = self.accounts.acquire_forum_authority(user_id).await?;
         let result = self
             .repository
-            .mark_notification_read(lease.authority().user_id, notification_id, Utc::now())
+            .mark_notification_read(lease.authority().user_id, notification_id, Timestamp::now())
             .await;
         drop(lease);
         result
@@ -347,7 +347,7 @@ impl ForumService {
     pub async fn moderation_audit(
         &self,
         user_id: Uuid,
-        created: Option<DateTime<Utc>>,
+        created: Option<Timestamp>,
         audit_id: Option<Uuid>,
         limit: Option<u16>,
     ) -> Result<ForumModerationAuditPage, ForumError> {

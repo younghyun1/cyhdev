@@ -1,7 +1,7 @@
 //! Legacy integration-test insertables kept outside the blog domain.
 
-use chrono::{DateTime, Utc};
 use diesel::Insertable;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::{comment_votes, post_votes, posts};
@@ -13,7 +13,8 @@ pub struct NewPost<'a> {
     post_title: &'a str,
     post_slug: &'a str,
     post_content: &'a str,
-    post_published_at: Option<DateTime<Utc>>,
+    #[diesel(serialize_as = jiff_diesel::NullableTimestamp)]
+    post_published_at: Option<Timestamp>,
     post_is_published: bool,
     post_metadata: &'a serde_json::Value,
 }
@@ -25,7 +26,7 @@ impl<'a> NewPost<'a> {
         post_title: &'a str,
         post_slug: &'a str,
         post_content: &'a str,
-        post_published_at: Option<DateTime<Utc>>,
+        post_published_at: Option<Timestamp>,
         post_is_published: bool,
         post_metadata: &'a serde_json::Value,
     ) -> Self {

@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use diesel::Insertable;
 use ipnet::IpNet;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::live_chat_messages;
@@ -15,5 +15,6 @@ pub struct LiveChatMessageInsertable {
     pub sender_kind: i16,
     pub sender_display_name: String,
     pub message_body: String,
-    pub message_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub message_created_at: Timestamp,
 }

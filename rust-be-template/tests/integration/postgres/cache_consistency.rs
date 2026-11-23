@@ -1,5 +1,6 @@
 //! PostgreSQL-backed evidence for process-cache publication and refresh.
 
+use jiff_diesel::ToDiesel;
 use std::{collections::HashMap, sync::Arc};
 
 use diesel::{ExpressionMethods, QueryDsl};
@@ -149,7 +150,7 @@ fn i18n_cache_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         )
         .set((
             i18n_strings::i18n_string_content.eq(replacement),
-            i18n_strings::i18n_string_updated_at.eq(chrono::Utc::now()),
+            i18n_strings::i18n_string_updated_at.eq(jiff::Timestamp::now().to_diesel()),
         ))
         .execute(&mut connection)
         .await?;

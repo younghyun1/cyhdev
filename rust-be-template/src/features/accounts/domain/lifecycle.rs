@@ -1,6 +1,6 @@
 //! Account deletion, retention, and permanent tombstone values.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -34,15 +34,15 @@ pub(crate) struct RetainedAccountIdentity {
 #[derive(Debug, Clone)]
 pub struct SoftDeleteAccountReceipt {
     pub user_id: Uuid,
-    pub deleted_at: DateTime<Utc>,
-    pub purge_after: DateTime<Utc>,
+    pub deleted_at: Timestamp,
+    pub purge_after: Timestamp,
 }
 
 /// Receipt for the irreversible private-data purge.
 #[derive(Debug, Clone)]
 pub struct HardPurgeAccountReceipt {
     pub user_id: Uuid,
-    pub hard_purged_at: DateTime<Utc>,
+    pub hard_purged_at: Timestamp,
     /// Remote objects still backed by profile metadata until cleanup succeeds.
     pub profile_objects: Vec<ProfileObjectCleanup>,
     pub profile_metadata_deleted: usize,
@@ -51,7 +51,7 @@ pub struct HardPurgeAccountReceipt {
 /// Full hard-purge result after bounded remote profile cleanup and metadata finalization.
 pub struct HardPurgeAccountOutcome {
     pub user_id: Uuid,
-    pub hard_purged_at: DateTime<Utc>,
+    pub hard_purged_at: Timestamp,
     pub profile_objects_deleted: usize,
     pub profile_metadata_deleted: usize,
     pub profile_cleanup_remaining: usize,
@@ -76,7 +76,7 @@ pub struct ProfileObjectCleanup {
 /// Repository plan used to finalize non-cloud metadata without losing cloud cleanup work.
 pub struct HardPurgeAccountPlan {
     pub user_id: Uuid,
-    pub hard_purged_at: DateTime<Utc>,
+    pub hard_purged_at: Timestamp,
     pub profile_objects: Vec<ProfileObjectCleanup>,
     pub non_cloud_profile_ids: Vec<Uuid>,
 }
@@ -95,7 +95,7 @@ pub struct UnresolvedMediaCleanup {
     pub original_url: String,
     pub reason: String,
     pub source_id: Uuid,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// Durable cleanup record after its object address has been reconciled.

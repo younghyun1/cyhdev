@@ -1,6 +1,6 @@
 //! Strongly typed public responses for authorization administration.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -117,7 +117,7 @@ pub struct AuthorizationAuditResponse {
 
 #[derive(Serialize, ToSchema)]
 pub struct AuthorizationAuditCursorItem {
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub audit_event_id: Uuid,
 }
 
@@ -146,7 +146,7 @@ pub struct AuthorizationAuditItem {
     pub new_value: String,
     pub reason: String,
     pub request_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 impl From<AuthorizationAuditEvent> for AuthorizationAuditItem {

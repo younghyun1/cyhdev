@@ -35,13 +35,13 @@ impl VisitorService {
             Entry::Occupied(mut occupied) => {
                 let batch = occupied.get_mut();
                 batch.count = batch.count.saturating_add(1);
-                batch.visited_at = chrono::Utc::now();
+                batch.visited_at = jiff::Timestamp::now();
             }
             Entry::Vacant(vacant) => {
                 if try_reserve(&self.buffer_entries, VISITOR_LOG_BUFFER_MAX_ENTRIES) {
                     vacant.insert_entry(VisitorLogBatch {
                         count: 1,
-                        visited_at: chrono::Utc::now(),
+                        visited_at: jiff::Timestamp::now(),
                     });
                 } else {
                     self.pending_events.fetch_sub(1, Ordering::SeqCst);

@@ -1,7 +1,6 @@
 //! PostgreSQL storage of the accounts allowed to read the archive.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, result::Error as DieselError};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl, pooled_connection::bb8::Pool};
 use tracing::error;
@@ -16,14 +15,14 @@ use crate::{
     schema::{kcna_archive_reader as reader, users},
 };
 
-type Row = (Uuid, String, String, DateTime<Utc>);
+type Row = (Uuid, String, String, jiff_diesel::Timestamp);
 
 fn listed((user_id, user_name, user_email, granted_at): Row) -> ArchiveReader {
     ArchiveReader {
         user_id,
         user_name,
         user_email,
-        granted_at,
+        granted_at: granted_at.to_jiff(),
     }
 }
 

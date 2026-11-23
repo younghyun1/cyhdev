@@ -2,9 +2,9 @@
 
 use std::{sync::Arc, time::Duration};
 
-use chrono::Utc;
 use diesel::QueryDsl;
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -104,7 +104,7 @@ fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFutu
                             sender_kind: LIVE_CHAT_SENDER_KIND_USER,
                             sender_display_name: original_name,
                             message_body: "write committed before deletion".to_owned(),
-                            message_created_at: Utc::now(),
+                            message_created_at: Timestamp::now(),
                         })
                         .execute(&mut *connection)
                         .await?;
@@ -154,7 +154,7 @@ fn content_write_linearization_case(database: &TestDatabase) -> DatabaseTestFutu
                         sender_kind: LIVE_CHAT_SENDER_KIND_USER,
                         sender_display_name: "must not persist".to_owned(),
                         message_body: "write after deletion".to_owned(),
-                        message_created_at: Utc::now(),
+                        message_created_at: Timestamp::now(),
                     })
                     .execute(&mut *connection)
                     .await?;

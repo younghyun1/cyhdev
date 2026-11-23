@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use chrono::Utc;
+use jiff::Timestamp;
 
 use crate::features::forum::{
     domain::models::ForumNotificationPruneReport, error::ForumError,
@@ -23,7 +23,7 @@ impl ForumService {
     /// whether expired rows are still left for the next run.
     pub async fn prune_notifications(&self) -> Result<ForumNotificationPruneReport, ForumError> {
         let started = Instant::now();
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut deleted = 0_usize;
         for _ in 0..NOTIFICATION_PRUNE_MAX_BATCHES {
             let batch = self.repository.prune_expired_notifications(now).await?;

@@ -1,11 +1,12 @@
 //! Deterministic account-retention notification messages.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use lettre::message::Mailbox;
 use uuid::Uuid;
 
 use crate::{
     DOMAIN_NAME, features::accounts::domain::retention_notifications::RetentionNotificationStage,
+    util::time::utc::rfc3339_utc,
 };
 
 const TEMPLATE: &str = include_str!("account_retention_notification.html");
@@ -20,7 +21,7 @@ impl AccountRetentionNotificationEmail {
     pub fn new(
         notification_id: Uuid,
         stage: RetentionNotificationStage,
-        purge_after: DateTime<Utc>,
+        purge_after: Timestamp,
     ) -> Self {
         let (remaining, subject) = match stage {
             RetentionNotificationStage::SevenDaysBeforePurge => {
@@ -33,7 +34,7 @@ impl AccountRetentionNotificationEmail {
         Self {
             body: TEMPLATE
                 .replace("$1", remaining)
-                .replace("$2", &purge_after.to_rfc3339()),
+                .replace("$2", &rfc3339_utc(purge_after)),
             message_id: format!(
                 "<account-retention-{}@{DOMAIN_NAME}>",
                 notification_id.simple()
@@ -57,7 +58,7 @@ impl AccountRetentionNotificationEmail {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
+    use jiff::Timestamp;
     use uuid::Uuid;
 
     use super::AccountRetentionNotificationEmail;
@@ -66,10 +67,7 @@ mod tests {
     #[test]
     fn message_has_stable_id_and_no_account_identity() -> anyhow::Result<()> {
         let notification_id = Uuid::now_v7();
-        let purge_after = Utc
-            .with_ymd_and_hms(2026, 9, 30, 12, 0, 0)
-            .single()
-            .ok_or_else(|| anyhow::anyhow!("fixed UTC test timestamp was invalid"))?;
+        let purge_after = "2026-09-30T12:00:00Z".parse::<Timestamp>()?;
         let message = AccountRetentionNotificationEmail::new(
             notification_id,
             RetentionNotificationStage::SevenDaysBeforePurge,

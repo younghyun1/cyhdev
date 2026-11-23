@@ -44,7 +44,7 @@ mod tests {
                 sender_country_flag: None,
                 user_profile_picture_url: None,
                 message_body: "moderated content".to_owned(),
-                message_created_at: chrono::Utc::now(),
+                message_created_at: jiff::Timestamp::now(),
                 message_edited_at: None,
                 message_deleted_at: None,
             })

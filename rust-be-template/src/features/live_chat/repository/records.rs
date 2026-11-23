@@ -1,6 +1,6 @@
-use chrono::{DateTime, Utc};
 use diesel::{Insertable, Queryable, Selectable};
 use ipnet::IpNet;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::{
@@ -20,9 +20,12 @@ pub(super) struct MessageRecord {
     sender_kind: i16,
     sender_display_name: String,
     message_body: String,
-    message_created_at: DateTime<Utc>,
-    message_edited_at: Option<DateTime<Utc>>,
-    message_deleted_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    message_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    message_edited_at: Option<Timestamp>,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    message_deleted_at: Option<Timestamp>,
 }
 
 impl From<MessageRecord> for LiveChatMessage {
@@ -52,7 +55,8 @@ pub(super) struct NewMessageRecord {
     pub sender_kind: i16,
     pub sender_display_name: String,
     pub message_body: String,
-    pub message_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub message_created_at: Timestamp,
 }
 
 #[derive(Queryable, Selectable)]
@@ -64,8 +68,10 @@ pub(super) struct BanRecord {
     banned_ip: Option<IpNet>,
     reason: String,
     ban_source: String,
-    banned_at: DateTime<Utc>,
-    expires_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    banned_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    expires_at: Option<Timestamp>,
 }
 
 impl From<BanRecord> for LiveChatBan {
@@ -90,8 +96,10 @@ pub(super) struct NewBanRecord {
     pub banned_ip: Option<IpNet>,
     pub reason: String,
     pub ban_source: String,
-    pub banned_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub banned_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::NullableTimestamp)]
+    pub expires_at: Option<Timestamp>,
 }
 
 #[derive(Insertable)]
@@ -99,7 +107,8 @@ pub(super) struct NewBanRecord {
 pub(super) struct NewCallRecord {
     pub live_chat_call_id: Uuid,
     pub room_key: String,
-    pub call_started_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub call_started_at: Timestamp,
 }
 
 #[derive(Insertable)]
@@ -111,7 +120,8 @@ pub(super) struct NewParticipantRecord {
     pub guest_ip: Option<IpNet>,
     pub participant_sender_kind: i16,
     pub participant_display_name: String,
-    pub participant_joined_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub participant_joined_at: Timestamp,
     pub participant_had_audio: bool,
     pub participant_had_video: bool,
 }

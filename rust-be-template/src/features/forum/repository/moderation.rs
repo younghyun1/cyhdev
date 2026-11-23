@@ -1,8 +1,9 @@
 //! Permission-gated forum moderation with append-only audit.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -30,7 +31,7 @@ pub struct ModerateTopicCommand<'a> {
     pub reason: &'a ForumModerationReason,
     pub expected_revision: i32,
     pub request_id: Option<Uuid>,
-    pub now: DateTime<Utc>,
+    pub now: Timestamp,
 }
 
 pub struct ModerateReplyCommand<'a> {
@@ -40,7 +41,7 @@ pub struct ModerateReplyCommand<'a> {
     pub reason: &'a ForumModerationReason,
     pub expected_revision: i32,
     pub request_id: Option<Uuid>,
-    pub now: DateTime<Utc>,
+    pub now: Timestamp,
 }
 
 impl ForumRepository {
@@ -108,9 +109,9 @@ impl ForumRepository {
                     forum_topics::forum_topic_content_state.eq(content_state),
                     forum_topics::forum_topic_access_state.eq(access_state),
                     forum_topics::forum_topic_is_pinned.eq(is_pinned),
-                    forum_topics::forum_topic_hidden_at.eq(hidden_at),
+                    forum_topics::forum_topic_hidden_at.eq(hidden_at.to_diesel()),
                     forum_topics::forum_topic_revision.eq(forum_topics::forum_topic_revision + 1),
-                    forum_topics::forum_topic_updated_at.eq(now),
+                    forum_topics::forum_topic_updated_at.eq(now.to_diesel()),
                 ))
                 .returning(forum_topics::forum_topic_revision)
                 .get_result::<i32>(&mut *connection)
@@ -188,9 +189,9 @@ impl ForumRepository {
                 )
                 .set((
                     forum_replies::forum_reply_content_state.eq(content_state),
-                    forum_replies::forum_reply_hidden_at.eq(hidden_at),
+                    forum_replies::forum_reply_hidden_at.eq(hidden_at.to_diesel()),
                     forum_replies::forum_reply_revision.eq(forum_replies::forum_reply_revision + 1),
-                    forum_replies::forum_reply_updated_at.eq(now),
+                    forum_replies::forum_reply_updated_at.eq(now.to_diesel()),
                 ))
                 .returning(forum_replies::forum_reply_revision)
                 .get_result::<i32>(&mut *connection)

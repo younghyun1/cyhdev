@@ -14,7 +14,7 @@ pub struct VisitorLogKey {
 #[derive(Clone)]
 pub struct VisitorLogBatch {
     pub count: u64,
-    pub visited_at: chrono::DateTime<chrono::Utc>,
+    pub visited_at: jiff::Timestamp,
 }
 
 pub struct NewVisit {
@@ -23,7 +23,7 @@ pub struct NewVisit {
     pub ip_address: IpAddr,
     pub city: String,
     pub country: String,
-    pub visited_at: chrono::DateTime<chrono::Utc>,
+    pub visited_at: jiff::Timestamp,
 }
 
 /// Visits to add to one board location.
@@ -80,7 +80,7 @@ mod tests {
             ip_address: IpAddr::from([192, 0, 2, 1]),
             city: "Denver".to_owned(),
             country: "United States".to_owned(),
-            visited_at: chrono::DateTime::<chrono::Utc>::UNIX_EPOCH,
+            visited_at: jiff::Timestamp::UNIX_EPOCH,
         }
     }
 

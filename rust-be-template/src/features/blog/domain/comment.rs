@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -38,14 +38,14 @@ pub struct Comment {
     pub post_id: Uuid,
     pub user_id: Uuid,
     pub comment_content: String,
-    pub comment_created_at: DateTime<Utc>,
-    pub comment_updated_at: Option<DateTime<Utc>>,
+    pub comment_created_at: Timestamp,
+    pub comment_updated_at: Option<Timestamp>,
     pub parent_comment_id: Option<Uuid>,
     pub total_upvotes: i64,
     pub total_downvotes: i64,
     /// Set when the author or a superuser deleted the comment. The row stays as
     /// a tombstone with empty content so its replies keep their parent.
-    pub comment_deleted_at: Option<DateTime<Utc>>,
+    pub comment_deleted_at: Option<Timestamp>,
 }
 
 #[derive(Clone, Serialize, ToSchema)]
@@ -54,13 +54,13 @@ pub struct CommentResponse {
     pub post_id: Uuid,
     pub user_id: Uuid,
     pub comment_content: String,
-    pub comment_created_at: DateTime<Utc>,
-    pub comment_updated_at: Option<DateTime<Utc>>,
+    pub comment_created_at: Timestamp,
+    pub comment_updated_at: Option<Timestamp>,
     pub parent_comment_id: Option<Uuid>,
     pub total_upvotes: i64,
     pub total_downvotes: i64,
     /// Present for a deleted comment, whose content is empty.
-    pub comment_deleted_at: Option<DateTime<Utc>>,
+    pub comment_deleted_at: Option<Timestamp>,
     pub vote_state: VoteState,
     pub user_name: String,
     pub user_profile_picture_url: String,

@@ -1,8 +1,9 @@
 //! Authored-content fixtures for account lifecycle integration tests.
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use rust_be_template::{
@@ -45,7 +46,7 @@ pub async fn seed_authored_content(
         .replace_profile_picture(user_id, 4, true, Some(PROFILE_OBJECT_URL))
         .await?;
 
-    let now = Utc::now();
+    let now = Timestamp::now();
     let metadata = serde_json::json!({"lifecycle_test": true});
     let post_slug = format!("retained-lifecycle-{user_id}");
     let mut connection = context.pool.get().await?;
@@ -67,7 +68,7 @@ pub async fn seed_authored_content(
             comments::post_id.eq(post_id),
             comments::user_id.eq(user_id),
             comments::comment_content.eq("retained comment body"),
-            comments::comment_created_at.eq(now),
+            comments::comment_created_at.eq(now.to_diesel()),
         ))
         .returning(comments::comment_id)
         .get_result::<Uuid>(&mut connection)
@@ -93,7 +94,7 @@ pub async fn seed_authored_content(
     let photograph_id = diesel::insert_into(photographs::table)
         .values((
             photographs::user_id.eq(user_id),
-            photographs::photograph_shot_at.eq(Some(now)),
+            photographs::photograph_shot_at.eq(Some(now.to_diesel())),
             photographs::photograph_image_type.eq(4),
             photographs::photograph_context.eq(DbPhotographContext::Photography),
             photographs::photograph_is_on_cloud.eq(true),

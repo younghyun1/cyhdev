@@ -1,5 +1,5 @@
-use chrono::{DateTime, Utc};
 use ipnet::IpNet;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::live_chat::domain::ban::LiveChatBan;
@@ -12,12 +12,12 @@ pub struct CachedLiveChatBan {
     pub banned_ip: Option<IpNet>,
     pub reason: String,
     pub ban_source: String,
-    pub banned_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub banned_at: Timestamp,
+    pub expires_at: Option<Timestamp>,
 }
 
 impl CachedLiveChatBan {
-    pub fn is_active(&self, now: DateTime<Utc>) -> bool {
+    pub fn is_active(&self, now: Timestamp) -> bool {
         match self.expires_at {
             Some(expires_at) => expires_at > now,
             None => true,

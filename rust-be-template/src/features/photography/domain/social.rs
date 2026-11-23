@@ -1,6 +1,6 @@
 //! Persistence-independent photograph comment and vote values.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -46,14 +46,14 @@ pub struct PhotographComment {
     pub photograph_id: Uuid,
     pub user_id: Uuid,
     pub photograph_comment_content: String,
-    pub photograph_comment_created_at: DateTime<Utc>,
-    pub photograph_comment_updated_at: Option<DateTime<Utc>>,
+    pub photograph_comment_created_at: Timestamp,
+    pub photograph_comment_updated_at: Option<Timestamp>,
     pub parent_photograph_comment_id: Option<Uuid>,
     pub photograph_comment_total_upvotes: i64,
     pub photograph_comment_total_downvotes: i64,
     /// Set when the author or a superuser deleted the comment. The row stays as
     /// a tombstone with empty content so its replies keep their parent.
-    pub photograph_comment_deleted_at: Option<DateTime<Utc>>,
+    pub photograph_comment_deleted_at: Option<Timestamp>,
 }
 
 pub struct NewPhotographComment {
@@ -69,13 +69,13 @@ pub struct PhotographCommentResponse {
     pub photograph_id: Uuid,
     pub user_id: Uuid,
     pub photograph_comment_content: String,
-    pub photograph_comment_created_at: DateTime<Utc>,
-    pub photograph_comment_updated_at: Option<DateTime<Utc>>,
+    pub photograph_comment_created_at: Timestamp,
+    pub photograph_comment_updated_at: Option<Timestamp>,
     pub parent_photograph_comment_id: Option<Uuid>,
     pub photograph_comment_total_upvotes: i64,
     pub photograph_comment_total_downvotes: i64,
     /// Present for a deleted comment, whose content is empty.
-    pub photograph_comment_deleted_at: Option<DateTime<Utc>>,
+    pub photograph_comment_deleted_at: Option<Timestamp>,
     pub vote_state: VoteState,
     pub user_name: String,
     pub user_profile_picture_url: String,

@@ -1,6 +1,6 @@
 //! One batch item: EXIF read, AVIF encode or passthrough, upload, and metadata commit.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -60,7 +60,6 @@ impl BatchWorker {
             .map(|_| batch_thumbnail_source_path(directory, item_id));
         self.process_staged(
             batch,
-            batch_id,
             item,
             user_id,
             context,
@@ -80,16 +79,16 @@ impl BatchWorker {
     async fn process_staged(
         &self,
         batch: Arc<BatchSession>,
-        batch_id: Uuid,
         item: BatchPipelineItem,
         user_id: Uuid,
         context: PhotographContext,
         source_path: PathBuf,
         thumbnail_source_path: Option<PathBuf>,
     ) {
+        let batch_id = batch.batch_id;
         let item_id = item.item_id;
         batch
-            .set_status(item_id, ProcessingStatus::Encoding, Utc::now())
+            .set_status(item_id, ProcessingStatus::Encoding, Timestamp::now())
             .await;
         let exif_path = source_path.clone();
         let shot_at =
@@ -150,7 +149,7 @@ impl BatchWorker {
             },
         ];
         batch
-            .set_status(item_id, ProcessingStatus::Uploading, Utc::now())
+            .set_status(item_id, ProcessingStatus::Uploading, Timestamp::now())
             .await;
         let repository = self.repository.clone();
         let persistence_batch = Arc::clone(&batch);
@@ -161,7 +160,7 @@ impl BatchWorker {
             &pending,
             async move {
                 persistence_batch
-                    .set_status(item_id, ProcessingStatus::Persisting, Utc::now())
+                    .set_status(item_id, ProcessingStatus::Persisting, Timestamp::now())
                     .await;
                 let photograph = repository
                     .insert_photograph(
@@ -199,7 +198,7 @@ impl BatchWorker {
                         success.value.photograph_id,
                         object_url,
                         thumbnail_url,
-                        Utc::now(),
+                        Timestamp::now(),
                     )
                     .await;
             }
@@ -262,7 +261,7 @@ async fn fail(
         .chars()
         .take(512)
         .collect();
-    batch.fail_item(item_id, reason, Utc::now()).await;
+    batch.fail_item(item_id, reason, Timestamp::now()).await;
 }
 fn log_cleanup(batch_id: Uuid, item_id: Uuid, failures: &[CleanupFailure]) {
     for failure in failures {

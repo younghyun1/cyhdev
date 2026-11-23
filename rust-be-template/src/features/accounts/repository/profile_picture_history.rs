@@ -1,8 +1,9 @@
 //! Bounded profile-picture history selection and deletion.
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -84,7 +85,8 @@ impl AccountRepository {
                     ))
                     .set((
                         user_profile_pictures::user_profile_picture_is_active.eq(true),
-                        user_profile_pictures::user_profile_picture_updated_at.eq(Utc::now()),
+                        user_profile_pictures::user_profile_picture_updated_at
+                            .eq(Timestamp::now().to_diesel()),
                     ))
                     .returning(ProfilePictureRecord::as_returning())
                     .get_result::<ProfilePictureRecord>(&mut *connection)
@@ -148,7 +150,7 @@ impl AccountRepository {
                                 .set((
                                     user_profile_pictures::user_profile_picture_is_active.eq(true),
                                     user_profile_pictures::user_profile_picture_updated_at
-                                        .eq(Utc::now()),
+                                        .eq(Timestamp::now().to_diesel()),
                                 ))
                                 .execute(&mut *connection)
                                 .await?;

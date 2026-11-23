@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -24,11 +24,11 @@ pub struct ForumTopicResponse {
     pub is_pinned: bool,
     pub revision: i32,
     pub reply_count: i64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub last_activity_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub last_activity_at: Timestamp,
     #[schema(required)]
-    pub edited_at: Option<DateTime<Utc>>,
+    pub edited_at: Option<Timestamp>,
 }
 
 impl From<ForumTopicView> for ForumTopicResponse {
@@ -61,10 +61,10 @@ pub struct ForumReplyResponse {
     pub body: Option<String>,
     pub content_state: ForumContentStateResponse,
     pub revision: i32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     #[schema(required)]
-    pub edited_at: Option<DateTime<Utc>>,
+    pub edited_at: Option<Timestamp>,
 }
 
 impl From<ForumReplyView> for ForumReplyResponse {
@@ -87,7 +87,7 @@ impl From<ForumReplyView> for ForumReplyResponse {
 #[derive(Serialize, ToSchema)]
 pub struct ForumTopicCursorResponse {
     pub before_pinned: bool,
-    pub before_activity_at: DateTime<Utc>,
+    pub before_activity_at: Timestamp,
     pub before_topic_id: Uuid,
 }
 impl From<ForumTopicCursor> for ForumTopicCursorResponse {
@@ -102,7 +102,7 @@ impl From<ForumTopicCursor> for ForumTopicCursorResponse {
 
 #[derive(Serialize, ToSchema)]
 pub struct ForumReplyCursorResponse {
-    pub after_reply_created_at: DateTime<Utc>,
+    pub after_reply_created_at: Timestamp,
     pub after_reply_id: Uuid,
 }
 impl From<ForumReplyCursor> for ForumReplyCursorResponse {
@@ -134,7 +134,7 @@ pub struct ForumTopicDetailResponse {
 pub struct ForumTopicMutationResponse {
     pub topic_id: Uuid,
     pub revision: i32,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
 }
 impl From<ForumMutationReceipt> for ForumTopicMutationResponse {
     fn from(value: ForumMutationReceipt) -> Self {
@@ -150,7 +150,7 @@ impl From<ForumMutationReceipt> for ForumTopicMutationResponse {
 pub struct ForumReplyMutationResponse {
     pub reply_id: Uuid,
     pub revision: i32,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
 }
 impl From<ForumMutationReceipt> for ForumReplyMutationResponse {
     fn from(value: ForumMutationReceipt) -> Self {

@@ -2,12 +2,13 @@
 
 use std::net::IpAddr;
 
-use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
 };
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use ipnet::IpNet;
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::schema::live_chat_bans;
@@ -33,7 +34,7 @@ impl LiveChatRepository {
         &self,
         actor: &ChatActor,
         banned_network: IpNet,
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     ) -> Result<LiveChatBan, LiveChatError> {
         let mut connection = self.connection().await?;
         connection
@@ -48,7 +49,7 @@ impl LiveChatRepository {
                         banned_ip: Some(banned_network),
                         reason: "More than 10 live chat message events in one second.".to_owned(),
                         ban_source: LIVE_CHAT_BAN_SOURCE_ABNORMAL_MESSAGING.to_owned(),
-                        banned_at: Utc::now(),
+                        banned_at: Timestamp::now(),
                         expires_at: Some(expires_at),
                     })
                     .returning(BanRecord::as_returning())
@@ -62,12 +63,12 @@ impl LiveChatRepository {
 
     pub async fn active_bans(&self, limit: i64) -> Result<Vec<LiveChatBan>, LiveChatError> {
         let mut connection = self.connection().await?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         live_chat_bans::table
             .filter(
                 live_chat_bans::expires_at
                     .is_null()
-                    .or(live_chat_bans::expires_at.gt(now)),
+                    .or(live_chat_bans::expires_at.gt(now.to_diesel())),
             )
             .order((
                 live_chat_bans::banned_at.desc(),
@@ -90,13 +91,13 @@ impl LiveChatRepository {
         ip: IpAddr,
     ) -> Result<Option<LiveChatBan>, LiveChatError> {
         let mut connection = self.connection().await?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let networks = ban_networks_for(ip).iter().collect::<Vec<_>>();
         let mut query = live_chat_bans::table
             .filter(
                 live_chat_bans::expires_at
                     .is_null()
-                    .or(live_chat_bans::expires_at.gt(now)),
+                    .or(live_chat_bans::expires_at.gt(now.to_diesel())),
             )
             .into_boxed();
         query = match user_id {

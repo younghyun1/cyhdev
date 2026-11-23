@@ -155,7 +155,7 @@ pub(super) fn decode_client_frame(
 }
 
 fn log_malformed_frame(kind: &'static str, error_value: &dyn std::fmt::Display) {
-    let now_millis = u64::try_from(chrono::Utc::now().timestamp_millis()).unwrap_or(0);
+    let now_millis = u64::try_from(jiff::Timestamp::now().as_millisecond()).unwrap_or(0);
     match MALFORMED_FRAME_LOG.admit(now_millis, MALFORMED_FRAME_LOG_INTERVAL_MILLIS) {
         Some(suppressed) => {
             warn!(kind, error = %error_value, suppressed, "Rejected malformed live chat frame")

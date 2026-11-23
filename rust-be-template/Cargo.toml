@@ -58,7 +58,10 @@ tower-http = { version = "0.7.1", features = [
 ] }
 
 # OpenAPI
-utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "chrono", "repr"] }
+# `jiff_0_2` only teaches the derive macros to treat fields named `Timestamp`,
+# `Date`, and `Zoned` as date-time strings; it pulls in no jiff 0.2 crate, so it
+# describes the jiff 1.0 types used here.
+utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "jiff_0_2", "repr"] }
 utoipa-swagger-ui = { version = "10.0.2", features = ["axum", "vendored"] }
 
 # parallelism
@@ -67,7 +70,6 @@ utoipa-swagger-ui = { version = "10.0.2", features = ["axum", "vendored"] }
 # ORM
 diesel = { version = "2.4.0", features = [
     "postgres",
-    "chrono",
     "serde_json",
     "uuid",
     "ipnet-address",
@@ -113,7 +115,8 @@ bitcode = "0.6.9"
 flate2 = "1.1.11"
 
 # types
-chrono.workspace = true
+jiff.workspace = true
+jiff-diesel.workspace = true
 scc = "3.9.1"
 uuid = { version = "1.29.3", features = [
     "v4",
@@ -214,7 +217,7 @@ nutype = "0.8.0"
 # openssl = { version = "0.10.74", features = ["vendored"] }
 
 [build-dependencies]
-chrono.workspace = true
+jiff.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]

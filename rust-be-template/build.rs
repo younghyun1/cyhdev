@@ -80,7 +80,7 @@ fn build_time_utc() -> Result<String, String> {
         }
     };
     let Some((source, value)) = configured else {
-        return Ok(chrono::Utc::now().to_rfc3339());
+        return Ok(rfc3339_utc(jiff::Timestamp::now()));
     };
     let seconds = value
         .parse::<i64>()
@@ -89,12 +89,20 @@ fn build_time_utc() -> Result<String, String> {
         return Err(format!("{source} must not be negative"));
     }
 
-    match chrono::DateTime::<chrono::Utc>::from_timestamp(seconds, 0) {
-        Some(timestamp) => Ok(timestamp.to_rfc3339()),
-        None => Err(format!(
-            "{source} value {seconds} is outside Chrono's supported range"
+    match jiff::Timestamp::from_second(seconds) {
+        Ok(timestamp) => Ok(rfc3339_utc(timestamp)),
+        Err(error) => Err(format!(
+            "{source} value {seconds} is outside the supported timestamp range: {error}"
         )),
     }
+}
+
+/// Formats an instant as RFC 3339 with an explicit `+00:00` offset, the form
+/// the build timestamp has always carried, rather than jiff's default `Z`.
+fn rfc3339_utc(timestamp: jiff::Timestamp) -> String {
+    timestamp
+        .display_with_offset(jiff::tz::Offset::UTC)
+        .to_string()
 }
 
 fn rustc_version() -> Result<String, String> {

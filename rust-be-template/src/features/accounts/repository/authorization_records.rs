@@ -1,7 +1,7 @@
 //! Diesel rows private to audited authorization persistence.
 
-use chrono::{DateTime, Utc};
 use diesel::{Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -54,7 +54,8 @@ pub(super) struct AuthorizationAuditEventRow {
     pub(super) authorization_audit_event_new_value: String,
     pub(super) authorization_audit_event_reason: String,
     pub(super) authorization_audit_event_request_id: Option<Uuid>,
-    pub(super) authorization_audit_event_created_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) authorization_audit_event_created_at: Timestamp,
 }
 
 #[derive(Insertable)]

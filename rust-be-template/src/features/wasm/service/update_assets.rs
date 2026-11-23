@@ -1,6 +1,6 @@
 //! WebAssembly asset replacement with compensation and durable cleanup.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use std::sync::Arc;
 
 use tracing::warn;
@@ -67,7 +67,7 @@ impl WasmService {
                         wasm_module_description: description,
                         wasm_module_thumbnail_link: new_thumbnail_url,
                         wasm_module_bundle_gz: new_bundle,
-                        wasm_module_updated_at: Utc::now(),
+                        wasm_module_updated_at: Timestamp::now(),
                     },
                     thumbnail_changed,
                 )

@@ -1,8 +1,9 @@
 //! Atomic full-profile updates for active accounts.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper, dsl::exists};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -23,7 +24,7 @@ impl AccountRepository {
         user_id: Uuid,
         expected_password_hash: &str,
         command: &ProfileUpdateCommand,
-        updated_at: DateTime<Utc>,
+        updated_at: Timestamp,
     ) -> Result<AccountProfile, AccountError> {
         let mut connection = self.connection().await?;
         let result = connection
@@ -76,7 +77,7 @@ impl AccountRepository {
                         users::user_country.eq(command.country),
                         users::user_language.eq(command.language),
                         users::user_subdivision.eq(command.subdivision),
-                        users::user_updated_at.eq(updated_at),
+                        users::user_updated_at.eq(updated_at.to_diesel()),
                     ))
                     .returning(AccountProfileRecord::as_returning())
                     .get_result::<AccountProfileRecord>(&mut *connection)

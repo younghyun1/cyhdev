@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 pub const DEFAULT_LIVE_CHAT_ROOM: &str = "main";
@@ -14,7 +14,7 @@ pub struct LiveChatMessage {
     pub sender_kind: i16,
     pub sender_display_name: String,
     pub message_body: String,
-    pub message_created_at: DateTime<Utc>,
-    pub message_edited_at: Option<DateTime<Utc>>,
-    pub message_deleted_at: Option<DateTime<Utc>>,
+    pub message_created_at: Timestamp,
+    pub message_edited_at: Option<Timestamp>,
+    pub message_deleted_at: Option<Timestamp>,
 }

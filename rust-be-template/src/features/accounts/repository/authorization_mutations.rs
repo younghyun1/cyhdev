@@ -188,8 +188,8 @@ async fn lock_role_target(
         .for_update()
         .first::<(
             bool,
-            Option<chrono::DateTime<chrono::Utc>>,
-            Option<chrono::DateTime<chrono::Utc>>,
+            Option<jiff_diesel::Timestamp>,
+            Option<jiff_diesel::Timestamp>,
         )>(&mut *connection)
         .await
         .optional()?

@@ -2,6 +2,7 @@
 
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, dsl::exists};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -105,7 +106,7 @@ impl AccountRepository {
                         users::user_country.eq(account.country),
                         users::user_language.eq(account.language),
                         users::user_subdivision.eq(account.subdivision),
-                        users::user_updated_at.eq(registration.verification_created_at),
+                        users::user_updated_at.eq(registration.verification_created_at.to_diesel()),
                     ))
                     .execute(&mut *connection)
                     .await?;

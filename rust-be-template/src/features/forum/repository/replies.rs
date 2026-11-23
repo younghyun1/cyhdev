@@ -1,9 +1,10 @@
 //! Transactional flat replies, counters, subscriptions, and notification fanout.
 
-use chrono::{DateTime, Days, Utc};
 use diesel::sql_types::{Timestamptz, Uuid as SqlUuid};
 use diesel::{ExpressionMethods, IntoSql, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::{SignedDuration, Timestamp};
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -31,11 +32,11 @@ impl ForumRepository {
         actor_user_id: Uuid,
         topic_id: Uuid,
         body: &ForumBody,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let expires_at = now
-            .checked_add_days(Days::new(90))
-            .ok_or(ForumError::CountOverflow)?;
+            .checked_add(SignedDuration::from_hours(24 * 90))
+            .map_err(|_| ForumError::CountOverflow)?;
         let mut connection = self.connection().await?;
         connection
             .transaction::<ForumMutationReceipt, ForumError, _>(async move |connection| {
@@ -51,8 +52,8 @@ impl ForumRepository {
                     .first::<(
                         DbForumContentState,
                         DbForumTopicAccessState,
-                        DateTime<Utc>,
-                        DateTime<Utc>,
+                        jiff_diesel::Timestamp,
+                        jiff_diesel::Timestamp,
                     )>(&mut *connection)
                     .await
                     .optional()?
@@ -81,8 +82,9 @@ impl ForumRepository {
                         forum_replies::forum_reply_revision,
                         forum_replies::forum_reply_updated_at,
                     ))
-                    .get_result::<(Uuid, i32, DateTime<Utc>)>(&mut *connection)
+                    .get_result::<(Uuid, i32, jiff_diesel::Timestamp)>(&mut *connection)
                     .await?;
+                let updated_at = updated_at.to_jiff();
                 diesel::update(
                     forum_topics::table.filter(forum_topics::forum_topic_id.eq(topic_id)),
                 )
@@ -90,8 +92,16 @@ impl ForumRepository {
                     forum_topics::forum_topic_reply_count
                         .eq(forum_topics::forum_topic_reply_count + 1),
                     forum_topics::forum_topic_revision.eq(forum_topics::forum_topic_revision + 1),
-                    forum_topics::forum_topic_updated_at.eq(topic_state.2.max(now)),
-                    forum_topics::forum_topic_last_activity_at.eq(topic_state.3.max(now)),
+                    forum_topics::forum_topic_updated_at.eq(topic_state
+                        .2
+                        .to_jiff()
+                        .max(now)
+                        .to_diesel()),
+                    forum_topics::forum_topic_last_activity_at.eq(topic_state
+                        .3
+                        .to_jiff()
+                        .max(now)
+                        .to_diesel()),
                 ))
                 .execute(&mut *connection)
                 .await?;
@@ -110,8 +120,8 @@ impl ForumRepository {
                         topic_id.into_sql::<SqlUuid>(),
                         reply_id.into_sql::<SqlUuid>(),
                         DbForumNotificationKind::TopicReply.into_sql::<ForumNotificationKindSql>(),
-                        now.into_sql::<Timestamptz>(),
-                        expires_at.into_sql::<Timestamptz>(),
+                        now.to_diesel().into_sql::<Timestamptz>(),
+                        expires_at.to_diesel().into_sql::<Timestamptz>(),
                     ));
                 diesel::insert_into(forum_notifications::table)
                     .values(recipients)
@@ -146,7 +156,7 @@ impl ForumRepository {
         reply_id: Uuid,
         body: &ForumBody,
         expected_revision: i32,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -162,15 +172,16 @@ impl ForumRepository {
                 .set((
                     forum_replies::forum_reply_body.eq(body.as_ref()),
                     forum_replies::forum_reply_revision.eq(forum_replies::forum_reply_revision + 1),
-                    forum_replies::forum_reply_updated_at.eq(now),
-                    forum_replies::forum_reply_edited_at.eq(now),
+                    forum_replies::forum_reply_updated_at.eq(now.to_diesel()),
+                    forum_replies::forum_reply_edited_at.eq(now.to_diesel()),
                 ))
                 .returning((
                     forum_replies::forum_reply_revision,
                     forum_replies::forum_reply_updated_at,
                 ))
-                .get_result::<(i32, DateTime<Utc>)>(&mut *connection)
+                .get_result::<(i32, jiff_diesel::Timestamp)>(&mut *connection)
                 .await?;
+                let updated_at = updated_at.to_jiff();
                 Ok(ForumMutationReceipt {
                     item_id: reply_id,
                     revision,
@@ -185,7 +196,7 @@ impl ForumRepository {
         actor_user_id: Uuid,
         reply_id: Uuid,
         expected_revision: i32,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<ForumMutationReceipt, ForumError> {
         let mut connection = self.connection().await?;
         connection
@@ -201,17 +212,18 @@ impl ForumRepository {
                 .set((
                     forum_replies::forum_reply_body.eq(DELETED_CONTENT_BODY),
                     forum_replies::forum_reply_content_state.eq(DbForumContentState::Deleted),
-                    forum_replies::forum_reply_hidden_at.eq(Option::<DateTime<Utc>>::None),
-                    forum_replies::forum_reply_deleted_at.eq(Some(now)),
+                    forum_replies::forum_reply_hidden_at.eq(Option::<Timestamp>::None.to_diesel()),
+                    forum_replies::forum_reply_deleted_at.eq(Some(now).to_diesel()),
                     forum_replies::forum_reply_revision.eq(forum_replies::forum_reply_revision + 1),
-                    forum_replies::forum_reply_updated_at.eq(now),
+                    forum_replies::forum_reply_updated_at.eq(now.to_diesel()),
                 ))
                 .returning((
                     forum_replies::forum_reply_revision,
                     forum_replies::forum_reply_updated_at,
                 ))
-                .get_result::<(i32, DateTime<Utc>)>(&mut *connection)
+                .get_result::<(i32, jiff_diesel::Timestamp)>(&mut *connection)
                 .await?;
+                let updated_at = updated_at.to_jiff();
                 Ok(ForumMutationReceipt {
                     item_id: reply_id,
                     revision,

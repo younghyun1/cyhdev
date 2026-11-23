@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use chrono::{Days, Utc};
 use futures_util::{StreamExt, stream};
+use jiff::{SignedDuration, Timestamp};
 use tracing::warn;
 use uuid::Uuid;
 
@@ -60,12 +60,14 @@ impl AccountService {
             // Deletion ends any authority the account holds, so it excludes authority leases.
             let authority_consistency = service.authority_consistency.write().await;
             let session_consistency = service.session_consistency.write().await;
-            let deleted_at = Utc::now();
-            let retention_days = u64::try_from(ACCOUNT_RETENTION_DAYS)
-                .map_err(|_| AccountError::RetentionScheduleOverflow)?;
-            let purge_after = deleted_at
-                .checked_add_days(Days::new(retention_days))
+            let deleted_at = Timestamp::now();
+            // UTC days are always 24 hours, so whole retention days map to exact hours.
+            let retention_hours = ACCOUNT_RETENTION_DAYS
+                .checked_mul(24)
                 .ok_or(AccountError::RetentionScheduleOverflow)?;
+            let purge_after = deleted_at
+                .checked_add(SignedDuration::from_hours(retention_hours))
+                .map_err(|_| AccountError::RetentionScheduleOverflow)?;
             let notification_schedule =
                 RetentionNotificationSchedule::from_purge_after(purge_after)
                     .ok_or(AccountError::RetentionScheduleOverflow)?;
@@ -105,7 +107,7 @@ impl AccountService {
             let session_consistency = service.session_consistency.write().await;
             let receipt = service
                 .repository
-                .hard_purge_account(requester_id, user_id, Utc::now())
+                .hard_purge_account(requester_id, user_id, Timestamp::now())
                 .await?;
             drop(retention_delivery);
             service.sessions.remove_for_user(user_id).await;

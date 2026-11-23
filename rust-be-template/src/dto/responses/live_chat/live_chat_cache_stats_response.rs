@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 
@@ -9,8 +9,8 @@ pub struct LiveChatCacheStatsResponse {
     pub max_bytes: usize,
     pub used_bytes: usize,
     pub message_count: usize,
-    pub oldest_cached_at: Option<DateTime<Utc>>,
-    pub newest_cached_at: Option<DateTime<Utc>>,
+    pub oldest_cached_at: Option<Timestamp>,
+    pub newest_cached_at: Option<Timestamp>,
     pub active_typing_count: usize,
     pub connected_count: u64,
 }

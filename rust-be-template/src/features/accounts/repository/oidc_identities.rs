@@ -1,8 +1,9 @@
 //! OpenID Connect identity persistence and account-resolution queries.
 
-use chrono::Utc;
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper, dsl::exists};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -42,7 +43,7 @@ impl AccountRepository {
         identity: &OidcIdentityClaims,
     ) -> Result<Option<OidcAccount>, AccountError> {
         let mut connection = self.connection().await?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         connection
             .transaction::<Option<OidcAccount>, AccountError, _>(async move |connection| {
                 let record = account_oidc_identities::table
@@ -79,8 +80,9 @@ impl AccountRepository {
                 .set((
                     account_oidc_identities::account_oidc_identity_provider_email
                         .eq(&identity.provider_email),
-                    account_oidc_identities::account_oidc_identity_updated_at.eq(now),
-                    account_oidc_identities::account_oidc_identity_last_authenticated_at.eq(now),
+                    account_oidc_identities::account_oidc_identity_updated_at.eq(now.to_diesel()),
+                    account_oidc_identities::account_oidc_identity_last_authenticated_at
+                        .eq(now.to_diesel()),
                 ))
                 .execute(&mut *connection)
                 .await?;
@@ -95,7 +97,7 @@ impl AccountRepository {
         identity: &OidcIdentityClaims,
     ) -> Result<OidcLinkReceipt, AccountError> {
         let mut connection = self.connection().await?;
-        let now = Utc::now();
+        let now = Timestamp::now();
         connection
             .transaction::<OidcLinkReceipt, AccountError, _>(async move |connection| {
                 let account = lock_verified_account(connection, user_id).await?;
@@ -124,7 +126,8 @@ impl AccountRepository {
                     .set((
                         account_oidc_identities::account_oidc_identity_provider_email
                             .eq(&identity.provider_email),
-                        account_oidc_identities::account_oidc_identity_updated_at.eq(now),
+                        account_oidc_identities::account_oidc_identity_updated_at
+                            .eq(now.to_diesel()),
                     ))
                     .execute(&mut *connection)
                     .await?;

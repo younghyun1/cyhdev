@@ -7,6 +7,7 @@ use diesel::{
     sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -113,7 +114,7 @@ async fn load_comment_page(
         query = query.filter(
             (comments::comment_created_at, comments::comment_id)
                 .into_sql::<Record<(Timestamptz, SqlUuid)>>()
-                .gt((after.created_at, after.comment_id)),
+                .gt((after.created_at.to_diesel(), after.comment_id)),
         );
     }
     let mut rows = query

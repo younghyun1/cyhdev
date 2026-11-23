@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 
 use super::{CachedChatMessage, ChatActor};
@@ -8,7 +8,7 @@ use crate::features::live_chat::domain::{ip_prefix::LiveChatIpPrefix, rtc::RtcSe
 pub struct TypingState {
     pub actor: ChatActor,
     pub room_key: String,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: Timestamp,
 }
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct ChatConnectionState {
     /// Targeted shutdown signal used when account authority is revoked.
     pub disconnect_tx: tokio::sync::watch::Sender<bool>,
     pub room_key: String,
-    pub connected_at: DateTime<Utc>,
+    pub connected_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -46,11 +46,11 @@ pub enum LiveChatServerEvent {
     Typing {
         actor: ChatActor,
         is_typing: bool,
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     },
     TypingSet {
         actors: Vec<ChatActor>,
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     },
     Presence {
         connected_count: u64,
@@ -73,8 +73,8 @@ pub struct LiveChatCacheStats {
     pub max_bytes: usize,
     pub used_bytes: usize,
     pub message_count: usize,
-    pub oldest_cached_at: Option<DateTime<Utc>>,
-    pub newest_cached_at: Option<DateTime<Utc>>,
+    pub oldest_cached_at: Option<Timestamp>,
+    pub newest_cached_at: Option<Timestamp>,
     pub active_typing_count: usize,
     pub connected_count: u64,
 }

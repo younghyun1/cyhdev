@@ -1,10 +1,16 @@
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
-use chrono::{Datelike, Duration, SecondsFormat, Timelike, Utc, Weekday};
+use jiff::{SignedDuration, Timestamp, civil::Weekday};
 use tracing::{error, info};
 
-use crate::{init::state::ServerState, util::time::duration_formatter::format_duration};
+use crate::{
+    init::state::ServerState,
+    util::time::{
+        duration_formatter::format_duration,
+        utc::{from_utc_datetime, to_utc_datetime},
+    },
+};
 
 /// Calculate the next UTC DateTime that lands on the specified weekday, hour, minute, and second,
 /// starting from 'now'. If the target time this week has already passed, schedule for the following week.
@@ -12,31 +18,28 @@ use crate::{init::state::ServerState, util::time::duration_formatter::format_dur
 /// For example, target_weekday=Weekday::Mon, hour_offset=2, minute_offset=15, second_offset=30
 /// will find the next Monday at 02:15:30 UTC that is still >= now.
 pub fn next_scheduled_week_mark(
-    now: chrono::DateTime<chrono::Utc>,
+    now: jiff::Timestamp,
     target_weekday: Weekday,
     hour_offset: u32,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<chrono::DateTime<chrono::Utc>> {
+) -> Result<jiff::Timestamp> {
     // 1) Truncate today to 00:00:00.
-    let today_midnight = match now
-        .with_hour(0)
-        .and_then(|dt| dt.with_minute(0))
-        .and_then(|dt| dt.with_second(0))
-        .and_then(|dt| dt.with_nanosecond(0))
-    {
-        Some(today_midnight) => today_midnight,
-        None => {
-            error!(now = %now, "Failed to truncate to start-of-day for scheduling");
-            return Err(anyhow!("Failed to truncate to start-of-day for scheduling"));
-        }
-    };
+    let now_utc = to_utc_datetime(now);
+    let today_midnight =
+        match from_utc_datetime(now_utc.date().to_datetime(jiff::civil::Time::midnight())) {
+            Ok(today_midnight) => today_midnight,
+            Err(e) => {
+                error!(now = %now, error = %e, "Failed to truncate to start-of-day for scheduling");
+                return Err(anyhow!("Failed to truncate to start-of-day for scheduling"));
+            }
+        };
 
     // 2) Find day difference (how many days to the next target weekday).
-    let current_weekday = now.weekday();
-    let mut days_ahead = (target_weekday.number_from_monday() as i64
-        - current_weekday.number_from_monday() as i64)
-        .rem_euclid(7);
+    let current_weekday = now_utc.weekday();
+    let mut days_ahead = (i64::from(target_weekday.to_monday_one_offset())
+        - i64::from(current_weekday.to_monday_one_offset()))
+    .rem_euclid(7);
     // Sanity check offsets
     if hour_offset > 23 || minute_offset > 59 || second_offset > 59 {
         error!(
@@ -46,9 +49,9 @@ pub fn next_scheduled_week_mark(
         return Err(anyhow!("Invalid offset for weekly schedule"));
     }
     let target_time_today = today_midnight
-        + chrono::Duration::hours(hour_offset as i64)
-        + chrono::Duration::minutes(minute_offset as i64)
-        + chrono::Duration::seconds(second_offset as i64);
+        + SignedDuration::from_hours(i64::from(hour_offset))
+        + SignedDuration::from_mins(i64::from(minute_offset))
+        + SignedDuration::from_secs(i64::from(second_offset));
 
     if days_ahead == 0 && target_time_today <= now {
         // If today but time has passed, schedule to next week.
@@ -60,10 +63,10 @@ pub fn next_scheduled_week_mark(
 
     // 3) Compose the next scheduled datetime
     let target_time = today_midnight
-        + chrono::Duration::days(days_ahead)
-        + chrono::Duration::hours(hour_offset as i64)
-        + chrono::Duration::minutes(minute_offset as i64)
-        + chrono::Duration::seconds(second_offset as i64);
+        + SignedDuration::from_hours(24 * days_ahead)
+        + SignedDuration::from_hours(i64::from(hour_offset))
+        + SignedDuration::from_mins(i64::from(minute_offset))
+        + SignedDuration::from_secs(i64::from(second_offset));
 
     Ok(target_time)
 }
@@ -75,15 +78,14 @@ pub fn next_scheduled_weekly_delay(
     hour_offset: u32,
     minute_offset: u32,
     second_offset: u32,
-) -> Result<(tokio::time::Duration, chrono::DateTime<chrono::Utc>)> {
-    let now = Utc::now();
+) -> Result<(tokio::time::Duration, jiff::Timestamp)> {
+    let now = Timestamp::now();
     let next_mark =
         next_scheduled_week_mark(now, weekday, hour_offset, minute_offset, second_offset)?;
 
-    let delay = next_mark - now;
-    let delay = delay.to_std().map_err(|e| {
+    let delay = std::time::Duration::try_from(next_mark.duration_since(now)).map_err(|e| {
         anyhow!(
-            "Could not schedule job at next_scheduled_week_mark(). Chrono->Std error: {:?}",
+            "Could not schedule job at next_scheduled_week_mark(). negative delay: {:?}",
             e
         )
     })?;
@@ -93,7 +95,7 @@ pub fn next_scheduled_weekly_delay(
 
 /// Schedules a task to run once per week, at a specific
 /// weekday+hour+minute+second offset (e.g., Monday 02:15:30 UTC every week).
-/// Pass the desired chrono::Weekday directly as the weekday argument.
+/// Pass the desired jiff::civil::Weekday directly as the weekday argument.
 pub async fn schedule_task_every_week_at<F, Fut>(
     state: Arc<ServerState>,
     task: F,
@@ -108,7 +110,7 @@ where
     Fut: std::future::Future<Output = ()> + Send + 'static,
 {
     let mut initialized: bool = false;
-    let mut scheduled_run_time: Option<chrono::DateTime<chrono::Utc>> = None;
+    let mut scheduled_run_time: Option<jiff::Timestamp> = None;
     loop {
         let (delay, next_mark) = match next_scheduled_weekly_delay(
             &task_descriptor,
@@ -132,7 +134,7 @@ where
         if !initialized {
             info!(
                 task_name = %task_descriptor,
-                initial_run_time = %next_mark.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+                initial_run_time = %next_mark,
                 ?delay,
                 delay_human = %format_duration(delay),
                 "Scheduled task initialized"
@@ -152,8 +154,10 @@ where
         let elapsed = start.elapsed();
 
         // Add one week to the previously scheduled run time.
-        let next_run_time = this_run_time + Duration::weeks(1);
-        let next_delay = match (next_run_time - Utc::now()).to_std() {
+        let next_run_time = this_run_time + SignedDuration::from_hours(24 * 7);
+        let next_delay = match std::time::Duration::try_from(
+            next_run_time.duration_since(Timestamp::now()),
+        ) {
             Ok(next_delay) => next_delay,
             Err(e) => {
                 error!(task_name = %task_descriptor, error = ?e, "Scheduled task next delay was negative");
@@ -163,7 +167,7 @@ where
 
         info!(
             task_name = %task_descriptor,
-            next_run_time = %next_run_time.to_rfc3339_opts(SecondsFormat::AutoSi, true),
+            next_run_time = %next_run_time,
             duration=?elapsed,
             next_delay_human = %format_duration(next_delay),
             "Scheduled task ran"

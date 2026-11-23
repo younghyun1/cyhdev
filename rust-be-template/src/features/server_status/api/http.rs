@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 
@@ -15,7 +15,7 @@ use crate::{
 
 #[derive(Serialize, ToSchema)]
 pub struct RootHandlerResponse {
-    timestamp: DateTime<Utc>,
+    timestamp: Timestamp,
     server_uptime: String,
     responses_handled: u64,
     users_logged_in: usize,
@@ -44,7 +44,7 @@ pub async fn root_handler(
         .map_err(|error| code_err(CodeError::DB_QUERY_ERROR, error))?;
     Ok(http_resp(
         RootHandlerResponse {
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             server_uptime: format_duration(status.runtime.uptime),
             responses_handled: status.runtime.responses_handled,
             users_logged_in: status.runtime.users_logged_in,

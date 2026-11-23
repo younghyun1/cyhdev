@@ -65,7 +65,7 @@ async fn capacity_is_strict_and_expired_entries_are_reclaimed() -> Result<(), Ac
             &first_account,
             RoleType::User,
             None,
-            Some(chrono::Duration::seconds(-1)),
+            Some(jiff::SignedDuration::from_secs(-1)),
         )
         .await?;
     let replacement = sessions

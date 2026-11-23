@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr};
 
-use chrono::{Duration, Utc};
+use jiff::{SignedDuration, Timestamp};
 use uuid::Uuid;
 
 use super::ConnectionAdmission;
@@ -41,7 +41,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
                     client_prefix: LiveChatIpPrefix::of(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                     disconnect_tx,
                     room_key: "main".to_owned(),
-                    connected_at: Utc::now(),
+                    connected_at: Timestamp::now(),
                 },
             )
             .await,
@@ -57,7 +57,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
                     client_prefix: LiveChatIpPrefix::of(IpAddr::V4(Ipv4Addr::LOCALHOST)),
                     disconnect_tx: second_disconnect_tx,
                     room_key: "main".to_owned(),
-                    connected_at: Utc::now(),
+                    connected_at: Timestamp::now(),
                 },
             )
             .await,
@@ -68,7 +68,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
             .set_typing(TypingState {
                 actor: actor.clone(),
                 room_key: "main".to_owned(),
-                expires_at: Utc::now() + Duration::seconds(5),
+                expires_at: Timestamp::now() + SignedDuration::from_secs(5),
             })
             .await
     );
@@ -85,7 +85,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
             sender_country_flag: Some("country".to_owned()),
             user_profile_picture_url: Some("https://example.invalid/profile".to_owned()),
             message_body: "Retained message".to_owned(),
-            message_created_at: Utc::now(),
+            message_created_at: Timestamp::now(),
             message_edited_at: None,
             message_deleted_at: None,
         })
@@ -114,7 +114,7 @@ async fn deletion_rewrites_bounded_messages_actors_and_rtc_events() {
     let stats = cache.stats().await;
     assert_eq!(stats.used_bytes, message.estimated_bytes());
 
-    let typing = cache.active_typing_actors(Utc::now(), 16).await;
+    let typing = cache.active_typing_actors(Timestamp::now(), 16).await;
     assert_eq!(typing.len(), 1);
     let typing_actor = match typing.first() {
         Some(actor) => actor,

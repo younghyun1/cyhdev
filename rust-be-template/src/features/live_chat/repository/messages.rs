@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use chrono::Utc;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, IntoSql, JoinOnDsl, NullableExpressionMethods,
     OptionalExtension, QueryDsl, SelectableHelper,
     sql_types::{Record, Timestamptz, Uuid as SqlUuid},
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::schema::{live_chat_messages, user_profile_pictures, users};
@@ -74,7 +74,7 @@ impl LiveChatRepository {
                 live_chat_messages::room_key,
                 live_chat_messages::message_created_at,
             ))
-            .first::<(String, chrono::DateTime<Utc>)>(&mut connection)
+            .first::<(String, jiff_diesel::Timestamp)>(&mut connection)
             .await
             .optional()?
             .ok_or(LiveChatError::InvalidCursor)?;
@@ -132,12 +132,12 @@ impl LiveChatRepository {
                 users::user_deleted_at,
                 user_profile_pictures::user_profile_picture_link.nullable(),
             ))
-            .load::<(Uuid, i32, Option<chrono::DateTime<Utc>>, Option<String>)>(&mut connection)
+            .load::<(Uuid, i32, jiff_diesel::NullableTimestamp, Option<String>)>(&mut connection)
             .await?;
         let mut country_codes = HashMap::new();
         let mut profile_urls = HashMap::new();
         for (id, country, deleted, profile) in rows {
-            if deleted.is_none() {
+            if deleted.to_jiff().is_none() {
                 deleted_user_ids.remove(&id);
                 country_codes.insert(id, country);
                 if let Some(profile) = profile {
@@ -172,7 +172,7 @@ impl LiveChatRepository {
                         sender_kind: actor.sender_kind,
                         sender_display_name: actor.display_name.clone(),
                         message_body: body,
-                        message_created_at: Utc::now(),
+                        message_created_at: Timestamp::now(),
                     })
                     .returning(MessageRecord::as_returning())
                     .get_result::<MessageRecord>(&mut *connection)

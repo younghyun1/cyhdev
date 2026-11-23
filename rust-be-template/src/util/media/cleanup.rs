@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use tracing::error;
 use uuid::Uuid;
 
@@ -58,7 +58,7 @@ pub struct MediaCleanupFailureUpdate {
 /// Bounded retry candidate loaded from the durable ledger.
 pub struct MediaCleanupRetryCandidate {
     pub cleanup: DurableMediaCleanup,
-    pub last_attempt_at: Option<DateTime<Utc>>,
+    pub last_attempt_at: Option<Timestamp>,
 }
 
 /// Resolved ledger row inserted after an unregistered compensation failure.
@@ -67,7 +67,7 @@ pub struct MediaCleanupFailureRegistration {
     pub original_url: String,
     pub reason: &'static str,
     pub source_id: Uuid,
-    pub attempted_at: DateTime<Utc>,
+    pub attempted_at: Timestamp,
     pub error: String,
 }
 
@@ -143,7 +143,7 @@ pub async fn settle_durable_cleanup(
     }
     if !failure_updates.is_empty() {
         match account_service
-            .record_media_object_cleanup_failures(Utc::now(), &failure_updates)
+            .record_media_object_cleanup_failures(Timestamp::now(), &failure_updates)
             .await
         {
             Ok(recorded) => settlement.failures_recorded = recorded,

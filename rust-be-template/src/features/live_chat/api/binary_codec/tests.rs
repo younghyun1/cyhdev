@@ -1,6 +1,6 @@
 use std::{net::IpAddr, str::FromStr};
 
-use chrono::{TimeZone, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use super::*;
@@ -153,10 +153,7 @@ fn cached_guest_message(guest_ip: IpAddr) -> Result<CachedChatMessage, Box<dyn s
         sender_country_flag: Some("🇺🇸".to_string()),
         user_profile_picture_url: None,
         message_body: "hello".to_string(),
-        message_created_at: Utc
-            .timestamp_millis_opt(1_700_000_000_000)
-            .single()
-            .ok_or("valid timestamp expected")?,
+        message_created_at: Timestamp::from_millisecond(1_700_000_000_000)?,
         message_edited_at: None,
         message_deleted_at: None,
     })

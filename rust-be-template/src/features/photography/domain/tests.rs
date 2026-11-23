@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use super::{
@@ -16,9 +16,9 @@ fn deleted_owner_masks_photograph_identity_and_location_only() {
     let mut photograph = Photograph {
         photograph_id,
         user_id: Uuid::now_v7(),
-        photograph_shot_at: Some(Utc::now()),
-        photograph_created_at: Utc::now(),
-        photograph_updated_at: Utc::now(),
+        photograph_shot_at: Some(Timestamp::now()),
+        photograph_created_at: Timestamp::now(),
+        photograph_updated_at: Timestamp::now(),
         photograph_image_type: 1,
         photograph_is_on_cloud: true,
         photograph_link: "https://example.invalid/photo".to_owned(),
@@ -53,7 +53,7 @@ fn deleted_comment_author_does_not_change_comment_content() {
         photograph_id,
         user_id: Uuid::now_v7(),
         photograph_comment_content: "Retained photograph comment".to_owned(),
-        photograph_comment_created_at: Utc::now(),
+        photograph_comment_created_at: Timestamp::now(),
         photograph_comment_updated_at: None,
         parent_photograph_comment_id: None,
         photograph_comment_total_upvotes: 5,

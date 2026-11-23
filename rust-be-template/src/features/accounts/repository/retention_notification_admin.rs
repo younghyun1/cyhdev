@@ -1,8 +1,9 @@
 //! Database-authoritative superuser status and retry controls.
 
-use chrono::{DateTime, Utc};
 use diesel::{BoolExpressionMethods, ExpressionMethods, JoinOnDsl, OptionalExtension, QueryDsl};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -49,9 +50,9 @@ impl AccountRepository {
                     if let Some(cursor) = cursor {
                         query = query.filter(
                             account_retention_notifications::account_retention_notification_next_attempt_at
-                                .gt(cursor.next_attempt_at)
+                                .gt(cursor.next_attempt_at.to_diesel())
                                 .or(account_retention_notifications::account_retention_notification_next_attempt_at
-                                    .eq(cursor.next_attempt_at)
+                                    .eq(cursor.next_attempt_at.to_diesel())
                                     .and(account_retention_notifications::account_retention_notification_id
                                         .gt(cursor.notification_id))),
                         );
@@ -67,12 +68,12 @@ impl AccountRepository {
                             Uuid,
                             Uuid,
                             StoredRetentionNotificationStage,
-                            DateTime<Utc>,
-                            DateTime<Utc>,
+                            jiff_diesel::Timestamp,
+                            jiff_diesel::Timestamp,
                             i32,
-                            Option<DateTime<Utc>>,
-                            Option<DateTime<Utc>>,
-                            Option<DateTime<Utc>>,
+                            jiff_diesel::NullableTimestamp,
+                            jiff_diesel::NullableTimestamp,
+                            jiff_diesel::NullableTimestamp,
                             Option<String>,
                         )>(&mut *connection)
                         .await?;
@@ -94,12 +95,12 @@ impl AccountRepository {
                                 notification_id,
                                 user_id,
                                 stage: stage.into_domain(),
-                                scheduled_for,
-                                next_attempt_at,
+                                scheduled_for: scheduled_for.to_jiff(),
+                                next_attempt_at: next_attempt_at.to_jiff(),
                                 attempt_count,
-                                claim_expires_at,
-                                sent_at,
-                                cancelled_at,
+                                claim_expires_at: claim_expires_at.to_jiff(),
+                                sent_at: sent_at.to_jiff(),
+                                cancelled_at: cancelled_at.to_jiff(),
                                 last_error,
                             },
                         )
@@ -113,7 +114,7 @@ impl AccountRepository {
         &self,
         requester_id: Uuid,
         notification_id: Uuid,
-        retry_at: DateTime<Utc>,
+        retry_at: Timestamp,
     ) -> Result<RetentionNotificationRetryReceipt, AccountError> {
         let mut connection = self.connection().await?;
         connection
@@ -145,16 +146,17 @@ impl AccountRepository {
                         ))
                         .for_update()
                         .first::<(
-                            DateTime<Utc>,
-                            Option<DateTime<Utc>>,
-                            Option<DateTime<Utc>>,
-                            Option<DateTime<Utc>>,
+                            jiff_diesel::Timestamp,
+                            Option<jiff_diesel::Timestamp>,
+                            Option<jiff_diesel::Timestamp>,
+                            jiff_diesel::NullableTimestamp,
                         )>(&mut *connection)
                         .await
                         .optional()?;
                     let (scheduled_for, sent_at, cancelled_at, purge_after) =
                         state.ok_or(AccountError::AccountChanged)?;
-                    let purge_after = purge_after.ok_or(AccountError::AccountChanged)?;
+                    let scheduled_for = scheduled_for.to_jiff();
+                    let purge_after = purge_after.to_jiff().ok_or(AccountError::AccountChanged)?;
                     if sent_at.is_some()
                         || cancelled_at.is_some()
                         || retry_at < scheduled_for
@@ -170,15 +172,15 @@ impl AccountRepository {
                     )
                     .set((
                         account_retention_notifications::account_retention_notification_next_attempt_at
-                            .eq(retry_at),
+                            .eq(retry_at.to_diesel()),
                         account_retention_notifications::account_retention_notification_claim_token
                             .eq(Option::<Uuid>::None),
                         account_retention_notifications::account_retention_notification_claimed_at
-                            .eq(Option::<DateTime<Utc>>::None),
+                            .eq(Option::<Timestamp>::None.to_diesel()),
                         account_retention_notifications::account_retention_notification_claim_expires_at
-                            .eq(Option::<DateTime<Utc>>::None),
+                            .eq(Option::<Timestamp>::None.to_diesel()),
                         account_retention_notifications::account_retention_notification_updated_at
-                            .eq(retry_at),
+                            .eq(retry_at.to_diesel()),
                     ))
                     .execute(&mut *connection)
                     .await?;

@@ -1,6 +1,6 @@
 //! Transport-independent forum input validation.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::forum::{
@@ -27,7 +27,7 @@ pub(super) fn search(value: Option<String>) -> Result<Option<ForumSearch>, Forum
 
 pub(super) fn topic_cursor(
     pinned: Option<bool>,
-    activity: Option<DateTime<Utc>>,
+    activity: Option<Timestamp>,
     topic_id: Option<Uuid>,
 ) -> Result<Option<ForumTopicCursor>, ForumError> {
     match (pinned, activity, topic_id) {
@@ -42,7 +42,7 @@ pub(super) fn topic_cursor(
 }
 
 pub(super) fn reply_cursor(
-    created_at: Option<DateTime<Utc>>,
+    created_at: Option<Timestamp>,
     reply_id: Option<Uuid>,
 ) -> Result<Option<ForumReplyCursor>, ForumError> {
     match (created_at, reply_id) {
@@ -56,7 +56,7 @@ pub(super) fn reply_cursor(
 }
 
 pub(super) fn timestamp_cursor(
-    created_at: Option<DateTime<Utc>>,
+    created_at: Option<Timestamp>,
     item_id: Option<Uuid>,
 ) -> Result<Option<ForumTimestampCursor>, ForumError> {
     match (created_at, item_id) {

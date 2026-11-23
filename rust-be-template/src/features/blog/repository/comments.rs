@@ -2,9 +2,10 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -23,7 +24,7 @@ use super::{
 /// Owner and deletion state of a comment locked for mutation.
 struct LockedComment {
     owner_id: Uuid,
-    deleted_at: Option<DateTime<Utc>>,
+    deleted_at: Option<Timestamp>,
 }
 
 impl BlogRepository {
@@ -60,9 +61,10 @@ impl BlogRepository {
                     let (parent_post_id, parent_deleted_at) = comments::table
                         .find(parent_comment_id)
                         .select((comments::post_id, comments::comment_deleted_at))
-                        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+                        .first::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut *connection)
                         .await
                         .optional()?
+                        .map(|(post_id, deleted_at)| (post_id, deleted_at.to_jiff()))
                         .ok_or(BlogError::CommentNotFound)?;
                     if parent_post_id != post_id {
                         return Err(BlogError::InvalidInput);
@@ -106,7 +108,7 @@ impl BlogRepository {
                 diesel::update(comments::table.find(comment_id))
                     .set((
                         comments::comment_content.eq(content),
-                        comments::comment_updated_at.eq(Utc::now()),
+                        comments::comment_updated_at.eq(Timestamp::now().to_diesel()),
                     ))
                     .returning(CommentRecord::as_returning())
                     .get_result::<CommentRecord>(&mut *connection)
@@ -137,7 +139,7 @@ impl BlogRepository {
                 diesel::update(comments::table.find(comment_id))
                     .set((
                         comments::comment_content.eq(""),
-                        comments::comment_deleted_at.eq(Some(Utc::now())),
+                        comments::comment_deleted_at.eq(Some(Timestamp::now()).to_diesel()),
                     ))
                     .execute(&mut *connection)
                     .await?;
@@ -155,12 +157,12 @@ async fn lock_comment(
         .find(comment_id)
         .select((comments::user_id, comments::comment_deleted_at))
         .for_update()
-        .first::<(Uuid, Option<DateTime<Utc>>)>(&mut *connection)
+        .first::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut *connection)
         .await
         .optional()?
         .map(|(owner_id, deleted_at)| LockedComment {
             owner_id,
-            deleted_at,
+            deleted_at: deleted_at.to_jiff(),
         })
         .ok_or(BlogError::CommentNotFound)
 }

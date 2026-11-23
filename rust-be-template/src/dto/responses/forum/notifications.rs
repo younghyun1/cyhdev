@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -16,10 +16,10 @@ pub struct ForumNotificationResponse {
     pub kind: ForumNotificationKindResponse,
     #[schema(required)]
     pub topic_title: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
     #[schema(required)]
-    pub read_at: Option<DateTime<Utc>>,
+    pub read_at: Option<Timestamp>,
 }
 
 impl From<ForumNotificationView> for ForumNotificationResponse {
@@ -41,7 +41,7 @@ impl From<ForumNotificationView> for ForumNotificationResponse {
 
 #[derive(Serialize, ToSchema)]
 pub struct ForumNotificationCursorResponse {
-    pub before_created_at: DateTime<Utc>,
+    pub before_created_at: Timestamp,
     pub before_notification_id: Uuid,
 }
 impl From<ForumTimestampCursor> for ForumNotificationCursorResponse {
@@ -63,5 +63,5 @@ pub struct ForumNotificationListResponse {
 #[derive(Serialize, ToSchema)]
 pub struct ForumNotificationReadResponse {
     pub notification_id: Uuid,
-    pub read_at: DateTime<Utc>,
+    pub read_at: Timestamp,
 }

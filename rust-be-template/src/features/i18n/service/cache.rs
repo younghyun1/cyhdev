@@ -201,14 +201,14 @@ impl I18nCache {
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
+    use jiff::Timestamp;
     use uuid::Uuid;
 
     use super::I18nCache;
     use crate::features::i18n::domain::message::InternationalizationString;
 
     fn row(country: i32, language: i32, content: &str) -> InternationalizationString {
-        let now = Utc::now();
+        let now = Timestamp::now();
         InternationalizationString {
             i18n_string_id: Uuid::now_v7(),
             i18n_string_content: content.to_owned(),

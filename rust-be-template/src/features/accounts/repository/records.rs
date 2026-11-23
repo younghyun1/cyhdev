@@ -1,7 +1,7 @@
 //! Diesel records kept private to the account repository boundary.
 
-use chrono::{DateTime, Utc};
 use diesel::{AsChangeset, Insertable, Queryable, Selectable};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::{
@@ -22,7 +22,8 @@ pub(super) struct AccountRecord {
     pub(super) user_name: String,
     pub(super) user_email: String,
     pub(super) user_password_hash: String,
-    pub(super) user_updated_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    pub(super) user_updated_at: Timestamp,
     pub(super) user_is_email_verified: bool,
     pub(super) user_country: i32,
     pub(super) user_language: i32,
@@ -95,7 +96,8 @@ impl From<AccountProfileRecord> for SessionAccount {
 pub(super) struct PublicAccountRecord {
     user_id: Uuid,
     user_name: String,
-    user_created_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    user_created_at: Timestamp,
     user_country: i32,
 }
 
@@ -121,8 +123,10 @@ impl PublicAccountRecord {
 pub(super) struct ProfilePictureRecord {
     user_profile_picture_id: Uuid,
     user_id: Uuid,
-    user_profile_picture_created_at: DateTime<Utc>,
-    user_profile_picture_updated_at: DateTime<Utc>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    user_profile_picture_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    user_profile_picture_updated_at: Timestamp,
     user_profile_picture_image_type: i32,
     user_profile_picture_is_on_cloud: bool,
     user_profile_picture_is_active: bool,
@@ -150,9 +154,12 @@ impl From<ProfilePictureRecord> for ProfilePicture {
 pub(super) struct EmailVerificationTokenRecord {
     email_verification_token_id: Uuid,
     user_id: Uuid,
-    email_verification_token_expires_at: DateTime<Utc>,
-    email_verification_token_created_at: DateTime<Utc>,
-    email_verification_token_used_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    email_verification_token_expires_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    email_verification_token_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    email_verification_token_used_at: Option<Timestamp>,
 }
 
 impl From<EmailVerificationTokenRecord> for EmailVerificationToken {
@@ -173,9 +180,12 @@ impl From<EmailVerificationTokenRecord> for EmailVerificationToken {
 pub(super) struct PasswordResetTokenRecord {
     password_reset_token_id: Uuid,
     user_id: Uuid,
-    password_reset_token_expires_at: DateTime<Utc>,
-    password_reset_token_created_at: DateTime<Utc>,
-    password_reset_token_used_at: Option<DateTime<Utc>>,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    password_reset_token_expires_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::Timestamp)]
+    password_reset_token_created_at: Timestamp,
+    #[diesel(deserialize_as = jiff_diesel::NullableTimestamp)]
+    password_reset_token_used_at: Option<Timestamp>,
 }
 
 impl From<PasswordResetTokenRecord> for PasswordResetToken {
@@ -213,8 +223,10 @@ pub(super) struct NewUserRoleRecord {
 pub(super) struct NewEmailVerificationTokenRecord<'a> {
     pub(super) user_id: Uuid,
     pub(super) email_verification_token_hash: &'a [u8],
-    pub(super) email_verification_token_expires_at: DateTime<Utc>,
-    pub(super) email_verification_token_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) email_verification_token_expires_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) email_verification_token_created_at: Timestamp,
 }
 
 #[derive(Insertable)]
@@ -222,15 +234,17 @@ pub(super) struct NewEmailVerificationTokenRecord<'a> {
 pub(super) struct NewPasswordResetTokenRecord<'a> {
     pub(super) user_id: Uuid,
     pub(super) password_reset_token_hash: &'a [u8],
-    pub(super) password_reset_token_expires_at: DateTime<Utc>,
-    pub(super) password_reset_token_created_at: DateTime<Utc>,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) password_reset_token_expires_at: Timestamp,
+    #[diesel(serialize_as = jiff_diesel::Timestamp)]
+    pub(super) password_reset_token_created_at: Timestamp,
 }
 
 #[derive(AsChangeset)]
 #[diesel(table_name = users)]
 pub(super) struct UpdatePasswordRecord<'a> {
     pub(super) user_password_hash: &'a str,
-    pub(super) user_updated_at: DateTime<Utc>,
+    pub(super) user_updated_at: jiff_diesel::Timestamp,
 }
 
 #[derive(Insertable)]

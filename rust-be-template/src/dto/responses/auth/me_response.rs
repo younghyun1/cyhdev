@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_derive::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -37,8 +37,8 @@ impl From<AccountProfile> for UserInfo {
 pub struct UserProfilePicture {
     pub user_profile_picture_id: Uuid,
     pub user_id: Uuid,
-    pub user_profile_picture_created_at: DateTime<Utc>,
-    pub user_profile_picture_updated_at: DateTime<Utc>,
+    pub user_profile_picture_created_at: Timestamp,
+    pub user_profile_picture_updated_at: Timestamp,
     pub user_profile_picture_image_type: i32,
     pub user_profile_picture_is_on_cloud: bool,
     #[schema(required)]

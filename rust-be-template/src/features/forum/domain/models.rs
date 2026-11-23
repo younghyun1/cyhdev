@@ -1,6 +1,6 @@
 //! Forum aggregates returned by repository and service boundaries.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 
 use crate::features::accounts::domain::public_author::PublicAuthor;
@@ -19,10 +19,10 @@ pub struct ForumTopic {
     pub is_pinned: bool,
     pub revision: i32,
     pub reply_count: i64,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub last_activity_at: DateTime<Utc>,
-    pub edited_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub last_activity_at: Timestamp,
+    pub edited_at: Option<Timestamp>,
 }
 
 pub struct ForumReply {
@@ -32,9 +32,9 @@ pub struct ForumReply {
     pub body: Option<String>,
     pub content_state: ForumContentState,
     pub revision: i32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub edited_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub edited_at: Option<Timestamp>,
 }
 
 pub struct ForumTopicView {
@@ -50,19 +50,19 @@ pub struct ForumReplyView {
 #[derive(Clone, Copy)]
 pub struct ForumTopicCursor {
     pub is_pinned: bool,
-    pub last_activity_at: DateTime<Utc>,
+    pub last_activity_at: Timestamp,
     pub topic_id: Uuid,
 }
 
 #[derive(Clone, Copy)]
 pub struct ForumReplyCursor {
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub reply_id: Uuid,
 }
 
 #[derive(Clone, Copy)]
 pub struct ForumTimestampCursor {
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub item_id: Uuid,
 }
 
@@ -85,7 +85,7 @@ pub struct ForumTopicDetail {
 pub struct ForumMutationReceipt {
     pub item_id: Uuid,
     pub revision: i32,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
 }
 
 pub struct ForumModerationReceipt {
@@ -93,7 +93,7 @@ pub struct ForumModerationReceipt {
     pub target_id: Uuid,
     pub revision: i32,
     pub action: ForumModerationAction,
-    pub moderated_at: DateTime<Utc>,
+    pub moderated_at: Timestamp,
 }
 
 pub struct ForumNotification {
@@ -104,9 +104,9 @@ pub struct ForumNotification {
     pub reply_id: Uuid,
     pub kind: ForumNotificationKind,
     pub topic_title: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub read_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
+    pub read_at: Option<Timestamp>,
 }
 
 pub struct ForumNotificationView {
@@ -127,7 +127,7 @@ pub struct ForumModerationAuditEvent {
     pub action: ForumModerationAction,
     pub reason: String,
     pub request_id: Option<Uuid>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 pub struct ForumModerationAuditView {

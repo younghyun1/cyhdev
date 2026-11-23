@@ -1,6 +1,5 @@
 //! Lifecycle assertions shared by database-backed account tests.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -144,9 +143,9 @@ pub async fn require_permanent_tombstone(
         .first::<(
             String,
             String,
-            Option<DateTime<Utc>>,
-            Option<DateTime<Utc>>,
-            Option<DateTime<Utc>>,
+            Option<jiff_diesel::Timestamp>,
+            Option<jiff_diesel::Timestamp>,
+            Option<jiff_diesel::Timestamp>,
         )>(&mut connection)
         .await?;
     let retention_rows = deleted_account_retention::table

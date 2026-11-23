@@ -187,10 +187,7 @@ impl PhotographyService {
     }
 }
 
-async fn read_exif(
-    path: std::path::PathBuf,
-    user_id: Uuid,
-) -> Option<chrono::DateTime<chrono::Utc>> {
+async fn read_exif(path: std::path::PathBuf, user_id: Uuid) -> Option<jiff::Timestamp> {
     match tokio::task::spawn_blocking(move || extract_exif_shot_at_from_path(&path)).await {
         Ok(Ok(value)) => value,
         Ok(Err(error)) => {

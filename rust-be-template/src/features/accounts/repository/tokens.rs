@@ -1,8 +1,9 @@
 //! Password-reset and email-verification token persistence.
 
-use chrono::{DateTime, Utc};
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use jiff::Timestamp;
+use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
 use crate::{
@@ -30,8 +31,8 @@ impl AccountRepository {
         &self,
         user_email: &str,
         digest: &CapabilityDigest,
-        created_at: DateTime<Utc>,
-        expires_at: DateTime<Utc>,
+        created_at: Timestamp,
+        expires_at: Timestamp,
     ) -> Result<Option<PasswordResetRequestReceipt>, AccountError> {
         let mut connection = self.connection().await?;
         connection
@@ -94,13 +95,13 @@ impl AccountRepository {
     pub async fn consume_password_reset_token(
         &self,
         token: &PasswordResetToken,
-        consumed_at: DateTime<Utc>,
+        consumed_at: Timestamp,
         password_hash: &str,
     ) -> Result<PasswordResetReceipt, AccountError> {
         let mut connection = self.connection().await?;
         let update = UpdatePasswordRecord {
             user_password_hash: password_hash,
-            user_updated_at: consumed_at,
+            user_updated_at: consumed_at.to_diesel(),
         };
         let transaction_result = connection
             .transaction::<(AccountRecord, usize), diesel::result::Error, _>(async |connection| {
@@ -109,7 +110,9 @@ impl AccountRepository {
                         .filter(password_reset_tokens::password_reset_token_id.eq(token.token_id))
                         .filter(password_reset_tokens::password_reset_token_used_at.is_null()),
                 )
-                .set(password_reset_tokens::password_reset_token_used_at.eq(consumed_at))
+                .set(
+                    password_reset_tokens::password_reset_token_used_at.eq(consumed_at.to_diesel()),
+                )
                 .execute(&mut *connection)
                 .await?;
 
@@ -168,7 +171,7 @@ impl AccountRepository {
     pub async fn consume_email_verification_token(
         &self,
         token: &EmailVerificationToken,
-        verified_at: DateTime<Utc>,
+        verified_at: Timestamp,
     ) -> Result<EmailVerificationReceipt, AccountError> {
         let mut connection = self.connection().await?;
         let transaction_result = connection
@@ -183,7 +186,10 @@ impl AccountRepository {
                             email_verification_tokens::email_verification_token_used_at.is_null(),
                         ),
                 )
-                .set(email_verification_tokens::email_verification_token_used_at.eq(verified_at))
+                .set(
+                    email_verification_tokens::email_verification_token_used_at
+                        .eq(verified_at.to_diesel()),
+                )
                 .execute(&mut *connection)
                 .await?;
 
@@ -199,7 +205,7 @@ impl AccountRepository {
                 )
                 .set((
                     users::user_is_email_verified.eq(true),
-                    users::user_updated_at.eq(verified_at),
+                    users::user_updated_at.eq(verified_at.to_diesel()),
                 ))
                 .returning(users::user_email)
                 .get_result::<String>(&mut *connection)

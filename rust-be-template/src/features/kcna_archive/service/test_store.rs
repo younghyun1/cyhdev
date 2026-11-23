@@ -6,7 +6,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -18,7 +18,7 @@ use crate::features::kcna_archive::{domain::reader::ArchiveReader, error::Archiv
 pub(crate) struct MemoryReaderStore {
     /// Active accounts by identifier, with the name each is shown under.
     accounts: HashMap<Uuid, String>,
-    granted: Mutex<Vec<(Uuid, DateTime<Utc>)>>,
+    granted: Mutex<Vec<(Uuid, Timestamp)>>,
     failing: AtomicBool,
 }
 
@@ -75,7 +75,7 @@ impl ReaderStore for MemoryReaderStore {
         }
         let mut granted = self.granted.lock().await;
         if !granted.iter().any(|(listed, _)| *listed == user_id) {
-            granted.push((user_id, Utc::now()));
+            granted.push((user_id, Timestamp::now()));
         }
         Ok(true)
     }

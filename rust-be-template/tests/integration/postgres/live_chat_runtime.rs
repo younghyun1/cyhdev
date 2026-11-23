@@ -1,15 +1,16 @@
 //! Live-chat persistence behind runtime limits: expiring prefix bans, room-scoped
 //! history, tied keyset cursors, and call-row reconciliation.
 
+use jiff_diesel::ToDiesel;
 use std::net::IpAddr;
 
 use crate::support::{
     database::{DatabaseTestFuture, TestDatabase, TestResult, require, run_database_test},
     fixtures::account_test_context,
 };
-use chrono::{Duration, Utc};
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
+use jiff::{SignedDuration, Timestamp};
 use rust_be_template::{
     features::live_chat::{
         domain::{
@@ -60,7 +61,7 @@ fn ban_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .insert_abuse_ban(
                 &guest("2001:db8:aa:bb:1::1")?,
                 network,
-                Utc::now() + Duration::hours(24),
+                Timestamp::now() + SignedDuration::from_hours(24),
             )
             .await?;
         require(
@@ -89,7 +90,7 @@ fn ban_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
             .insert_abuse_ban(
                 &guest("198.51.100.20")?,
                 LiveChatIpPrefix::of(expired).network(),
-                Utc::now() - Duration::seconds(1),
+                Timestamp::now() - SignedDuration::from_secs(1),
             )
             .await?;
         require(
@@ -107,7 +108,7 @@ fn history_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
     Box::pin(async move {
         let context = account_test_context(database)?;
         let repository = LiveChatRepository::new(context.pool.clone());
-        let tied_at = Utc::now() - Duration::minutes(5);
+        let tied_at = Timestamp::now() - SignedDuration::from_mins(5);
         // Ascending UUIDs sharing one timestamp exercise the id tie-breaker.
         let tied_ids = (1..=5_u128)
             .map(|index| Uuid::from_u128((0x0190_0000_0000_7000_8000_0000_0000_0000) + index))
@@ -116,10 +117,10 @@ fn history_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
         for id in &tied_ids {
             insert_guest_message(&mut connection, *id, "main", tied_at).await?;
         }
-        insert_guest_message(&mut connection, Uuid::now_v7(), "side", Utc::now()).await?;
+        insert_guest_message(&mut connection, Uuid::now_v7(), "side", Timestamp::now()).await?;
         let deleted_id = tied_ids[2];
         diesel::update(live_chat_messages::table.find(deleted_id))
-            .set(live_chat_messages::message_deleted_at.eq(Some(Utc::now())))
+            .set(live_chat_messages::message_deleted_at.eq(Some(Timestamp::now().to_diesel())))
             .execute(&mut connection)
             .await?;
         drop(connection);
@@ -168,7 +169,7 @@ async fn insert_guest_message(
     connection: &mut diesel_async::AsyncPgConnection,
     id: Uuid,
     room_key: &str,
-    created_at: chrono::DateTime<Utc>,
+    created_at: jiff::Timestamp,
 ) -> TestResult {
     diesel::insert_into(live_chat_messages::table)
         .values(LiveChatMessageInsertable {

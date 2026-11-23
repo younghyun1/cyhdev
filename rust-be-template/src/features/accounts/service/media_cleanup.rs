@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use chrono::{DateTime, Duration, Utc};
 use futures_util::{StreamExt, stream};
+use jiff::{SignedDuration, Timestamp};
 use uuid::Uuid;
 
 use crate::features::accounts::{
@@ -39,7 +39,7 @@ impl AccountService {
 
     pub async fn record_media_object_cleanup_failures(
         &self,
-        attempted_at: DateTime<Utc>,
+        attempted_at: Timestamp,
         failures: &[MediaCleanupFailureUpdate],
     ) -> Result<usize, AccountError> {
         let failures = failures
@@ -73,7 +73,7 @@ impl AccountService {
         if !is_supported_media_cleanup_reason(reason) {
             return Err(AccountError::InvalidMediaCleanupReason);
         }
-        let attempted_at = Utc::now();
+        let attempted_at = Timestamp::now();
         let mut registrations = Vec::with_capacity(failures.len());
         for failure in failures {
             let bucket = failure.location.bucket();
@@ -110,7 +110,7 @@ impl AccountService {
     /// Executes one bounded retry pass through the injected object-store port.
     pub async fn retry_media_object_cleanup(
         &self,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> Result<MediaCleanupRetryReport, AccountError> {
         let candidates = self
             .repository
@@ -201,25 +201,21 @@ fn bounded_failure_message(error: &str) -> String {
     }
 }
 
-fn retry_is_due(
-    attempt_count: i32,
-    last_attempt_at: Option<DateTime<Utc>>,
-    now: DateTime<Utc>,
-) -> bool {
+fn retry_is_due(attempt_count: i32, last_attempt_at: Option<Timestamp>, now: Timestamp) -> bool {
     let Some(last_attempt_at) = last_attempt_at else {
         return true;
     };
-    match last_attempt_at.checked_add_signed(retry_backoff(attempt_count)) {
-        Some(next_attempt_at) => next_attempt_at <= now,
-        None => false,
+    match last_attempt_at.checked_add(retry_backoff(attempt_count)) {
+        Ok(next_attempt_at) => next_attempt_at <= now,
+        Err(_) => false,
     }
 }
 
-fn retry_backoff(attempt_count: i32) -> Duration {
+fn retry_backoff(attempt_count: i32) -> SignedDuration {
     let exponent = attempt_count.saturating_sub(1).clamp(0, 7);
     let exponent: u32 = u32::try_from(exponent).unwrap_or_default();
     let seconds = (CLEANUP_RETRY_BASE_SECONDS * 2_i64.pow(exponent)).min(CLEANUP_RETRY_MAX_SECONDS);
-    Duration::seconds(seconds)
+    SignedDuration::from_secs(seconds)
 }
 
 /// Accepts only the configured bucket and the key the recorded original URL itself names.
@@ -244,20 +240,28 @@ fn validate_location(original_url: &str, bucket: &str, key: &str) -> Result<(), 
 mod tests {
     use super::{bounded_failure_message, retry_backoff, retry_is_due, validate_location};
     use crate::{features::accounts::error::AccountError, util::s3::AWS_S3_BUCKET_NAME};
-    use chrono::{Duration, Utc};
+    use jiff::{SignedDuration, Timestamp};
 
     #[test]
     fn retry_backoff_is_exponential_and_capped() {
-        assert_eq!(retry_backoff(1), Duration::seconds(30));
-        assert_eq!(retry_backoff(4), Duration::minutes(4));
-        assert_eq!(retry_backoff(i32::MAX), Duration::hours(1));
+        assert_eq!(retry_backoff(1), SignedDuration::from_secs(30));
+        assert_eq!(retry_backoff(4), SignedDuration::from_mins(4));
+        assert_eq!(retry_backoff(i32::MAX), SignedDuration::from_hours(1));
     }
 
     #[test]
     fn retry_due_uses_the_persisted_attempt_generation() {
-        let now = Utc::now();
-        assert!(!retry_is_due(2, Some(now - Duration::seconds(59)), now));
-        assert!(retry_is_due(2, Some(now - Duration::seconds(60)), now));
+        let now = Timestamp::now();
+        assert!(!retry_is_due(
+            2,
+            Some(now - SignedDuration::from_secs(59)),
+            now
+        ));
+        assert!(retry_is_due(
+            2,
+            Some(now - SignedDuration::from_secs(60)),
+            now
+        ));
         assert!(retry_is_due(0, None, now));
     }
 

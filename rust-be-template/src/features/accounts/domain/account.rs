@@ -1,6 +1,6 @@
 //! Persistence-independent account values passed between repository and service boundaries.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use uuid::Uuid;
 use zeroize::Zeroizing;
 
@@ -74,7 +74,7 @@ pub struct AccountProfile {
 pub struct PublicAccount {
     pub user_id: Uuid,
     pub user_name: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub country: i32,
     pub profile_picture_url: Option<String>,
 }
@@ -84,8 +84,8 @@ pub struct PublicAccount {
 pub struct ProfilePicture {
     pub profile_picture_id: Uuid,
     pub user_id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub image_type: i32,
     pub is_on_cloud: bool,
     pub is_active: bool,
@@ -150,8 +150,8 @@ pub struct NewAccount {
 pub struct NewAccountRegistration {
     pub account: NewAccount,
     pub verification_digest: super::capability_token::CapabilityDigest,
-    pub verification_created_at: DateTime<Utc>,
-    pub verification_expires_at: DateTime<Utc>,
+    pub verification_created_at: Timestamp,
+    pub verification_expires_at: Timestamp,
 }
 
 /// Result of a successful signup.
@@ -159,7 +159,7 @@ pub struct NewAccountRegistration {
 pub struct SignupReceipt {
     pub user_name: String,
     pub user_email: String,
-    pub verify_by: DateTime<Utc>,
+    pub verify_by: Timestamp,
 }
 
 /// How a signup that collided with an existing email was settled.
@@ -188,9 +188,9 @@ pub enum SignupOutcome {
 pub struct PasswordResetToken {
     pub token_id: Uuid,
     pub user_id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub used_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
+    pub used_at: Option<Timestamp>,
 }
 
 /// Email-verification token state used for service-level validation.
@@ -198,9 +198,9 @@ pub struct PasswordResetToken {
 pub struct EmailVerificationToken {
     pub token_id: Uuid,
     pub user_id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub used_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
+    pub used_at: Option<Timestamp>,
 }
 
 /// Account fields returned after a password change.
@@ -209,7 +209,7 @@ pub struct PasswordResetReceipt {
     pub user_id: Uuid,
     pub user_name: String,
     pub user_email: String,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     /// External sign-in links removed with the reset; never sent to the browser.
     pub oidc_links_removed: usize,
 }
@@ -218,7 +218,7 @@ pub struct PasswordResetReceipt {
 #[derive(Debug, Clone)]
 pub struct PasswordResetRequestReceipt {
     pub user_email: String,
-    pub verify_by: DateTime<Utc>,
+    pub verify_by: Timestamp,
 }
 
 /// Result of consuming an email-verification token.
@@ -226,7 +226,7 @@ pub struct PasswordResetRequestReceipt {
 pub struct EmailVerificationReceipt {
     pub user_id: Uuid,
     pub user_email: String,
-    pub verified_at: DateTime<Utc>,
+    pub verified_at: Timestamp,
 }
 
 /// Result of successful credential authentication.
