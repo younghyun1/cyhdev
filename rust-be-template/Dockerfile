@@ -44,7 +44,8 @@ RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-locatio
 
 # Collect the lazily fetched language packs and script fonts into one directory
 # that mirrors the frame's layout. Exactly one pack per language, all from the
-# same build, and every font present and shaped like a font file: a missing or
+# same build and starting with the zstd frame magic (the pack header sits inside
+# the frame), and every font present and shaped like a font file: a missing or
 # stale file would otherwise only fail in a visitor's browser. Other files in
 # assets/lang and assets/fonts (including the embedded Plex faces) stay behind.
 RUN set -eu; \
@@ -56,7 +57,7 @@ RUN set -eu; \
             echo "assets/lang must hold exactly one ${code}.<build>.bitcode.zst" >&2; exit 1; \
         fi; \
         test -s "$matches"; \
-        test "$(head -c 6 "$matches")" = "EU5LNG"; \
+        test "$(od -An -tx1 -N4 "$matches" | tr -d ' \n')" = "28b52ffd"; \
         build_ids="$build_ids $(basename "$matches" | cut -d. -f2)"; \
         cp "$matches" /eu5-assets/lang/; \
     done; \
