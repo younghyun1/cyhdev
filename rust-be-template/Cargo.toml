@@ -227,4 +227,4 @@ zstd = { version = "0.14.4", features = ["fat-lto", "zstdmt", "pkg-config"] }
 
 [target.'cfg(all(target_os = "linux", target_env = "musl"))'.dependencies]
 zstd = { version = "0.14.4", features = ["zstdmt"] }
-pq-sys = { version = "0.7.8", default-features = false, features = ["bundled_without_openssl"] }
+pq-sys = { version = "0.7.9", default-features = false, features = ["bundled_without_openssl"] }
