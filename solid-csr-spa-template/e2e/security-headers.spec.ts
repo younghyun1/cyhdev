@@ -68,7 +68,16 @@ async function serveSandboxedEu5(page: Page): Promise<void> {
   await page.route("**/eu5-locations-db/app/pkg/eu5_location_filter.js", (route) => route.fulfill({
     contentType: "text/javascript",
     headers: { "access-control-allow-origin": "*" },
-    body: "export default async function init() {}\nexport function set_web_theme(theme) { document.body.dataset.wasmTheme = theme; }\n",
+    // The host script imports every export by name, so the stub must provide all five.
+    body: [
+      "export default async function init() {}",
+      "export function set_palette(mode, colours) { document.body.dataset.wasmMode = mode; document.body.dataset.wasmColours = String(colours.length); return true; }",
+      "export function set_locale(tag) { document.body.dataset.wasmLocale = tag; return true; }",
+      "export function set_reduced_motion(reduced) { document.body.dataset.wasmReducedMotion = String(reduced); }",
+      "export function apply_view_state() { return true; }",
+      "export function set_search_text() { return true; }",
+      "",
+    ].join("\n"),
   }));
 }
 
@@ -152,14 +161,17 @@ test("the native map does not load the retired squaremap document", async ({ pag
   expect(consoleErrors).toEqual([]);
 });
 
-test("the EU5 app completes its theme handshake from an opaque origin", async ({ page }) => {
+test("the EU5 app completes its host handshake from an opaque origin", async ({ page }) => {
   test.skip(!existsSync(eu5HostPath), "EU5 submodule is not initialized");
   const consoleErrors = await prepare(page, "/eu5-locations-db");
   await page.goto("/eu5-locations-db", { waitUntil: "networkidle" });
   const frame = frameAt(page, "/eu5-locations-db/app/index.html");
   expect(frame).toBeDefined();
-  await expect.poll(() => frame?.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
-  await expect.poll(() => frame?.evaluate(() => document.body.dataset.wasmTheme)).toBe("light");
+  // The frame posts ready, the page answers with one host message, and the host script
+  // forwards its palette (mode plus 12 colours), locale and motion setting to the module.
+  await expect.poll(() => frame?.evaluate(() => document.body.dataset.wasmMode)).toBe("light");
+  await expect.poll(() => frame?.evaluate(() => document.body.dataset.wasmColours)).toBe("12");
+  await expect.poll(() => frame?.evaluate(() => document.body.dataset.wasmLocale)).toBe("en-US");
   expect(await frame?.evaluate(() => self.origin)).toBe("null");
   expect(consoleErrors).toEqual([]);
 });
