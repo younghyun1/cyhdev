@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB に圧縮",
   "home.showcase.geoip.title": "ローカル Geo-IP",
   "home.showcase.geoip.text": "IP 範囲をメモリ上の B 木マップに圧縮し、外部の検索 API を使いません。",
-  "home.showcase.eu5.kicker": "Slint + WASM アプリ",
+  "home.showcase.eu5.kicker": "iced + WASM アプリ",
   "home.showcase.eu5.title": "EU5 地点データベース",
   "home.showcase.eu5.text": "ブラウザで動く Rust デスクトップアプリ。サイトと一緒にテーマが切り替わります。",
   "blog.post.contents": "目次",

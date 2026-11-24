@@ -1,6 +1,14 @@
-//! Development staging for the vendored EU5 Slint browser application.
+//! Development staging for the vendored EU5 browser application.
+//!
+//! Staging writes the host document, the wasm-pack package, the per-language
+//! game text packs under `lang/` and the script font packs under `fonts/`.
 
 use std::{fs, path::Path, process::Command};
+
+mod packs;
+
+pub(crate) use packs::stage_packs;
+use packs::{language_packs, script_fonts};
 
 use crate::{TaskError, TaskResult, run_command};
 
@@ -32,6 +40,8 @@ pub(super) fn run(root: &Path) -> TaskResult<()> {
         ))
     })?;
 
+    stage_packs(&root.join(EU5_SUBMODULE), &application)?;
+
     let mut command = command(root, &package);
     run_command(&mut command)
 }
@@ -54,6 +64,8 @@ pub(crate) fn require_checkout(root: &Path) -> TaskResult<()> {
             )));
         }
     }
+    language_packs(&source.join("assets/lang"))?;
+    script_fonts(&source)?;
     Ok(())
 }
 

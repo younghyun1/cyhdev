@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP محلی",
   "home.showcase.geoip.text": "بازه‌های IP در نقشه‌های B-tree درون حافظه فشرده شده‌اند، بدون API جستجوی خارجی.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "پایگاه مکان‌های EU5",
   "home.showcase.eu5.text": "یک برنامه دسکتاپ Rust که در مرورگر اجرا می‌شود و با پوسته سایت هماهنگ است.",
   "blog.post.contents": "فهرست",

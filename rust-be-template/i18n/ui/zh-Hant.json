@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB 壓縮",
   "home.showcase.geoip.title": "本機 Geo-IP",
   "home.showcase.geoip.text": "將 IP 範圍壓縮為記憶體中的 B 樹對應表，無需外部查詢 API。",
-  "home.showcase.eu5.kicker": "Slint + WASM 應用程式",
+  "home.showcase.eu5.kicker": "iced + WASM 應用程式",
   "home.showcase.eu5.title": "EU5 地點資料庫",
   "home.showcase.eu5.text": "在瀏覽器中執行的 Rust 桌面應用程式，主題與本站同步切換。",
   "blog.post.contents": "目錄",

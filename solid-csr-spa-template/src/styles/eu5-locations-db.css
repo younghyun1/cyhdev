@@ -7,7 +7,7 @@
   top: calc(var(--eu5-top-bar-offset) + var(--eu5-viewport-margin));
   inset-inline: var(--eu5-viewport-margin);
   bottom: calc(var(--eu5-bottom-bar-offset) + var(--eu5-viewport-margin));
-  background: #11161d;
+  background: var(--paper);
 }
 
 .eu5-locations-db-frame {

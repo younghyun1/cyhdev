@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB 压缩",
   "home.showcase.geoip.title": "本地 Geo-IP",
   "home.showcase.geoip.text": "将 IP 范围压缩为内存中的 B 树映射，无需外部查询 API。",
-  "home.showcase.eu5.kicker": "Slint + WASM 应用",
+  "home.showcase.eu5.kicker": "iced + WASM 应用",
   "home.showcase.eu5.title": "EU5 地点数据库",
   "home.showcase.eu5.text": "在浏览器中运行的 Rust 桌面应用，主题与本站同步切换。",
   "blog.post.contents": "目录",

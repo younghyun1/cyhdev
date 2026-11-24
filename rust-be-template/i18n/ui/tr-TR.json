@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Yerel Geo-IP",
   "home.showcase.geoip.text": "IP aralıkları bellek içi B-tree haritalarına sıkıştırılır; harici sorgu API’si yoktur.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 konum veritabanı",
   "home.showcase.eu5.text": "Tarayıcıda çalışan, site ile birlikte temalanan bir Rust masaüstü uygulaması.",
   "blog.post.contents": "İçindekiler",

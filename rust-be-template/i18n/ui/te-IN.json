@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "లోకల్ Geo-IP",
   "home.showcase.geoip.text": "IP రేంజ్‌లను ఇన్-మెమరీ B-ట్రీ మ్యాప్‌లలోకి కుదించాం, బయటి లుకప్ API లేదు.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 లొకేషన్ DB",
   "home.showcase.eu5.text": "బ్రౌజర్‌లో నడిచే Rust డెస్క్‌టాప్ అప్లికేషన్, సైట్ థీమ్‌తో కలిసి మారుతుంది.",
   "blog.post.contents": "విషయసూచిక",

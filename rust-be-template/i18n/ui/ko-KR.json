@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB 압축",
   "home.showcase.geoip.title": "로컬 Geo-IP",
   "home.showcase.geoip.text": "IP 범위를 메모리 내 B-트리 맵으로 압축해 외부 조회 API 없이 위치를 찾습니다.",
-  "home.showcase.eu5.kicker": "Slint + WASM 앱",
+  "home.showcase.eu5.kicker": "iced + WASM 앱",
   "home.showcase.eu5.title": "EU5 지역 데이터베이스",
   "home.showcase.eu5.text": "브라우저에서 실행되는 Rust 데스크톱 애플리케이션으로, 사이트와 함께 테마가 바뀝니다.",
   "blog.post.contents": "목차",

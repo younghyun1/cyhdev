@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP محلي",
   "home.showcase.geoip.text": "نطاقات IP مضغوطة في خرائط B-tree داخل الذاكرة، دون واجهة بحث خارجية.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "قاعدة مواقع EU5",
   "home.showcase.eu5.text": "تطبيق سطح مكتب بلغة Rust يعمل في المتصفح، وتتوافق سمته مع سمة الموقع.",
   "blog.post.contents": "المحتويات",

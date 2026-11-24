@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 ГБ → 67 МБ",
   "home.showcase.geoip.title": "Свой Geo-IP",
   "home.showcase.geoip.text": "Диапазоны IP сжаты в B-деревья в памяти, внешний API для поиска не нужен.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "База локаций EU5",
   "home.showcase.eu5.text": "Настольное приложение на Rust, работающее в браузере и использующее общую с сайтом тему оформления.",
   "blog.post.contents": "Разделы",

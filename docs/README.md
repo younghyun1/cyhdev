@@ -57,6 +57,7 @@ This folder holds workspace-level implementation notes, plans, and engineering c
 - [Minecraft terrain explorer](architecture/be/minecraft-explorer.md)
 - [Binary biome tile protocol](architecture/be/minecraft-tile-protocol.md)
 - [Minecraft atlas interface](design/fe/minecraft.md)
+- [Embedded EU5 Locations DB application](design/fe/eu5-embedding.md)
 - [KCNA archive section: routes, states, shortcuts, visual rules](design/fe/kcna-archive-browser.md)
 
 ## Active Plans

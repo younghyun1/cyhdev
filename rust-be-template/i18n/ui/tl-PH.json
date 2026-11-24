@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP (lokal)",
   "home.showcase.geoip.text": "Mga saklaw ng IP na na-compress sa mga in-memory na B-tree map, nang walang panlabas na lookup API.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "DB ng lokasyon ng EU5",
   "home.showcase.eu5.text": "Isang Rust desktop application na tumatakbo sa browser, kasabay ng tema ng site.",
   "blog.post.contents": "Nilalaman",

@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "مقامی Geo-IP",
   "home.showcase.geoip.text": "IP رینجز کو اِن میموری B-tree میپس میں کمپریس کیا گیا ہے، کسی بیرونی لُک اپ API کے بغیر۔",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 مقامات کا ڈیٹا بیس",
   "home.showcase.eu5.text": "براؤزر میں چلنے والی Rust ڈیسک ٹاپ ایپلیکیشن، جس کا تھیم سائٹ کے ساتھ ہم آہنگ ہے۔",
   "blog.post.contents": "فہرست",

@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Lokale Geo-IP",
   "home.showcase.geoip.text": "IP-bereiken gecomprimeerd tot B-tree-maps in het geheugen, zonder externe opzoek-API.",
-  "home.showcase.eu5.kicker": "Slint + WASM-app",
+  "home.showcase.eu5.kicker": "iced + WASM-app",
   "home.showcase.eu5.title": "EU5-locatiedatabase",
   "home.showcase.eu5.text": "Een Rust-desktopapplicatie die in de browser draait, met een thema dat bij de site past.",
   "blog.post.contents": "Inhoud",

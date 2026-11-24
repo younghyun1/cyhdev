@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP local",
   "home.showcase.geoip.text": "Intervale de IP comprimate în hărți B-tree din memorie, fără API extern de căutare.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "Bază de locații EU5",
   "home.showcase.eu5.text": "O aplicație desktop Rust care rulează în browser, cu aceeași temă ca site-ul.",
   "blog.post.contents": "Cuprins",

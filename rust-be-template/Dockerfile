@@ -42,6 +42,34 @@ RUN --mount=type=cache,id=cyhdev-eu5-target,target=/workspace/vendor/eu5-locatio
     && test -s pkg/eu5_location_filter.js \
     && test "$(od -An -tx1 -N4 pkg/eu5_location_filter_bg.wasm | tr -d ' \n')" = "0061736d"
 
+# Collect the lazily fetched language packs and script fonts into one directory
+# that mirrors the frame's layout. Exactly one pack per language, all from the
+# same build, and every font present and shaped like a font file: a missing or
+# stale file would otherwise only fail in a visitor's browser. Other files in
+# assets/lang and assets/fonts (including the embedded Plex faces) stay behind.
+RUN set -eu; \
+    mkdir -p /eu5-assets/lang /eu5-assets/fonts; \
+    build_ids=""; \
+    for code in fr de es pt-br pl ru tr ja ko zh-hans; do \
+        matches="$(find assets/lang -maxdepth 1 -type f -name "${code}.*.bitcode.zst" | grep -E "^assets/lang/${code}\.[0-9]{1,20}\.bitcode\.zst$" || true)"; \
+        if [ "$(printf '%s\n' "$matches" | grep -c .)" -ne 1 ]; then \
+            echo "assets/lang must hold exactly one ${code}.<build>.bitcode.zst" >&2; exit 1; \
+        fi; \
+        test -s "$matches"; \
+        test "$(head -c 6 "$matches")" = "EU5LNG"; \
+        build_ids="$build_ids $(basename "$matches" | cut -d. -f2)"; \
+        cp "$matches" /eu5-assets/lang/; \
+    done; \
+    if [ "$(printf '%s\n' $build_ids | sort -u | wc -l)" -ne 1 ]; then \
+        echo "language packs come from different builds:$build_ids" >&2; exit 1; \
+    fi; \
+    for font in plex-sans-kr plex-sans-jp sans-sc sans-tc noto-sans-arabic noto-sans-devanagari noto-sans-bengali noto-sans-telugu; do \
+        test -s "assets/fonts/${font}.ttf"; \
+        magic="$(od -An -tx1 -N4 "assets/fonts/${font}.ttf" | tr -d ' \n')"; \
+        case "$magic" in 00010000|74727565|4f54544f) ;; *) echo "${font}.ttf is not a font file" >&2; exit 1 ;; esac; \
+        cp "assets/fonts/${font}.ttf" /eu5-assets/fonts/; \
+    done
+
 # Build the frontend from the committed npm lockfile inside the image build.
 # This prevents an ambient local dist directory from changing the backend image.
 FROM node:${NODE_DOCKER_TAG} AS frontend-source
@@ -59,14 +87,17 @@ FROM frontend-source AS frontend
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/web/index.html ./public/eu5-locations-db/app/index.html
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter.js ./public/eu5-locations-db/app/pkg/eu5_location_filter.js
 COPY --from=eu5-wasm /workspace/vendor/eu5-location-filter/pkg/eu5_location_filter_bg.wasm ./public/eu5-locations-db/app/pkg/eu5_location_filter_bg.wasm
+COPY --from=eu5-wasm /eu5-assets/ ./public/eu5-locations-db/app/
 ARG APP_BUILD_EPOCH
 ARG SOURCE_DATE_EPOCH
 RUN npm run build \
     && find ./dist -type f ! -iname '*.png' ! -iname '*.jpg' ! -iname '*.gz' ! -iname '*.zst' \
         -exec sh -c 'gzip -9 -c "$1" > "$1.gz"; zstd --ultra -22 -q -c "$1" > "$1.zst"' _ {} \; \
-    && find ./dist/eu5-locations-db/app -type f ! -name '*.gz' -delete \
-    && test -z "$(find ./dist/eu5-locations-db/app -type f ! -name '*.gz' -print -quit)" \
-    && find ./dist/eu5-locations-db/app -type f -name '*.gz' -exec gzip -t {} +
+    && find ./dist/eu5-locations-db/app -type f ! -name '*.gz' ! -path './dist/eu5-locations-db/app/lang/*.bitcode.zst' -delete \
+    && test -z "$(find ./dist/eu5-locations-db/app -type f ! -name '*.gz' ! -path './dist/eu5-locations-db/app/lang/*.bitcode.zst' -print -quit)" \
+    && find ./dist/eu5-locations-db/app -type f -name '*.gz' -exec gzip -t {} + \
+    && test "$(find ./dist/eu5-locations-db/app/lang -type f -name '*.bitcode.zst' | wc -l)" -eq 10 \
+    && test "$(find ./dist/eu5-locations-db/app/fonts -type f -name '*.ttf.gz' | wc -l)" -eq 8
 
 # The compatibility artifact preserves the original build.sh ABI and output:
 # glibc, Zen 3 tuning, no UPX, and a host-visible Cargo release path.

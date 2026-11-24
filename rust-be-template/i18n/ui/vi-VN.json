@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP cục bộ",
   "home.showcase.geoip.text": "Các dải IP được nén vào bản đồ B-tree trong bộ nhớ, không dùng API tra cứu bên ngoài.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "CSDL địa điểm EU5",
   "home.showcase.eu5.text": "Một ứng dụng desktop viết bằng Rust chạy trong trình duyệt, có giao diện đồng bộ với trang.",
   "blog.post.contents": "Mục lục",

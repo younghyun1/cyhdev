@@ -203,3 +203,78 @@ fn older_builds_without_a_manifest_revalidate_every_asset() {
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.headers()[header::CACHE_CONTROL], super::REVALIDATE);
 }
+
+const PACK: &str = "/eu5-locations-db/app/lang/ko.26547371.bitcode.zst";
+const FONT: &str = "/eu5-locations-db/app/fonts/sans-sc.ttf";
+
+#[test]
+fn language_pack_is_served_as_stored_whatever_codings_are_accepted() {
+    // The pack is already one zstd frame, so the build keeps it as a plain
+    // file. Labelling it with Content-Encoding would make the browser inflate
+    // it before the application could check its header.
+    for accept in ["zstd, gzip", "gzip", "zstd", "identity", "*"] {
+        let response = request(PACK, accept);
+        assert_eq!(response.status(), StatusCode::OK, "{accept}");
+        assert!(
+            !response.headers().contains_key(header::CONTENT_ENCODING),
+            "{accept}"
+        );
+        let content_type = response.headers()[header::CONTENT_TYPE].as_bytes();
+        assert!(content_type.starts_with(b"application/"), "{accept}");
+        assert_eq!(response.headers()[header::CACHE_CONTROL], super::REVALIDATE);
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+        assert_eq!(response.headers()[header::ETAG].len(), 66);
+    }
+}
+
+#[test]
+fn language_pack_cannot_satisfy_a_client_that_refuses_identity() {
+    let response = request(PACK, "identity;q=0, zstd, gzip");
+    assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+}
+
+#[test]
+fn language_pack_revalidates_with_its_etag() {
+    let etag = request(PACK, "gzip").headers()[header::ETAG].clone();
+    let uri = Uri::from_static(PACK);
+    let mut headers = HeaderMap::new();
+    headers.insert(header::ACCEPT_ENCODING, HeaderValue::from_static("gzip"));
+    headers.insert(header::IF_NONE_MATCH, etag);
+    let response =
+        serve_static::<TestAssets>(&uri, &headers, &super::immutable_paths::<TestAssets>());
+
+    assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+    assert_eq!(response.headers()[header::CACHE_CONTROL], super::REVALIDATE);
+}
+
+#[test]
+fn script_font_is_served_gzip_encoded_with_a_font_type() {
+    for accept in ["zstd, gzip", "gzip", "gzip;q=0.5, identity;q=0.1"] {
+        let response = request(FONT, accept);
+        assert_eq!(response.status(), StatusCode::OK, "{accept}");
+        assert_eq!(response.headers()[header::CONTENT_ENCODING], "gzip");
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "font/ttf");
+        assert_eq!(response.headers()[header::CACHE_CONTROL], super::REVALIDATE);
+        assert_eq!(response.headers()[header::VARY], "Accept-Encoding");
+    }
+    // The build keeps only the gzip variant of frame assets.
+    assert_eq!(
+        request(FONT, "identity").status(),
+        StatusCode::NOT_ACCEPTABLE
+    );
+}
+
+#[test]
+fn missing_language_pack_or_font_never_uses_spa_fallback() {
+    for path in [
+        "/eu5-locations-db/app/lang/fr.26547371.bitcode.zst",
+        "/eu5-locations-db/app/lang/ko.1.bitcode.zst",
+        "/eu5-locations-db/app/fonts/sans-tc.ttf",
+        "/eu5-locations-db/app/fonts/",
+    ] {
+        let response = request(path, "gzip, identity");
+        assert_eq!(response.status(), StatusCode::NOT_FOUND, "{path}");
+        assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+    }
+}

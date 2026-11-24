@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "লোকাল Geo-IP",
   "home.showcase.geoip.text": "IP রেঞ্জ ইন-মেমরি B-tree ম্যাপে সংকুচিত, কোনো বাইরের লুকআপ API ছাড়াই।",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 লোকেশন ডেটাবেস",
   "home.showcase.eu5.text": "ব্রাউজারে চলা একটি Rust ডেস্কটপ অ্যাপ্লিকেশন, যার থিম সাইটের সঙ্গে মেলানো।",
   "blog.post.contents": "সূচিপত্র",

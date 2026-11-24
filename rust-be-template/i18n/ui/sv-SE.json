@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "Lokal Geo-IP",
   "home.showcase.geoip.text": "IP-intervall komprimerade till B-trädskartor i minnet, utan externt uppslags-API.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5-platsdatabas",
   "home.showcase.eu5.text": "Ett skrivbordsprogram i Rust som körs i webbläsaren och följer sajtens tema.",
   "blog.post.contents": "Innehåll",

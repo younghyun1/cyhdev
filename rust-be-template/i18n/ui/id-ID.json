@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP lokal",
   "home.showcase.geoip.text": "Rentang IP dikompresi menjadi peta B-tree dalam memori, tanpa API pencarian eksternal.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "Basis data lokasi EU5",
   "home.showcase.eu5.text": "Aplikasi desktop Rust yang berjalan di peramban, dengan tema yang menyatu dengan situs.",
   "blog.post.contents": "Isi",

@@ -626,7 +626,7 @@ export const EN_US_DEFAULT_TEXTS: Record<UiTextKey, string> = {
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "Local Geo-IP",
   "home.showcase.geoip.text": "IP ranges compressed into in-memory B-tree maps, with no external lookup API.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 Location DB",
   "home.showcase.eu5.text": "A Rust desktop application running in the browser, themed together with the site.",
   "blog.post.contents": "Contents",

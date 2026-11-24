@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1.1 GB → 67 MB",
   "home.showcase.geoip.title": "लोकल Geo-IP",
   "home.showcase.geoip.text": "IP रेंज को इन-मेमरी B-ट्री मैप में कंप्रेस किया गया है, कोई बाहरी लुकअप API नहीं।",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "EU5 स्थान DB",
   "home.showcase.eu5.text": "ब्राउज़र में चलने वाला Rust डेस्कटॉप एप्लिकेशन, जिसकी थीम साइट के साथ बदलती है।",
   "blog.post.contents": "विषय-सूची",

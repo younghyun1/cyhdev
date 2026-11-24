@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Lokalni Geo-IP",
   "home.showcase.geoip.text": "IP rasponi sabijeni u B-tree mape u memoriji, bez vanjskog API-ja za pretragu.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "Baza lokacija EU5",
   "home.showcase.eu5.text": "Rust desktop aplikacija koja radi u pregledniku, s temom usklađenom sa stranicom.",
   "blog.post.contents": "Sadržaj",

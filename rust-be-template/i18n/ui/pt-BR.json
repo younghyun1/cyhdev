@@ -706,7 +706,7 @@
   "home.showcase.geoip.kicker": "1,1 GB → 67 MB",
   "home.showcase.geoip.title": "Geo-IP local",
   "home.showcase.geoip.text": "Faixas de IP comprimidas em mapas B-tree na memória, sem API externa de consulta.",
-  "home.showcase.eu5.kicker": "Slint + WASM",
+  "home.showcase.eu5.kicker": "iced + WASM",
   "home.showcase.eu5.title": "Banco de locais do EU5",
   "home.showcase.eu5.text": "Um aplicativo desktop em Rust rodando no navegador, com o mesmo tema do site.",
   "blog.post.contents": "Sumário",

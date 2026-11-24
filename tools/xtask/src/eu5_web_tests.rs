@@ -1,4 +1,5 @@
-//! Submodule pinning checks against disposable local repositories.
+//! Submodule pinning checks against disposable local repositories, and
+//! language and font pack staging against disposable source trees.
 
 use std::{
     fs,
@@ -9,16 +10,12 @@ use std::{
 
 use super::eu5_web::{check_submodule_status, check_submodule_worktree, require_pinned_checkout};
 
+mod staging;
+
+use staging::write_source;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 static NEXT_DIRECTORY: AtomicUsize = AtomicUsize::new(0);
-
-const REQUIRED_FILES: [&str; 5] = [
-    "Cargo.toml",
-    "Cargo.lock",
-    "web/index.html",
-    "assets/eu5-locations.bitcode.zst",
-    "assets/eu5-indexes.bitcode.zst",
-];
 
 /// A parent repository whose EU5 submodule is cloned from a local upstream.
 struct Fixture {
@@ -37,13 +34,7 @@ impl Fixture {
             directory,
         };
         let upstream = fixture.directory.join("upstream");
-        for relative in REQUIRED_FILES {
-            let path = upstream.join(relative);
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            fs::write(path, "fixture\n")?;
-        }
+        write_source(&upstream)?;
         git(&upstream, &["init", "--quiet"])?;
         git(&upstream, &["add", "."])?;
         commit(&upstream)?;
