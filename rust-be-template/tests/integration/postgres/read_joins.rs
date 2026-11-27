@@ -13,6 +13,7 @@ use rust_be_template::{
         photography::{
             error::PhotographyError, repository::photography_repository::PhotographyRepository,
         },
+        reference_data::repository::reference_data_repository::ReferenceDataRepository,
     },
     schema::{photograph_comments, user_profile_pictures},
 };
@@ -35,6 +36,33 @@ async fn photograph_reads_report_absence_and_mask_a_deleted_owner() -> TestResul
 #[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
 async fn account_reads_join_the_active_picture_and_current_authority() -> TestResult {
     run_database_test(account_case).await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "requires explicit TEST_DATABASE_URL and PostgreSQL 18"]
+async fn reference_countries_load_with_their_subdivisions() -> TestResult {
+    run_database_test(reference_case).await
+}
+
+fn reference_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
+    Box::pin(async move {
+        let context = account_test_context(database)?;
+        let account = seed_account(&context, "ReferenceReader").await?;
+        let (countries, subdivisions) = ReferenceDataRepository::new(context.pool.clone())
+            .countries()
+            .await?;
+        require(
+            countries
+                .iter()
+                .any(|country| country.country_code == account.country)
+                && subdivisions.iter().all(|subdivision| {
+                    countries
+                        .iter()
+                        .any(|country| country.country_code == subdivision.country_code)
+                }),
+            "the joined reference read lost a country or returned an orphan subdivision",
+        )
+    })
 }
 
 fn photograph_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {

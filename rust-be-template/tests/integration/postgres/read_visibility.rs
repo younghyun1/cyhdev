@@ -11,6 +11,7 @@ use rust_be_template::features::{
     blog::{
         domain::{comment_page::CommentPageRequest, post::PostLookup, vote::VoteState},
         error::BlogError,
+        repository::blog_repository::BlogRepository,
     },
     forum::{
         error::ForumError, repository::forum_repository::ForumRepository,
@@ -150,6 +151,27 @@ fn blog_case(database: &TestDatabase) -> DatabaseTestFuture<'_> {
                 && all_posts.iter().any(|post| post.post_id == draft_id)
                 && all_posts.iter().all(|post| post.post_tags == ["fixture"]),
             "the manager's listing did not count and return the draft with tags",
+        )?;
+        let presented = blog.present_posts(all_posts, Some(visitor.user_id)).await?;
+        require(
+            presented.len() == 2
+                && presented
+                    .iter()
+                    .all(|post| post.user_name == manager.user_name)
+                && presented.iter().any(|post| {
+                    post.post_id == published_id && post.vote_state == VoteState::Upvoted
+                })
+                && presented.iter().any(|post| {
+                    post.post_id == draft_id && post.vote_state == VoteState::DidNotVote
+                }),
+            "listing presentation lost the author or the viewer's vote",
+        )?;
+        let by_ids = BlogRepository::new(context.pool.clone())
+            .posts_by_ids(&[draft_id, published_id])
+            .await?;
+        require(
+            by_ids.len() == 2 && by_ids.iter().all(|post| post.post_tags == ["fixture"]),
+            "a batch read by identifier lost a post or its tags",
         )
     })
 }
