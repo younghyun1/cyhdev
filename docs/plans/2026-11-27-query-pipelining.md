@@ -1,7 +1,7 @@
 # Backend query round-trip pass
 
 - Status: complete, 2026-11-27. Intended outcome: fewer database round trips on read paths that issued independent statements one at a time, and one statement where two were keyed on the same row.
-- Checkout: branch `perf/query-pipelining`, implementation commit `2367a7ba`, not pushed. No uncommitted paths after this document is committed.
+- Checkout: branch `perf/query-pipelining`, implementation commit `2367a7ba` plus one test commit after it, not pushed. No uncommitted paths after this document is committed.
 - Completed: see Changes. No migration, schema, HTTP contract, or cache changed.
 - Verification: see Verification. No latency was measured.
 - Remaining: nothing in scope. The next action is review and merge of the branch; candidates left out on purpose are listed under Not done.
@@ -20,7 +20,7 @@ Repository reads sent each statement and waited for its rows before sending the 
 - **Other reads:** reference-data countries with subdivisions, and the four corpus counts in the KCNA archive snapshot, are sent together.
 - **Rule recorded:** `docs/architecture/be/feature-boundaries.md` states when statements may be joined and when they must stay sequential.
 
-Round trips per repository call, signed-in viewer:
+Round trips per repository call for a signed-in viewer, on a connection that has already prepared the statements. The first use of each statement on a connection still prepares one at a time, because diesel-async holds its statement-cache lock across the prepare.
 
 | Read | Before | After |
 | --- | --- | --- |
@@ -45,6 +45,7 @@ Round trips per repository call, signed-in viewer:
 - **Locking statements stay sequential.** The `lock_active_user` helpers document a user-then-content lock order, and no `FOR UPDATE` or `FOR SHARE` statement was joined.
 - **Write transactions were not pipelined.** One failure aborts the rest of a pipeline inside a transaction, which would blur paths that map specific errors, and the candidates are rare paths (account deletion, startup call cleanup).
 - **Missing rows cost more.** A joined read also runs the statements a missing parent would have skipped. Their results are dropped before any return.
+- **Draft reads differ on the wire.** A signed-in viewer without blog authority now causes the authority round trip only when the post is a draft; before, it ran on every signed-in post read. The comment page already had this shape. The response is the same absent-post error in both cases.
 - **No new caches.** Listing reads the database by policy in `docs/architecture/be/runtime-cache-policy.md`, and blog and forum authority are database-current by design.
 - **No index changes.** Plans on an empty test database are not evidence.
 
@@ -53,9 +54,10 @@ Round trips per repository call, signed-in viewer:
 All commands ran from the repository root on 2026-11-27 against a throwaway PostgreSQL 18.7 cluster on loopback TCP, removed afterwards.
 
 - Baseline on `2f100342` before any edit: `cargo xtask clippy` passed, `cargo xtask unit` passed, `cargo xtask db-integration` passed 51 cases.
-- On `2367a7ba`: `cargo xtask fmt`, `cargo xtask clippy`, and `cargo xtask unit` passed; `cargo xtask db-integration` passed 55 cases, the 51 existing ones and four new ones in `postgres::read_visibility` and `postgres::read_joins`.
-- The new cases assert the outcomes a joined read could get wrong: drafts hidden from anonymous and ordinary viewers in detail, comment page, and listing counts, and visible to a manager; missing post, topic, and photograph reported as absent; the viewer's own votes and subscription carried; a deleted photograph owner masked; only the active picture joined; forum authority refused for a missing or unverified account.
-- Round trips on the wire were counted with a loopback proxy between the test binary and PostgreSQL. A flight is a client send that follows server data. Three runs per case, same tests on both commits; fixture setup dominates each total.
+- On the final tree: `cargo xtask fmt`, `cargo xtask clippy`, and `cargo xtask unit` passed; `cargo xtask db-integration` passed 56 cases, the 51 existing ones and five new ones in `postgres::read_visibility` and `postgres::read_joins`.
+- The new cases assert the outcomes a joined read could get wrong: drafts hidden from anonymous and ordinary viewers in detail, comment page, and listing counts, and visible to a manager; missing post, topic, and photograph reported as absent; the viewer's own votes and subscription carried; a deleted photograph owner masked; only the active picture joined; forum authority refused for a missing or unverified account. They also execute listing presentation, the batch read by identifier, and the reference countries read, which no earlier case reached.
+- Compile-checked only: the KCNA archive corpus counts in `kcna-archive/cli/src/search_index/corpus_stats.rs`. Its PostgreSQL checks need `KCNA_TEST_DATABASE_URL`, which was not set.
+- Round trips on the wire were counted with a loopback proxy between the test binary and PostgreSQL. A flight is a client send that follows server data. Three runs per case, same tests on both commits; fixture setup dominates each total and repeated runs vary by up to five flights. The forum, photography, and account cases fall clearly. The comment-thread case falls by about four against a spread of two, and the blog social case is within noise.
 
 | Existing case | `2f100342` | `2367a7ba` |
 | --- | --- | --- |
