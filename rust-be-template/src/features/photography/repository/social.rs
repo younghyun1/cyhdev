@@ -1,5 +1,6 @@
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, dsl::count_star,
+    BoolExpressionMethods, ExpressionMethods, NullableExpressionMethods, OptionalExtension,
+    QueryDsl, dsl::count_star,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use jiff::Timestamp;
@@ -37,17 +38,7 @@ impl PhotographyRepository {
                     .set(photograph_votes::is_upvote.eq(is_upvote))
                     .execute(&mut *connection)
                     .await?;
-                let counts = photograph_vote_counts(connection, photograph_id).await?;
-                diesel::update(
-                    photographs::table.filter(photographs::photograph_id.eq(photograph_id)),
-                )
-                .set((
-                    photographs::photograph_total_upvotes.eq(counts.upvote_count),
-                    photographs::photograph_total_downvotes.eq(counts.downvote_count),
-                ))
-                .execute(&mut *connection)
-                .await?;
-                Ok(counts)
+                store_photograph_counts(connection, photograph_id).await
             })
             .await
     }
@@ -74,17 +65,7 @@ impl PhotographyRepository {
                 if affected == 0 {
                     return Err(PhotographyError::VoteNotFound);
                 }
-                let counts = photograph_vote_counts(connection, photograph_id).await?;
-                diesel::update(
-                    photographs::table.filter(photographs::photograph_id.eq(photograph_id)),
-                )
-                .set((
-                    photographs::photograph_total_upvotes.eq(counts.upvote_count),
-                    photographs::photograph_total_downvotes.eq(counts.downvote_count),
-                ))
-                .execute(&mut *connection)
-                .await?;
-                Ok(counts)
+                store_photograph_counts(connection, photograph_id).await
             })
             .await
     }
@@ -117,19 +98,7 @@ impl PhotographyRepository {
                     .set(photograph_comment_votes::is_upvote.eq(is_upvote))
                     .execute(&mut *connection)
                     .await?;
-                let counts = comment_vote_counts(connection, comment_id).await?;
-                diesel::update(
-                    photograph_comments::table
-                        .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
-                )
-                .set((
-                    photograph_comments::photograph_comment_total_upvotes.eq(counts.upvote_count),
-                    photograph_comments::photograph_comment_total_downvotes
-                        .eq(counts.downvote_count),
-                ))
-                .execute(&mut *connection)
-                .await?;
-                Ok(counts)
+                store_comment_counts(connection, comment_id).await
             })
             .await
     }
@@ -156,19 +125,7 @@ impl PhotographyRepository {
                 if affected == 0 {
                     return Err(PhotographyError::VoteNotFound);
                 }
-                let counts = comment_vote_counts(connection, comment_id).await?;
-                diesel::update(
-                    photograph_comments::table
-                        .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
-                )
-                .set((
-                    photograph_comments::photograph_comment_total_upvotes.eq(counts.upvote_count),
-                    photograph_comments::photograph_comment_total_downvotes
-                        .eq(counts.downvote_count),
-                ))
-                .execute(&mut *connection)
-                .await?;
-                Ok(counts)
+                store_comment_counts(connection, comment_id).await
             })
             .await
     }
@@ -220,43 +177,71 @@ async fn lock_actor(
         })
 }
 
-async fn photograph_vote_counts(
+/// Recounts one photograph's votes and stores the totals in one statement.
+///
+/// The caller holds the photograph row lock, so the row exists and the
+/// returned totals are the ones it now holds. A scalar `count(*)` subquery
+/// always yields a row, which is why its nullable type is asserted away.
+async fn store_photograph_counts(
     connection: &mut AsyncPgConnection,
     photograph_id: Uuid,
 ) -> Result<VoteCounts, PhotographyError> {
-    let rows = photograph_votes::table
-        .filter(photograph_votes::photograph_id.eq(photograph_id))
-        .group_by(photograph_votes::is_upvote)
-        .select((photograph_votes::is_upvote, count_star()))
-        .load::<(bool, i64)>(&mut *connection)
-        .await?;
-    Ok(vote_counts(rows))
+    let votes = |is_upvote: bool| {
+        photograph_votes::table
+            .filter(photograph_votes::photograph_id.eq(photograph_id))
+            .filter(photograph_votes::is_upvote.eq(is_upvote))
+            .select(count_star())
+            .single_value()
+            .assume_not_null()
+    };
+    let (upvote_count, downvote_count) =
+        diesel::update(photographs::table.filter(photographs::photograph_id.eq(photograph_id)))
+            .set((
+                photographs::photograph_total_upvotes.eq(votes(true)),
+                photographs::photograph_total_downvotes.eq(votes(false)),
+            ))
+            .returning((
+                photographs::photograph_total_upvotes,
+                photographs::photograph_total_downvotes,
+            ))
+            .get_result::<(i64, i64)>(&mut *connection)
+            .await?;
+    Ok(VoteCounts {
+        upvote_count,
+        downvote_count,
+    })
 }
 
-async fn comment_vote_counts(
+/// Recounts one comment's votes and stores the totals in one statement, under
+/// the comment row lock its caller holds.
+async fn store_comment_counts(
     connection: &mut AsyncPgConnection,
     comment_id: Uuid,
 ) -> Result<VoteCounts, PhotographyError> {
-    let rows = photograph_comment_votes::table
-        .filter(photograph_comment_votes::photograph_comment_id.eq(comment_id))
-        .group_by(photograph_comment_votes::is_upvote)
-        .select((photograph_comment_votes::is_upvote, count_star()))
-        .load::<(bool, i64)>(&mut *connection)
-        .await?;
-    Ok(vote_counts(rows))
-}
-
-fn vote_counts(rows: Vec<(bool, i64)>) -> VoteCounts {
-    let mut counts = VoteCounts {
-        upvote_count: 0,
-        downvote_count: 0,
+    let votes = |is_upvote: bool| {
+        photograph_comment_votes::table
+            .filter(photograph_comment_votes::photograph_comment_id.eq(comment_id))
+            .filter(photograph_comment_votes::is_upvote.eq(is_upvote))
+            .select(count_star())
+            .single_value()
+            .assume_not_null()
     };
-    for (is_upvote, count) in rows {
-        if is_upvote {
-            counts.upvote_count = count;
-        } else {
-            counts.downvote_count = count;
-        }
-    }
-    counts
+    let (upvote_count, downvote_count) = diesel::update(
+        photograph_comments::table
+            .filter(photograph_comments::photograph_comment_id.eq(comment_id)),
+    )
+    .set((
+        photograph_comments::photograph_comment_total_upvotes.eq(votes(true)),
+        photograph_comments::photograph_comment_total_downvotes.eq(votes(false)),
+    ))
+    .returning((
+        photograph_comments::photograph_comment_total_upvotes,
+        photograph_comments::photograph_comment_total_downvotes,
+    ))
+    .get_result::<(i64, i64)>(&mut *connection)
+    .await?;
+    Ok(VoteCounts {
+        upvote_count,
+        downvote_count,
+    })
 }

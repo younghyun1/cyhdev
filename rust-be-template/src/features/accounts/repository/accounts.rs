@@ -1,8 +1,8 @@
 //! Read-only account queries.
 
 use diesel::{
-    ExpressionMethods, NullableExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
-    dsl::exists,
+    BoolExpressionMethods, ExpressionMethods, JoinOnDsl, NullableExpressionMethods,
+    OptionalExtension, QueryDsl, SelectableHelper, dsl::exists,
 };
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -86,73 +86,63 @@ impl AccountRepository {
             .map_err(AccountError::Query)
     }
 
+    /// Reads the profile and its active picture in one statement. The partial
+    /// unique index `user_profile_pictures_one_active_per_user` admits at most
+    /// one active picture, so the left join cannot multiply the account row.
     pub async fn current_account(
         &self,
         user_id: Uuid,
     ) -> Result<Option<CurrentAccount>, AccountError> {
         let mut connection = self.connection().await?;
-        let profile = users::table
+        let record = users::table
+            .left_join(
+                user_profile_pictures::table.on(user_profile_pictures::user_id
+                    .eq(users::user_id)
+                    .and(user_profile_pictures::user_profile_picture_is_active.eq(true))),
+            )
             .filter(users::user_id.eq(user_id))
             .filter(users::user_deleted_at.is_null())
-            .select(AccountProfileRecord::as_select())
-            .first::<AccountProfileRecord>(&mut connection)
+            .select((
+                AccountProfileRecord::as_select(),
+                Option::<ProfilePictureRecord>::as_select(),
+            ))
+            .first::<(AccountProfileRecord, Option<ProfilePictureRecord>)>(&mut connection)
             .await
             .optional()
             .map_err(AccountError::Query)?;
-
-        let profile = match profile {
-            Some(profile) => profile.into(),
-            None => return Ok(None),
-        };
-
-        let profile_picture = user_profile_pictures::table
-            .filter(user_profile_pictures::user_id.eq(user_id))
-            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true))
-            .order(user_profile_pictures::user_profile_picture_created_at.desc())
-            .select(ProfilePictureRecord::as_select())
-            .first::<ProfilePictureRecord>(&mut connection)
-            .await
-            .optional()
-            .map_err(AccountError::Query)?
-            .map(Into::into);
-
-        Ok(Some(CurrentAccount {
-            profile,
-            profile_picture,
+        Ok(record.map(|(profile, profile_picture)| CurrentAccount {
+            profile: profile.into(),
+            profile_picture: profile_picture.map(Into::into),
         }))
     }
 
+    /// Reads a public profile and its picture link in one statement. The
+    /// picture conditions sit in the join so an account without a qualifying
+    /// picture is still returned, with no link.
     pub async fn public_account_by_user_name(
         &self,
         user_name: &str,
     ) -> Result<Option<PublicAccount>, AccountError> {
         let mut connection = self.connection().await?;
-        let account = users::table
+        let record = users::table
+            .left_join(
+                user_profile_pictures::table.on(user_profile_pictures::user_id
+                    .eq(users::user_id)
+                    .and(user_profile_pictures::user_profile_picture_is_active.eq(true))
+                    .and(user_profile_pictures::user_profile_picture_is_on_cloud.eq(true))
+                    .and(user_profile_pictures::user_profile_picture_link.is_not_null())),
+            )
             .filter(lower(users::user_name).eq(lower(user_name)))
             .filter(users::user_deleted_at.is_null())
-            .select(PublicAccountRecord::as_select())
-            .first::<PublicAccountRecord>(&mut connection)
+            .select((
+                PublicAccountRecord::as_select(),
+                user_profile_pictures::user_profile_picture_link.nullable(),
+            ))
+            .first::<(PublicAccountRecord, Option<String>)>(&mut connection)
             .await
             .optional()
             .map_err(AccountError::Query)?;
-        let account = match account {
-            Some(account) => account,
-            None => return Ok(None),
-        };
-
-        let profile_picture_url = user_profile_pictures::table
-            .filter(user_profile_pictures::user_id.eq(account.user_id()))
-            .filter(user_profile_pictures::user_profile_picture_is_active.eq(true))
-            .filter(user_profile_pictures::user_profile_picture_is_on_cloud.eq(true))
-            .filter(user_profile_pictures::user_profile_picture_link.is_not_null())
-            .order(user_profile_pictures::user_profile_picture_created_at.desc())
-            .select(user_profile_pictures::user_profile_picture_link)
-            .first::<Option<String>>(&mut connection)
-            .await
-            .optional()
-            .map_err(AccountError::Query)?
-            .flatten();
-
-        Ok(Some(account.into_public_account(profile_picture_url)))
+        Ok(record
+            .map(|(account, profile_picture_url)| account.into_public_account(profile_picture_url)))
     }
 }

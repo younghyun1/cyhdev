@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use diesel::{ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper};
-use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use jiff::Timestamp;
 use jiff_diesel::ToDiesel;
 use uuid::Uuid;
@@ -139,33 +139,38 @@ impl BlogRepository {
         viewer_id: Option<Uuid>,
         load_tags: bool,
     ) -> Result<PostRead, BlogError> {
-        let mut connection = self.connection().await?;
-        let include_unpublished = has_current_blog_authority(&mut connection, viewer_id).await?;
-        let mut query = posts::table
-            .filter(posts::post_id.eq(post_id))
-            .select(PostRecord::as_select())
-            .into_boxed();
-        if !include_unpublished {
-            query = query.filter(posts::post_is_published.eq(true));
-        }
-        let post = query
-            .first::<PostRecord>(&mut connection)
-            .await
-            .optional()?
-            .map(Post::from)
-            .ok_or(BlogError::PostNotFound)?;
-        let tags = if load_tags {
-            Some(
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // The post is read without a visibility filter and its tags are sent
+        // alongside it, so a published post costs one round trip and no
+        // authority statement. Only a draft asks whether the viewer manages
+        // the blog, and a refused draft is reported as absent.
+        let post_read = async {
+            posts::table
+                .filter(posts::post_id.eq(post_id))
+                .select(PostRecord::as_select())
+                .first::<PostRecord>(&mut &*connection)
+                .await
+                .optional()
+        };
+        let tag_read = async {
+            if load_tags {
                 post_tags::table
                     .inner_join(tags::table)
                     .filter(post_tags::post_id.eq(post_id))
                     .select(tags::tag_name)
-                    .load::<String>(&mut connection)
-                    .await?,
-            )
-        } else {
-            None
+                    .load::<String>(&mut &*connection)
+                    .await
+                    .map(Some)
+            } else {
+                Ok(None)
+            }
         };
+        let (post, tags) = tokio::try_join!(post_read, tag_read)?;
+        let post = post.map(Post::from).ok_or(BlogError::PostNotFound)?;
+        if !post.post_is_published && !has_current_blog_authority(connection, viewer_id).await? {
+            return Err(BlogError::PostNotFound);
+        }
         Ok(PostRead { post, tags })
     }
 }

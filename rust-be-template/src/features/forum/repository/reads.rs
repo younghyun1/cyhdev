@@ -5,7 +5,7 @@ use diesel::{
     dsl::exists,
     sql_types::{Bool, Integer, Record, Text, Timestamptz, Uuid as SqlUuid},
 };
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use jiff_diesel::ToDiesel;
 use uuid::Uuid;
 
@@ -120,7 +120,7 @@ impl ForumRepository {
             .iter()
             .map(|record| record.forum_topic_author_user_id)
             .collect::<Vec<_>>();
-        let authors = load_public_authors(&mut connection, &author_ids).await?;
+        let authors = load_public_authors(&connection, &author_ids).await?;
         let items = records
             .into_iter()
             .map(|record| {
@@ -144,16 +144,20 @@ impl ForumRepository {
         after: Option<ForumReplyCursor>,
         page_size: ForumPageSize,
     ) -> Result<ForumTopicDetail, ForumError> {
-        let mut connection = self.connection().await?;
-        let topic_record = forum_topics::table
-            .filter(forum_topics::forum_topic_id.eq(topic_id))
-            .select(ForumTopicRecord::as_select())
-            .first::<ForumTopicRecord>(&mut connection)
-            .await
-            .optional()?
-            .ok_or(ForumError::TopicNotFound)?;
-        let topic_visible = topic_record.forum_topic_content_state
-            == crate::features::forum::repository::enums::DbForumContentState::Visible;
+        let connection = self.connection().await?;
+        // A shared reference lets diesel-async send the three independent
+        // statements below before it reads any result, so they cost one round
+        // trip instead of three. A missing topic therefore also runs the two
+        // index probes that follow; their results are dropped with the error.
+        let connection: &AsyncPgConnection = &connection;
+        let topic = async {
+            forum_topics::table
+                .filter(forum_topics::forum_topic_id.eq(topic_id))
+                .select(ForumTopicRecord::as_select())
+                .first::<ForumTopicRecord>(&mut &*connection)
+                .await
+                .optional()
+        };
         let mut reply_query = forum_replies::table
             .filter(forum_replies::forum_reply_topic_id.eq(topic_id))
             .select(ForumReplyRecord::as_select())
@@ -173,28 +177,35 @@ impl ForumRepository {
                     .gt((cursor.created_at.to_diesel(), cursor.reply_id)),
             );
         }
-        let mut reply_records = reply_query
+        let replies = reply_query
             .limit(i64::from(page_size.into_inner()) + 1)
-            .load::<ForumReplyRecord>(&mut connection)
-            .await?;
-        let next_cursor = reply_next_cursor(&mut reply_records, page_size);
-        let is_subscribed = match viewer_user_id {
-            Some(user_id) => {
-                diesel::select(exists(
-                    forum_topic_subscriptions::table
-                        .filter(
-                            forum_topic_subscriptions::forum_topic_subscription_topic_id
-                                .eq(topic_id),
-                        )
-                        .filter(
-                            forum_topic_subscriptions::forum_topic_subscription_user_id.eq(user_id),
-                        ),
-                ))
-                .get_result::<bool>(&mut connection)
-                .await?
+            .load::<ForumReplyRecord>(&mut &*connection);
+        let subscription = async {
+            match viewer_user_id {
+                Some(user_id) => {
+                    diesel::select(exists(
+                        forum_topic_subscriptions::table
+                            .filter(
+                                forum_topic_subscriptions::forum_topic_subscription_topic_id
+                                    .eq(topic_id),
+                            )
+                            .filter(
+                                forum_topic_subscriptions::forum_topic_subscription_user_id
+                                    .eq(user_id),
+                            ),
+                    ))
+                    .get_result::<bool>(&mut &*connection)
+                    .await
+                }
+                None => Ok(false),
             }
-            None => false,
         };
+        let (topic_record, mut reply_records, is_subscribed) =
+            tokio::try_join!(topic, replies, subscription)?;
+        let topic_record = topic_record.ok_or(ForumError::TopicNotFound)?;
+        let topic_visible = topic_record.forum_topic_content_state
+            == crate::features::forum::repository::enums::DbForumContentState::Visible;
+        let next_cursor = reply_next_cursor(&mut reply_records, page_size);
         let mut author_ids = Vec::with_capacity(reply_records.len() + 1);
         author_ids.push(topic_record.forum_topic_author_user_id);
         author_ids.extend(
@@ -202,7 +213,7 @@ impl ForumRepository {
                 .iter()
                 .map(|record| record.forum_reply_author_user_id),
         );
-        let authors = load_public_authors(&mut connection, &author_ids).await?;
+        let authors = load_public_authors(connection, &author_ids).await?;
         let topic_author = authors
             .get(&topic_record.forum_topic_author_user_id)
             .cloned()

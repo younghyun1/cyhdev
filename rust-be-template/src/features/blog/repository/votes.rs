@@ -1,7 +1,7 @@
 //! Post and comment votes with denormalized totals recomputed under row locks.
 
 use diesel::{
-    AggregateExpressionMethods, ExpressionMethods, OptionalExtension, QueryDsl, dsl::count,
+    ExpressionMethods, NullableExpressionMethods, OptionalExtension, QueryDsl, dsl::count_star,
 };
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
@@ -180,48 +180,55 @@ async fn lock_comment_for_vote(
     require_visible_post(connection, user_id, published).await
 }
 
-/// Recounts one post's votes with a single filtered aggregate and stores it.
+/// Recounts one post's votes and stores the totals in one statement.
+///
+/// The caller holds the post row lock, so the row exists and the returned
+/// totals are the ones it now holds. A scalar `count(*)` subquery always
+/// yields a row, which is why its nullable type is asserted away.
 async fn store_post_counts(
     connection: &mut AsyncPgConnection,
     post_id: Uuid,
 ) -> Result<VoteCounts, BlogError> {
-    let (upvotes, downvotes) = post_votes::table
-        .filter(post_votes::post_id.eq(post_id))
-        .select((
-            count(post_votes::vote_id).aggregate_filter(post_votes::is_upvote.eq(true)),
-            count(post_votes::vote_id).aggregate_filter(post_votes::is_upvote.eq(false)),
-        ))
-        .first::<(i64, i64)>(&mut *connection)
-        .await?;
-    diesel::update(posts::table.find(post_id))
+    let votes = |is_upvote: bool| {
+        post_votes::table
+            .filter(post_votes::post_id.eq(post_id))
+            .filter(post_votes::is_upvote.eq(is_upvote))
+            .select(count_star())
+            .single_value()
+            .assume_not_null()
+    };
+    let (upvotes, downvotes) = diesel::update(posts::table.find(post_id))
         .set((
-            posts::total_upvotes.eq(upvotes),
-            posts::total_downvotes.eq(downvotes),
+            posts::total_upvotes.eq(votes(true)),
+            posts::total_downvotes.eq(votes(false)),
         ))
-        .execute(&mut *connection)
+        .returning((posts::total_upvotes, posts::total_downvotes))
+        .get_result::<(i64, i64)>(&mut *connection)
         .await?;
     Ok(VoteCounts { upvotes, downvotes })
 }
 
-/// Recounts one comment's votes with a single filtered aggregate and stores it.
+/// Recounts one comment's votes and stores the totals in one statement, under
+/// the comment row lock its caller holds.
 async fn store_comment_counts(
     connection: &mut AsyncPgConnection,
     comment_id: Uuid,
 ) -> Result<VoteCounts, BlogError> {
-    let (upvotes, downvotes) = comment_votes::table
-        .filter(comment_votes::comment_id.eq(comment_id))
-        .select((
-            count(comment_votes::vote_id).aggregate_filter(comment_votes::is_upvote.eq(true)),
-            count(comment_votes::vote_id).aggregate_filter(comment_votes::is_upvote.eq(false)),
-        ))
-        .first::<(i64, i64)>(&mut *connection)
-        .await?;
-    diesel::update(comments::table.find(comment_id))
+    let votes = |is_upvote: bool| {
+        comment_votes::table
+            .filter(comment_votes::comment_id.eq(comment_id))
+            .filter(comment_votes::is_upvote.eq(is_upvote))
+            .select(count_star())
+            .single_value()
+            .assume_not_null()
+    };
+    let (upvotes, downvotes) = diesel::update(comments::table.find(comment_id))
         .set((
-            comments::total_upvotes.eq(upvotes),
-            comments::total_downvotes.eq(downvotes),
+            comments::total_upvotes.eq(votes(true)),
+            comments::total_downvotes.eq(votes(false)),
         ))
-        .execute(&mut *connection)
+        .returning((comments::total_upvotes, comments::total_downvotes))
+        .get_result::<(i64, i64)>(&mut *connection)
         .await?;
     Ok(VoteCounts { upvotes, downvotes })
 }

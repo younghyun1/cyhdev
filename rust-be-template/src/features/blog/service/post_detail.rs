@@ -22,7 +22,9 @@ impl BlogService {
     ///
     /// Two pool checkouts serve the whole read: the post (with tags on a cache
     /// miss) under the post stripe, then comments, authors, and the viewer's
-    /// votes. The view is buffered after the stripe is released.
+    /// votes. The repository joins the independent statements of each
+    /// checkout, so a published post costs one round trip for the first and
+    /// two for the second. The view is buffered after the stripe is released.
     pub async fn read_post(
         &self,
         lookup: PostLookup,

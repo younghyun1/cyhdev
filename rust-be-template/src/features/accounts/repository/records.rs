@@ -102,10 +102,6 @@ pub(super) struct PublicAccountRecord {
 }
 
 impl PublicAccountRecord {
-    pub(super) fn user_id(&self) -> Uuid {
-        self.user_id
-    }
-
     pub(super) fn into_public_account(self, profile_picture_url: Option<String>) -> PublicAccount {
         PublicAccount {
             user_id: self.user_id,

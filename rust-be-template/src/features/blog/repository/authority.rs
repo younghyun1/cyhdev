@@ -9,8 +9,12 @@ use crate::{
 
 use super::super::error::BlogError;
 
+/// Whether the account currently holds the blog management permission.
+///
+/// Takes a shared connection reference so read paths can join it with other
+/// statements; a transaction passes its connection the same way.
 pub(super) async fn has_current_blog_authority(
-    connection: &mut AsyncPgConnection,
+    connection: &AsyncPgConnection,
     user_id: Option<Uuid>,
 ) -> Result<bool, BlogError> {
     let Some(user_id) = user_id else {
@@ -29,7 +33,7 @@ pub(super) async fn has_current_blog_authority(
         .filter(users::user_is_system_actor.eq(false))
         .filter(permissions::permission_name.eq("content.blog.manage"));
     diesel::select(diesel::dsl::exists(current_authority))
-        .get_result::<bool>(&mut *connection)
+        .get_result::<bool>(&mut &*connection)
         .await
         .map_err(BlogError::Database)
 }

@@ -98,8 +98,8 @@ impl PhotographyRepository {
     }
 
     pub async fn user_is_deleted(&self, user_id: Uuid) -> Result<bool, PhotographyError> {
-        let mut connection = self.connection().await?;
-        Ok(load_deleted_user_ids(&mut connection, &[user_id])
+        let connection = self.connection().await?;
+        Ok(load_deleted_user_ids(&connection, &[user_id])
             .await?
             .contains(&user_id))
     }

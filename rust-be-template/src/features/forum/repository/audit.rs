@@ -80,7 +80,7 @@ impl ForumRepository {
             .iter()
             .map(|event| event.actor_user_id)
             .collect::<Vec<_>>();
-        let authors = load_public_authors(&mut connection, &actor_ids).await?;
+        let authors = load_public_authors(&connection, &actor_ids).await?;
         let items = events
             .into_iter()
             .map(|event| {

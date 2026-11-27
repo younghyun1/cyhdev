@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use diesel::{ExpressionMethods, QueryDsl, SelectableHelper, dsl::count_star};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use uuid::Uuid;
 
 use crate::{
@@ -34,8 +34,8 @@ impl BlogRepository {
         if viewer_id.is_none() {
             return Ok(false);
         }
-        let mut connection = self.connection().await?;
-        has_current_blog_authority(&mut connection, viewer_id).await
+        let connection = self.connection().await?;
+        has_current_blog_authority(&connection, viewer_id).await
     }
 
     pub async fn list_posts(
@@ -48,25 +48,29 @@ impl BlogRepository {
         let page_size = page_size.clamp(1, 100);
         let offset = page.saturating_sub(1).saturating_mul(page_size);
         let offset = i64::try_from(offset).unwrap_or(i64::MAX);
-        let mut connection = self.connection().await?;
-        let include_unpublished = has_current_blog_authority(&mut connection, viewer_id).await?;
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // Authority decides the filter of both statements, so it stays first.
+        // The count and the page are then sent together.
+        let include_unpublished = has_current_blog_authority(connection, viewer_id).await?;
         let mut count_query = posts::table.select(count_star()).into_boxed();
         if !include_unpublished {
             count_query = count_query.filter(posts::post_is_published.eq(true));
         }
-        let total_rows = count_query.first::<i64>(&mut connection).await?;
+        let total = count_query.first::<i64>(&mut &*connection);
         let mut query = posts::table
             .select(PostInfoRecord::as_select())
             .into_boxed();
         if !include_unpublished {
             query = query.filter(posts::post_is_published.eq(true));
         }
-        let post_info = query
+        let page_rows = query
             .order((posts::post_created_at.desc(), posts::post_id.desc()))
             .offset(offset)
             .limit(i64::try_from(page_size).unwrap_or(100))
-            .load::<PostInfoRecord>(&mut connection)
-            .await?
+            .load::<PostInfoRecord>(&mut &*connection);
+        let (total_rows, page_rows) = tokio::try_join!(total, page_rows)?;
+        let post_info = page_rows
             .into_iter()
             .map(PostInfo::from)
             .collect::<Vec<_>>();
@@ -74,7 +78,7 @@ impl BlogRepository {
             .iter()
             .map(|post| post.post_id)
             .collect::<Vec<_>>();
-        let tag_rows = load_tag_rows(&mut connection, &post_ids).await?;
+        let tag_rows = load_tag_rows(connection, &post_ids).await?;
         let total_rows = usize::try_from(total_rows).unwrap_or_default();
         Ok(PostPage {
             posts: combine_posts(post_info, tag_rows),
@@ -86,16 +90,16 @@ impl BlogRepository {
         if post_ids.is_empty() {
             return Ok(Vec::new());
         }
-        let mut connection = self.connection().await?;
-        let post_info = posts::table
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // Both statements are keyed by the requested identifiers alone.
+        let post_rows = posts::table
             .filter(posts::post_id.eq_any(post_ids))
             .select(PostInfoRecord::as_select())
-            .load::<PostInfoRecord>(&mut connection)
-            .await?
-            .into_iter()
-            .map(PostInfo::from)
-            .collect();
-        let tag_rows = load_tag_rows(&mut connection, post_ids).await?;
+            .load::<PostInfoRecord>(&mut &*connection);
+        let (post_rows, tag_rows) =
+            tokio::try_join!(post_rows, load_tag_rows(connection, post_ids))?;
+        let post_info = post_rows.into_iter().map(PostInfo::from).collect();
         Ok(combine_posts(post_info, tag_rows))
     }
 
@@ -114,7 +118,7 @@ impl BlogRepository {
             .iter()
             .map(|post| post.post_id)
             .collect::<Vec<_>>();
-        let tag_rows = load_tag_rows(&mut connection, &ids).await?;
+        let tag_rows = load_tag_rows(&connection, &ids).await?;
         Ok(combine_posts(post_info, tag_rows))
     }
 
@@ -127,26 +131,34 @@ impl BlogRepository {
         user_ids.sort_unstable();
         user_ids.dedup();
         let post_ids = posts.iter().map(|post| post.post_id).collect::<Vec<_>>();
-        let mut connection = self.connection().await?;
-        let authors = load_public_authors(&mut connection, &user_ids).await?;
-        let votes = match viewer_id {
-            Some(viewer_id) if !post_ids.is_empty() => post_votes::table
-                .filter(post_votes::post_id.eq_any(post_ids))
-                .filter(post_votes::user_id.eq(viewer_id))
-                .select((post_votes::post_id, post_votes::is_upvote))
-                .load::<(Uuid, bool)>(&mut connection)
-                .await?
-                .into_iter()
-                .map(|(post_id, upvote)| (post_id, vote_state(upvote)))
-                .collect(),
-            Some(_) | None => HashMap::new(),
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // Authors and the viewer's votes are independent of each other.
+        let viewer_votes = async {
+            match viewer_id {
+                Some(viewer_id) if !post_ids.is_empty() => {
+                    post_votes::table
+                        .filter(post_votes::post_id.eq_any(post_ids))
+                        .filter(post_votes::user_id.eq(viewer_id))
+                        .select((post_votes::post_id, post_votes::is_upvote))
+                        .load::<(Uuid, bool)>(&mut &*connection)
+                        .await
+                }
+                Some(_) | None => Ok(Vec::new()),
+            }
         };
+        let (authors, viewer_votes) =
+            tokio::try_join!(load_public_authors(connection, &user_ids), viewer_votes)?;
+        let votes = viewer_votes
+            .into_iter()
+            .map(|(post_id, upvote)| (post_id, vote_state(upvote)))
+            .collect();
         Ok(PostPresentationData { authors, votes })
     }
 }
 
 async fn load_tag_rows(
-    connection: &mut diesel_async::AsyncPgConnection,
+    connection: &AsyncPgConnection,
     post_ids: &[Uuid],
 ) -> Result<Vec<(Uuid, String)>, diesel::result::Error> {
     if post_ids.is_empty() {
@@ -156,7 +168,7 @@ async fn load_tag_rows(
         .inner_join(tags::table)
         .filter(post_tags::post_id.eq_any(post_ids))
         .select((post_tags::post_id, tags::tag_name))
-        .load(connection)
+        .load(&mut &*connection)
         .await
 }
 

@@ -46,7 +46,7 @@ impl WasmRepository {
             .map(WasmModuleMetadata::from)
             .collect::<Vec<_>>();
         let owner_ids = items.iter().map(|item| item.user_id).collect::<Vec<_>>();
-        let authors = load_public_authors(&mut connection, &owner_ids)
+        let authors = load_public_authors(&connection, &owner_ids)
             .await
             .map_err(WasmError::Database)?;
         for item in &mut items {

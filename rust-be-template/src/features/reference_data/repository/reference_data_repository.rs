@@ -63,22 +63,20 @@ impl ReferenceDataRepository {
     }
 
     pub async fn countries(&self) -> anyhow::Result<(Vec<IsoCountry>, Vec<IsoCountrySubdivision>)> {
-        let mut connection = self.pool.get().await?;
+        let connection = self.pool.get().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // Two independent table reads, sent together on one connection.
         let countries = iso_country::table
             .select(CountryRecord::as_select())
-            .load::<CountryRecord>(&mut connection)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
+            .load::<CountryRecord>(&mut &*connection);
         let subdivisions = iso_country_subdivision::table
             .select(SubdivisionRecord::as_select())
-            .load::<SubdivisionRecord>(&mut connection)
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect();
-        Ok((countries, subdivisions))
+            .load::<SubdivisionRecord>(&mut &*connection);
+        let (countries, subdivisions) = tokio::try_join!(countries, subdivisions)?;
+        Ok((
+            countries.into_iter().map(Into::into).collect(),
+            subdivisions.into_iter().map(Into::into).collect(),
+        ))
     }
 
     pub async fn languages(&self) -> anyhow::Result<Vec<IsoLanguage>> {

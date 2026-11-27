@@ -22,8 +22,12 @@ type PublicAuthorRow = (
 );
 
 /// Load one deletion-aware author and latest-profile projection per user.
+///
+/// Takes a shared connection reference so a caller can join this query with
+/// other independent reads; diesel-async then sends them without waiting for
+/// each result in turn.
 pub async fn load_public_authors(
-    conn: &mut AsyncPgConnection,
+    conn: &AsyncPgConnection,
     user_ids: &[Uuid],
 ) -> diesel::result::QueryResult<HashMap<Uuid, PublicAuthor>> {
     let mut requested_user_ids = user_ids.to_vec();
@@ -47,7 +51,7 @@ pub async fn load_public_authors(
             users::user_deleted_at,
             user_profile_pictures::user_profile_picture_link.nullable(),
         ))
-        .load(conn)
+        .load(&mut &*conn)
         .await?;
 
     let mut authors = HashMap::with_capacity(requested_user_ids.len());
@@ -67,7 +71,7 @@ pub async fn load_public_authors(
 
 /// Load only deletion state for response shapes without author badges.
 pub async fn load_deleted_user_ids(
-    conn: &mut AsyncPgConnection,
+    conn: &AsyncPgConnection,
     user_ids: &[Uuid],
 ) -> diesel::result::QueryResult<HashSet<Uuid>> {
     let mut requested_user_ids = user_ids.to_vec();
@@ -79,7 +83,7 @@ pub async fn load_deleted_user_ids(
     let rows = users::table
         .filter(users::user_id.eq_any(&requested_user_ids))
         .select((users::user_id, users::user_deleted_at))
-        .load::<(Uuid, jiff_diesel::NullableTimestamp)>(conn)
+        .load::<(Uuid, jiff_diesel::NullableTimestamp)>(&mut &*conn)
         .await?;
     let mut deleted_user_ids = requested_user_ids.into_iter().collect::<HashSet<_>>();
     for (user_id, deleted_at) in rows {

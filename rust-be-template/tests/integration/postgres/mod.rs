@@ -22,6 +22,8 @@ mod migration_guards;
 mod minecraft_waypoints;
 mod photography_invariants;
 mod profile_picture_history;
+mod read_joins;
+mod read_visibility;
 mod retention_notifications;
 mod runtime_bounds;
 mod wasm;

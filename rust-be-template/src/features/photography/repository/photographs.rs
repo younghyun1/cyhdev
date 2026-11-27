@@ -2,7 +2,7 @@ use diesel::{
     ExpressionMethods, OptionalExtension, QueryDsl, SelectableHelper,
     sql_types::{Array, BigInt, Uuid as SqlUuid},
 };
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use tracing::warn;
 use uuid::Uuid;
 
@@ -12,8 +12,10 @@ use crate::{
         domain::photograph::{Photograph, PhotographDetail, PhotographPage},
         error::PhotographyError,
         repository::{
-            comment_reads::load_comment_page, enums::DbPhotographContext,
-            photography_repository::PhotographyRepository, records::PhotographRecord,
+            comment_reads::{finish_comment_page, load_comment_rows},
+            enums::DbPhotographContext,
+            photography_repository::PhotographyRepository,
+            records::PhotographRecord,
         },
     },
     persistence::public_authors::load_deleted_user_ids,
@@ -76,13 +78,15 @@ impl PhotographyRepository {
         page: i64,
         page_size: i64,
     ) -> Result<PhotographPage, PhotographyError> {
-        let mut connection = self.connection().await?;
-        let total_items = photographs::table
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        // The total and the page are independent statements; joining them
+        // sends both before reading either result.
+        let total = photographs::table
             .filter(photographs::photograph_context.eq(DbPhotographContext::Photography))
             .count()
-            .get_result::<i64>(&mut connection)
-            .await?;
-        let records = photographs::table
+            .get_result::<i64>(&mut &*connection);
+        let page_rows = photographs::table
             .filter(photographs::photograph_context.eq(DbPhotographContext::Photography))
             .order((
                 photographs::photograph_shot_at.desc(),
@@ -91,13 +95,13 @@ impl PhotographyRepository {
             .offset((page - 1).saturating_mul(page_size))
             .limit(page_size)
             .select(PhotographRecord::as_select())
-            .load::<PhotographRecord>(&mut connection)
-            .await?;
+            .load::<PhotographRecord>(&mut &*connection);
+        let (total_items, records) = tokio::try_join!(total, page_rows)?;
         let owner_ids = records
             .iter()
             .map(|record| record.clone_author_id())
             .collect::<Vec<_>>();
-        let deleted = load_deleted_user_ids(&mut connection, &owner_ids).await?;
+        let deleted = load_deleted_user_ids(connection, &owner_ids).await?;
         let mut items = records
             .into_iter()
             .map(Photograph::from)
@@ -115,45 +119,51 @@ impl PhotographyRepository {
         })
     }
 
+    /// Reads a photograph, its first comment page, and the viewer's vote in
+    /// two round trips: the three reads keyed by the photograph first, then
+    /// the author batch and comment votes that need their rows.
     pub async fn photograph_detail(
         &self,
         photograph_id: Uuid,
         viewer: Option<Uuid>,
     ) -> Result<PhotographDetail, PhotographyError> {
-        let mut connection = self.connection().await?;
-        let record = photographs::table
-            .filter(photographs::photograph_id.eq(photograph_id))
-            .select(PhotographRecord::as_select())
-            .first::<PhotographRecord>(&mut connection)
-            .await
-            .optional()?
-            .ok_or(PhotographyError::PhotographNotFound)?;
-        let owner_user_id = record.clone_author_id();
-        let comments = load_comment_page(
-            &mut connection,
-            photograph_id,
-            viewer,
-            CommentPageRequest::first_page(),
-            &[owner_user_id],
-        )
-        .await?;
-        let vote_state = match viewer {
-            Some(user_id) => vote_state(
-                photograph_votes::table
+        let connection = self.connection().await?;
+        let connection: &AsyncPgConnection = &connection;
+        let photograph = async {
+            photographs::table
+                .filter(photographs::photograph_id.eq(photograph_id))
+                .select(PhotographRecord::as_select())
+                .first::<PhotographRecord>(&mut &*connection)
+                .await
+                .optional()
+        };
+        let viewer_vote = async {
+            match viewer {
+                Some(user_id) => photograph_votes::table
                     .filter(photograph_votes::photograph_id.eq(photograph_id))
                     .filter(photograph_votes::user_id.eq(user_id))
                     .select(photograph_votes::is_upvote)
-                    .first::<bool>(&mut connection)
+                    .first::<bool>(&mut &*connection)
                     .await
-                    .optional()?,
-            ),
-            None => VoteState::DidNotVote,
+                    .optional(),
+                None => Ok(None),
+            }
         };
-        let photograph = record.into();
-        Ok(PhotographDetail {
+        // A missing photograph still runs the comment and vote probes; their
+        // results are dropped with the error below.
+        let (record, comment_rows, viewer_vote) = tokio::try_join!(
             photograph,
+            load_comment_rows(connection, photograph_id, CommentPageRequest::first_page()),
+            viewer_vote
+        )?;
+        let record = record.ok_or(PhotographyError::PhotographNotFound)?;
+        let owner_user_id = record.clone_author_id();
+        let comments =
+            finish_comment_page(connection, comment_rows, viewer, &[owner_user_id]).await?;
+        Ok(PhotographDetail {
+            photograph: record.into(),
             comments,
-            vote_state,
+            vote_state: vote_state(viewer_vote),
             owner_user_id,
         })
     }

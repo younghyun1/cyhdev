@@ -118,8 +118,8 @@ impl PhotographyRepository {
     }
 
     pub async fn comment_author(&self, user_id: Uuid) -> Result<PublicAuthor, PhotographyError> {
-        let mut connection = self.connection().await?;
-        let authors = load_public_authors(&mut connection, &[user_id]).await?;
+        let connection = self.connection().await?;
+        let authors = load_public_authors(&connection, &[user_id]).await?;
         Ok(authors
             .get(&user_id)
             .cloned()

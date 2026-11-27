@@ -32,8 +32,8 @@ impl BlogRepository {
         &self,
         user_ids: &[Uuid],
     ) -> Result<HashMap<Uuid, PublicAuthor>, BlogError> {
-        let mut connection = self.connection().await?;
-        load_public_authors(&mut connection, user_ids)
+        let connection = self.connection().await?;
+        load_public_authors(&connection, user_ids)
             .await
             .map_err(BlogError::Database)
     }
