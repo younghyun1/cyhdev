@@ -1,10 +1,10 @@
 # Backend query round-trip pass
 
 - Status: complete, 2026-11-27. Intended outcome: fewer database round trips on read paths that issued independent statements one at a time, and one statement where two were keyed on the same row.
-- Checkout: branch `perf/query-pipelining`, implementation commit `2367a7ba` plus one test commit after it, not pushed. No uncommitted paths after this document is committed.
+- Checkout: `main`, fast-forwarded from `perf/query-pipelining` and pushed on 2026-11-27. Implementation commit `2367a7ba`, test commit `07edf386`. Not deployed.
 - Completed: see Changes. No migration, schema, HTTP contract, or cache changed.
 - Verification: see Verification. No latency was measured.
-- Remaining: nothing in scope. The next action is review and merge of the branch; candidates left out on purpose are listed under Not done.
+- Remaining: nothing in scope. Candidates left out on purpose are listed under Not done.
 
 ## Problem
 
